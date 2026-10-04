@@ -1094,7 +1094,18 @@ on an env var this time, not a bind-mount path). Both `VITE_ASSET_BASE_PATH`
 and the `VITE_REVERB_*` overrides only take effect when explicitly passed
 this way, so plain local `npm run build` / Docker dev is unaffected. Then
 on the server: `rm -rf /var/www/quiz/public/build`, tar-pipe the new
-`public/build/` over. **Verify after every deploy**:
+`public/build/` over. **Gotcha — `public/build` on the server is owned by `www-data`**, so the
+`ubuntu` user can't `rm -rf` it (a plain `rm -rf build && tar x` leaves the
+old build in place and fails halfway). Stage the new build next to it, then
+swap with passwordless sudo: extract to `public/build.new`, `sudo chown -R
+www-data:www-data build.new && sudo mv build build.old && sudo mv build.new
+build && sudo rm -rf build.old`. **Ship the PHP and the build together, in one
+sitting** — new PHP removing a route (e.g. `explorer.index`) with the old JS
+bundle still live makes Ziggy's `route()` throw and blanks pages. Also take a
+backup first (`tar czf /home/ubuntu/quiz-<date>.tgz` of the files being
+replaced); deploys of 2026-10-04 left `/home/ubuntu/quiz-20261004-pre-deploy.tgz`.
+
+**Verify after every deploy**:
 `ssh aws-dev "grep -c mao-dao.com /var/www/quiz/public/build/assets/echo-*.js"`
 should be ≥1 and `grep -c localhost` should be 0.
 
