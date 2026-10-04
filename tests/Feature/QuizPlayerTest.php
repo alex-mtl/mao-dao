@@ -221,3 +221,55 @@ test('only the attempt owner can view its results', function () {
     $this->actingAs($stranger)->get("/quiz-attempts/{$attempt->id}")->assertForbidden();
     $this->actingAs($player)->get("/quiz-attempts/{$attempt->id}")->assertOk();
 });
+
+test('the results page reveals the correct answer text for each question', function () {
+    $owner = User::factory()->create();
+    $player = User::factory()->create();
+    $quiz = publishedQuizWithTwoQuestions($owner);
+
+    $answers = $quiz->questions->map(fn ($q) => [
+        'question_id' => $q->id,
+        'answer_id' => $q->answers->firstWhere('text', 'Wrong 1')->id,
+    ])->all();
+    $this->actingAs($player)->post("/quizzes/{$quiz->id}/attempts", ['answers' => $answers]);
+    $attempt = QuizAttempt::firstOrFail();
+
+    $props = $this->actingAs($player)->get("/quiz-attempts/{$attempt->id}")->assertOk()->viewData('page')['props'];
+
+    expect(collect($props['attempt']['answers'])->pluck('correct_answer_text')->unique()->all())->toBe(['Right']);
+    expect(collect($props['attempt']['answers'])->pluck('chosen_answer_text')->unique()->all())->toBe(['Wrong 1']);
+});
+
+test('the results page lists up to 4 similar published quizzes, ranked by shared tags, excluding the current one', function () {
+    $owner = User::factory()->create();
+    $player = User::factory()->create();
+    $quiz = publishedQuizWithTwoQuestions($owner);
+    [$a, $b, $c] = \App\Models\Tag::factory()->count(3)->create();
+    $quiz->tags()->attach([$a->id, $b->id]);
+
+    $both = Quiz::factory()->published()->create(['title' => 'Shares two']);
+    $both->tags()->attach([$a->id, $b->id]);
+    $one = Quiz::factory()->published()->create(['title' => 'Shares one']);
+    $one->tags()->attach([$a->id]);
+    $unrelated = Quiz::factory()->published()->create(['title' => 'Unrelated']);
+    $unrelated->tags()->attach([$c->id]);
+    $draft = Quiz::factory()->create(['title' => 'Draft twin']);
+    $draft->tags()->attach([$a->id, $b->id]);
+
+    $attempt = QuizAttempt::create(['quiz_id' => $quiz->id, 'user_id' => $player->id, 'total_questions' => 2, 'correct_count' => 1, 'percentage' => 50, 'time_spent_seconds' => 45, 'passed' => false]);
+
+    $props = $this->actingAs($player)->get("/quiz-attempts/{$attempt->id}")->assertOk()->viewData('page')['props'];
+
+    expect(collect($props['similar_quizzes'])->pluck('title')->all())->toBe(['Shares two', 'Shares one']);
+});
+
+test('a quiz without tags has no similar quizzes', function () {
+    $owner = User::factory()->create();
+    $player = User::factory()->create();
+    $quiz = publishedQuizWithTwoQuestions($owner);
+    $attempt = QuizAttempt::create(['quiz_id' => $quiz->id, 'user_id' => $player->id, 'total_questions' => 2, 'correct_count' => 1, 'percentage' => 50, 'time_spent_seconds' => 45, 'passed' => false]);
+
+    $props = $this->actingAs($player)->get("/quiz-attempts/{$attempt->id}")->viewData('page')['props'];
+
+    expect($props['similar_quizzes'])->toBe([]);
+});

@@ -1,9 +1,16 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link } from '@inertiajs/react';
+import { useState } from 'react';
+import QuizCard from '@/Components/QuizCard';
 import { useLaravelReactI18n } from 'laravel-react-i18n';
 import { formatSeconds } from '@/utils/duration';
 import { CheckCircleIcon, XCircleIcon, ClockIcon } from '@heroicons/react/24/solid';
-import { BookOpenIcon, ClockIcon as ClockOutlineIcon } from '@heroicons/react/24/outline';
+import {
+    BookOpenIcon,
+    ClockIcon as ClockOutlineIcon,
+    ArrowPathIcon,
+    ShareIcon,
+} from '@heroicons/react/24/outline';
 
 function ScoreRing({ percentage, passed }) {
     const radius = 54;
@@ -35,9 +42,36 @@ function ScoreRing({ percentage, passed }) {
     );
 }
 
-export default function Results({ attempt }) {
+export default function Results({ attempt, similar_quizzes: similarQuizzes = [] }) {
     const { t } = useLaravelReactI18n();
-    const timeSpent = formatSeconds(attempt.time_spent_seconds);
+    const seconds = attempt.time_spent_seconds;
+    const timeSpent =
+        seconds !== null && seconds !== undefined && seconds < 60
+            ? t('quiz_player.time_seconds', { count: seconds })
+            : formatSeconds(seconds);
+    const [copied, setCopied] = useState(false);
+
+    const share = async () => {
+        const url = route('quizzes.show', attempt.quiz_id);
+        const text = t('quiz_player.share_text', { title: attempt.quiz_title });
+
+        if (navigator.share) {
+            try {
+                await navigator.share({ title: attempt.quiz_title, text, url });
+                return;
+            } catch (e) {
+                if (e?.name === 'AbortError') return;
+            }
+        }
+
+        try {
+            await navigator.clipboard.writeText(url);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2500);
+        } catch (e) {
+            window.prompt(text, url);
+        }
+    };
 
     return (
         <AuthenticatedLayout>
@@ -110,12 +144,37 @@ export default function Results({ attempt }) {
                                                   })
                                                 : t('quiz_player.no_answer')}
                                         </p>
+                                        {!answer.is_correct && answer.correct_answer_text && (
+                                            <p className="text-sm font-medium text-success-700">
+                                                {t('quiz_player.correct_answer', {
+                                                    answer: answer.correct_answer_text,
+                                                })}
+                                            </p>
+                                        )}
                                     </div>
                                 </div>
                             ))}
                         </div>
 
-                        <div className="mt-6 flex flex-wrap gap-4 border-t border-warm-100 pt-4">
+                        <div className="mt-6 flex flex-wrap items-center gap-3 border-t border-warm-100 pt-4">
+                            <Link
+                                href={route('quizzes.play', attempt.quiz_id)}
+                                className="inline-flex items-center gap-1.5 rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white shadow-soft hover:bg-primary-700"
+                            >
+                                <ArrowPathIcon className="h-4 w-4" aria-hidden="true" />
+                                {t('quiz_player.try_again')}
+                            </Link>
+                            <button
+                                type="button"
+                                onClick={share}
+                                className="inline-flex items-center gap-1.5 rounded-lg border border-warm-300 bg-surface px-4 py-2 text-sm font-semibold text-ink-700 shadow-soft hover:bg-warm-50"
+                            >
+                                <ShareIcon className="h-4 w-4" aria-hidden="true" />
+                                {copied ? t('quiz_player.link_copied') : t('quiz_player.share')}
+                            </button>
+                            <span className="sr-only" role="status" aria-live="polite">
+                                {copied ? t('quiz_player.link_copied') : ''}
+                            </span>
                             <Link
                                 href={route('library.index')}
                                 className="inline-flex items-center gap-1 text-sm font-medium text-ink-500 hover:text-primary-700"
@@ -132,6 +191,23 @@ export default function Results({ attempt }) {
                             </Link>
                         </div>
                     </div>
+
+                    {similarQuizzes.length > 0 && (
+                        <div className="pt-4">
+                            <h2 className="font-heading text-base font-semibold text-ink-900">
+                                {t('quiz_player.similar_quizzes')}
+                            </h2>
+                            <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                                {similarQuizzes.map((quiz) => (
+                                    <QuizCard
+                                        key={quiz.id}
+                                        quiz={quiz}
+                                        href={route('quizzes.show', quiz.id)}
+                                    />
+                                ))}
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
         </AuthenticatedLayout>

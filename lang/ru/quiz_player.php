@@ -23,6 +23,13 @@ return [
     'no_answer' => 'Ответ не выбран',
     'back_to_library' => 'Назад в библиотеку',
     'view_history' => 'Посмотреть историю',
+    'time_seconds' => ':count сек',
+    'correct_answer' => 'Правильный ответ: :answer',
+    'try_again' => 'Пройти ещё раз',
+    'share' => 'Поделиться',
+    'link_copied' => 'Ссылка скопирована',
+    'share_text' => 'Пройди викторину «:title»',
+    'similar_quizzes' => 'Похожие викторины',
 
     'history_title' => 'История викторин',
     'no_attempts' => 'Вы ещё не проходили ни одной викторины.',

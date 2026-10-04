@@ -116,7 +116,7 @@ class QuizAttemptController extends Controller
     {
         $this->authorize('view', $quizAttempt);
 
-        $quizAttempt->load(['quiz:id,title', 'answers.question', 'answers.answer']);
+        $quizAttempt->load(['quiz:id,title', 'answers.question.answers', 'answers.answer']);
 
         return Inertia::render('Quizzes/Results', [
             'attempt' => [
@@ -131,10 +131,39 @@ class QuizAttemptController extends Controller
                 'answers' => $quizAttempt->answers->map(fn ($answerRow) => [
                     'question_text' => $answerRow->question->text,
                     'chosen_answer_text' => $answerRow->answer?->text,
+                    'correct_answer_text' => $answerRow->question->answers->firstWhere('is_correct', true)?->text,
                     'is_correct' => $answerRow->is_correct,
                 ]),
             ],
+            'similar_quizzes' => $this->similarQuizzes($quizAttempt->quiz_id),
         ]);
+    }
+
+    /**
+     * Up to 4 other published quizzes sharing at least one tag with the
+     * given one, most shared tags first, then newest.
+     */
+    private function similarQuizzes(int $quizId)
+    {
+        $tagIds = Quiz::findOrFail($quizId)->tags()->pluck('tags.id');
+
+        if ($tagIds->isEmpty()) {
+            return [];
+        }
+
+        return Quiz::query()
+            ->published()
+            ->where('id', '!=', $quizId)
+            ->whereHas('tags', fn ($q) => $q->whereIn('tags.id', $tagIds))
+            ->withCount([
+                'questions',
+                'tags as shared_tags_count' => fn ($q) => $q->whereIn('tags.id', $tagIds),
+            ])
+            ->with(['user:id,name', 'tags:id,name'])
+            ->orderByDesc('shared_tags_count')
+            ->orderByDesc('published_at')
+            ->limit(4)
+            ->get();
     }
 
     public function history(Request $request): Response

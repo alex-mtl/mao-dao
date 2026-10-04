@@ -23,6 +23,13 @@ return [
     'no_answer' => 'Aucune réponse sélectionnée',
     'back_to_library' => 'Retour à la bibliothèque',
     'view_history' => "Voir l'historique",
+    'time_seconds' => ':count s',
+    'correct_answer' => 'Bonne réponse : :answer',
+    'try_again' => 'Réessayer',
+    'share' => 'Partager',
+    'link_copied' => 'Lien copié',
+    'share_text' => 'Essayez le quiz «:title»',
+    'similar_quizzes' => 'Quiz similaires',
 
     'history_title' => 'Historique des quiz',
     'no_attempts' => "Vous n'avez pas encore joué à de quiz.",

@@ -23,6 +23,13 @@ return [
     'no_answer' => 'Ninguna respuesta seleccionada',
     'back_to_library' => 'Volver a la biblioteca',
     'view_history' => 'Ver historial',
+    'time_seconds' => ':count s',
+    'correct_answer' => 'Respuesta correcta: :answer',
+    'try_again' => 'Intentar de nuevo',
+    'share' => 'Compartir',
+    'link_copied' => 'Enlace copiado',
+    'share_text' => 'Prueba el cuestionario «:title»',
+    'similar_quizzes' => 'Cuestionarios similares',
 
     'history_title' => 'Historial de cuestionarios',
     'no_attempts' => 'Todavía no has jugado ningún cuestionario.',
