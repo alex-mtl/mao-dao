@@ -17,6 +17,19 @@ return [
     'empty_requests' => 'Aucune demande en attente.',
     'empty_groups' => "Vous n'êtes dans aucun groupe pour le moment.",
 
-    'view_all' => 'Tout voir',
+    'cta_recent' => 'Choisir un quiz',
+    'cta_my_quizzes' => 'Créer votre premier quiz',
+    'cta_liked' => 'Trouver des quiz',
+    'cta_requests' => 'Trouver des amis',
+    'cta_groups' => 'Créer un groupe',
+
+    'onboarding_title' => 'Pour bien démarrer',
+    'onboarding_subtitle' => ':done étape(s) sur :total terminée(s)',
+    'onboarding_step_played' => 'Jouez à votre premier quiz',
+    'onboarding_step_created' => 'Créez un quiz',
+    'onboarding_step_friend' => 'Trouvez un ami',
+    'onboarding_dismiss' => 'Masquer',
+
+    'view_all' =>'Tout voir',
     'by_author' => 'par :name',
 ];

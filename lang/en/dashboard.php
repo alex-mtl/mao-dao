@@ -17,6 +17,19 @@ return [
     'empty_requests' => 'No pending requests.',
     'empty_groups' => "You're not in any groups yet.",
 
+    'cta_recent' => 'Pick a quiz',
+    'cta_my_quizzes' => 'Create your first quiz',
+    'cta_liked' => 'Find quizzes',
+    'cta_requests' => 'Find friends',
+    'cta_groups' => 'Create a group',
+
+    'onboarding_title' => 'Getting started',
+    'onboarding_subtitle' => ':done of :total steps done',
+    'onboarding_step_played' => 'Play your first quiz',
+    'onboarding_step_created' => 'Create a quiz',
+    'onboarding_step_friend' => 'Find a friend',
+    'onboarding_dismiss' => 'Hide',
+
     'view_all' => 'View All',
     'by_author' => 'by :name',
 ];

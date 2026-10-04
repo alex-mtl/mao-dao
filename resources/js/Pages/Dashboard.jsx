@@ -1,6 +1,7 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import PageHeader from '@/Components/PageHeader';
 import Badge from '@/Components/Badge';
+import OnboardingChecklist from '@/Components/OnboardingChecklist';
 import { Head, Link } from '@inertiajs/react';
 import { useLaravelReactI18n } from 'laravel-react-i18n';
 import {
@@ -12,7 +13,17 @@ import {
     UserGroupIcon,
 } from '@heroicons/react/24/outline';
 
-function DashboardCard({ icon: Icon, title, viewAllHref, viewAllLabel, children, isEmpty, emptyMessage }) {
+function DashboardCard({
+    icon: Icon,
+    title,
+    viewAllHref,
+    viewAllLabel,
+    children,
+    isEmpty,
+    emptyMessage,
+    emptyActionHref,
+    emptyActionLabel,
+}) {
     return (
         <div className="flex flex-col rounded-xl border border-warm-200 bg-surface p-5 shadow-soft">
             <div className="flex items-center justify-between">
@@ -31,7 +42,17 @@ function DashboardCard({ icon: Icon, title, viewAllHref, viewAllLabel, children,
             </div>
 
             {isEmpty ? (
-                <p className="mt-3 text-sm text-ink-400">{emptyMessage}</p>
+                <div className="mt-3">
+                    <p className="text-sm text-ink-400">{emptyMessage}</p>
+                    {emptyActionHref && (
+                        <Link
+                            href={emptyActionHref}
+                            className="mt-3 inline-flex items-center rounded-lg bg-primary-600 px-3.5 py-2 text-sm font-semibold text-white shadow-soft hover:bg-primary-700"
+                        >
+                            {emptyActionLabel}
+                        </Link>
+                    )}
+                </div>
             ) : (
                 <ul className="mt-2 divide-y divide-warm-100">{children}</ul>
             )}
@@ -40,6 +61,7 @@ function DashboardCard({ icon: Icon, title, viewAllHref, viewAllLabel, children,
 }
 
 export default function Dashboard({
+    onboarding,
     recommendedQuizzes,
     recentAttempts,
     myQuizzes,
@@ -55,6 +77,8 @@ export default function Dashboard({
 
             <div className="py-8">
                 <div className="mx-auto grid max-w-7xl grid-cols-1 gap-4 px-4 sm:px-6 md:grid-cols-2 lg:px-8">
+                    {onboarding && <OnboardingChecklist steps={onboarding} />}
+
                     <DashboardCard
                         icon={SparklesIcon}
                         title={t('dashboard.recommended_quizzes')}
@@ -62,6 +86,8 @@ export default function Dashboard({
                         viewAllLabel={t('dashboard.view_all')}
                         isEmpty={recommendedQuizzes.length === 0}
                         emptyMessage={t('dashboard.empty_recommended')}
+                        emptyActionHref={route('library.index')}
+                        emptyActionLabel={t('dashboard.cta_liked')}
                     >
                         {recommendedQuizzes.map((quiz) => (
                             <li key={quiz.id} className="py-2.5">
@@ -85,6 +111,8 @@ export default function Dashboard({
                         viewAllLabel={t('dashboard.view_all')}
                         isEmpty={recentAttempts.length === 0}
                         emptyMessage={t('dashboard.empty_recent')}
+                        emptyActionHref={route('library.index')}
+                        emptyActionLabel={t('dashboard.cta_recent')}
                     >
                         {recentAttempts.map((attempt) => (
                             <li key={attempt.id} className="flex items-center justify-between py-2.5">
@@ -108,6 +136,8 @@ export default function Dashboard({
                         viewAllLabel={t('dashboard.view_all')}
                         isEmpty={myQuizzes.length === 0}
                         emptyMessage={t('dashboard.empty_my_quizzes')}
+                        emptyActionHref={route('quizzes.create')}
+                        emptyActionLabel={t('dashboard.cta_my_quizzes')}
                     >
                         {myQuizzes.map((quiz) => (
                             <li key={quiz.id} className="flex items-center justify-between py-2.5">
@@ -133,6 +163,8 @@ export default function Dashboard({
                         title={t('dashboard.liked_quizzes_heading')}
                         isEmpty={likedQuizzes.length === 0}
                         emptyMessage={t('dashboard.empty_liked')}
+                        emptyActionHref={route('library.index')}
+                        emptyActionLabel={t('dashboard.cta_liked')}
                     >
                         {likedQuizzes.map((quiz) => (
                             <li key={quiz.id} className="py-2.5">
@@ -153,6 +185,8 @@ export default function Dashboard({
                         viewAllLabel={t('dashboard.view_all')}
                         isEmpty={pendingFriendRequests.length === 0}
                         emptyMessage={t('dashboard.empty_requests')}
+                        emptyActionHref={route('friends.index')}
+                        emptyActionLabel={t('dashboard.cta_requests')}
                     >
                         {pendingFriendRequests.map((request) => (
                             <li key={request.id} className="py-2.5 font-medium text-ink-800">
@@ -168,6 +202,8 @@ export default function Dashboard({
                         viewAllLabel={t('dashboard.view_all')}
                         isEmpty={groups.length === 0}
                         emptyMessage={t('dashboard.empty_groups')}
+                        emptyActionHref={route('groups.index')}
+                        emptyActionLabel={t('dashboard.cta_groups')}
                     >
                         {groups.map((group) => (
                             <li key={group.id} className="py-2.5">

@@ -17,6 +17,19 @@ return [
     'empty_requests' => 'No hay solicitudes pendientes.',
     'empty_groups' => 'Todavía no perteneces a ningún grupo.',
 
-    'view_all' => 'Ver todo',
+    'cta_recent' => 'Elegir un cuestionario',
+    'cta_my_quizzes' => 'Crear tu primer cuestionario',
+    'cta_liked' => 'Buscar cuestionarios',
+    'cta_requests' => 'Buscar amigos',
+    'cta_groups' => 'Crear un grupo',
+
+    'onboarding_title' => 'Primeros pasos',
+    'onboarding_subtitle' => ':done de :total pasos completados',
+    'onboarding_step_played' => 'Juega tu primer cuestionario',
+    'onboarding_step_created' => 'Crea un cuestionario',
+    'onboarding_step_friend' => 'Encuentra a un amigo',
+    'onboarding_dismiss' => 'Ocultar',
+
+    'view_all' =>'Ver todo',
     'by_author' => 'por :name',
 ];

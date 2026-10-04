@@ -17,6 +17,19 @@ return [
     'empty_requests' => 'Нет ожидающих заявок.',
     'empty_groups' => 'Вы пока не состоите ни в одной группе.',
 
-    'view_all' => 'Смотреть все',
+    'cta_recent' => 'Выбрать викторину',
+    'cta_my_quizzes' => 'Создать первую викторину',
+    'cta_liked' => 'Найти викторины',
+    'cta_requests' => 'Найти друзей',
+    'cta_groups' => 'Создать группу',
+
+    'onboarding_title' => 'Первые шаги',
+    'onboarding_subtitle' => 'Выполнено шагов: :done из :total',
+    'onboarding_step_played' => 'Пройдите первую викторину',
+    'onboarding_step_created' => 'Создайте викторину',
+    'onboarding_step_friend' => 'Найдите друга',
+    'onboarding_dismiss' => 'Скрыть',
+
+    'view_all' =>'Смотреть все',
     'by_author' => 'от :name',
 ];
