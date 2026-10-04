@@ -20,7 +20,7 @@ class QuizLibraryController extends Controller
             ->published()
             ->with(['user:id,name', 'tags:id,name'])
             ->withCount('questions')
-            ->when($search !== '', fn ($query) => $query->where('title', 'like', '%'.$search.'%'))
+            ->search($search)
             ->when($tagId, fn ($query) => $query->whereHas(
                 'tags',
                 fn ($tagQuery) => $tagQuery->where('tags.id', $tagId),

@@ -33,6 +33,29 @@ class Quiz extends Model
         return $query->where('status', 'published');
     }
 
+    /**
+     * Matches the title, the description, or the name of any attached
+     * tag. Wrapped in one nested where so it stays AND-combined with
+     * other filters (tag/language) on the same query.
+     */
+    public function scopeSearch(Builder $query, ?string $term): Builder
+    {
+        $term = trim((string) $term);
+
+        if ($term === '') {
+            return $query;
+        }
+
+        $escaped = str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $term);
+        $like = '%'.$escaped.'%';
+
+        return $query->where(function (Builder $q) use ($like) {
+            $q->where('title', 'like', $like)
+                ->orWhere('description', 'like', $like)
+                ->orWhereHas('tags', fn (Builder $tags) => $tags->where('name', 'like', $like));
+        });
+    }
+
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
