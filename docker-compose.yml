@@ -1,0 +1,127 @@
+services:
+    laravel.test:
+        build:
+            context: './docker/8.5'
+            dockerfile: Dockerfile
+            args:
+                WWWGROUP: '${WWWGROUP}'
+                PHP_EXTENSIONS: 'exif'
+        image: 'sail-8.5/app'
+        extra_hosts:
+            - 'host.docker.internal:host-gateway'
+        ports:
+            - '${APP_PORT:-80}:80'
+            - '${VITE_PORT:-5173}:${VITE_PORT:-5173}'
+        environment:
+            WWWUSER: '${WWWUSER}'
+            SUPERVISOR_PHP_USER: root
+            LARAVEL_SAIL: 1
+            XDEBUG_MODE: '${SAIL_XDEBUG_MODE:-off}'
+            XDEBUG_CONFIG: '${SAIL_XDEBUG_CONFIG:-client_host=host.docker.internal}'
+            IGNITION_LOCAL_SITES_PATH: '${PWD}'
+        volumes:
+            - '.:/var/www/html'
+        networks:
+            - sail
+        depends_on:
+            mysql:
+                condition: service_healthy
+    reverb:
+        image: 'sail-8.5/app'
+        command: php artisan reverb:start --host=0.0.0.0 --port=8080
+        ports:
+            - '${REVERB_PORT:-8080}:8080'
+        environment:
+            WWWUSER: '${WWWUSER}'
+            SUPERVISOR_PHP_USER: root
+        volumes:
+            - '.:/var/www/html'
+        networks:
+            - sail
+        depends_on:
+            mysql:
+                condition: service_healthy
+    race-tick:
+        image: 'sail-8.5/app'
+        command: php artisan race:tick
+        environment:
+            WWWUSER: '${WWWUSER}'
+            SUPERVISOR_PHP_USER: root
+        volumes:
+            - '.:/var/www/html'
+        networks:
+            - sail
+        depends_on:
+            mysql:
+                condition: service_healthy
+    mafia-tick:
+        image: 'sail-8.5/app'
+        command: php artisan mafia:tick
+        environment:
+            WWWUSER: '${WWWUSER}'
+            SUPERVISOR_PHP_USER: root
+        volumes:
+            - '.:/var/www/html'
+        networks:
+            - sail
+        depends_on:
+            mysql:
+                condition: service_healthy
+    media-sfu:
+        # A separate Node.js service, not the sail-8.5/app PHP image —
+        # mediasoup's native worker has nothing to do with PHP-FPM (see
+        # media-sfu/README.md). Requires MEDIA_SFU_SHARED_SECRET set in
+        # .env (matching config('mafia.media_shared_secret')) — the
+        # service refuses to start without it.
+        image: 'node:20'
+        working_dir: /app
+        command: sh -c "npm install && npm start"
+        ports:
+            - '${MEDIA_SFU_PORT:-8381}:8381'
+            - '45000-45100:45000-45100/udp'
+        environment:
+            PORT: 8381
+            SHARED_SECRET: '${MEDIA_SFU_SHARED_SECRET}'
+            LARAVEL_BASE_URL: 'http://laravel.test'
+            PUBLIC_IP: 127.0.0.1
+            # Matches media-sfu/.env.example's own reasoning: this range
+            # sits inside the 40000-49999 window ttl10's own mediasoup
+            # worker already uses in production, deliberately clear of
+            # the ~40000s it actually allocates from.
+            RTC_MIN_PORT: 45000
+            RTC_MAX_PORT: 45100
+        volumes:
+            - './media-sfu:/app'
+        networks:
+            - sail
+    mysql:
+        image: 'mysql:8.4'
+        ports:
+            - '${FORWARD_DB_PORT:-3306}:3306'
+        environment:
+            MYSQL_ROOT_PASSWORD: '${DB_PASSWORD}'
+            MYSQL_ROOT_HOST: '%'
+            MYSQL_DATABASE: '${DB_DATABASE}'
+            MYSQL_USER: '${DB_USERNAME}'
+            MYSQL_PASSWORD: '${DB_PASSWORD}'
+            MYSQL_ALLOW_EMPTY_PASSWORD: 1
+            MYSQL_EXTRA_OPTIONS: '${MYSQL_EXTRA_OPTIONS:-}'
+        volumes:
+            - 'sail-mysql:/var/lib/mysql'
+            - './docker/mysql/create-testing-database.sh:/docker-entrypoint-initdb.d/10-create-testing-database.sh'
+        networks:
+            - sail
+        healthcheck:
+            test:
+                - CMD
+                - mysqladmin
+                - ping
+                - '-p${DB_PASSWORD}'
+            retries: 3
+            timeout: 5s
+networks:
+    sail:
+        driver: bridge
+volumes:
+    sail-mysql:
+        driver: local

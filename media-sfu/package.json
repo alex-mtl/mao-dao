@@ -1,0 +1,16 @@
+{
+  "name": "mafia-media-sfu",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Standalone mediasoup SFU sidecar for the Mafia extension's voice/video (plan Phase 7). Not a Laravel/PHP process — a separate Node.js service the quiz app's Play page connects to directly over WebSocket, authorized by a short-lived signed token the Laravel app issues. Game rules never live here: every consume request is authorized by asking Laravel's internal can-view endpoint, so this service only ever needs to know 'is this token valid' and 'what did Laravel just say' — never why.",
+  "type": "commonjs",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "mediasoup": "^3.16.5",
+    "ws": "^8.18.0"
+  }
+}

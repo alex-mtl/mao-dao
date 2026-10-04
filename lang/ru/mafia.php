@@ -1,0 +1,181 @@
+<?php
+
+declare(strict_types=1);
+
+return [
+    'index_title' => 'Мафия',
+    'index_heading' => 'Мафия',
+    'index_description' => 'Соберите до 10 игроков для игры с тайными ролями, ночными устранениями и дневными обвинениями.',
+    'view_history_link' => 'Посмотреть историю ваших игр',
+    'create_room_button' => 'Создать комнату',
+    'create_password_label' => 'Пароль комнаты (необязательно)',
+    'join_by_code_heading' => 'Есть код комнаты?',
+    'join_by_code_placeholder' => 'Введите код',
+    'join_by_code_button' => 'Перейти',
+
+    'join_title' => 'Присоединиться к комнате Мафии',
+    'room_label' => 'Комната',
+    'player_count' => ':count / :max игроков',
+    'password_label' => 'Пароль комнаты',
+    'join_button' => 'Присоединиться',
+
+    'full_title' => 'Комната заполнена',
+    'full_description' => 'В этой комнате уже максимальное количество игроков.',
+    'started_title' => 'Игра уже началась',
+    'started_description' => 'Эта игра уже началась, и присоединиться к ней больше нельзя.',
+    'finished_title' => 'Игра завершена',
+    'finished_description' => 'Эта игра уже завершена.',
+    'cancelled_title' => 'Комната отменена',
+    'cancelled_description' => 'Эта комната была отменена хостом.',
+    'not_found_title' => 'Комната не найдена',
+    'not_found_description' => 'Мы не нашли комнату с таким кодом. Проверьте ссылку и попробуйте снова.',
+
+    'room_full_or_started' => 'Эта комната заполнена или игра уже началась.',
+    'wrong_password' => 'Неверный пароль.',
+
+    'lobby_title' => 'Лобби Мафии',
+    'lobby_heading' => 'Лобби Мафии',
+    'seats_heading' => 'Места (:count / :max)',
+    'empty_seat' => 'Свободное место',
+    'game_host_badge' => 'Хост',
+    'ready_badge' => 'Готов',
+    'ready_button' => 'Я готов',
+    'not_ready_button' => 'Отменить готовность',
+    'leave_button' => 'Покинуть комнату',
+    'waiting_for_ready' => 'Игра начнётся автоматически, когда все будут готовы.',
+    'copy_invite_link' => 'Скопировать ссылку-приглашение',
+    'link_copied' => 'Ссылка скопирована!',
+    'share' => 'Поделиться',
+
+    'play_title' => 'Мафия',
+    'fullscreen_enter_button' => 'Полноэкранный режим',
+    'fullscreen_exit_button' => 'Выйти из полноэкранного режима',
+    'play_placeholder_heading' => 'Игра началась',
+    'play_your_role' => 'Ваша роль: :role',
+    'play_your_team' => 'Команда: :team',
+    'play_more_soon' => 'Полноценный игровой процесс появится в следующем обновлении — а пока это подтверждает, что ваша роль распределена верно.',
+
+    'role_citizen' => 'Мирный житель',
+    'role_sheriff' => 'Шериф',
+    'role_mafia' => 'Мафия',
+    'role_don' => 'Дон',
+    'team_red' => 'Город (Красные)',
+    'team_black' => 'Мафия (Чёрные)',
+
+    // Игровой экран (Фаза 3)
+    'phase_sitdown' => 'Планирование преступления',
+    'phase_don_watch' => 'Дон наблюдает',
+    'phase_sheriff_watch' => 'Шериф наблюдает',
+    'phase_day' => 'День',
+    'phase_night' => 'Наступает ночь',
+    'phase_shooting' => 'Мафия наносит удар',
+    'phase_don_check' => 'Проверка Дона',
+    'phase_sheriff_check' => 'Проверка Шерифа',
+    'phase_game_over' => 'Игра окончена',
+
+    'stage_speaking' => 'Обсуждение',
+    'stage_voting' => 'Голосование',
+    'stage_defense_speech' => 'Защитное слово',
+    'stage_lock_vote' => 'Финальное голосование',
+    'stage_last_speech' => 'Последнее слово',
+    'stage_morning_speech' => 'Утренние новости',
+
+    'status_killed' => 'Убит',
+    'status_voted_out' => 'Изгнан голосованием',
+    'status_locked' => 'Устранён',
+    'status_disqualified' => 'Дисквалифицирован',
+    'status_disconnect_eliminated' => 'Отключён',
+
+    'action_nominate' => 'выдвинуть',
+    'action_vote' => 'голосовать за',
+    'action_shoot' => 'выстрелить в',
+    'action_check' => 'проверить',
+    'seat_action_label' => 'Нажмите, чтобы :action место :slot',
+
+    'day_label' => 'День :day',
+    'you_are_dead_notice' => 'Вы устранены из игры — вы можете продолжать наблюдать.',
+    'mafia_teammates_heading' => 'Ваши сообщники: места :slots',
+
+    'spotlight_last_speech' => ':name берёт слово.',
+    'spotlight_defense_speech' => ':name защищается.',
+    'spotlight_morning_speech' => 'Ночью :name был найден мёртвым. В его память звучат последние слова.',
+    'pass_button' => 'Пас',
+
+    'nominate_seat_hint' => 'Нажмите на место выше, чтобы обвинить этого игрока.',
+
+    'vote_seat_hint' => 'Нажмите на выделенное место выше, чтобы проголосовать.',
+
+    'lock_vote_candidates_heading' => 'Устранить всех: :names?',
+    'lock_vote_button' => 'Устранить ВСЕХ',
+
+    'shoot_heading' => 'Выберите цель на эту ночь',
+    'shoot_seat_hint' => 'Нажмите на место выше, чтобы выстрелить в этого игрока.',
+    'shoot_abstain_button' => 'Не стрелять',
+
+    'don_check_heading' => 'Проверить, не Шериф ли это',
+    'check_seat_hint' => 'Нажмите на место выше, чтобы проверить этого игрока.',
+    'don_check_history_heading' => 'Ваши проверки',
+    'check_result_is_sheriff' => 'Место :slot — это Шериф.',
+    'check_result_not_sheriff' => 'Место :slot — не Шериф.',
+
+    'sheriff_check_heading' => 'Проверить принадлежность игрока',
+    'sheriff_check_history_heading' => 'Ваши проверки',
+    'check_result_black' => 'Место :slot принадлежит Мафии.',
+    'check_result_red' => 'Место :slot принадлежит Городу.',
+
+    'game_over_heading' => 'Игра окончена',
+    'game_over_red' => 'Город побеждает!',
+    'game_over_black' => 'Мафия побеждает!',
+
+    // Голос/видео (Фаза 7)
+    'camera_enable_button' => 'Включить камеру',
+    'camera_disable_button' => 'Выключить камеру',
+    'media_error_media_permission_denied' => 'Доступ к камере/микрофону отклонён — проверьте разрешения браузера.',
+    'media_error_media_connection_failed' => 'Не удалось подключиться к серверу голоса/видео.',
+    'media_error_media_setup_failed' => 'Не удалось включить камеру. Попробуйте ещё раз.',
+    'media_error_media_join_rejected' => 'Сервер голоса/видео отклонил подключение — попробуйте перезагрузить страницу.',
+    'media_error_media_token_failed' => 'Не удалось получить разрешение на подключение голоса/видео для этой комнаты.',
+
+    'media_settings_button' => 'Настройки видео/аудио',
+    'media_settings_heading' => 'Настройки видео и аудио',
+    'media_settings_video_source' => 'Камера',
+    'media_settings_audio_source' => 'Микрофон',
+    'media_settings_default_device' => 'По умолчанию',
+    'media_settings_close_button' => 'Закрыть',
+    'media_settings_apply_button' => 'Применить',
+    'media_mic_enable_button' => 'Включить микрофон',
+    'media_mic_disable_button' => 'Выключить микрофон',
+    'media_cam_enable_button' => 'Включить камеру',
+    'media_cam_disable_button' => 'Выключить камеру',
+    'media_mirror_button' => 'Зеркально отразить мою камеру',
+    'media_volume_label' => 'Громкость :name',
+
+    // Отключение (Фаза 4)
+    'disconnect_notice' => ':name перестал отвечать. Устранить его или дать больше времени?',
+    'disconnect_eliminate_button' => 'Устранить',
+    'disconnect_continue_button' => 'Дать время',
+
+    // Скрытая коммуникация + доступность (Фаза 5)
+    'signal_heading' => 'Отправить тайный сигнал',
+    'signal_description' => 'Тихий способ показать кому-то число и/или цвет — увидит только тот, кому вы его отправите.',
+    'signal_help_label' => 'Что это?',
+    'signal_target_label' => 'Кому: :name',
+    'signal_trigger_label' => 'Отправить тайный сигнал на место :slot',
+    'signal_number_label' => 'Число',
+    'signal_color_label' => 'Цвет',
+    'signal_color_grey' => 'серый',
+    'signal_color_black' => 'чёрный',
+    'signal_color_red' => 'красный',
+    'signal_send_button' => 'Отправить',
+    'signal_cancel_button' => 'Отмена',
+    'signal_received' => 'Место :slot показывает :details',
+    'signal_dismiss' => 'Закрыть',
+    'seconds_remaining' => 'Осталось секунд: :seconds',
+
+    // История игр (Фаза 5)
+    'history_title' => 'История игр в Мафию',
+    'history_room' => 'Комната :code',
+    'history_won' => 'Победа',
+    'history_lost' => 'Поражение',
+    'no_games' => 'Вы ещё не завершили ни одной игры в Мафию.',
+];

@@ -1,0 +1,181 @@
+<?php
+
+declare(strict_types=1);
+
+return [
+    'index_title' => 'Mafia',
+    'index_heading' => 'Mafia',
+    'index_description' => 'Réunissez jusqu\'à 10 joueurs pour une partie de rôles secrets, d\'éliminations nocturnes et d\'accusations de jour.',
+    'view_history_link' => 'Voir votre historique de parties',
+    'create_room_button' => 'Créer une salle',
+    'create_password_label' => 'Mot de passe de la salle (optionnel)',
+    'join_by_code_heading' => 'Vous avez un code de salle ?',
+    'join_by_code_placeholder' => 'Entrez le code',
+    'join_by_code_button' => 'Go',
+
+    'join_title' => 'Rejoindre une salle Mafia',
+    'room_label' => 'Salle',
+    'player_count' => ':count / :max joueurs',
+    'password_label' => 'Mot de passe de la salle',
+    'join_button' => 'Rejoindre',
+
+    'full_title' => 'Salle complète',
+    'full_description' => 'Cette salle a déjà atteint le nombre maximum de joueurs.',
+    'started_title' => 'Partie déjà commencée',
+    'started_description' => 'Cette partie a déjà commencé et ne peut plus être rejointe.',
+    'finished_title' => 'Partie terminée',
+    'finished_description' => 'Cette partie est déjà terminée.',
+    'cancelled_title' => 'Salle annulée',
+    'cancelled_description' => "Cette salle a été annulée par l'hôte.",
+    'not_found_title' => 'Salle introuvable',
+    'not_found_description' => "Nous n'avons trouvé aucune salle avec ce code. Vérifiez le lien et réessayez.",
+
+    'room_full_or_started' => 'Cette salle est complète ou a déjà commencé.',
+    'wrong_password' => 'Ce mot de passe est incorrect.',
+
+    'lobby_title' => "Salle d'attente Mafia",
+    'lobby_heading' => "Salle d'attente Mafia",
+    'seats_heading' => 'Places (:count / :max)',
+    'empty_seat' => 'Place vide',
+    'game_host_badge' => 'Hôte',
+    'ready_badge' => 'Prêt',
+    'ready_button' => 'Je suis prêt',
+    'not_ready_button' => 'Annuler',
+    'leave_button' => 'Quitter la salle',
+    'waiting_for_ready' => 'La partie démarre automatiquement une fois que tout le monde est prêt.',
+    'copy_invite_link' => "Copier le lien d'invitation",
+    'link_copied' => 'Lien copié !',
+    'share' => 'Partager',
+
+    'play_title' => 'Mafia',
+    'fullscreen_enter_button' => 'Plein écran',
+    'fullscreen_exit_button' => 'Quitter le plein écran',
+    'play_placeholder_heading' => 'La partie a commencé',
+    'play_your_role' => 'Votre rôle : :role',
+    'play_your_team' => 'Équipe : :team',
+    'play_more_soon' => 'Le déroulement complet de la partie arrive dans une prochaine mise à jour — ceci confirme pour l\'instant que votre rôle a bien été distribué.',
+
+    'role_citizen' => 'Citoyen',
+    'role_sheriff' => 'Shérif',
+    'role_mafia' => 'Mafia',
+    'role_don' => 'Parrain',
+    'team_red' => 'Ville (Rouge)',
+    'team_black' => 'Mafia (Noir)',
+
+    // Écran de jeu (Phase 3)
+    'phase_sitdown' => 'Préparation du crime',
+    'phase_don_watch' => 'Le Parrain observe',
+    'phase_sheriff_watch' => 'Le Shérif observe',
+    'phase_day' => 'Jour',
+    'phase_night' => 'La nuit tombe',
+    'phase_shooting' => 'La Mafia frappe',
+    'phase_don_check' => 'La vérification du Parrain',
+    'phase_sheriff_check' => 'La vérification du Shérif',
+    'phase_game_over' => 'Partie terminée',
+
+    'stage_speaking' => 'Discussion',
+    'stage_voting' => 'Vote',
+    'stage_defense_speech' => 'Défense',
+    'stage_lock_vote' => 'Vote final',
+    'stage_last_speech' => 'Derniers mots',
+    'stage_morning_speech' => 'Nouvelles du matin',
+
+    'status_killed' => 'Tué',
+    'status_voted_out' => 'Voté hors jeu',
+    'status_locked' => 'Éliminé',
+    'status_disqualified' => 'Disqualifié',
+    'status_disconnect_eliminated' => 'Déconnecté',
+
+    'action_nominate' => 'accuser',
+    'action_vote' => 'voter pour',
+    'action_shoot' => 'tirer sur',
+    'action_check' => 'vérifier',
+    'seat_action_label' => 'Touchez pour :action le siège :slot',
+
+    'day_label' => 'Jour :day',
+    'you_are_dead_notice' => 'Vous avez été éliminé — vous pouvez continuer à observer.',
+    'mafia_teammates_heading' => 'Vos complices : places :slots',
+
+    'spotlight_last_speech' => ':name a la parole.',
+    'spotlight_defense_speech' => ':name se défend.',
+    'spotlight_morning_speech' => 'Cette nuit, :name a été retrouvé mort. Quelques derniers mots sont partagés en sa mémoire.',
+    'pass_button' => 'Passer',
+
+    'nominate_seat_hint' => 'Touchez une place ci-dessus pour accuser ce joueur.',
+
+    'vote_seat_hint' => 'Touchez une place mise en évidence ci-dessus pour voter.',
+
+    'lock_vote_candidates_heading' => 'Éliminer tous ceux-ci : :names ?',
+    'lock_vote_button' => 'Tout éliminer',
+
+    'shoot_heading' => 'Choisissez la cible de ce soir',
+    'shoot_seat_hint' => 'Touchez une place ci-dessus pour tirer sur ce joueur.',
+    'shoot_abstain_button' => 'Ne pas tirer',
+
+    'don_check_heading' => 'Vérifier si quelqu\'un est le Shérif',
+    'check_seat_hint' => 'Touchez une place ci-dessus pour vérifier ce joueur.',
+    'don_check_history_heading' => 'Vos vérifications',
+    'check_result_is_sheriff' => 'La place :slot est le Shérif.',
+    'check_result_not_sheriff' => "La place :slot n'est pas le Shérif.",
+
+    'sheriff_check_heading' => "Vérifier l'allégeance de quelqu'un",
+    'sheriff_check_history_heading' => 'Vos vérifications',
+    'check_result_black' => 'La place :slot appartient à la Mafia.',
+    'check_result_red' => 'La place :slot appartient à la Ville.',
+
+    'game_over_heading' => 'Partie terminée',
+    'game_over_red' => 'La Ville gagne !',
+    'game_over_black' => 'La Mafia gagne !',
+
+    // Voix/vidéo (Phase 7)
+    'camera_enable_button' => 'Activer la caméra',
+    'camera_disable_button' => 'Désactiver la caméra',
+    'media_error_media_permission_denied' => "L'accès à la caméra/au micro a été refusé — vérifiez les autorisations de votre navigateur.",
+    'media_error_media_connection_failed' => 'Impossible de se connecter au serveur voix/vidéo.',
+    'media_error_media_setup_failed' => "Une erreur est survenue au démarrage de votre caméra. Réessayez.",
+    'media_error_media_join_rejected' => 'Le serveur voix/vidéo a refusé la connexion — essayez de recharger la page.',
+    'media_error_media_token_failed' => "Impossible d'obtenir l'autorisation de rejoindre la voix/vidéo de cette salle.",
+
+    'media_settings_button' => 'Paramètres vidéo/audio',
+    'media_settings_heading' => 'Paramètres vidéo et audio',
+    'media_settings_video_source' => 'Caméra',
+    'media_settings_audio_source' => 'Microphone',
+    'media_settings_default_device' => 'Par défaut du système',
+    'media_settings_close_button' => 'Fermer',
+    'media_settings_apply_button' => 'Appliquer',
+    'media_mic_enable_button' => 'Activer le microphone',
+    'media_mic_disable_button' => 'Couper le microphone',
+    'media_cam_enable_button' => 'Activer la caméra',
+    'media_cam_disable_button' => 'Désactiver la caméra',
+    'media_mirror_button' => 'Refléter mon aperçu',
+    'media_volume_label' => 'Volume de :name',
+
+    // Déconnexion (Phase 4)
+    'disconnect_notice' => ':name ne répond plus. L\'éliminer, ou lui laisser plus de temps ?',
+    'disconnect_eliminate_button' => 'Éliminer',
+    'disconnect_continue_button' => 'Laisser du temps',
+
+    // Communication cachée + accessibilité (Phase 5)
+    'signal_heading' => 'Envoyer un signal discret',
+    'signal_description' => "Un moyen silencieux de signaler un nombre et/ou une couleur à quelqu'un — seul le destinataire verra qui l'a envoyé.",
+    'signal_help_label' => 'Qu\'est-ce que c\'est ?',
+    'signal_target_label' => 'À : :name',
+    'signal_trigger_label' => 'Envoyer un signal secret à la place :slot',
+    'signal_number_label' => 'Nombre',
+    'signal_color_label' => 'Couleur',
+    'signal_color_grey' => 'gris',
+    'signal_color_black' => 'noir',
+    'signal_color_red' => 'rouge',
+    'signal_send_button' => 'Envoyer',
+    'signal_cancel_button' => 'Annuler',
+    'signal_received' => 'La place :slot révèle :details',
+    'signal_dismiss' => 'Fermer',
+    'seconds_remaining' => ':seconds secondes restantes',
+
+    // Historique des parties (Phase 5)
+    'history_title' => 'Historique Mafia',
+    'history_room' => 'Salle :code',
+    'history_won' => 'Gagné',
+    'history_lost' => 'Perdu',
+    'no_games' => "Vous n'avez pas encore terminé de partie de Mafia.",
+];

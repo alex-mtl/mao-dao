@@ -1,0 +1,247 @@
+// Generates resources/css/themes.css from the canonical brand palette below
+// (the same values as tailwind.config.js's light-warm scales, kept here as
+// the single source of truth for theme generation).
+//
+// Regenerate with:
+//   docker compose exec laravel.test node resources/css/generate-themes.mjs
+//
+// Design: every theme keeps the SAME hue for every brand/semantic scale
+// (primary/secondary/accent/success/warning/danger/info) — only lightness
+// curves and neutral (warm/ink) hue shift between themes ("systematic
+// variants", not new brand identities). Dark themes are built by reversing
+// each scale's shade->lightness mapping by position (shade 50 gets what
+// shade 950 used to have, 100<->900, etc.), which preserves the invariant
+// "higher shade number = lighter" in every theme — the thing component
+// code actually depends on (e.g. `border-warm-300` reads slightly lighter
+// than `bg-warm-100` in every theme) — while making high-emphasis text
+// (`ink-900`) light-on-dark and light badge backgrounds (`primary-100`)
+// become dark-tinted, matching normal dark-UI idioms, with no per-scale
+// special-casing needed.
+
+const SHADES = [50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950];
+
+const BASE = {
+    primary: { 50: '#F1F1FF', 100: '#E3E4FF', 200: '#C8CAFF', 300: '#A6A8FE', 400: '#8285FB', 500: '#6265F5', 600: '#4C4FE8', 700: '#3E40C7', 800: '#34359F', 900: '#2C2D7D', 950: '#1B1B4D' },
+    secondary: { 50: '#FFF4EE', 100: '#FFE6D9', 200: '#FFC9AF', 300: '#FFA47C', 400: '#FF7F4D', 500: '#FB5F2A', 600: '#E6491A', 700: '#BF3814', 800: '#992E17', 900: '#7C2916', 950: '#431106' },
+    accent: { 50: '#ECFDF6', 100: '#D2FAE9', 200: '#A7F3D6', 300: '#6FE6BE', 400: '#3ED2A4', 500: '#1FB88C', 600: '#159473', 700: '#14765F', 800: '#145E4E', 900: '#124E42', 950: '#062C25' },
+    success: { 50: '#ECFDF5', 100: '#D1FAE5', 200: '#A7F3D0', 300: '#6EE7B7', 400: '#34D399', 500: '#10B981', 600: '#059669', 700: '#047857', 800: '#065F46', 900: '#064E3B', 950: '#022C22' },
+    warning: { 50: '#FFFBEB', 100: '#FEF3C7', 200: '#FDE68A', 300: '#FCD34D', 400: '#FBBF24', 500: '#F59E0B', 600: '#D97706', 700: '#B45309', 800: '#92400E', 900: '#78350F', 950: '#451A03' },
+    danger: { 50: '#FEF2F2', 100: '#FEE2E2', 200: '#FECACA', 300: '#FCA5A5', 400: '#F87171', 500: '#EF4444', 600: '#DC2626', 700: '#B91C1C', 800: '#991B1B', 900: '#7F1D1D', 950: '#450A0A' },
+    info: { 50: '#F0F9FF', 100: '#E0F2FE', 200: '#BAE6FD', 300: '#7DD3FC', 400: '#38BDF8', 500: '#0EA5E9', 600: '#0284C7', 700: '#0369A1', 800: '#075985', 900: '#0C4A6E', 950: '#082F49' },
+    warm: { 50: '#FDFCFA', 100: '#FAF8F4', 200: '#F3F0EA', 300: '#E8E4DC', 400: '#D6D0C4', 500: '#B8B0A0', 600: '#948B7A', 700: '#6F6858', 800: '#4F4A3F', 900: '#37332B', 950: '#201D18' },
+    ink: { 50: '#F4F5F7', 100: '#E7E9ED', 200: '#CBCEDA', 300: '#A3A8BD', 400: '#767C99', 500: '#565C7D', 600: '#3F4463', 700: '#2E3250', 800: '#1F2238', 900: '#14162A', 950: '#0A0B16' },
+};
+
+const BRAND_KEYS = ['primary', 'secondary', 'accent', 'success', 'warning', 'danger', 'info'];
+const NEUTRAL_KEYS = ['warm', 'ink'];
+const ALL_KEYS = [...BRAND_KEYS, ...NEUTRAL_KEYS];
+
+const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+
+function hexToRgb(hex) {
+    const n = parseInt(hex.slice(1), 16);
+    return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+
+function rgbToHsl(r, g, b) {
+    r /= 255; g /= 255; b /= 255;
+    const max = Math.max(r, g, b), min = Math.min(r, g, b);
+    let h, s;
+    const l = (max + min) / 2;
+    if (max === min) {
+        h = s = 0;
+    } else {
+        const d = max - min;
+        s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+        switch (max) {
+            case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+            case g: h = (b - r) / d + 2; break;
+            default: h = (r - g) / d + 4;
+        }
+        h /= 6;
+    }
+    return [h * 360, s * 100, l * 100];
+}
+
+function hslToRgb(h, s, l) {
+    h = ((h % 360) + 360) % 360 / 360;
+    s /= 100; l /= 100;
+    if (s === 0) {
+        const v = Math.round(l * 255);
+        return [v, v, v];
+    }
+    const hue2rgb = (p, q, t) => {
+        if (t < 0) t += 1;
+        if (t > 1) t -= 1;
+        if (t < 1 / 6) return p + (q - p) * 6 * t;
+        if (t < 1 / 2) return q;
+        if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+        return p;
+    };
+    const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+    const p = 2 * l - q;
+    return [
+        Math.round(hue2rgb(p, q, h + 1 / 3) * 255),
+        Math.round(hue2rgb(p, q, h) * 255),
+        Math.round(hue2rgb(p, q, h - 1 / 3) * 255),
+    ];
+}
+
+const rgbTriplet = ([r, g, b]) => `${Math.round(r)} ${Math.round(g)} ${Math.round(b)}`;
+const hslTriplet = (h, s, l) => rgbTriplet(hslToRgb(h, s, l));
+
+// Reindex a scale by position: new[shade[i]] = old[shade[N-1-i]].
+// Preserves "higher shade number = lighter" in every theme.
+function reversePosition(scale) {
+    const out = {};
+    SHADES.forEach((shade, i) => {
+        out[shade] = scale[SHADES[10 - i]];
+    });
+    return out;
+}
+
+// Recolor every shade to a target hue/saturation while keeping that
+// shade's original lightness (so the existing contrast steps survive).
+function recolorKeepLightness(scale, hue, sat) {
+    const out = {};
+    for (const shade of SHADES) {
+        const [r, g, b] = hexToRgb(scale[shade]);
+        const [, , l] = rgbToHsl(r, g, b);
+        out[shade] = hslToRgb(hue, sat, l);
+    }
+    return out;
+}
+
+// Nudge every shade's saturation/lightness by a delta (light-soft's
+// "gentler" brand colors).
+function softenScale(scale, { ds = 0, dl = 0 } = {}) {
+    const out = {};
+    for (const shade of SHADES) {
+        const [r, g, b] = hexToRgb(scale[shade]);
+        const [h, s, l] = rgbToHsl(r, g, b);
+        out[shade] = hslToRgb(h, clamp(s + ds, 0, 100), clamp(l + dl, 0, 100));
+    }
+    return out;
+}
+
+// True lightness inversion (newL = 100 - L), recolored to a target hue/sat.
+// Unlike reversePosition (which keeps shade 500 anchored to its own
+// original lightness — fine for the `warm` background/border scale, and
+// intentional for brand colors, which should stay visually similar in
+// every theme), text needs every shade's CONTRAST relationship flipped,
+// not just the extremes: `ink-500` is "medium-muted body text" on a light
+// background (~41% lightness, high contrast against a ~100% white card).
+// reversePosition would leave it at that same ~41% in a dark theme, which
+// is unreadable against a ~20-27% dark surface (real contrast ratio
+// ~1.8:1, needs ~4.5:1). Inverting the value instead lifts it to ~59%,
+// preserving "medium-muted" as a relationship rather than an absolute L.
+function invertLightness(scale, hue, sat, { lift = 0 } = {}) {
+    const out = {};
+    for (const shade of SHADES) {
+        const [r, g, b] = hexToRgb(scale[shade]);
+        const [, , l] = rgbToHsl(r, g, b);
+        out[shade] = hslToRgb(hue, sat, clamp(100 - l + lift, 4, 97));
+    }
+    return out;
+}
+
+function toRgbScale(scale) {
+    // Normalize a scale that may hold hex strings or [r,g,b] arrays into rgb arrays.
+    const out = {};
+    for (const shade of SHADES) {
+        const v = scale[shade];
+        out[shade] = typeof v === 'string' ? hexToRgb(v) : v;
+    }
+    return out;
+}
+
+const THEMES = {
+    'light-warm': () => {
+        const scales = {};
+        for (const key of ALL_KEYS) scales[key] = toRgbScale(BASE[key]);
+        return { scales, surface: [255, 255, 255], shadowTint: [20, 22, 56] };
+    },
+
+    'light-cool': () => {
+        const scales = {};
+        for (const key of BRAND_KEYS) scales[key] = toRgbScale(BASE[key]);
+        scales.warm = recolorKeepLightness(BASE.warm, 214, 18);
+        scales.ink = recolorKeepLightness(BASE.ink, 222, 28);
+        return { scales, surface: hslToRgb(210, 30, 99), shadowTint: hslToRgb(222, 40, 12) };
+    },
+
+    'light-soft': () => {
+        const scales = {};
+        for (const key of BRAND_KEYS) scales[key] = softenScale(BASE[key], { ds: -8, dl: 3 });
+        scales.warm = recolorKeepLightness(BASE.warm, 34, 22);
+        scales.ink = softenScale(BASE.ink, { ds: -6, dl: 2 });
+        return { scales, surface: hslToRgb(36, 35, 98), shadowTint: hslToRgb(36, 25, 32) };
+    },
+
+    'dark-warm': () => {
+        const scales = {};
+        for (const key of BRAND_KEYS) scales[key] = reversePosition(toRgbScale(BASE[key]));
+        scales.warm = reversePosition(recolorKeepLightness(BASE.warm, 32, 16));
+        // +14 lift: pure inversion left mid-tones (e.g. ink-500, used for
+        // secondary/muted body text) at only ~3.2:1 contrast against the
+        // surface/page bg — under the 4.5:1 WCAG AA text threshold.
+        scales.ink = invertLightness(BASE.ink, 36, 10, { lift: 14 });
+        // Surface (card bg) must read lighter than the page bg (warm-100,
+        // itself the reversed warm-800 ~L28%) so cards still look "elevated"
+        // toward the light, same relationship as the light themes' white-on-warm.
+        return { scales, surface: hslToRgb(32, 16, 27), shadowTint: [0, 0, 0] };
+    },
+
+    'dark-cool': () => {
+        const scales = {};
+        for (const key of BRAND_KEYS) scales[key] = reversePosition(toRgbScale(BASE[key]));
+        scales.warm = reversePosition(recolorKeepLightness(BASE.warm, 222, 14));
+        scales.ink = invertLightness(BASE.ink, 224, 22, { lift: 14 });
+        return { scales, surface: hslToRgb(222, 14, 27), shadowTint: [0, 0, 0] };
+    },
+};
+
+function renderBlock(selector, theme) {
+    const lines = [`${selector} {`];
+    for (const key of ALL_KEYS) {
+        for (const shade of SHADES) {
+            lines.push(`    --color-${key}-${shade}: ${rgbTriplet(theme.scales[key][shade])};`);
+        }
+    }
+    lines.push(`    --color-surface: ${rgbTriplet(theme.surface)};`);
+    lines.push(`    --shadow-tint: ${rgbTriplet(theme.shadowTint)};`);
+    lines.push('}');
+    return lines.join('\n');
+}
+
+const order = ['light-warm', 'light-cool', 'light-soft', 'dark-warm', 'dark-cool'];
+const blocks = order.map((name) => {
+    const theme = THEMES[name]();
+    return renderBlock(`[data-theme="${name}"]`, theme);
+});
+// :root also gets light-warm's values directly (not just via attribute
+// selector) so the app still has a sane default theme before any
+// `data-theme` attribute is present (e.g. a nested swatch preview element
+// that explicitly sets data-theme="light-warm" needs its OWN rule to
+// override an ancestor's different theme — inheriting from :root alone
+// isn't enough once something else has already overridden it above it).
+blocks.unshift(renderBlock(':root', THEMES['light-warm']()));
+
+const header = `/*
+ * Generated by resources/css/generate-themes.mjs — do not hand-edit.
+ * Regenerate with: docker compose exec laravel.test node resources/css/generate-themes.mjs
+ *
+ * Each block defines the same set of --color-*-<shade> custom properties
+ * (space-separated "R G B" triplets, for Tailwind's rgb(var(...) / <alpha-value>)
+ * pattern) plus --color-surface and --shadow-tint. :root holds the default
+ * theme (light-warm); [data-theme="..."] blocks override it.
+ */`;
+
+const output = [header, ...blocks].join('\n\n') + '\n';
+
+const fs = await import('node:fs');
+const path = await import('node:path');
+const { fileURLToPath } = await import('node:url');
+const outPath = path.join(path.dirname(fileURLToPath(import.meta.url)), 'themes.css');
+fs.writeFileSync(outPath, output);
+console.log(`Wrote ${outPath} (${order.length} themes, ${ALL_KEYS.length * SHADES.length + 2} vars each)`);

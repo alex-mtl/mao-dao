@@ -1,0 +1,34 @@
+@import './themes.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+    h1, h2, h3, h4, h5, h6 {
+        font-family: theme('fontFamily.heading');
+    }
+}
+
+@layer utilities {
+    .animate-in {
+        animation: fade-slide-in 200ms ease-out;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .animate-in {
+            animation: none;
+        }
+    }
+}
+
+@keyframes fade-slide-in {
+    from {
+        opacity: 0;
+        transform: translateY(4px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
