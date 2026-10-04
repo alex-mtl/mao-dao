@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Services\NotificationFeedService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\App;
 use Inertia\Middleware;
@@ -54,6 +55,9 @@ class HandleInertiaRequests extends Middleware
             // correct quiz root lets those specific links override Ziggy's
             // per-request root explicitly — see useSectionRoutes.js.
             'quizUrl' => config('app.url'),
+            'notifications_unread' => fn () => $request->user()
+                ? app(NotificationFeedService::class)->unreadCount($request->user())
+                : 0,
             'locale' => $locale,
             'available_locales' => config('locales.supported'),
             'locale_options' => collect(config('locales.supported'))

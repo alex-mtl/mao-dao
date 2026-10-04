@@ -2,6 +2,7 @@ import ApplicationLogo from '@/Components/ApplicationLogo';
 import Avatar from '@/Components/Avatar';
 import Dropdown from '@/Components/Dropdown';
 import NavigationDrawer from '@/Components/NavigationDrawer';
+import NotificationBell from '@/Components/NotificationBell';
 import { ArrowsPointingOutIcon, Bars3Icon, ChevronDownIcon } from '@heroicons/react/24/outline';
 import { Link, usePage } from '@inertiajs/react';
 import { useState } from 'react';
@@ -69,6 +70,8 @@ export default function AuthenticatedLayout({ header, children, hideChrome = fal
                                     <ArrowsPointingOutIcon className="h-5 w-5" aria-hidden="true" />
                                 </button>
                             )}
+
+                            <NotificationBell />
 
                             <Dropdown>
                                 <Dropdown.Trigger>
