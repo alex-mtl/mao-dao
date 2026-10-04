@@ -11,12 +11,17 @@ Personalization → Finalization). All 11 phases are built and verified.
 
 `mao-dao.com` is called "prod" but is not yet used for its real purpose —
 treat it as the **test environment**. Consequences:
-- **After every deploy, run the test suite on the server right away**, not
-  only locally. Never point the tests at the live database: `RefreshDatabase`
-  wipes every table it touches, so they need a dedicated test DB/connection
-  (check `phpunit.xml` / the server `.env` before the first run, and set it up
-  deliberately if it doesn't exist). The server installs with `--no-dev`, so
-  Pest must be available there first.
+- **Run the full test suite in GitHub Actions** (`.github/workflows/tests.yml`,
+  triggers on every push to `main` and on PRs; MySQL service container, so no
+  live data is ever involved). It is ~30x faster than the local Docker run
+  (about 14 s for the test step vs ~417 s locally for the same 292 tests) —
+  check the run after every push (public API:
+  `https://api.github.com/repos/alex-mtl/mao-dao/actions/runs`). Locally,
+  prefer `--filter=<Name>` for the area being changed.
+- **Do not run the suite on the server itself**: `RefreshDatabase` wipes every
+  table it touches, the server installs with `--no-dev` (no Pest), and a
+  dedicated test DB would have to be created on a shared box. After a deploy,
+  just smoke-check `/quiz/login` and `/mafia/`.
 - **Data on the server must not be harmed** (owner's explicit requirement).
 - Still be careful: the box is shared with other **real** production
   projects. Touch only `/var/www/quiz`, this app's own DB/user/FPM pool, and
