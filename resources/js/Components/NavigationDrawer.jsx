@@ -8,7 +8,6 @@ import { Link } from '@inertiajs/react';
 import { useLaravelReactI18n } from 'laravel-react-i18n';
 import {
     HomeIcon,
-    SparklesIcon,
     BookOpenIcon,
     Squares2X2Icon,
     PlusCircleIcon,
@@ -84,14 +83,6 @@ export default function NavigationDrawer({ show, onClose, user }) {
                                         onClick={onClose}
                                     >
                                         {t('nav.dashboard')}
-                                    </ResponsiveNavLink>
-                                    <ResponsiveNavLink
-                                        href={quizRoute('explorer.index')}
-                                        active={route().current('explorer.*')}
-                                        icon={SparklesIcon}
-                                        onClick={onClose}
-                                    >
-                                        {t('nav.explorer')}
                                     </ResponsiveNavLink>
                                     <ResponsiveNavLink
                                         href={quizRoute('library.index')}

@@ -4,14 +4,28 @@ namespace App\Http\Controllers;
 
 use App\Models\Quiz;
 use App\Models\Tag;
+use App\Services\QuizRecommendationService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class QuizLibraryController extends Controller
 {
-    public function index(Request $request): Response
+    public function index(Request $request, QuizRecommendationService $recommendations): Response
     {
+        if ($request->query('tab') === 'recommended') {
+            return Inertia::render('Quizzes/Library', [
+                'tab' => 'recommended',
+                'quizzes' => $recommendations->forUser($request->user())
+                    ->with(['user:id,name', 'tags:id,name'])
+                    ->withCount('questions')
+                    ->paginate(12)
+                    ->withQueryString(),
+                'tags' => [],
+                'filters' => ['search' => '', 'tag' => null, 'language' => null],
+            ]);
+        }
+
         $search = trim((string) $request->query('search', ''));
         $tagId = $request->query('tag');
         $language = $request->query('language');
@@ -31,6 +45,7 @@ class QuizLibraryController extends Controller
             ->withQueryString();
 
         return Inertia::render('Quizzes/Library', [
+            'tab' => 'all',
             'quizzes' => $quizzes,
             'tags' => Tag::orderBy('name')->get(['id', 'name']),
             'filters' => [

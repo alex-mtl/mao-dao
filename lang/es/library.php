@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 return [
     'title' => 'Biblioteca de cuestionarios',
+    'tab_all' => 'Todos los cuestionarios',
+    'tab_recommended' => 'Recomendados',
+    'recommended_subtitle' => 'Recomendados para ti según tus intereses e historial.',
+    'recommended_empty' => 'Todavía no hay recomendaciones: da "me gusta" o juega algunos cuestionarios, o elige intereses en tu perfil.',
     'search_placeholder' => 'Buscar cuestionarios...',
     'all_tags' => 'Todas las etiquetas',
     'all_languages' => 'Todos los idiomas',

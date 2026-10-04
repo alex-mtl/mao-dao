@@ -3,7 +3,9 @@ import SecondaryButton from '@/Components/SecondaryButton';
 import DangerButton from '@/Components/DangerButton';
 import Avatar from '@/Components/Avatar';
 import Badge from '@/Components/Badge';
+import Modal from '@/Components/Modal';
 import { Head, Link, router } from '@inertiajs/react';
+import { useState } from 'react';
 import { useLaravelReactI18n } from 'laravel-react-i18n';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 
@@ -28,10 +30,14 @@ export default function Show({ group, members, isOwner, friendsNotInGroup }) {
         }
     };
 
+    const [confirmingDelete, setConfirmingDelete] = useState(false);
+    const [deleting, setDeleting] = useState(false);
+
     const deleteGroup = () => {
-        if (window.confirm(t('groups.delete_group') + '?')) {
-            router.delete(route('groups.destroy', group.id));
-        }
+        setDeleting(true);
+        router.delete(route('groups.destroy', group.id), {
+            onFinish: () => setDeleting(false),
+        });
     };
 
     return (
@@ -118,7 +124,7 @@ export default function Show({ group, members, isOwner, friendsNotInGroup }) {
 
                     <div className="flex justify-end">
                         {isOwner ? (
-                            <DangerButton onClick={deleteGroup}>
+                            <DangerButton onClick={() => setConfirmingDelete(true)}>
                                 {t('groups.delete_group')}
                             </DangerButton>
                         ) : (
@@ -129,6 +135,29 @@ export default function Show({ group, members, isOwner, friendsNotInGroup }) {
                     </div>
                 </div>
             </div>
+
+            {/* Mounted only while open: a toggled `show` on the shared Modal
+                gets stuck open after the first close (Headless UI 2.2.10). */}
+            {confirmingDelete && (
+                <Modal show maxWidth="md" onClose={() => setConfirmingDelete(false)}>
+                    <div className="p-6">
+                        <h2 className="font-heading text-lg font-semibold text-ink-900">
+                            {t('groups.delete_confirm_title', { name: group.name })}
+                        </h2>
+                        <p className="mt-2 text-sm text-ink-600">
+                            {t('groups.delete_confirm_body')}
+                        </p>
+                        <div className="mt-6 flex justify-end gap-3">
+                            <SecondaryButton onClick={() => setConfirmingDelete(false)}>
+                                {t('common.cancel')}
+                            </SecondaryButton>
+                            <DangerButton onClick={deleteGroup} disabled={deleting}>
+                                {t('groups.delete_confirm_button')}
+                            </DangerButton>
+                        </div>
+                    </div>
+                </Modal>
+            )}
         </AuthenticatedLayout>
     );
 }

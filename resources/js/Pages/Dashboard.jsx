@@ -58,7 +58,7 @@ export default function Dashboard({
                     <DashboardCard
                         icon={SparklesIcon}
                         title={t('dashboard.recommended_quizzes')}
-                        viewAllHref={route('explorer.index')}
+                        viewAllHref={route('library.index', { tab: 'recommended' })}
                         viewAllLabel={t('dashboard.view_all')}
                         isEmpty={recommendedQuizzes.length === 0}
                         emptyMessage={t('dashboard.empty_recommended')}

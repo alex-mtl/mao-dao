@@ -50,7 +50,7 @@ Route::middleware('auth')->group(function () {
     Route::delete('/groups/{group}/members/{user}', [GroupController::class, 'removeMember'])->name('groups.members.remove');
     Route::post('/groups/{group}/leave', [GroupController::class, 'leave'])->name('groups.leave');
 
-    Route::get('/explorer', [QuizExplorerController::class, 'index'])->name('explorer.index');
+    Route::get('/explorer', fn () => redirect()->route('library.index'));
     Route::get('/library', [QuizLibraryController::class, 'index'])->name('library.index');
     Route::get('/my-quizzes', [QuizController::class, 'mine'])->name('quizzes.mine');
     Route::get('/quizzes/create', [QuizController::class, 'create'])->name('quizzes.create');

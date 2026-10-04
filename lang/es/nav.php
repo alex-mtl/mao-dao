@@ -10,7 +10,6 @@ return [
     'dashboard' => 'Panel',
     'friends' => 'Amigos',
     'groups' => 'Grupos',
-    'explorer' => 'Explorador de cuestionarios',
     'library' => 'Biblioteca',
     'my_quizzes' => 'Mis cuestionarios',
     'create_quiz' => 'Crear cuestionario',

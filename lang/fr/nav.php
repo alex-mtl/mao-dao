@@ -10,7 +10,6 @@ return [
     'dashboard' => 'Tableau de bord',
     'friends' => 'Amis',
     'groups' => 'Groupes',
-    'explorer' => 'Explorateur de quiz',
     'library' => 'Bibliothèque',
     'my_quizzes' => 'Mes quiz',
     'create_quiz' => 'Créer un quiz',

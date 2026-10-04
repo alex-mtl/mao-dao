@@ -20,4 +20,7 @@ return [
     'delete_group' => 'Delete Group',
     'rename_group' => 'Rename',
     'owner_badge' => 'Owner',
+    'delete_confirm_title' => 'Delete group «:name»?',
+    'delete_confirm_body' => 'This cannot be undone.',
+    'delete_confirm_button' => 'Delete',
 ];

@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 return [
     'title' => 'Quiz Library',
+    'tab_all' => 'All quizzes',
+    'tab_recommended' => 'Recommended',
+    'recommended_subtitle' => 'Recommended for you based on your interests and quiz history.',
+    'recommended_empty' => 'No recommendations yet — like or play a few quizzes, or pick some interests on your profile.',
     'search_placeholder' => 'Search quizzes...',
     'all_tags' => 'All Tags',
     'all_languages' => 'All Languages',

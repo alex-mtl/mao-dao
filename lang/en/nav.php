@@ -10,7 +10,6 @@ return [
     'dashboard' => 'Dashboard',
     'friends' => 'Friends',
     'groups' => 'Groups',
-    'explorer' => 'Quiz Explorer',
     'library' => 'Quiz Library',
     'my_quizzes' => 'My Quizzes',
     'create_quiz' => 'Create Quiz',

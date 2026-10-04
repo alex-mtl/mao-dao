@@ -19,5 +19,8 @@ return [
     'leave_group' => 'Quitter le groupe',
     'delete_group' => 'Supprimer le groupe',
     'rename_group' => 'Renommer',
-    'owner_badge' => 'Propriétaire',
+    'delete_confirm_title' => 'Supprimer le groupe «:name» ?',
+    'delete_confirm_body' => 'Cette action est irréversible.',
+    'delete_confirm_button' => 'Supprimer',
+    'owner_badge' =>'Propriétaire',
 ];

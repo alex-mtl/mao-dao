@@ -5,12 +5,12 @@ import PrimaryButton from '@/Components/PrimaryButton';
 import QuizCard from '@/Components/QuizCard';
 import Pagination from '@/Components/Pagination';
 import EmptyState from '@/Components/EmptyState';
-import { MagnifyingGlassIcon, BookOpenIcon } from '@heroicons/react/24/outline';
-import { Head, router, usePage } from '@inertiajs/react';
+import { MagnifyingGlassIcon, BookOpenIcon, SparklesIcon } from '@heroicons/react/24/outline';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import { useLaravelReactI18n } from 'laravel-react-i18n';
 import { useState } from 'react';
 
-export default function Library({ quizzes, tags, filters }) {
+export default function Library({ quizzes, tags, filters, tab }) {
     const { t } = useLaravelReactI18n();
     const localeOptions = usePage().props.locale_options;
 
@@ -40,6 +40,38 @@ export default function Library({ quizzes, tags, filters }) {
 
             <div className="py-8">
                 <div className="mx-auto max-w-6xl space-y-6 px-4 sm:px-6 lg:px-8">
+                    <div role="tablist" className="flex gap-2 border-b border-warm-200">
+                        {[
+                            { key: 'all', label: t('library.tab_all'), href: route('library.index') },
+                            {
+                                key: 'recommended',
+                                label: t('library.tab_recommended'),
+                                href: route('library.index', { tab: 'recommended' }),
+                                icon: SparklesIcon,
+                            },
+                        ].map((item) => (
+                            <Link
+                                key={item.key}
+                                href={item.href}
+                                role="tab"
+                                aria-selected={tab === item.key}
+                                className={`-mb-px inline-flex items-center gap-1.5 border-b-2 px-4 py-2 text-sm font-medium ${
+                                    tab === item.key
+                                        ? 'border-primary-600 text-primary-700'
+                                        : 'border-transparent text-ink-500 hover:text-ink-800'
+                                }`}
+                            >
+                                {item.icon && <item.icon className="h-4 w-4" aria-hidden="true" />}
+                                {item.label}
+                            </Link>
+                        ))}
+                    </div>
+
+                    {tab === 'recommended' && (
+                        <p className="text-sm text-ink-500">{t('library.recommended_subtitle')}</p>
+                    )}
+
+                    {tab !== 'recommended' && (
                     <form
                         onSubmit={submitSearch}
                         className="flex flex-wrap gap-2 rounded-xl border border-warm-200 bg-surface p-4 shadow-soft"
@@ -82,10 +114,18 @@ export default function Library({ quizzes, tags, filters }) {
 
                         <PrimaryButton type="submit">{t('friends.search_button')}</PrimaryButton>
                     </form>
+                    )}
 
                     {quizzes.data.length === 0 ? (
                         <div className="rounded-xl border border-warm-200 bg-surface">
-                            <EmptyState icon={BookOpenIcon} title={t('library.no_results')} />
+                            <EmptyState
+                                icon={tab === 'recommended' ? SparklesIcon : BookOpenIcon}
+                                title={
+                                    tab === 'recommended'
+                                        ? t('library.recommended_empty')
+                                        : t('library.no_results')
+                                }
+                            />
                         </div>
                     ) : (
                         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">

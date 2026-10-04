@@ -4,7 +4,7 @@ import Badge from '@/Components/Badge';
 import { formatMinutes } from '@/utils/duration';
 
 /**
- * Shared card for any quiz listing (Explorer, Library, My Quizzes,
+ * Shared card for any quiz listing (Library, My Quizzes,
  * Dashboard widgets). `quiz.user`/`quiz.tags`/`quiz.likes_count`/
  * `quiz.status` are all optional — pages that don't load them (e.g. "My
  * Quizzes", which is always the current user) simply omit that part of

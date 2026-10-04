@@ -73,3 +73,26 @@ test('the owner leaving deletes the group entirely', function () {
 
     $this->assertDatabaseMissing('groups', ['id' => $group->id]);
 });
+
+test('the owner can delete the group and it is removed with its memberships', function () {
+    $owner = User::factory()->create();
+    $member = User::factory()->create();
+    $group = Group::create(['owner_id' => $owner->id, 'name' => 'Doomed']);
+    $group->members()->attach([$owner->id, $member->id]);
+
+    $this->actingAs($owner)->delete("/groups/{$group->id}")->assertRedirect(route('groups.index'));
+
+    $this->assertDatabaseMissing('groups', ['id' => $group->id]);
+    $this->assertDatabaseMissing('group_user', ['group_id' => $group->id]);
+});
+
+test('a non-owner member cannot delete the group', function () {
+    $owner = User::factory()->create();
+    $member = User::factory()->create();
+    $group = Group::create(['owner_id' => $owner->id, 'name' => 'Safe']);
+    $group->members()->attach([$owner->id, $member->id]);
+
+    $this->actingAs($member)->delete("/groups/{$group->id}")->assertForbidden();
+
+    $this->assertDatabaseHas('groups', ['id' => $group->id]);
+});

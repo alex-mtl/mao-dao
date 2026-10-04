@@ -19,5 +19,8 @@ return [
     'leave_group' => 'Salir del grupo',
     'delete_group' => 'Eliminar grupo',
     'rename_group' => 'Renombrar',
-    'owner_badge' => 'Propietario',
+    'delete_confirm_title' => '¿Eliminar el grupo «:name»?',
+    'delete_confirm_body' => 'Esta acción no se puede deshacer.',
+    'delete_confirm_button' => 'Eliminar',
+    'owner_badge' =>'Propietario',
 ];

@@ -20,4 +20,7 @@ return [
     'delete_group' => 'Удалить группу',
     'rename_group' => 'Переименовать',
     'owner_badge' => 'Владелец',
+    'delete_confirm_title' => 'Удалить группу «:name»?',
+    'delete_confirm_body' => 'Действие необратимо.',
+    'delete_confirm_button' => 'Удалить',
 ];

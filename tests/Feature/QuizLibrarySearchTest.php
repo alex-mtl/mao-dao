@@ -60,3 +60,28 @@ test('search never returns drafts and treats percent signs literally', function 
     expect(librarySearchTitles($this, ['search' => 'history']))->toBe([]);
     expect(librarySearchTitles($this, ['search' => '100%']))->toBe(['100% Trivia']);
 });
+
+test('the old explorer url redirects to the library and the route name is gone', function () {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)->get('/explorer')->assertRedirect(route('library.index'));
+
+    expect(\Illuminate\Support\Facades\Route::has('explorer.index'))->toBeFalse();
+});
+
+test('the library recommended tab serves the personalised list, paginated by 12', function () {
+    $user = User::factory()->create();
+    $tag = Tag::factory()->create();
+    $user->tags()->attach($tag);
+
+    foreach (range(1, 14) as $i) {
+        Quiz::factory()->published()->create(['title' => "Rec {$i}"])->tags()->attach($tag);
+    }
+
+    $response = $this->actingAs($user)->get(route('library.index', ['tab' => 'recommended']))->assertOk();
+    $props = $response->viewData('page')['props'];
+
+    expect($props['tab'])->toBe('recommended');
+    expect($props['quizzes']['data'])->toHaveCount(12);
+    expect($props['quizzes']['total'])->toBe(14);
+});
