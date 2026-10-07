@@ -44,7 +44,33 @@ async function main() {
 
     const wss = new WebSocketServer({ server: httpServer });
 
+    // Keepalive. The signaling socket is otherwise silent once a peer's
+    // transports are set up, and nginx closes a proxied WebSocket after
+    // `proxy_read_timeout` (60s) without data *from this side* — which made
+    // calls die about a minute in (the server tore the peer and its
+    // producers down on that close, so everyone lost everyone's video but
+    // their own). A protocol-level ping every 25s keeps the proxy happy
+    // (browsers answer with a pong automatically), and a peer that stops
+    // answering is terminated so its stale producers get cleaned up.
+    const HEARTBEAT_MS = 25000;
+    const heartbeat = setInterval(() => {
+        for (const client of wss.clients) {
+            if (client.isAlive === false) {
+                client.terminate();
+                continue;
+            }
+            client.isAlive = false;
+            client.ping();
+        }
+    }, HEARTBEAT_MS);
+    wss.on('close', () => clearInterval(heartbeat));
+
     wss.on('connection', (ws) => {
+        ws.isAlive = true;
+        ws.on('pong', () => {
+            ws.isAlive = true;
+        });
+
         ws.on('message', async (raw) => {
             let data;
             try {
