@@ -833,7 +833,24 @@ rather than by Claude logging in.
   imports, does not require a rebuild for Pest (which never executes the
   JS bundle) — only for actually seeing the change in a browser.
 
-### Phase 7 — voice/video: built, tested, deliberately not deployed
+### Phase 7 — voice/video: built, tested, and (since ~2026-09-09) DEPLOYED
+
+> **Status correction (verified 2026-10-07 by looking at the server):** the
+> sections below were written before deployment and say "deliberately not
+> deployed" — that is no longer true. On `aws-dev`: PM2 process
+> `quiz-media-sfu` (online ~28 days) listens on `:8381` (`ss` shows it bound to
+> all interfaces, not just loopback — worth tightening to 127.0.0.1 if port
+> 8381 isn't blocked by the firewall) with its own mediasoup worker on UDP
+> 45000-45100; nginx's existing `8380 ssl`
+> server block proxies `/media-sfu/` to it, and the app is configured with
+> `MEDIA_SFU_WS_URL=wss://mao-dao.com:8380/media-sfu/` plus a set shared
+> secret. Still **not verified end-to-end**: a real two-device audio/video
+> exchange, and that UDP 45000-45100 is reachable from outside (firewall).
+> Other mediasoup workers on that box (`ws`, `mao-dao-ws`, `ms`) are separate
+> copies of ttl10 — they authenticate via ttl10's own express-session files
+> and rooms stored as JSON, so they cannot serve this Laravel app; this
+> sidecar speaks the same protocol but validates Laravel-signed tokens.
+
 
 The plan's §3.1 #1 decision point (ship without video first, add it once
 the core game is validated) resolved to "build it" once the user said to
