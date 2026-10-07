@@ -2,6 +2,7 @@ import MaterialIcon from '@/Components/Mafia/MaterialIcon';
 import SpeechTimerRing from '@/Components/Mafia/SpeechTimerRing';
 import VideoTile from '@/Components/Mafia/VideoTile';
 import { useLaravelReactI18n } from 'laravel-react-i18n';
+import { useRef } from 'react';
 
 // Role icon per ttl10 exactly (plan §2.4, corrected per direct request to
 // use the same icon design rather than look-alike substitutes):
@@ -152,10 +153,30 @@ export default function VideoSeat({ seat, isSpeaking = false, stream = null, cla
     // whole time they're active, matching the earlier design.
     const isHoverOnlyAction = action?.type === 'nominate';
 
+    // The viewer's own device panel (mic/cam/mirror/settings) is only shown
+    // while the pointer is over their seat or the seat has focus, and hides
+    // again when either goes away. Tapping the seat focuses it (tabIndex),
+    // which is how touch screens reveal it. A mouse click would otherwise
+    // leave focus parked on the pressed button and keep the panel open
+    // after the pointer left, so presses made with a mouse drop focus
+    // right away (touch/keyboard presses keep it, so the panel stays up
+    // while you use it).
+    const hasSelfControls = seat.mediaControls?.type === 'self';
+    const pointerTypeRef = useRef('mouse');
+    const pressSelfControl = (handler) => (e) => {
+        if (pointerTypeRef.current === 'mouse') {
+            e.currentTarget.blur();
+        }
+        handler();
+    };
+
     return (
         <div
             style={{ gridArea: `s${seat.slot}` }}
+            tabIndex={hasSelfControls ? 0 : undefined}
             className={`group relative h-full w-full overflow-hidden rounded-lg border bg-warm-900 transition ${
+                hasSelfControls ? 'outline-none' : ''
+            } ${
                 isDead ? 'border-warm-200 opacity-60' : 'border-warm-200'
             } ${isSpeaking ? 'ring-2 ring-primary-500' : ''} ${seat.isYou ? 'ring-2 ring-accent-500' : ''} ${className}`}
         >
@@ -337,12 +358,17 @@ export default function VideoSeat({ seat, isSpeaking = false, stream = null, cla
                         app doesn't yet auto-drive mic/cam per phase/action
                         — a separate mechanic it doesn't implement yet). */}
                     {seat.mediaControls?.type === 'self' && (
-                        <div className="flex items-center gap-[var(--seat-icon-pad)] rounded-full bg-ink-900/60 p-[var(--seat-icon-pad)]">
+                        <div
+                            onPointerDown={(e) => {
+                                pointerTypeRef.current = e.pointerType;
+                            }}
+                            className="pointer-events-none flex items-center gap-[var(--seat-icon-pad)] rounded-full bg-ink-900/60 p-[var(--seat-icon-pad)] opacity-0 transition group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100"
+                        >
                             {seat.mediaControls.canToggleMicCam && (
                                 <>
                                     <button
                                         type="button"
-                                        onClick={seat.mediaControls.onToggleMic}
+                                        onClick={pressSelfControl(seat.mediaControls.onToggleMic)}
                                         aria-label={t(seat.mediaControls.micEnabled ? 'mafia.media_mic_disable_button' : 'mafia.media_mic_enable_button')}
                                         aria-pressed={!seat.mediaControls.micEnabled}
                                         className={`transition ${seat.mediaControls.micEnabled ? 'text-white' : 'text-danger-400'}`}
@@ -351,7 +377,7 @@ export default function VideoSeat({ seat, isSpeaking = false, stream = null, cla
                                     </button>
                                     <button
                                         type="button"
-                                        onClick={seat.mediaControls.onToggleCam}
+                                        onClick={pressSelfControl(seat.mediaControls.onToggleCam)}
                                         aria-label={t(seat.mediaControls.camEnabled ? 'mafia.media_cam_disable_button' : 'mafia.media_cam_enable_button')}
                                         aria-pressed={!seat.mediaControls.camEnabled}
                                         className={`transition ${seat.mediaControls.camEnabled ? 'text-white' : 'text-danger-400'}`}
@@ -362,7 +388,7 @@ export default function VideoSeat({ seat, isSpeaking = false, stream = null, cla
                             )}
                             <button
                                 type="button"
-                                onClick={seat.mediaControls.onToggleMirror}
+                                onClick={pressSelfControl(seat.mediaControls.onToggleMirror)}
                                 aria-label={t('mafia.media_mirror_button')}
                                 aria-pressed={seat.mediaControls.mirrored}
                                 className={`transition ${seat.mediaControls.mirrored ? 'text-accent-300' : 'text-white'}`}
@@ -371,7 +397,7 @@ export default function VideoSeat({ seat, isSpeaking = false, stream = null, cla
                             </button>
                             <button
                                 type="button"
-                                onClick={seat.mediaControls.onOpenSettings}
+                                onClick={pressSelfControl(seat.mediaControls.onOpenSettings)}
                                 aria-label={t('mafia.media_settings_button')}
                                 className="text-white transition hover:text-accent-300"
                             >
