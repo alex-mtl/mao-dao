@@ -181,6 +181,7 @@ export default function VideoSeat({ seat, isSpeaking = false, stream = null, cla
             <VideoTile
                 stream={stream}
                 name={seat.name}
+                avatarUrl={seat.avatarUrl}
                 muted={seat.isYou}
                 mirrored={seat.isYou && seat.mediaControls?.type === 'self' ? seat.mediaControls.mirrored : false}
                 volume={seat.mediaControls?.type === 'volume' ? seat.mediaControls.volume : 1}

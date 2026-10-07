@@ -277,7 +277,7 @@ class MafiaController extends Controller
             // freshly-constructed-every-render object would infinite-loop.
             'snapshot' => [
                 'status' => $room->status,
-                'players' => $this->seatSnapshot($room->players()->orderBy('slot')->get()),
+                'players' => $this->seatSnapshot($room->players()->with('user.media')->orderBy('slot')->get()),
             ],
             'isGameHost' => $player->is_game_host,
             'isReady' => $player->is_ready,
@@ -410,7 +410,7 @@ class MafiaController extends Controller
         if ($room->status === 'lobby') {
             return response()->json([
                 'status' => $room->status,
-                'players' => $this->seatSnapshot($room->players()->orderBy('slot')->get()),
+                'players' => $this->seatSnapshot($room->players()->with('user.media')->orderBy('slot')->get()),
                 'goAt' => $room->started_at?->toIso8601String(),
             ]);
         }
@@ -748,6 +748,7 @@ class MafiaController extends Controller
             'id' => $p->id,
             'slot' => $p->slot,
             'name' => $p->user?->name,
+            'avatarUrl' => $p->user?->profile_photo_url,
             'isGameHost' => $p->is_game_host,
             'isReady' => $p->is_ready,
         ])->values()->all();
@@ -840,7 +841,7 @@ class MafiaController extends Controller
     private function roomSnapshot(MafiaRoom $room, MafiaPlayer $player): array
     {
         $state = $room->dayState();
-        $players = $room->players()->orderBy('slot')->get();
+        $players = $room->players()->with('user.media')->orderBy('slot')->get();
         $stageStartedAt = $state['stage_started_at'] ?? null;
 
         $spotlightPlayerId = match (true) {
@@ -897,6 +898,7 @@ class MafiaController extends Controller
                 'id' => $p->id,
                 'slot' => $p->slot,
                 'name' => $p->user?->name,
+                'avatarUrl' => $p->user?->profile_photo_url,
                 'status' => $p->status,
                 'isYou' => $p->id === $player->id,
                 'connectionStatus' => $p->connection_status,

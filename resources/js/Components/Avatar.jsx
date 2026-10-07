@@ -5,7 +5,7 @@ const sizes = {
     xl: 'h-24 w-24 text-2xl',
 };
 
-function initials(name) {
+export function initials(name) {
     if (!name) {
         return '?';
     }

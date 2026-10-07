@@ -39,10 +39,11 @@ class MafiaLobbyUpdated implements ShouldBroadcastNow
     public function broadcastWith(): array
     {
         return [
-            'players' => $this->room->players()->orderBy('slot')->get()->map(fn ($p) => [
+            'players' => $this->room->players()->with('user.media')->orderBy('slot')->get()->map(fn ($p) => [
                 'id' => $p->id,
                 'slot' => $p->slot,
                 'name' => $p->user?->name,
+                'avatarUrl' => $p->user?->profile_photo_url,
                 'isGameHost' => $p->is_game_host,
                 'isReady' => $p->is_ready,
             ])->values()->all(),

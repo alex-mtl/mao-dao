@@ -1,23 +1,43 @@
-import { useEffect, useRef } from 'react';
-import Avatar from '@/Components/Avatar';
+import { useEffect, useRef, useState } from 'react';
+import { initials } from '@/Components/Avatar';
 
 /**
- * The "nobody here" mark for a free (or dummy) seat: a big filled circle
- * with a bold "?" that fills most of its height. The circle is ~6x the
- * area of the small initials avatar used for seated players (diameter
- * ~2.45x). Its size comes from `--seat-empty-mark` (a vw-based clamp set
- * by GameSeatGrid, like every other seat element) and is capped at 80% of
- * the seat so it still fits on a narrow phone seat. It is its own size container, so the glyph can be
- * sized in `cqh` (a share of the circle's own height) rather than in
- * fixed units — the "?" stays proportional at every seat size.
+ * The big round avatar a seat shows while it has no live video. Same size
+ * for all three cases — ~6x the area of the old small avatar, taken from
+ * `--seat-avatar` (a vw-based clamp set by GameSeatGrid, like every other
+ * seat element) and capped at 80% of the seat so it still fits a narrow
+ * phone seat:
+ *   - a free/dummy seat (no name): a bold "?" filling ~83% of the circle;
+ *   - a player with a profile photo: the photo, cropped to the circle;
+ *   - otherwise their initials.
+ * The circle is its own size container, so glyphs are sized in `cqh` (a
+ * share of the circle's own height) and stay proportional at any size.
  */
-function EmptySeatMark() {
+function SeatAvatar({ name, avatarUrl }) {
+    const [photoFailed, setPhotoFailed] = useState(false);
+    const circle = 'aspect-square w-[min(var(--seat-avatar),80%)] rounded-full ring-2 ring-surface';
+
+    if (name && avatarUrl && !photoFailed) {
+        return (
+            <img
+                src={avatarUrl}
+                alt=""
+                aria-hidden="true"
+                onError={() => setPhotoFailed(true)}
+                className={`${circle} object-cover`}
+            />
+        );
+    }
+
+    const text = name ? initials(name) : '?';
+    const glyphSize = text.length > 1 ? 'text-[length:44cqh]' : 'text-[length:83cqh]';
+
     return (
         <span
             aria-hidden="true"
-            className="flex aspect-square w-[min(var(--seat-empty-mark),80%)] items-center justify-center rounded-full bg-primary-100 text-primary-700 ring-2 ring-surface [container-type:size]"
+            className={`flex ${circle} items-center justify-center bg-primary-100 text-primary-700 [container-type:size]`}
         >
-            <span className="font-heading font-extrabold leading-none text-[length:112cqh]">?</span>
+            <span className={`font-heading font-extrabold leading-none ${glyphSize}`}>{text}</span>
         </span>
     );
 }
@@ -36,7 +56,7 @@ function EmptySeatMark() {
  * own native volume directly — a per-viewer, local-only adjustment, never
  * sent anywhere.
  */
-export default function VideoTile({ stream, name, muted = false, mirrored = false, volume = 1, className = '' }) {
+export default function VideoTile({ stream, name, avatarUrl = null, muted = false, mirrored = false, volume = 1, className = '' }) {
     const videoRef = useRef(null);
 
     useEffect(() => {
@@ -54,7 +74,7 @@ export default function VideoTile({ stream, name, muted = false, mirrored = fals
     if (!stream) {
         return (
             <div className={`flex items-center justify-center ${className}`}>
-                {name ? <Avatar name={name} size="sm" /> : <EmptySeatMark />}
+                <SeatAvatar name={name} avatarUrl={avatarUrl} />
             </div>
         );
     }

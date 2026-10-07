@@ -333,3 +333,27 @@ test('the lobby page tells the client which player is the viewer', function () {
 
     expect($props['myPlayerId'])->toBe($room->players()->where('user_id', $guest->id)->first()->id);
 });
+
+test('seat payloads carry each player\'s profile photo url, or null without one', function () {
+    \Illuminate\Support\Facades\Storage::fake('public');
+    [$room, $host, $guest] = lobbyWithTwoPlayers();
+    $host->addMedia(\Illuminate\Http\UploadedFile::fake()->image('me.jpg'))->toMediaCollection('profile');
+
+    $props = $this->actingAs($host)->get("/mafia/{$room->room_code}/lobby")->assertOk()->viewData('page')['props'];
+    $players = collect($props['snapshot']['players'])->keyBy('slot');
+
+    expect($players[1]['avatarUrl'])->toBeString()->toContain('me');
+    expect($players[2]['avatarUrl'])->toBeNull();
+});
+
+test('the lobby broadcast includes the avatar url too', function () {
+    \Illuminate\Support\Facades\Storage::fake('public');
+    [$room, $host] = lobbyWithTwoPlayers();
+    $host->addMedia(\Illuminate\Http\UploadedFile::fake()->image('me.jpg'))->toMediaCollection('profile');
+
+    $payload = (new MafiaLobbyUpdated($room->fresh()))->broadcastWith();
+    $bySlot = collect($payload['players'])->keyBy('slot');
+
+    expect($bySlot[1]['avatarUrl'])->toBeString();
+    expect($bySlot[2]['avatarUrl'])->toBeNull();
+});

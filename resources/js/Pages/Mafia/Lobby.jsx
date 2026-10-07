@@ -145,6 +145,7 @@ export default function Lobby({ room, snapshot, myPlayerId, inviteUrl }) {
                 id: player.id,
                 slot,
                 name: player.name,
+                avatarUrl: player.avatarUrl,
                 status: 'alive',
                 isYou,
                 lobbyBadges: { host: player.isGameHost, ready: player.isReady },

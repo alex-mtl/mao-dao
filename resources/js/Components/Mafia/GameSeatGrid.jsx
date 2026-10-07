@@ -55,9 +55,11 @@ export default function GameSeatGrid({ seats, currentSpeakerSlot, localStream = 
             style={{
                 gridTemplateAreas: GRID_TEMPLATE_AREAS,
                 '--seat-icon': 'clamp(0.85rem, 2.2vw, 2rem)',
-                // The "?" circle on a free seat: ~6x the area of the old
-                // 32px avatar at a typical desktop width, scaled by vw.
-                '--seat-empty-mark': 'clamp(2.6rem, 6.2vw, 7.5rem)',
+                // The big round avatar on every seat without live video
+                // (the "?" on a free seat, initials or the player's photo
+                // on a taken one): ~6x the area of the old small avatar at
+                // a typical desktop width, scaled by vw.
+                '--seat-avatar': 'clamp(2.6rem, 6.2vw, 7.5rem)',
                 '--seat-icon-pad': 'clamp(2px, 0.5vw, 8px)',
                 '--seat-badge-text': 'clamp(0.6rem, 1.8vw, 1.1rem)',
                 '--seat-badge-pad-x': 'clamp(4px, 1.1vw, 10px)',
