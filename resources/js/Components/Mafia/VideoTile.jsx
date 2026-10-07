@@ -56,7 +56,7 @@ function SeatAvatar({ name, avatarUrl }) {
  * own native volume directly — a per-viewer, local-only adjustment, never
  * sent anywhere.
  */
-export default function VideoTile({ stream, name, avatarUrl = null, muted = false, mirrored = false, volume = 1, className = '' }) {
+export default function VideoTile({ stream, name, avatarUrl = null, videoHidden = false, muted = false, mirrored = false, volume = 1, className = '' }) {
     const videoRef = useRef(null);
 
     useEffect(() => {
@@ -71,22 +71,32 @@ export default function VideoTile({ stream, name, avatarUrl = null, muted = fals
         }
     }, [volume]);
 
-    if (!stream) {
-        return (
-            <div className={`flex items-center justify-center ${className}`}>
-                <SeatAvatar name={name} avatarUrl={avatarUrl} />
-            </div>
-        );
-    }
+    // The picture is only shown while there actually is one: a live video
+    // track, and the player hasn't switched their camera off / been voted
+    // out or killed (`videoHidden`). Otherwise the avatar takes the seat's
+    // centre. The <video> element stays mounted either way — it is what
+    // plays the player's *audio*, which must keep working with the camera
+    // off — and is just made invisible instead of removed.
+    const hasLiveVideo = Boolean(stream) && stream.getVideoTracks().some((track) => track.readyState === 'live');
+    const showVideo = hasLiveVideo && !videoHidden;
 
     return (
-        <video
-            ref={videoRef}
-            autoPlay
-            playsInline
-            muted={muted}
-            style={mirrored ? { transform: 'scaleX(-1)' } : undefined}
-            className={`h-full w-full rounded-md object-cover ${className}`}
-        />
+        <div className={`relative ${className}`}>
+            {stream && (
+                <video
+                    ref={videoRef}
+                    autoPlay
+                    playsInline
+                    muted={muted}
+                    style={mirrored ? { transform: 'scaleX(-1)' } : undefined}
+                    className={showVideo ? 'h-full w-full rounded-md object-cover' : 'pointer-events-none absolute h-px w-px opacity-0'}
+                />
+            )}
+            {!showVideo && (
+                <div className="flex h-full w-full items-center justify-center">
+                    <SeatAvatar name={name} avatarUrl={avatarUrl} />
+                </div>
+            )}
+        </div>
     );
 }

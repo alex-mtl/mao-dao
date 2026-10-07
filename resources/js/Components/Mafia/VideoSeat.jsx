@@ -2,7 +2,7 @@ import MaterialIcon from '@/Components/Mafia/MaterialIcon';
 import SpeechTimerRing from '@/Components/Mafia/SpeechTimerRing';
 import VideoTile from '@/Components/Mafia/VideoTile';
 import { useLaravelReactI18n } from 'laravel-react-i18n';
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 
 // Role icon per ttl10 exactly (plan §2.4, corrected per direct request to
 // use the same icon design rather than look-alike substitutes):
@@ -95,6 +95,34 @@ const CHECK_BADGE_LABEL_KEYS = {
 };
 
 /**
+ * Bottom-left tag: the player's profile photo (if they have one) in a
+ * circle twice as tall as the nickname pill, then the pill — on one row,
+ * centred on the same horizontal line. Sizes come from the grid's vw-based
+ * `--seat-name-*` variables. A photo that fails to load is simply left out.
+ */
+function SeatNameTag({ name, avatarUrl }) {
+    const [photoFailed, setPhotoFailed] = useState(false);
+    const showPhoto = Boolean(avatarUrl) && !photoFailed;
+
+    return (
+        <div className="absolute bottom-1 left-1 flex max-w-[85%] items-center gap-[var(--seat-name-pad-y)]">
+            {showPhoto && (
+                <img
+                    src={avatarUrl}
+                    alt=""
+                    aria-hidden="true"
+                    onError={() => setPhotoFailed(true)}
+                    className="h-[var(--seat-name-avatar)] w-[var(--seat-name-avatar)] shrink-0 rounded-full object-cover ring-2 ring-white/70"
+                />
+            )}
+            <span className="min-w-0 truncate rounded-full bg-ink-900/60 px-[var(--seat-name-pad-x)] py-[var(--seat-name-pad-y)] text-[length:var(--seat-name-text)] font-medium leading-[1.5] text-white">
+                {name}
+            </span>
+        </div>
+    );
+}
+
+/**
  * One seat's rich video card — see "Mafia Game UI Layout Alignment Plan"
  * §2.2. Positioned into the diamond grid via `gridArea` (GameSeatGrid
  * assigns `s{slot}`), so seat order in the underlying `seats` array never
@@ -134,7 +162,7 @@ const CHECK_BADGE_LABEL_KEYS = {
  * nobody else's card ever gets this, mirroring ttl10's sender/receiver-
  * only pulse icons.
  */
-export default function VideoSeat({ seat, isSpeaking = false, stream = null, className = '' }) {
+export default function VideoSeat({ seat, isSpeaking = false, stream = null, videoHidden = false, className = '' }) {
     const { t } = useLaravelReactI18n();
     const isDead = seat.status !== 'alive';
     const roleType = seat.visibleRole ? ROLE_ICON_TYPES[seat.visibleRole] : null;
@@ -182,6 +210,7 @@ export default function VideoSeat({ seat, isSpeaking = false, stream = null, cla
                 stream={stream}
                 name={seat.name}
                 avatarUrl={seat.avatarUrl}
+                videoHidden={videoHidden}
                 muted={seat.isYou}
                 mirrored={seat.isYou && seat.mediaControls?.type === 'self' ? seat.mediaControls.mirrored : false}
                 volume={seat.mediaControls?.type === 'volume' ? seat.mediaControls.volume : 1}
@@ -316,9 +345,7 @@ export default function VideoSeat({ seat, isSpeaking = false, stream = null, cla
                 </span>
             )}
 
-            <span className="absolute bottom-1 left-1 max-w-[75%] truncate rounded-full bg-ink-900/60 px-[var(--seat-name-pad-x)] py-[var(--seat-name-pad-y)] text-[length:var(--seat-name-text)] font-medium text-white">
-                {seat.name ?? t('mafia.empty_seat')}
-            </span>
+            <SeatNameTag name={seat.name ?? t('mafia.empty_seat')} avatarUrl={seat.name ? seat.avatarUrl : null} />
 
             {/* Signal trigger + other-player volume slider (per-OTHER-seat)
                 and the local player's own settings/mic/cam/mirror cluster

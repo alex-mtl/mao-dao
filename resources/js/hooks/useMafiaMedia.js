@@ -66,6 +66,10 @@ export default function useMafiaMedia(code) {
     const [localStream, setLocalStream] = useState(null);
     const [error, setError] = useState(null);
 
+    // Players (by id) who have switched their camera off — their seat shows
+    // the avatar instead of the video element's black/frozen frame.
+    const [cameraOffIds, setCameraOffIds] = useState([]);
+
     const [micEnabled, setMicEnabled] = useState(true);
     const [camEnabled, setCamEnabled] = useState(true);
 
@@ -211,6 +215,7 @@ export default function useMafiaMedia(code) {
         releaseConnection();
         setLocalStream(null);
         setRemoteStreams({});
+        setCameraOffIds([]);
         setConnecting(true);
         setError(null);
 
@@ -243,6 +248,7 @@ export default function useMafiaMedia(code) {
                 }
                 setEnabled(false);
                 setRemoteStreams({});
+                setCameraOffIds([]);
                 scheduleReconnect();
             };
 
@@ -298,6 +304,7 @@ export default function useMafiaMedia(code) {
 
                     setMicEnabled(Boolean(audioProducerRef.current));
                     setCamEnabled(Boolean(videoProducerRef.current));
+                    setCameraOffIds(data.cameraOff ?? []);
                     setEnabled(true);
                     reconnectAttemptsRef.current = 0;
                     (data.existingProducers || []).forEach((p) => consumeProducer(p));
@@ -309,7 +316,16 @@ export default function useMafiaMedia(code) {
                     return;
                 }
 
+                if (data.type === 'camera-state') {
+                    setCameraOffIds((prev) => {
+                        const without = prev.filter((id) => id !== data.playerId);
+                        return data.enabled ? without : [...without, data.playerId];
+                    });
+                    return;
+                }
+
                 if (data.type === 'peer-left') {
+                    setCameraOffIds((prev) => prev.filter((id) => id !== data.playerId));
                     setRemoteStreams((prev) => {
                         const next = { ...prev };
                         delete next[data.playerId];
@@ -393,6 +409,8 @@ export default function useMafiaMedia(code) {
             producer.pause();
             setCamEnabled(false);
         }
+        // Tell the sidecar (which pauses its side and informs everyone else).
+        wsRef.current?.send(JSON.stringify({ type: 'camera-state', enabled: !producer.paused }));
     }, []);
 
     // Device (input source) switching — mirrors ttl10's own
@@ -444,6 +462,7 @@ export default function useMafiaMedia(code) {
         disconnect,
         localStream,
         remoteStreams,
+        cameraOffIds,
         error,
         micEnabled,
         camEnabled,

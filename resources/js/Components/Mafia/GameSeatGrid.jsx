@@ -48,7 +48,29 @@ const GRID_TEMPLATE_AREAS = '"s9 s10 s1 s2" "s8 info info s3" "s7 s6 s5 s4"';
  * inherit down to every descendant — `VideoSeat` and the `infoPanel`
  * content just reference `var(--seat-icon)` etc. directly.
  */
-export default function GameSeatGrid({ seats, currentSpeakerSlot, localStream = null, remoteStreams = {}, infoPanel = null, className = '' }) {
+export default function GameSeatGrid({
+    seats,
+    currentSpeakerSlot,
+    localStream = null,
+    remoteStreams = {},
+    cameraOffIds = [],
+    localCameraOn = true,
+    showDeadVideos = false,
+    infoPanel = null,
+    className = '',
+}) {
+    // A seat shows the avatar instead of the picture when its player turned
+    // their camera off, or — mid-game — was voted out or killed (once the
+    // game is over the whole table is back on camera, see
+    // MafiaRoom::canPlayerView()).
+    const videoHiddenFor = (seat) => {
+        if (!showDeadVideos && seat.status !== 'alive') {
+            return true;
+        }
+
+        return seat.isYou ? !localCameraOn : cameraOffIds.includes(seat.id);
+    };
+
     return (
         <div
             className={`grid h-full w-full grid-cols-4 grid-rows-3 gap-1 ${className}`}
@@ -67,6 +89,11 @@ export default function GameSeatGrid({ seats, currentSpeakerSlot, localStream = 
                 '--seat-name-text': 'clamp(0.65rem, 2vw, 1.2rem)',
                 '--seat-name-pad-x': 'clamp(4px, 1.3vw, 12px)',
                 '--seat-name-pad-y': 'clamp(1px, 0.4vw, 4px)',
+                // Height of the nickname pill (its line-height is fixed at
+                // 1.5 in VideoSeat) and of the profile photo shown beside
+                // it: twice the pill, both derived from the same vw vars.
+                '--seat-name-height': 'calc(var(--seat-name-text) * 1.5 + var(--seat-name-pad-y) * 2)',
+                '--seat-name-avatar': 'calc(var(--seat-name-height) * 2)',
                 // Reported as needing "at least 4x bigger" — meaning 4x
                 // *surface area*, corrected after an initial pass wrongly
                 // read that as 4x the linear size (font-size), which is
@@ -119,6 +146,7 @@ export default function GameSeatGrid({ seats, currentSpeakerSlot, localStream = 
                     seat={seat}
                     isSpeaking={seat.slot === currentSpeakerSlot}
                     stream={seat.isYou ? localStream : (remoteStreams[seat.id] ?? null)}
+                    videoHidden={videoHiddenFor(seat)}
                 />
             ))}
             <div style={{ gridArea: 'info' }} className="flex h-full w-full items-stretch justify-stretch">

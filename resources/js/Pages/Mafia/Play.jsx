@@ -295,6 +295,9 @@ export default function Play({ code, snapshot }) {
                     currentSpeakerSlot={state.currentSpeakerSlot}
                     localStream={media.localStream}
                     remoteStreams={media.remoteStreams}
+                    cameraOffIds={media.cameraOffIds}
+                    localCameraOn={media.camEnabled}
+                    showDeadVideos={isGameOver}
                     infoPanel={
                         <div
                             className="relative flex h-full w-full flex-col items-center justify-center gap-1 rounded-lg border border-warm-200 bg-surface p-2 text-center"

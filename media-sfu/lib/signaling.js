@@ -52,6 +52,7 @@ function handleJoin(ws, router, data) {
         consumerTransport: null,
         videoProducer: null,
         audioProducer: null,
+        cameraOn: true,
     };
     ws.peer = peer;
     roomsRegistry.addPeer(peer.roomCode, peer.playerId, peer);
@@ -64,6 +65,11 @@ function handleJoin(ws, router, data) {
         // So a newly-joined peer immediately knows who else is already
         // producing, instead of waiting for their next producer-available
         // broadcast (which only fires on a *new* produce, not a re-join).
+        // Who has switched their camera off, so a newcomer shows an avatar
+        // instead of a frozen/black frame for them from the first moment.
+        cameraOff: roomsRegistry.otherPeers(peer.roomCode, peer.playerId)
+            .filter((other) => other.cameraOn === false)
+            .map((other) => other.playerId),
         existingProducers: roomsRegistry.otherPeers(peer.roomCode, peer.playerId).flatMap((other) => [
             other.videoProducer && { playerId: other.playerId, slot: other.slot, kind: 'video', producerId: other.videoProducer.id },
             other.audioProducer && { playerId: other.playerId, slot: other.slot, kind: 'audio', producerId: other.audioProducer.id },
@@ -71,6 +77,30 @@ function handleJoin(ws, router, data) {
     }));
 
     broadcastToRoom(peer.roomCode, peer.playerId, { type: 'peer-joined', playerId: peer.playerId, slot: peer.slot });
+}
+
+/**
+ * A player switched their camera on or off. The server-side video producer
+ * is paused to match (no point forwarding a dead picture), and everyone
+ * else is told so their seat can show the avatar instead of a black frame.
+ */
+async function handleCameraState(ws, data) {
+    const peer = ws.peer;
+    peer.cameraOn = data.enabled === true;
+
+    if (peer.videoProducer) {
+        if (peer.cameraOn && peer.videoProducer.paused) {
+            await peer.videoProducer.resume();
+        } else if (!peer.cameraOn && !peer.videoProducer.paused) {
+            await peer.videoProducer.pause();
+        }
+    }
+
+    broadcastToRoom(peer.roomCode, peer.playerId, {
+        type: 'camera-state',
+        playerId: peer.playerId,
+        enabled: peer.cameraOn,
+    });
 }
 
 async function handleCreateProducerTransport(ws, router, data) {
@@ -237,9 +267,11 @@ async function dispatch(ws, router, data) {
             return handleConnectConsumerTransport(ws, data);
         case 'consume':
             return handleConsume(ws, router, data);
+        case 'camera-state':
+            return handleCameraState(ws, data);
         default:
             console.warn('Unknown message type:', data.type);
     }
 }
 
-module.exports = { dispatch, handleClose };
+module.exports = { dispatch, handleClose, handleCameraState };

@@ -172,6 +172,8 @@ export default function Lobby({ room, snapshot, myPlayerId, inviteUrl }) {
                     currentSpeakerSlot={null}
                     localStream={media.localStream}
                     remoteStreams={media.remoteStreams}
+                    cameraOffIds={media.cameraOffIds}
+                    localCameraOn={media.camEnabled}
                     infoPanel={
                         <div className="flex h-full w-full flex-col items-center justify-center gap-[var(--info-menu-pad)] overflow-y-auto rounded-lg border border-warm-200 bg-surface p-2 text-center">
                             <p className="text-[length:var(--info-label)] font-semibold uppercase tracking-wide text-ink-500">
