@@ -9,6 +9,11 @@ const MEDIA_ERROR_BY_NAME = {
     NotReadableError: 'media_device_busy',
 };
 
+// Pause before each automatic reconnect attempt after the signaling socket
+// drops (server restart, network blip, proxy timeout). After the last one
+// fails the player sees a connection error and can retry by hand.
+const RECONNECT_DELAYS_MS = [1000, 2000, 4000, 8000, 15000];
+
 /**
  * Camera + mic if possible; if that combination can't be opened (no
  * camera, camera already in use by another tab/app, no microphone) fall
@@ -73,6 +78,47 @@ export default function useMafiaMedia(code) {
     const pendingRequestsRef = useRef({});
     const consumedProducerIdsRef = useRef(new Set());
     const localStreamRef = useRef(null);
+    const mountedRef = useRef(true);
+    const stoppedByUserRef = useRef(false);
+    const connectingRef = useRef(false);
+    const reconnectTimerRef = useRef(null);
+    const reconnectAttemptsRef = useRef(0);
+    const connectRef = useRef(null);
+
+    // Closes everything belonging to the current call and forgets it.
+    // `wsRef` is cleared *before* closing the socket so its onclose handler
+    // can tell "closed on purpose" apart from "dropped" and not reconnect.
+    const releaseConnection = useCallback(() => {
+        const oldSocket = wsRef.current;
+        wsRef.current = null;
+        localStreamRef.current?.getTracks().forEach((track) => track.stop());
+        localStreamRef.current = null;
+        producerTransportRef.current?.close();
+        consumerTransportRef.current?.close();
+        oldSocket?.close();
+        producerTransportRef.current = null;
+        consumerTransportRef.current = null;
+        audioProducerRef.current = null;
+        videoProducerRef.current = null;
+        consumedProducerIdsRef.current = new Set();
+        pendingRequestsRef.current = {};
+    }, []);
+
+    const scheduleReconnect = useCallback(() => {
+        if (stoppedByUserRef.current || !mountedRef.current) {
+            return;
+        }
+
+        const attempt = reconnectAttemptsRef.current;
+        if (attempt >= RECONNECT_DELAYS_MS.length) {
+            setError((current) => current ?? 'media_connection_failed');
+            return;
+        }
+
+        reconnectAttemptsRef.current = attempt + 1;
+        clearTimeout(reconnectTimerRef.current);
+        reconnectTimerRef.current = setTimeout(() => connectRef.current?.(), RECONNECT_DELAYS_MS[attempt]);
+    }, []);
 
     const sendRequest = useCallback((data, timeoutMs = 8000) => {
         return new Promise((resolve, reject) => {
@@ -154,6 +200,17 @@ export default function useMafiaMedia(code) {
     }, [sendRequest]);
 
     const connect = useCallback(async () => {
+        if (connectingRef.current) {
+            return;
+        }
+        connectingRef.current = true;
+        clearTimeout(reconnectTimerRef.current);
+        stoppedByUserRef.current = false;
+        // Always start from a clean slate, so a manual retry or an automatic
+        // reconnect never leaves a half-dead previous call behind.
+        releaseConnection();
+        setLocalStream(null);
+        setRemoteStreams({});
         setConnecting(true);
         setError(null);
 
@@ -176,9 +233,18 @@ export default function useMafiaMedia(code) {
 
             ws.onopen = () => ws.send(JSON.stringify({ type: 'join', token }));
 
-            ws.onerror = () => setError('media_connection_failed');
+            // A failed socket always ends in onclose, which decides whether
+            // to retry; the error is only shown once retries run out.
+            ws.onerror = () => console.warn('Mafia media socket error');
 
-            ws.onclose = () => setEnabled(false);
+            ws.onclose = () => {
+                if (wsRef.current !== ws) {
+                    return;
+                }
+                setEnabled(false);
+                setRemoteStreams({});
+                scheduleReconnect();
+            };
 
             const handleMessage = async (event) => {
                 const data = JSON.parse(event.data);
@@ -194,6 +260,8 @@ export default function useMafiaMedia(code) {
 
                 if (data.type === 'join-rejected') {
                     setError('media_join_rejected');
+                    // The token itself was refused — retrying won't change that.
+                    reconnectAttemptsRef.current = RECONNECT_DELAYS_MS.length;
                     ws.close();
                     return;
                 }
@@ -231,6 +299,7 @@ export default function useMafiaMedia(code) {
                     setMicEnabled(Boolean(audioProducerRef.current));
                     setCamEnabled(Boolean(videoProducerRef.current));
                     setEnabled(true);
+                    reconnectAttemptsRef.current = 0;
                     (data.existingProducers || []).forEach((p) => consumeProducer(p));
                     return;
                 }
@@ -265,26 +334,28 @@ export default function useMafiaMedia(code) {
             console.error('Mafia media setup failed:', err);
             setError(MEDIA_ERROR_BY_NAME[err?.name] ?? 'media_setup_failed');
         } finally {
+            connectingRef.current = false;
             setConnecting(false);
         }
-    }, [code, sendRequest, consumeProducer]);
+    }, [code, sendRequest, consumeProducer, releaseConnection, scheduleReconnect]);
+    connectRef.current = connect;
+
+    // What callers (page load, a retry button) use: a fresh, deliberate
+    // attempt gets the full set of automatic retries again. The timer-driven
+    // reconnects go through `connect` directly so they keep counting.
+    const connectNow = useCallback(() => {
+        reconnectAttemptsRef.current = 0;
+        return connect();
+    }, [connect]);
 
     const disconnect = useCallback(() => {
-        localStream?.getTracks().forEach((track) => track.stop());
-        producerTransportRef.current?.close();
-        consumerTransportRef.current?.close();
-        wsRef.current?.close();
-        producerTransportRef.current = null;
-        consumerTransportRef.current = null;
-        audioProducerRef.current = null;
-        videoProducerRef.current = null;
-        wsRef.current = null;
-        consumedProducerIdsRef.current = new Set();
+        stoppedByUserRef.current = true;
+        clearTimeout(reconnectTimerRef.current);
+        releaseConnection();
         setLocalStream(null);
         setRemoteStreams({});
         setEnabled(false);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [localStream]);
+    }, [releaseConnection]);
 
     // Local-only mic/cam mute — ttl10's own "self mic/cam" controls are
     // gated to the lobby and post-game screens specifically (during actual
@@ -354,19 +425,22 @@ export default function useMafiaMedia(code) {
 
     // Tear down on unmount (leaving the page) regardless of whether the
     // player explicitly disconnected first.
-    useEffect(() => () => {
-        wsRef.current?.close();
-        producerTransportRef.current?.close();
-        consumerTransportRef.current?.close();
-        // Release the camera/mic itself too — otherwise the browser's
-        // "camera in use" indicator stays lit after leaving the page.
-        localStreamRef.current?.getTracks().forEach((track) => track.stop());
-    }, []);
+    // Releasing also stops the camera/mic itself — otherwise the browser's
+    // "camera in use" indicator stays lit after leaving the page.
+    useEffect(() => {
+        mountedRef.current = true;
+
+        return () => {
+            mountedRef.current = false;
+            clearTimeout(reconnectTimerRef.current);
+            releaseConnection();
+        };
+    }, [releaseConnection]);
 
     return {
         enabled,
         connecting,
-        connect,
+        connect: connectNow,
         disconnect,
         localStream,
         remoteStreams,
