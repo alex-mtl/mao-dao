@@ -139,6 +139,8 @@ return [
     'camera_disable_button' => 'Disable Camera',
     'media_error_media_permission_denied' => 'Camera/microphone access was denied — check your browser permissions.',
     'media_error_media_connection_failed' => 'Could not connect to the voice/video server.',
+    'media_error_media_device_not_found' => 'No camera or microphone was found on this device.',
+    'media_error_media_device_busy' => 'The camera or microphone is being used by another app or browser tab — close it and try again.',
     'media_error_media_setup_failed' => 'Something went wrong starting your camera. Try again.',
     'media_error_media_join_rejected' => 'The voice/video server rejected the connection — try reloading the page.',
     'media_error_media_token_failed' => 'Could not get permission to join voice/video for this room.',

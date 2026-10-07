@@ -1,6 +1,43 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import * as mediasoupClient from 'mediasoup-client';
 
+// getUserMedia failure names -> the specific, actionable message to show.
+const MEDIA_ERROR_BY_NAME = {
+    NotAllowedError: 'media_permission_denied',
+    SecurityError: 'media_permission_denied',
+    NotFoundError: 'media_device_not_found',
+    NotReadableError: 'media_device_busy',
+};
+
+/**
+ * Camera + mic if possible; if that combination can't be opened (no
+ * camera, camera already in use by another tab/app, no microphone) fall
+ * back to mic-only, then camera-only, so a missing or busy device doesn't
+ * lock the player out of the call entirely. A permission denial is never
+ * retried — that would just prompt the player a second time.
+ */
+async function acquireLocalStream() {
+    const attempts = [
+        { video: { width: { ideal: 192 } }, audio: true },
+        { video: false, audio: true },
+        { video: { width: { ideal: 192 } }, audio: false },
+    ];
+    let lastError;
+
+    for (const constraints of attempts) {
+        try {
+            return await navigator.mediaDevices.getUserMedia(constraints);
+        } catch (err) {
+            lastError = err;
+            if (err?.name === 'NotAllowedError' || err?.name === 'SecurityError') {
+                throw err;
+            }
+        }
+    }
+
+    throw lastError;
+}
+
 /**
  * Voice/video (plan Phase 7) — connects to the standalone media-sfu
  * sidecar (never this Laravel app itself; see media-sfu/README.md),
@@ -130,10 +167,7 @@ export default function useMafiaMedia(code) {
                 return r.json();
             });
 
-            const stream = await navigator.mediaDevices.getUserMedia({
-                video: { width: { ideal: 192 } },
-                audio: true,
-            });
+            const stream = await acquireLocalStream();
             setLocalStream(stream);
             localStreamRef.current = stream;
 
@@ -146,7 +180,7 @@ export default function useMafiaMedia(code) {
 
             ws.onclose = () => setEnabled(false);
 
-            ws.onmessage = async (event) => {
+            const handleMessage = async (event) => {
                 const data = JSON.parse(event.data);
 
                 if (data.type === 'request-response') {
@@ -214,8 +248,22 @@ export default function useMafiaMedia(code) {
                     });
                 }
             };
+            // Errors thrown while setting up transports/producers happen in
+            // an async handler no try/catch above can see — surface them
+            // instead of leaving the player with a silently dead call.
+            ws.onmessage = (event) => {
+                handleMessage(event).catch((err) => {
+                    console.error("Mafia media signaling failed:", err);
+                    setError("media_setup_failed");
+                    ws.close();
+                });
+            };
         } catch (err) {
-            setError(err.name === 'NotAllowedError' ? 'media_permission_denied' : 'media_setup_failed');
+            // Logged so a "could not start your camera" report can be
+            // diagnosed from the browser console (the UI message below is
+            // deliberately short).
+            console.error('Mafia media setup failed:', err);
+            setError(MEDIA_ERROR_BY_NAME[err?.name] ?? 'media_setup_failed');
         } finally {
             setConnecting(false);
         }

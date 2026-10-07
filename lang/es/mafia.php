@@ -134,6 +134,8 @@ return [
     'camera_disable_button' => 'Desactivar cámara',
     'media_error_media_permission_denied' => 'Se denegó el acceso a la cámara/micrófono — revisa los permisos de tu navegador.',
     'media_error_media_connection_failed' => 'No se pudo conectar al servidor de voz/vídeo.',
+    'media_error_media_device_not_found' => 'No se encontró ninguna cámara ni micrófono en este dispositivo.',
+    'media_error_media_device_busy' => 'La cámara o el micrófono lo está usando otra aplicación o pestaña — ciérrala e inténtalo de nuevo.',
     'media_error_media_setup_failed' => 'Algo falló al iniciar tu cámara. Inténtalo de nuevo.',
     'media_error_media_join_rejected' => 'El servidor de voz/vídeo rechazó la conexión — intenta recargar la página.',
     'media_error_media_token_failed' => 'No se pudo obtener permiso para unirse a la voz/vídeo de esta sala.',
