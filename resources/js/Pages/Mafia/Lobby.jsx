@@ -108,19 +108,30 @@ export default function Lobby({ room, snapshot, myPlayerId, inviteUrl }) {
             const isYou = player.id === myPlayerId;
             let mediaControls = null;
 
-            if (isYou && media.enabled) {
-                // Mic/cam on-off is allowed in the lobby (ttl10 gates it to
-                // lobby + post-game only), alongside mirror and device settings.
+            if (isYou) {
+                // Always present once seated, connected or not. Mic/cam
+                // on-off is allowed in the lobby (ttl10 gates it to lobby +
+                // post-game only), alongside mirror and device settings.
+                // While there's no live connection (denied, no device,
+                // still connecting) the icons show as off, and pressing
+                // mic/cam/settings retries the connection — that replaces a
+                // separate "enable camera" button.
+                const live = media.enabled;
+                const retry = () => {
+                    if (!media.connecting) {
+                        media.connect();
+                    }
+                };
                 mediaControls = {
                     type: 'self',
                     canToggleMicCam: true,
-                    micEnabled: media.micEnabled,
-                    camEnabled: media.camEnabled,
+                    micEnabled: live && media.micEnabled,
+                    camEnabled: live && media.camEnabled,
                     mirrored,
-                    onToggleMic: media.toggleMic,
-                    onToggleCam: media.toggleCam,
+                    onToggleMic: live ? media.toggleMic : retry,
+                    onToggleCam: live ? media.toggleCam : retry,
                     onToggleMirror: toggleMirrored,
-                    onOpenSettings: () => setMediaSettingsOpen(true),
+                    onOpenSettings: live ? () => setMediaSettingsOpen(true) : retry,
                 };
             } else if (!isYou && media.remoteStreams[player.id]) {
                 mediaControls = {
@@ -201,21 +212,10 @@ export default function Lobby({ room, snapshot, myPlayerId, inviteUrl }) {
                                 {t('mafia.pick_a_seat_hint')}
                             </p>
 
-                            {(media.error || (!media.enabled && !media.connecting)) && (
-                                <div className="flex flex-col items-center gap-1" role="alert">
-                                    {media.error && (
-                                        <p className="text-[length:var(--info-label)] text-danger-600">
-                                            {t(`mafia.media_error_${media.error}`)}
-                                        </p>
-                                    )}
-                                    <button
-                                        type="button"
-                                        onClick={media.connect}
-                                        className={`${BUTTON_BASE} border border-warm-300 bg-surface text-ink-700 hover:bg-warm-50`}
-                                    >
-                                        {t('mafia.camera_enable_button')}
-                                    </button>
-                                </div>
+                            {media.error && (
+                                <p role="alert" className="text-[length:var(--info-label)] text-danger-600">
+                                    {t(`mafia.media_error_${media.error}`)}
+                                </p>
                             )}
 
                             <div className="flex w-full max-w-sm flex-wrap justify-center gap-1">

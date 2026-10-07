@@ -228,8 +228,8 @@ export default function useMafiaMedia(code) {
                         }
                     }
 
-                    setMicEnabled(true);
-                    setCamEnabled(true);
+                    setMicEnabled(Boolean(audioProducerRef.current));
+                    setCamEnabled(Boolean(videoProducerRef.current));
                     setEnabled(true);
                     (data.existingProducers || []).forEach((p) => consumeProducer(p));
                     return;
