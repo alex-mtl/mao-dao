@@ -866,6 +866,23 @@ rather than by Claude logging in.
 >   reconnect on its own (a manual reload is needed). Don't restart it while
 >   someone is testing without warning them.
 
+> **Microphone gating (added 2026-10-07).** Like ttl10, the *server* pauses
+> every player's audio producer except whoever may be heard — listeners get
+> silence from a paused producer, so a hacked client can't talk out of turn.
+> The rule lives in Laravel (`MafiaRoom::micPolicy()`: lobby/game over =
+> everyone; day with someone holding the floor = only them; everything else,
+> incl. sitdown, voting and all night phases = nobody). The sidecar
+> (`media-sfu/lib/micpolicy.js`) asks `GET /internal/mafia/mic-policy`, applies it
+> every 1s and on demand, and a brand-new audio producer starts paused until
+> the policy allows it (fails closed). Laravel nudges the sidecar right after
+> each transition (`MediaSfuNotifier` → `POST /internal/refresh-mics` on the
+> sidecar's own port, `MEDIA_SFU_INTERNAL_URL`, default
+> `http://127.0.0.1:8381` outside tests) so speaker handoffs are instant; the
+> poll is only the safety net. Sidecar unit tests: `cd media-sfu && npm test`
+> (or `node --test` there). Gotcha: the sidecar's Docker image can't run its
+> mediasoup worker locally (Windows-built `node_modules` bind-mounted), so
+> only the pure policy logic is tested locally.
+
 
 The plan's §3.1 #1 decision point (ship without video first, add it once
 the core game is validated) resolved to "build it" once the user said to

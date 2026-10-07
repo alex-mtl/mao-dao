@@ -143,3 +143,77 @@ test('canPlayerView lets everyone seated see each other in the lobby, before any
     expect($room->fresh()->canPlayerView($players[2]->fresh(), $players[1]->fresh()))->toBeTrue();
     expect($room->fresh()->canPlayerView($players[1]->fresh(), $players[1]->fresh()))->toBeFalse();
 });
+
+test('micPolicy: everyone may talk in the lobby and after the game', function () {
+    foreach (['lobby', 'game_over'] as $status) {
+        $room = mediaRoomWithPlayers([1 => 'citizen', 2 => 'mafia'], status: $status);
+
+        expect($room->micPolicy())->toBe(['mode' => 'all', 'playerIds' => []]);
+    }
+});
+
+test('micPolicy: during the day only the current speaker may be heard', function () {
+    $room = mediaRoomWithPlayers([1 => 'citizen', 2 => 'sheriff', 3 => 'mafia'], status: 'day');
+    $players = $room->players()->orderBy('slot')->get()->keyBy('slot');
+    $room->update(['stage' => 'speaking', 'state' => ['speaking_order' => [2, 3, 1], 'spoken_slots' => []]]);
+
+    expect($room->fresh()->micPolicy())->toBe(['mode' => 'only', 'playerIds' => [$players[2]->id]]);
+
+    $room->update(['state' => ['speaking_order' => [3, 1], 'spoken_slots' => [2]]]);
+    expect($room->fresh()->micPolicy())->toBe(['mode' => 'only', 'playerIds' => [$players[3]->id]]);
+});
+
+test('micPolicy: a last word and a defense speech belong to one player each', function () {
+    $room = mediaRoomWithPlayers([1 => 'citizen', 2 => 'sheriff', 3 => 'mafia'], status: 'day');
+    $players = $room->players()->orderBy('slot')->get()->keyBy('slot');
+
+    $room->update(['stage' => 'last_speech', 'state' => ['current_elimination' => $players[1]->id]]);
+    expect($room->fresh()->micPolicy())->toBe(['mode' => 'only', 'playerIds' => [$players[1]->id]]);
+
+    $room->update(['stage' => 'morning_speech', 'state' => ['current_elimination' => $players[3]->id]]);
+    expect($room->fresh()->micPolicy())->toBe(['mode' => 'only', 'playerIds' => [$players[3]->id]]);
+
+    $room->update(['stage' => 'defense_speech', 'state' => ['defense_queue' => [$players[2]->id, $players[3]->id]]]);
+    expect($room->fresh()->micPolicy())->toBe(['mode' => 'only', 'playerIds' => [$players[2]->id]]);
+});
+
+test('micPolicy: nobody talks while voting, at night, or during the private reveals', function () {
+    $room = mediaRoomWithPlayers([1 => 'citizen', 2 => 'mafia'], status: 'day');
+    $room->update(['stage' => 'voting', 'state' => ['voting_candidates' => [1]]]);
+    expect($room->fresh()->micPolicy()['mode'])->toBe('none');
+
+    foreach (['sitdown', 'don_watch', 'sheriff_watch', 'night', 'shooting', 'don_check', 'sheriff_check'] as $status) {
+        $room->update(['status' => $status, 'stage' => null, 'state' => []]);
+        expect($room->fresh()->micPolicy())->toBe(['mode' => 'none', 'playerIds' => []]);
+    }
+});
+
+test('the internal mic-policy endpoint needs the shared secret and answers per room', function () {
+    $room = mediaRoomWithPlayers([1 => 'citizen', 2 => 'mafia'], status: 'lobby');
+
+    $this->getJson("/internal/mafia/mic-policy?room={$room->room_code}")->assertForbidden();
+    $this->getJson("/internal/mafia/mic-policy?room={$room->room_code}", ['X-Media-Sfu-Secret' => 'wrong'])->assertForbidden();
+
+    $this->getJson("/internal/mafia/mic-policy?room={$room->room_code}", ['X-Media-Sfu-Secret' => 'test-shared-secret'])
+        ->assertOk()->assertJson(['mode' => 'all']);
+
+    $this->getJson('/internal/mafia/mic-policy?room=NOPE99', ['X-Media-Sfu-Secret' => 'test-shared-secret'])
+        ->assertOk()->assertJson(['mode' => 'none']);
+});
+
+test('the sidecar is nudged after a phase change, and a dead sidecar never breaks the game', function () {
+    config(['mafia.media_internal_url' => 'http://sidecar.test']);
+    \Illuminate\Support\Facades\Http::fake(['sidecar.test/*' => \Illuminate\Support\Facades\Http::response('', 202)]);
+
+    $room = mediaRoomWithPlayers([1 => 'citizen', 2 => 'sheriff', 3 => 'mafia', 4 => 'don'], status: 'sitdown');
+    app(\App\Services\Mafia\MafiaGameEngine::class)->advance($room->fresh());
+
+    \Illuminate\Support\Facades\Http::assertSent(fn ($request) => str_ends_with($request->url(), '/internal/refresh-mics')
+        && $request['room'] === $room->room_code
+        && $request->hasHeader('X-Media-Sfu-Secret', 'test-shared-secret'));
+
+    \Illuminate\Support\Facades\Http::fake(fn () => throw new \Illuminate\Http\Client\ConnectionException('down'));
+    app(\App\Services\Mafia\MafiaGameEngine::class)->advance($room->fresh());
+
+    expect($room->fresh()->status)->toBe('sheriff_watch');
+});

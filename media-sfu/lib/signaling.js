@@ -1,6 +1,7 @@
 const { verifyToken } = require('./auth');
 const { canView } = require('./authorize');
 const roomsRegistry = require('./rooms');
+const { applyToNewProducer } = require('./micpolicy');
 
 /**
  * The full signaling protocol, adapted directly from ttl10's proven
@@ -112,6 +113,9 @@ async function handleCreateProducer(ws, data) {
         peer.videoProducer = producer;
     } else {
         peer.audioProducer = producer;
+        // Not audible until the game's mic policy says this player may be
+        // heard (fails closed if Laravel can't be asked).
+        await applyToNewProducer(peer);
     }
 
     respond(ws, data.requestId, 'producer-created', { producerId: producer.id, kind: data.kind });

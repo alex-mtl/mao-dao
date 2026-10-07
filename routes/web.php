@@ -114,6 +114,7 @@ Route::middleware('auth')->group(function () {
 // by the `auth` guard, so it deliberately sits outside every other Mafia
 // route's middleware group.
 Route::get('/internal/mafia/can-view', [MafiaController::class, 'canView'])->name('internal.mafia.can-view');
+Route::get('/internal/mafia/mic-policy', [MafiaController::class, 'micPolicy'])->name('internal.mafia.mic-policy');
 
 // Guest-accessible: an invitation link must work without an account. Race
 // identity here is a session-stored token (see ResolveRacePlayer), not the

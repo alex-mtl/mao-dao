@@ -39,6 +39,14 @@ function otherPeers(roomCode, exceptPlayerId) {
     return [...r.values()].filter((peer) => peer.playerId !== exceptPlayerId);
 }
 
+function peersOf(roomCode) {
+    return [...(rooms.get(roomCode)?.values() ?? [])];
+}
+
+function roomCodes() {
+    return [...rooms.keys()];
+}
+
 /**
  * Finds whichever peer in the room currently owns a producer with this
  * id — rooms are at most 10 peers, so a plain scan is simpler and
@@ -57,4 +65,4 @@ function findPeerByProducerId(roomCode, producerId) {
     return null;
 }
 
-module.exports = { addPeer, removePeer, getPeer, otherPeers, findPeerByProducerId };
+module.exports = { addPeer, removePeer, getPeer, otherPeers, peersOf, roomCodes, findPeerByProducerId };

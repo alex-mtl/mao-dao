@@ -549,6 +549,7 @@ class MafiaGameEngine
         ]);
 
         MafiaGameOver::dispatch($room->fresh());
+        app(MediaSfuNotifier::class)->refreshMics($room->fresh());
     }
 
     // ---- shared helpers ---------------------------------------------------
@@ -570,6 +571,7 @@ class MafiaGameEngine
 
         if ($dispatch) {
             MafiaPhaseChanged::dispatch($room->fresh());
+            app(MediaSfuNotifier::class)->refreshMics($room->fresh());
         }
     }
 

@@ -172,6 +172,46 @@ class MafiaRoom extends Model
     }
 
     /**
+     * Who may be *heard* right now (as opposed to canPlayerView(), which is
+     * about who may be *seen*). Mirrors ttl10, where the server pauses
+     * everyone's audio producer except the player who currently holds the
+     * floor — listeners just receive silence from a paused producer, so a
+     * modified client can't talk out of turn.
+     *
+     * - lobby / game_over: everyone talks freely.
+     * - day, while someone has the floor (their speaking turn, a last
+     *   word, a defense speech): only that player.
+     * - everything else (sitdown, voting, every night phase, ...): nobody.
+     *
+     * @return array{mode: 'all'|'none'|'only', playerIds: list<int>}
+     */
+    public function micPolicy(): array
+    {
+        if (in_array($this->status, ['lobby', 'game_over'], true)) {
+            return ['mode' => 'all', 'playerIds' => []];
+        }
+
+        if ($this->status === 'day') {
+            $state = $this->dayState();
+
+            $speakerId = match ($this->stage) {
+                'speaking' => isset($state['speaking_order'][0])
+                    ? $this->players()->where('slot', $state['speaking_order'][0])->value('id')
+                    : null,
+                'last_speech', 'morning_speech' => $state['current_elimination'] ?? null,
+                'defense_speech' => $state['defense_queue'][0] ?? null,
+                default => null,
+            };
+
+            if ($speakerId) {
+                return ['mode' => 'only', 'playerIds' => [(int) $speakerId]];
+            }
+        }
+
+        return ['mode' => 'none', 'playerIds' => []];
+    }
+
+    /**
      * A short, verbally-shareable code: uppercase only, excluding
      * characters easily confused when read aloud or handwritten
      * (O/0, I/1/L) — identical convention to RaceRoom::generateUniqueRoomCode().

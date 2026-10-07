@@ -10,6 +10,7 @@ use App\Events\Mafia\MafiaSignalReceived;
 use App\Models\MafiaAction;
 use App\Models\MafiaPlayer;
 use App\Models\MafiaRoom;
+use App\Services\Mafia\MediaSfuNotifier;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -83,6 +84,23 @@ class MafiaController extends Controller
         return response()->json([
             'canView' => (bool) ($room && $viewer && $target && $room->canPlayerView($viewer, $target)),
         ]);
+    }
+
+    /**
+     * Server-to-server only, same shared-secret protection as canView():
+     * the media-sfu sidecar asks who may currently be heard in a room and
+     * pauses everyone else's audio producer accordingly. An unknown room
+     * answers "nobody" (fail closed).
+     */
+    public function micPolicy(Request $request): JsonResponse
+    {
+        $expected = (string) config('mafia.media_shared_secret');
+        $given = (string) $request->header('X-Media-Sfu-Secret', '');
+        abort_unless($expected !== '' && hash_equals($expected, $given), 403);
+
+        $room = MafiaRoom::where('room_code', strtoupper((string) $request->query('room')))->first();
+
+        return response()->json($room ? $room->micPolicy() : ['mode' => 'none', 'playerIds' => []]);
     }
 
     /**
@@ -718,6 +736,7 @@ class MafiaController extends Controller
         });
 
         MafiaGameStarting::dispatch($room->fresh());
+        app(MediaSfuNotifier::class)->refreshMics($room->fresh());
     }
 
     /**

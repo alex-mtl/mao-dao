@@ -102,4 +102,9 @@ return [
     'media_shared_secret' => env('MEDIA_SFU_SHARED_SECRET'),
     'media_ws_url' => env('MEDIA_SFU_WS_URL', 'ws://127.0.0.1:8381'),
     'media_token_ttl_seconds' => 60,
+    // Where Laravel reaches the sidecar's own HTTP port to nudge it right
+    // after a phase change (so the speaker handoff is instant instead of
+    // waiting for the sidecar's 1s poll). Unset in tests; connection errors
+    // are swallowed, the poll is the safety net.
+    'media_internal_url' => env('MEDIA_SFU_INTERNAL_URL', env('APP_ENV') === 'testing' ? null : 'http://127.0.0.1:8381'),
 ];

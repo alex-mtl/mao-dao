@@ -4,6 +4,7 @@ const http = require('http');
 const mediasoup = require('mediasoup');
 const { WebSocketServer } = require('ws');
 const { dispatch, handleClose } = require('./lib/signaling');
+const { refreshRoom, startPolling } = require('./lib/micpolicy');
 
 const PORT = Number(process.env.PORT) || 8381;
 
@@ -38,6 +39,36 @@ async function main() {
     });
 
     const httpServer = http.createServer((req, res) => {
+        // Laravel nudges us right after a phase change so the speaker
+        // handoff is instant (the poll below is only the safety net).
+        if (req.method === 'POST' && req.url === '/internal/refresh-mics') {
+            let body = '';
+            req.on('data', (chunk) => {
+                body += chunk;
+                if (body.length > 4096) {
+                    req.destroy();
+                }
+            });
+            req.on('end', () => {
+                const authorized = process.env.SHARED_SECRET
+                    && req.headers['x-media-sfu-secret'] === process.env.SHARED_SECRET;
+                if (!authorized) {
+                    res.writeHead(403).end();
+                    return;
+                }
+                try {
+                    const { room } = JSON.parse(body || '{}');
+                    if (typeof room === 'string' && room !== '') {
+                        refreshRoom(room).catch((error) => console.error('refresh-mics failed:', error));
+                    }
+                    res.writeHead(202).end();
+                } catch {
+                    res.writeHead(400).end();
+                }
+            });
+            return;
+        }
+
         res.writeHead(200, { 'Content-Type': 'text/plain' });
         res.end('mafia-media-sfu ok');
     });
@@ -96,6 +127,8 @@ async function main() {
 
         ws.on('close', () => handleClose(ws));
     });
+
+    startPolling();
 
     httpServer.listen(PORT, () => {
         console.log(`mafia-media-sfu listening on :${PORT}`);
