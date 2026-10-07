@@ -90,6 +90,8 @@ return [
     'action_vote' => 'голосовать за',
     'action_shoot' => 'выстрелить в',
     'action_check' => 'проверить',
+    'action_sit' => 'сесть на',
+    'pick_a_seat_hint' => 'Нажмите на свободное место, чтобы сесть. Игра начнётся автоматически, когда все будут готовы.',
     'seat_action_label' => 'Нажмите, чтобы :action место :slot',
 
     'day_label' => 'День :day',

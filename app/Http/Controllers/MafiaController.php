@@ -263,8 +263,50 @@ class MafiaController extends Controller
             ],
             'isGameHost' => $player->is_game_host,
             'isReady' => $player->is_ready,
+            'myPlayerId' => $player->id,
             'inviteUrl' => route('mafia.show', $room->room_code),
         ]);
+    }
+
+    /**
+     * Moves the player to another free seat while the room is still in
+     * the lobby. A taken seat (including losing a race to another player
+     * clicking the same one) is a benign no-op — the broadcast/redirect
+     * resync shows the real occupancy. Ready state and host role stay with
+     * the player, not the seat.
+     */
+    public function seat(Request $request): RedirectResponse
+    {
+        $room = $request->attributes->get('mafiaRoom');
+        $player = $request->attributes->get('mafiaPlayer');
+
+        abort_unless($player, 403);
+
+        if ($room->status !== 'lobby') {
+            return redirect()->route('mafia.play', $room->room_code);
+        }
+
+        $validated = $request->validate([
+            'slot' => ['required', 'integer', 'between:1,'.config('mafia.seats')],
+        ]);
+
+        $moved = DB::transaction(function () use ($room, $player, $validated) {
+            $taken = $room->players()->where('slot', $validated['slot'])->lockForUpdate()->exists();
+
+            if ($taken) {
+                return false;
+            }
+
+            $player->update(['slot' => $validated['slot']]);
+
+            return true;
+        });
+
+        if ($moved) {
+            MafiaLobbyUpdated::dispatch($room->fresh());
+        }
+
+        return redirect()->route('mafia.lobby', $room->room_code);
     }
 
     /**

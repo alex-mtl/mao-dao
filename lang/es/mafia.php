@@ -90,6 +90,8 @@ return [
     'action_vote' => 'votar por',
     'action_shoot' => 'disparar a',
     'action_check' => 'comprobar',
+    'action_sit' => 'sentarte en',
+    'pick_a_seat_hint' => 'Toca un asiento libre para sentarte. La partida empieza automáticamente cuando todos estén listos.',
     'seat_action_label' => 'Toca para :action el asiento :slot',
 
     'day_label' => 'Día :day',

@@ -92,6 +92,8 @@ return [
     'action_vote' => 'vote for',
     'action_shoot' => 'shoot',
     'action_check' => 'check',
+    'action_sit' => 'sit at',
+    'pick_a_seat_hint' => 'Tap a free seat to sit there. The game starts automatically once everyone is ready.',
     'seat_action_label' => 'Tap to :action seat :slot',
 
     'day_label' => 'Day :day',

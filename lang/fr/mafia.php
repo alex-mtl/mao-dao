@@ -90,6 +90,8 @@ return [
     'action_vote' => 'voter pour',
     'action_shoot' => 'tirer sur',
     'action_check' => 'vérifier',
+    'action_sit' => 'vous asseoir sur',
+    'pick_a_seat_hint' => "Touchez un siège libre pour vous y asseoir. La partie démarre automatiquement dès que tout le monde est prêt.",
     'seat_action_label' => 'Touchez pour :action le siège :slot',
 
     'day_label' => 'Jour :day',

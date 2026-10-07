@@ -48,6 +48,7 @@ const ACTION_MATERIAL_NAMES = {
     vote: 'crop_free',
     shoot: 'motion_sensor_active',
     check: 'visibility_lock',
+    sit: 'event_seat',
 };
 
 const ACTION_RING_COLORS = {
@@ -55,6 +56,7 @@ const ACTION_RING_COLORS = {
     vote: 'ring-warning-400',
     shoot: 'ring-danger-400',
     check: 'ring-secondary-400',
+    sit: 'ring-primary-400',
 };
 
 const ACTION_ICON_COLORS = {
@@ -62,6 +64,7 @@ const ACTION_ICON_COLORS = {
     vote: 'text-warning-300',
     shoot: 'text-danger-300',
     check: 'text-secondary-300',
+    sit: 'text-primary-300',
 };
 
 // Past check results (plan §2.4's "optional" row, done in Phase 7) — only
@@ -227,6 +230,21 @@ export default function VideoSeat({ seat, isSpeaking = false, stream = null, cla
                     )}
                     <span className="sr-only">{t(`mafia.role_${seat.visibleRole}`)}</span>
                 </span>
+            )}
+
+            {seat.lobbyBadges && !roleType && (seat.lobbyBadges.host || seat.lobbyBadges.ready) && (
+                <div className="absolute left-1 top-1 flex flex-col items-start gap-[var(--seat-icon-pad)]">
+                    {seat.lobbyBadges.host && (
+                        <span className="rounded-full bg-primary-600 px-[var(--seat-badge-pad-x)] py-[var(--seat-badge-pad-y)] text-[length:var(--seat-badge-text)] font-semibold leading-none text-white">
+                            {t('mafia.game_host_badge')}
+                        </span>
+                    )}
+                    {seat.lobbyBadges.ready && (
+                        <span className="rounded-full bg-success-600 px-[var(--seat-badge-pad-x)] py-[var(--seat-badge-pad-y)] text-[length:var(--seat-badge-text)] font-semibold leading-none text-white">
+                            {t('mafia.ready_badge')}
+                        </span>
+                    )}
+                </div>
             )}
 
             {checkBadge && (

@@ -259,3 +259,77 @@ test('a non-host player leaving the lobby does not cancel the room', function ()
     expect($room->players()->count())->toBe(1);
     expect($room->players()->first()->user_id)->toBe($host->id);
 });
+
+function lobbyWithTwoPlayers(): array
+{
+    $host = User::factory()->create();
+    $guest = User::factory()->create();
+
+    test()->actingAs($host)->post('/mafia/rooms');
+    $room = MafiaRoom::firstOrFail();
+    test()->actingAs($guest)->post("/mafia/{$room->room_code}/join");
+
+    return [$room, $host, $guest];
+}
+
+test('a player can move to a free seat and the lobby is rebroadcast', function () {
+    [$room, , $guest] = lobbyWithTwoPlayers();
+    Event::fake([MafiaLobbyUpdated::class]);
+
+    $this->actingAs($guest)->post("/mafia/{$room->room_code}/seat", ['slot' => 7])
+        ->assertRedirect(route('mafia.lobby', $room->room_code));
+
+    expect($room->players()->where('user_id', $guest->id)->first()->slot)->toBe(7);
+    Event::assertDispatched(MafiaLobbyUpdated::class);
+});
+
+test('moving seats keeps the ready flag and the game-host role', function () {
+    [$room, $host] = lobbyWithTwoPlayers();
+    $this->actingAs($host)->post("/mafia/{$room->room_code}/ready");
+
+    $this->actingAs($host)->post("/mafia/{$room->room_code}/seat", ['slot' => 4]);
+
+    $player = $room->players()->where('user_id', $host->id)->first();
+    expect($player->slot)->toBe(4);
+    expect($player->is_ready)->toBeTrue();
+    expect($player->is_game_host)->toBeTrue();
+});
+
+test('taking an occupied seat changes nothing', function () {
+    [$room, , $guest] = lobbyWithTwoPlayers();
+
+    $this->actingAs($guest)->post("/mafia/{$room->room_code}/seat", ['slot' => 1]);
+
+    expect($room->players()->where('user_id', $guest->id)->first()->slot)->toBe(2);
+    expect($room->players()->where('slot', 1)->count())->toBe(1);
+});
+
+test('the seat number must be within the table', function () {
+    [$room, , $guest] = lobbyWithTwoPlayers();
+
+    $this->actingAs($guest)->post("/mafia/{$room->room_code}/seat", ['slot' => 11])->assertSessionHasErrors('slot');
+    $this->actingAs($guest)->post("/mafia/{$room->room_code}/seat", ['slot' => 0])->assertSessionHasErrors('slot');
+
+    expect($room->players()->where('user_id', $guest->id)->first()->slot)->toBe(2);
+});
+
+test('seats cannot be changed once the game has started, or by outsiders', function () {
+    [$room, , $guest] = lobbyWithTwoPlayers();
+    $outsider = User::factory()->create();
+
+    $this->actingAs($outsider)->post("/mafia/{$room->room_code}/seat", ['slot' => 5])->assertForbidden();
+
+    $room->update(['status' => 'day']);
+    $this->actingAs($guest)->post("/mafia/{$room->room_code}/seat", ['slot' => 5])
+        ->assertRedirect(route('mafia.play', $room->room_code));
+
+    expect($room->players()->where('user_id', $guest->id)->first()->slot)->toBe(2);
+});
+
+test('the lobby page tells the client which player is the viewer', function () {
+    [$room, , $guest] = lobbyWithTwoPlayers();
+
+    $props = $this->actingAs($guest)->get("/mafia/{$room->room_code}/lobby")->assertOk()->viewData('page')['props'];
+
+    expect($props['myPlayerId'])->toBe($room->players()->where('user_id', $guest->id)->first()->id);
+});

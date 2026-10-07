@@ -90,6 +90,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/mafia/{code}', [MafiaController::class, 'show'])->name('mafia.show');
     Route::post('/mafia/{code}/join', [MafiaController::class, 'join'])->name('mafia.join');
     Route::get('/mafia/{code}/lobby', [MafiaController::class, 'lobby'])->middleware('mafia.player')->name('mafia.lobby');
+    Route::post('/mafia/{code}/seat', [MafiaController::class, 'seat'])->middleware('mafia.player')->name('mafia.seat');
     Route::post('/mafia/{code}/ready', [MafiaController::class, 'ready'])->middleware('mafia.player')->name('mafia.ready');
     Route::get('/mafia/{code}/play', [MafiaController::class, 'play'])->middleware('mafia.player')->name('mafia.play');
     Route::get('/mafia/{code}/state', [MafiaController::class, 'state'])->middleware('mafia.player')->name('mafia.state');
