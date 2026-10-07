@@ -2,6 +2,27 @@ import { useEffect, useRef } from 'react';
 import Avatar from '@/Components/Avatar';
 
 /**
+ * The "nobody here" mark for a free (or dummy) seat: a big filled circle
+ * with a bold "?" that fills most of its height. The circle is ~6x the
+ * area of the small initials avatar used for seated players (diameter
+ * ~2.45x). Its size comes from `--seat-empty-mark` (a vw-based clamp set
+ * by GameSeatGrid, like every other seat element) and is capped at 80% of
+ * the seat so it still fits on a narrow phone seat. It is its own size container, so the glyph can be
+ * sized in `cqh` (a share of the circle's own height) rather than in
+ * fixed units — the "?" stays proportional at every seat size.
+ */
+function EmptySeatMark() {
+    return (
+        <span
+            aria-hidden="true"
+            className="flex aspect-square w-[min(var(--seat-empty-mark),80%)] items-center justify-center rounded-full bg-primary-100 text-primary-700 ring-2 ring-surface [container-type:size]"
+        >
+            <span className="font-heading font-extrabold leading-none text-[length:112cqh]">?</span>
+        </span>
+    );
+}
+
+/**
  * Renders a live stream if one is available for this seat, falling back
  * to the same avatar-tile look the rest of the app uses when it isn't
  * (no camera enabled, or the current phase doesn't authorize seeing this
@@ -33,7 +54,7 @@ export default function VideoTile({ stream, name, muted = false, mirrored = fals
     if (!stream) {
         return (
             <div className={`flex items-center justify-center ${className}`}>
-                <Avatar name={name} size="sm" />
+                {name ? <Avatar name={name} size="sm" /> : <EmptySeatMark />}
             </div>
         );
     }
