@@ -49,7 +49,6 @@ const ACTION_MATERIAL_NAMES = {
     vote: 'crop_free',
     shoot: 'motion_sensor_active',
     check: 'visibility_lock',
-    sit: 'event_seat',
 };
 
 const ACTION_RING_COLORS = {
@@ -65,7 +64,6 @@ const ACTION_ICON_COLORS = {
     vote: 'text-warning-300',
     shoot: 'text-danger-300',
     check: 'text-secondary-300',
-    sit: 'text-primary-300',
 };
 
 // Past check results (plan §2.4's "optional" row, done in Phase 7) — only
@@ -223,14 +221,19 @@ export default function VideoSeat({ seat, isSpeaking = false, stream = null, cla
                     } ${
                         action.disabled
                             ? 'cursor-not-allowed bg-ink-900/50 ring-2 ring-warm-400/40'
-                            : `cursor-pointer bg-ink-900/10 ring-2 hover:bg-ink-900/30 ${ACTION_RING_COLORS[action.type]}`
+                            : `cursor-pointer ring-2 ${action.type === 'sit' ? 'hover:bg-white/15' : 'bg-ink-900/10 hover:bg-ink-900/30'} ${ACTION_RING_COLORS[action.type]}`
                     } ${action.isCurrentPick ? 'ring-4 ring-success-400' : ''}`}
                 >
-                    <MaterialIcon
-                        name={ACTION_MATERIAL_NAMES[action.type]}
-                        className={`text-[length:var(--seat-action-icon)] drop-shadow-lg ${action.disabled ? 'text-warm-300' : ACTION_ICON_COLORS[action.type]}`}
-                        style={{ fontVariationSettings: "'FILL' 1, 'wght' 700" }}
-                    />
+                    {/* "Sit here" has no icon on purpose: the empty seat's
+                        question-mark avatar already says "free", and the
+                        highlighted ring + hover fill make it tappable. */}
+                    {action.type !== 'sit' && (
+                        <MaterialIcon
+                            name={ACTION_MATERIAL_NAMES[action.type]}
+                            className={`text-[length:var(--seat-action-icon)] drop-shadow-lg ${action.disabled ? 'text-warm-300' : ACTION_ICON_COLORS[action.type]}`}
+                            style={{ fontVariationSettings: "'FILL' 1, 'wght' 700" }}
+                        />
+                    )}
                 </button>
             )}
 
