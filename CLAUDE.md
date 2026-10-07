@@ -851,6 +851,21 @@ rather than by Claude logging in.
 > and rooms stored as JSON, so they cannot serve this Laravel app; this
 > sidecar speaks the same protocol but validates Laravel-signed tokens.
 
+> **Lessons from getting live video working (2026-10-07):**
+> - `PUBLIC_IP` in `media-sfu/.env` must be the server's real public IP
+>   (`curl checkip.amazonaws.com`; here `44.249.201.8`, same as the domain's
+>   A record). A wrong value still lets signaling connect (it goes via the
+>   domain) but no media ever flows; the symptom is "everyone sees only
+>   themselves". The sidecar's can-view calls returning 200 in nginx's access
+>   log prove authorization works, so look at the announced IP / UDP next.
+> - nginx's `proxy_read_timeout 60s` on `/media-sfu/` closes a quiet
+>   WebSocket after a minute, and the sidecar then tears the peer down.
+>   `media-sfu/server.js` now pings every client every 25s (heartbeat) to keep
+>   it open — keep that if the server is ever rewritten.
+> - Restarting `quiz-media-sfu` drops every live call, and the page does not
+>   reconnect on its own (a manual reload is needed). Don't restart it while
+>   someone is testing without warning them.
+
 
 The plan's §3.1 #1 decision point (ship without video first, add it once
 the core game is validated) resolved to "build it" once the user said to
