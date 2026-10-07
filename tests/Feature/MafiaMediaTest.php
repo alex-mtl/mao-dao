@@ -133,3 +133,13 @@ test('canPlayerView reunites the whole table, alive or dead, once the game is ov
     expect($room->canPlayerView($players[1]->fresh(), $players[2]->fresh()))->toBeTrue();
     expect($room->canPlayerView($players[1]->fresh(), $players[1]->fresh()))->toBeFalse();
 });
+
+test('canPlayerView lets everyone seated see each other in the lobby, before any roles exist', function () {
+    $room = mediaRoomWithPlayers([1 => 'citizen', 2 => 'mafia'], status: 'lobby');
+    $players = $room->players()->orderBy('slot')->get()->keyBy('slot');
+    $room->players()->update(['role' => null]);
+
+    expect($room->fresh()->canPlayerView($players[1]->fresh(), $players[2]->fresh()))->toBeTrue();
+    expect($room->fresh()->canPlayerView($players[2]->fresh(), $players[1]->fresh()))->toBeTrue();
+    expect($room->fresh()->canPlayerView($players[1]->fresh(), $players[1]->fresh()))->toBeFalse();
+});

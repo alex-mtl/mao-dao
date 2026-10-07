@@ -218,11 +218,11 @@ export default function Play({ code, snapshot }) {
                 : null;
         }
 
-        return media.remoteStreams[seat.slot]
+        return media.remoteStreams[seat.id]
             ? {
                 type: 'volume',
-                volume: remoteVolumes[seat.slot] ?? 1,
-                onVolumeChange: (value) => setRemoteVolumes((prev) => ({ ...prev, [seat.slot]: value })),
+                volume: remoteVolumes[seat.id] ?? 1,
+                onVolumeChange: (value) => setRemoteVolumes((prev) => ({ ...prev, [seat.id]: value })),
             }
             : null;
     };

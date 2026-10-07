@@ -166,7 +166,7 @@ class MafiaRoom extends Model
 
         return match (true) {
             in_array($this->status, ['sitdown', 'night', 'shooting'], true) => $bothBlackTeam,
-            $this->status === 'day' => true,
+            in_array($this->status, ['lobby', 'day'], true) => true,
             default => false,
         };
     }

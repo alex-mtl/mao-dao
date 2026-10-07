@@ -1,7 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import GameSeatGrid from '@/Components/Mafia/GameSeatGrid';
+import MediaSettingsModal from '@/Components/Mafia/MediaSettingsModal';
 import useMafiaChannel from '@/hooks/useMafiaChannel';
+import useMafiaMedia from '@/hooks/useMafiaMedia';
+import useMirroredPreview from '@/hooks/useMirroredPreview';
 import { Head, router } from '@inertiajs/react';
 import { useLaravelReactI18n } from 'laravel-react-i18n';
 import { CheckIcon, ClipboardDocumentIcon, ShareIcon } from '@heroicons/react/24/outline';
@@ -27,16 +30,55 @@ export default function Lobby({ room, snapshot, myPlayerId, inviteUrl }) {
 
     const [busy, setBusy] = useState(false);
     const [copied, setCopied] = useState(false);
+    const [mirrored, toggleMirrored] = useMirroredPreview();
+    const [mediaSettingsOpen, setMediaSettingsOpen] = useState(false);
+    const [applyingMediaSettings, setApplyingMediaSettings] = useState(false);
+    const [remoteVolumes, setRemoteVolumes] = useState({});
+    const media = useMafiaMedia(room.code);
 
     const me = state.players.find((p) => p.id === myPlayerId);
     const isReady = !!me?.isReady;
 
-    const post = (name, data = {}) => {
-        setBusy(true);
-        router.post(route(name, room.code), data, { preserveScroll: true, onFinish: () => setBusy(false) });
+    // Taking a seat turns the camera and microphone on (the browser's own
+    // permission/device check happens inside connect()). Everyone in the
+    // lobby is already seated, so this runs once on arrival; picking
+    // another seat below retries it if it didn't connect (e.g. permission
+    // was denied or no device was found the first time). Guarded by
+    // `media.error` so a denial doesn't re-prompt on every render.
+    useEffect(() => {
+        if (me && !media.enabled && !media.connecting && !media.error) {
+            media.connect();
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [Boolean(me)]);
+
+    const applyMediaSettings = async (devices) => {
+        setApplyingMediaSettings(true);
+        try {
+            await media.switchDevices(devices);
+            setMediaSettingsOpen(false);
+        } finally {
+            setApplyingMediaSettings(false);
+        }
     };
 
-    const sit = (slot) => post('mafia.seat', { slot });
+    const post = (name, data = {}) => {
+        setBusy(true);
+        router.post(route(name, room.code), data, {
+            preserveScroll: true,
+            // Keeps the page (and with it the live camera/mic connection)
+            // mounted across seat/ready actions instead of remounting it.
+            preserveState: true,
+            onFinish: () => setBusy(false),
+        });
+    };
+
+    const sit = (slot) => {
+        if (!media.enabled && !media.connecting) {
+            media.connect();
+        }
+        post('mafia.seat', { slot });
+    };
     const toggleReady = () => post('mafia.ready');
     const leaveRoom = () => post('mafia.leave');
 
@@ -63,13 +105,39 @@ export default function Lobby({ room, snapshot, myPlayerId, inviteUrl }) {
         const player = bySlot.get(slot);
 
         if (player) {
+            const isYou = player.id === myPlayerId;
+            let mediaControls = null;
+
+            if (isYou && media.enabled) {
+                // Mic/cam on-off is allowed in the lobby (ttl10 gates it to
+                // lobby + post-game only), alongside mirror and device settings.
+                mediaControls = {
+                    type: 'self',
+                    canToggleMicCam: true,
+                    micEnabled: media.micEnabled,
+                    camEnabled: media.camEnabled,
+                    mirrored,
+                    onToggleMic: media.toggleMic,
+                    onToggleCam: media.toggleCam,
+                    onToggleMirror: toggleMirrored,
+                    onOpenSettings: () => setMediaSettingsOpen(true),
+                };
+            } else if (!isYou && media.remoteStreams[player.id]) {
+                mediaControls = {
+                    type: 'volume',
+                    volume: remoteVolumes[player.id] ?? 1,
+                    onVolumeChange: (value) => setRemoteVolumes((prev) => ({ ...prev, [player.id]: value })),
+                };
+            }
+
             return {
                 id: player.id,
                 slot,
                 name: player.name,
                 status: 'alive',
-                isYou: player.id === myPlayerId,
+                isYou,
                 lobbyBadges: { host: player.isGameHost, ready: player.isReady },
+                mediaControls,
             };
         }
 
@@ -90,6 +158,8 @@ export default function Lobby({ room, snapshot, myPlayerId, inviteUrl }) {
                 <GameSeatGrid
                     seats={seats}
                     currentSpeakerSlot={null}
+                    localStream={media.localStream}
+                    remoteStreams={media.remoteStreams}
                     infoPanel={
                         <div className="flex h-full w-full flex-col items-center justify-center gap-[var(--info-menu-pad)] overflow-y-auto rounded-lg border border-warm-200 bg-surface p-2 text-center">
                             <p className="text-[length:var(--info-label)] font-semibold uppercase tracking-wide text-ink-500">
@@ -131,6 +201,23 @@ export default function Lobby({ room, snapshot, myPlayerId, inviteUrl }) {
                                 {t('mafia.pick_a_seat_hint')}
                             </p>
 
+                            {(media.error || (!media.enabled && !media.connecting)) && (
+                                <div className="flex flex-col items-center gap-1" role="alert">
+                                    {media.error && (
+                                        <p className="text-[length:var(--info-label)] text-danger-600">
+                                            {t(`mafia.media_error_${media.error}`)}
+                                        </p>
+                                    )}
+                                    <button
+                                        type="button"
+                                        onClick={media.connect}
+                                        className={`${BUTTON_BASE} border border-warm-300 bg-surface text-ink-700 hover:bg-warm-50`}
+                                    >
+                                        {t('mafia.camera_enable_button')}
+                                    </button>
+                                </div>
+                            )}
+
                             <div className="flex w-full max-w-sm flex-wrap justify-center gap-1">
                                 <button
                                     type="button"
@@ -153,6 +240,15 @@ export default function Lobby({ room, snapshot, myPlayerId, inviteUrl }) {
                     }
                 />
             </div>
+
+            {/* Mounted only while open — see MediaSettingsModal's docblock. */}
+            {mediaSettingsOpen && (
+                <MediaSettingsModal
+                    onApply={applyMediaSettings}
+                    onClose={() => setMediaSettingsOpen(false)}
+                    applying={applyingMediaSettings}
+                />
+            )}
         </AuthenticatedLayout>
     );
 }

@@ -35,6 +35,7 @@ export default function useMafiaMedia(code) {
     const videoProducerRef = useRef(null);
     const pendingRequestsRef = useRef({});
     const consumedProducerIdsRef = useRef(new Set());
+    const localStreamRef = useRef(null);
 
     const sendRequest = useCallback((data, timeoutMs = 8000) => {
         return new Promise((resolve, reject) => {
@@ -58,7 +59,7 @@ export default function useMafiaMedia(code) {
         });
     }, []);
 
-    const consumeProducer = useCallback(async ({ slot, kind, producerId }) => {
+    const consumeProducer = useCallback(async ({ playerId, kind, producerId }) => {
         if (consumedProducerIdsRef.current.has(producerId)) {
             return;
         }
@@ -104,9 +105,9 @@ export default function useMafiaMedia(code) {
             });
 
             setRemoteStreams((prev) => {
-                const stream = prev[slot] instanceof MediaStream ? prev[slot] : new MediaStream();
+                const stream = prev[playerId] instanceof MediaStream ? prev[playerId] : new MediaStream();
                 stream.addTrack(consumer.track);
-                return { ...prev, [slot]: stream };
+                return { ...prev, [playerId]: stream };
             });
         } catch {
             // A single failed consume (peer left mid-request, transport
@@ -134,6 +135,7 @@ export default function useMafiaMedia(code) {
                 audio: true,
             });
             setLocalStream(stream);
+            localStreamRef.current = stream;
 
             const ws = new WebSocket(wsUrl);
             wsRef.current = ws;
@@ -207,7 +209,7 @@ export default function useMafiaMedia(code) {
                 if (data.type === 'peer-left') {
                     setRemoteStreams((prev) => {
                         const next = { ...prev };
-                        delete next[data.slot];
+                        delete next[data.playerId];
                         return next;
                     });
                 }
@@ -297,6 +299,7 @@ export default function useMafiaMedia(code) {
         }
 
         localStream?.getTracks().forEach((track) => track.stop());
+        localStreamRef.current = newStream;
         setLocalStream(newStream);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [localStream]);
@@ -307,6 +310,9 @@ export default function useMafiaMedia(code) {
         wsRef.current?.close();
         producerTransportRef.current?.close();
         consumerTransportRef.current?.close();
+        // Release the camera/mic itself too — otherwise the browser's
+        // "camera in use" indicator stays lit after leaving the page.
+        localStreamRef.current?.getTracks().forEach((track) => track.stop());
     }, []);
 
     return {

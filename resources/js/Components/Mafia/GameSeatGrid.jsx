@@ -113,7 +113,7 @@ export default function GameSeatGrid({ seats, currentSpeakerSlot, localStream = 
                     key={seat.id}
                     seat={seat}
                     isSpeaking={seat.slot === currentSpeakerSlot}
-                    stream={seat.isYou ? localStream : (remoteStreams[seat.slot] ?? null)}
+                    stream={seat.isYou ? localStream : (remoteStreams[seat.id] ?? null)}
                 />
             ))}
             <div style={{ gridArea: 'info' }} className="flex h-full w-full items-stretch justify-stretch">
