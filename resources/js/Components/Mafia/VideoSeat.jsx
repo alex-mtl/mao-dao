@@ -95,9 +95,11 @@ const CHECK_BADGE_LABEL_KEYS = {
 };
 
 /**
- * Bottom-left tag: the player's profile photo (if they have one) in a
- * circle 1.5x as tall as the nickname pill, then the pill — on one row,
- * centred on the same horizontal line. Sizes come from the grid's vw-based
+ * Bottom-left tag. The nickname pill always sits in the same corner spot,
+ * with or without a photo. A player's profile photo is a circle 1.5x as
+ * tall as the pill, left-aligned above it, whose lower part tucks behind
+ * the pill — so the nickname is drawn on top of the photo while most of
+ * the photo stays visible. Sizes come from the grid's vw-based
  * `--seat-name-*` variables. A photo that fails to load is simply left out.
  */
 function SeatNameTag({ name, avatarUrl }) {
@@ -105,17 +107,17 @@ function SeatNameTag({ name, avatarUrl }) {
     const showPhoto = Boolean(avatarUrl) && !photoFailed;
 
     return (
-        <div className="absolute bottom-1 left-1 flex max-w-[85%] items-center gap-[var(--seat-name-pad-y)]">
+        <div className="absolute inset-x-1 bottom-1">
             {showPhoto && (
                 <img
                     src={avatarUrl}
                     alt=""
                     aria-hidden="true"
                     onError={() => setPhotoFailed(true)}
-                    className="h-[var(--seat-name-avatar)] w-[var(--seat-name-avatar)] shrink-0 rounded-full object-cover ring-2 ring-white/70"
+                    className="absolute left-0 bottom-[calc(var(--seat-name-height)*0.6)] h-[var(--seat-name-avatar)] w-[var(--seat-name-avatar)] rounded-full object-cover ring-2 ring-white/70"
                 />
             )}
-            <span className="min-w-0 truncate rounded-full bg-ink-900/60 px-[var(--seat-name-pad-x)] py-[var(--seat-name-pad-y)] text-[length:var(--seat-name-text)] font-medium leading-[1.5] text-white">
+            <span className="relative block w-fit max-w-[75%] truncate rounded-full bg-ink-900/60 px-[var(--seat-name-pad-x)] py-[var(--seat-name-pad-y)] text-[length:var(--seat-name-text)] font-medium leading-[1.5] text-white">
                 {name}
             </span>
         </div>
