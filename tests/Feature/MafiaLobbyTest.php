@@ -212,7 +212,7 @@ test('joining a non-existent room code shows the not-found state', function () {
     $response->assertInertia(fn ($page) => $page->component('Mafia/Join')->where('state', 'not_found'));
 });
 
-test('visiting a full room shows the full state', function () {
+test('visiting a full room lets you watch it instead of hitting a dead end', function () {
     $room = MafiaRoom::factory()->create();
     for ($slot = 1; $slot <= config('mafia.seats'); $slot++) {
         $room->players()->create(['user_id' => User::factory()->create()->id, 'slot' => $slot, 'joined_at' => now()]);
@@ -221,7 +221,7 @@ test('visiting a full room shows the full state', function () {
     $visitor = User::factory()->create();
     $response = $this->actingAs($visitor)->get("/mafia/{$room->room_code}");
 
-    $response->assertInertia(fn ($page) => $page->component('Mafia/Join')->where('state', 'full'));
+    $response->assertRedirect(route('mafia.watch', $room->room_code));
 });
 
 test('a user already seated visiting the show page is redirected straight to the lobby', function () {

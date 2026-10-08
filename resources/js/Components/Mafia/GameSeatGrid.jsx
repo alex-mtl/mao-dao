@@ -82,6 +82,8 @@ export default function GameSeatGrid({
                 // on a taken one): ~6x the area of the old small avatar at
                 // a typical desktop width, scaled by vw.
                 '--seat-avatar': 'clamp(2.6rem, 6.2vw, 7.5rem)',
+                // The small round avatars in the "spectators" strip.
+                '--spectator-avatar': 'clamp(1rem, 2.4vw, 2.2rem)',
                 '--seat-icon-pad': 'clamp(2px, 0.5vw, 8px)',
                 '--seat-badge-text': 'clamp(0.6rem, 1.8vw, 1.1rem)',
                 '--seat-badge-pad-x': 'clamp(4px, 1.1vw, 10px)',

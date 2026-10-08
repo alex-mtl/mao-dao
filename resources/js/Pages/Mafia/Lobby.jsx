@@ -1,32 +1,45 @@
 import { useEffect, useRef, useState } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import SpectatorLayout from '@/Layouts/SpectatorLayout';
 import GameSeatGrid from '@/Components/Mafia/GameSeatGrid';
 import MediaSettingsModal from '@/Components/Mafia/MediaSettingsModal';
+import SpectatorsStrip from '@/Components/Mafia/SpectatorsStrip';
 import useMafiaChannel from '@/hooks/useMafiaChannel';
 import useMafiaMedia from '@/hooks/useMafiaMedia';
 import useMirroredPreview from '@/hooks/useMirroredPreview';
-import { Head, router } from '@inertiajs/react';
+import useSectionRoutes from '@/hooks/useSectionRoutes';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import { useLaravelReactI18n } from 'laravel-react-i18n';
 import { CheckIcon, ClipboardDocumentIcon, ShareIcon } from '@heroicons/react/24/outline';
 
 const BUTTON_BASE =
     'inline-flex items-center justify-center gap-1 rounded-lg px-[var(--seat-name-pad-x)] py-[var(--seat-name-pad-y)] text-[length:var(--info-sub)] font-semibold transition disabled:opacity-60';
 
-export default function Lobby({ room, snapshot, myPlayerId, inviteUrl }) {
+/**
+ * The room before the game starts. Seated players see it with the full set
+ * of controls (ready, leave, give the seat up, camera/mic). A *spectator* —
+ * anyone with the link, signed in or not — sees the same table without
+ * taking a seat: they can watch and listen, and a signed-in one can tap a
+ * free seat to sit down.
+ */
+export default function Lobby({ room, snapshot, myPlayerId, inviteUrl, spectator = false, canTakeSeat = false }) {
     const { t } = useLaravelReactI18n();
-    const [state] = useMafiaChannel(room.code, snapshot);
+    const { quizRoute } = useSectionRoutes();
+    const Layout = usePage().props.auth.user ? AuthenticatedLayout : SpectatorLayout;
+    const [state] = useMafiaChannel(room.code, snapshot, null, { spectator });
 
-    // The auto-start broadcasts `game.starting`, which every seated player
+    // The auto-start broadcasts `game.starting`, which everyone in the room
     // picks up as a status change — guarded to fire once, same reasoning
     // as Race Mode's Lobby.jsx (this page stays subscribed to the same
-    // channel during the async navigation to /play).
+    // channel during the async navigation). A spectator is sent to the
+    // watch page, a player to their own game page.
     const hasNavigatedToPlay = useRef(false);
     useEffect(() => {
         if (state.status !== 'lobby' && !hasNavigatedToPlay.current) {
             hasNavigatedToPlay.current = true;
-            router.visit(route('mafia.play', room.code));
+            router.visit(route(spectator ? 'mafia.watch' : 'mafia.play', room.code));
         }
-    }, [state.status, room.code]);
+    }, [state.status, room.code, spectator]);
 
     const [busy, setBusy] = useState(false);
     const [copied, setCopied] = useState(false);
@@ -34,23 +47,23 @@ export default function Lobby({ room, snapshot, myPlayerId, inviteUrl }) {
     const [mediaSettingsOpen, setMediaSettingsOpen] = useState(false);
     const [applyingMediaSettings, setApplyingMediaSettings] = useState(false);
     const [remoteVolumes, setRemoteVolumes] = useState({});
-    const media = useMafiaMedia(room.code);
+    const media = useMafiaMedia(room.code, { spectator });
 
     const me = state.players.find((p) => p.id === myPlayerId);
     const isReady = !!me?.isReady;
 
     // Taking a seat turns the camera and microphone on (the browser's own
-    // permission/device check happens inside connect()). Everyone in the
-    // lobby is already seated, so this runs once on arrival; picking
-    // another seat below retries it if it didn't connect (e.g. permission
-    // was denied or no device was found the first time). Guarded by
-    // `media.error` so a denial doesn't re-prompt on every render.
+    // permission/device check happens inside connect()). Everyone seated is
+    // already seated on arrival, so this runs once; picking another seat
+    // below retries it if it didn't connect. A spectator connects too —
+    // listen-only, no camera, no prompt. Guarded by `media.error` so a
+    // denial doesn't re-prompt on every render.
     useEffect(() => {
-        if (me && !media.enabled && !media.connecting && !media.error) {
+        if ((me || spectator) && !media.enabled && !media.connecting && !media.error) {
             media.connect();
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [Boolean(me)]);
+    }, [Boolean(me), spectator]);
 
     const applyMediaSettings = async (devices) => {
         setApplyingMediaSettings(true);
@@ -73,7 +86,20 @@ export default function Lobby({ room, snapshot, myPlayerId, inviteUrl }) {
         });
     };
 
+    // Changing between "player" and "spectator" must start the media
+    // connection over (one sends camera/mic, the other must not), so these
+    // two deliberately let the page remount.
+    const postAndRemount = (name, data = {}) => {
+        setBusy(true);
+        router.post(route(name, room.code), data, { preserveScroll: true, onFinish: () => setBusy(false) });
+    };
+
     const sit = (slot) => {
+        if (spectator) {
+            postAndRemount('mafia.join', { slot });
+
+            return;
+        }
         if (!media.enabled && !media.connecting) {
             media.connect();
         }
@@ -81,6 +107,7 @@ export default function Lobby({ room, snapshot, myPlayerId, inviteUrl }) {
     };
     const toggleReady = () => post('mafia.ready');
     const leaveRoom = () => post('mafia.leave');
+    const releaseSeat = () => postAndRemount('mafia.release-seat');
 
     const copyLink = async () => {
         try {
@@ -133,7 +160,7 @@ export default function Lobby({ room, snapshot, myPlayerId, inviteUrl }) {
                     onToggleMirror: toggleMirrored,
                     onOpenSettings: live ? () => setMediaSettingsOpen(true) : retry,
                 };
-            } else if (!isYou && media.remoteStreams[player.id]) {
+            } else if (media.remoteStreams[player.id]) {
                 mediaControls = {
                     type: 'volume',
                     volume: remoteVolumes[player.id] ?? 1,
@@ -153,17 +180,23 @@ export default function Lobby({ room, snapshot, myPlayerId, inviteUrl }) {
             };
         }
 
+        // A free seat is tappable by a seated player (move there) and by a
+        // signed-in spectator (sit down); a guest can only look.
+        const canSit = spectator ? canTakeSeat : true;
+
         return {
             id: `empty-${slot}`,
             slot,
             name: null,
             status: 'alive',
-            action: { type: 'sit', onClick: () => sit(slot), disabled: busy },
+            action: canSit ? { type: 'sit', onClick: () => sit(slot), disabled: busy } : null,
         };
     });
 
+    const canRelease = !spectator && state.players.length > 1;
+
     return (
-        <AuthenticatedLayout>
+        <Layout>
             <Head title={t('mafia.lobby_title')} />
 
             <div className="relative w-full" style={{ height: 'calc(100vh - 3.5rem)' }}>
@@ -212,7 +245,9 @@ export default function Lobby({ room, snapshot, myPlayerId, inviteUrl }) {
                                 {t('mafia.seats_heading', { count: state.players.length, max: room.seats })}
                             </p>
                             <p className="hidden text-[length:var(--info-label)] text-ink-400 [@media(min-height:760px)]:block">
-                                {t('mafia.pick_a_seat_hint')}
+                                {spectator
+                                    ? t(canTakeSeat ? 'mafia.spectator_lobby_hint' : 'mafia.spectator_guest_hint')
+                                    : t('mafia.pick_a_seat_hint')}
                             </p>
 
                             {media.error && (
@@ -221,24 +256,48 @@ export default function Lobby({ room, snapshot, myPlayerId, inviteUrl }) {
                                 </p>
                             )}
 
-                            <div className="flex w-full max-w-sm flex-wrap justify-center gap-1">
-                                <button
-                                    type="button"
-                                    onClick={toggleReady}
-                                    disabled={busy}
-                                    className={`${BUTTON_BASE} flex-1 bg-primary-600 text-white hover:bg-primary-700`}
-                                >
-                                    {isReady ? t('mafia.not_ready_button') : t('mafia.ready_button')}
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={leaveRoom}
-                                    disabled={busy}
-                                    className={`${BUTTON_BASE} flex-1 border border-warm-300 bg-surface text-ink-700 hover:bg-warm-50`}
-                                >
-                                    {t('mafia.leave_button')}
-                                </button>
-                            </div>
+                            {spectator ? (
+                                !canTakeSeat && (
+                                    <Link
+                                        href={quizRoute('login')}
+                                        className={`${BUTTON_BASE} bg-primary-600 text-white hover:bg-primary-700`}
+                                    >
+                                        {t('mafia.log_in_to_play')}
+                                    </Link>
+                                )
+                            ) : (
+                                <div className="flex w-full max-w-sm flex-wrap justify-center gap-1">
+                                    <button
+                                        type="button"
+                                        onClick={toggleReady}
+                                        disabled={busy}
+                                        className={`${BUTTON_BASE} flex-1 bg-primary-600 text-white hover:bg-primary-700`}
+                                    >
+                                        {isReady ? t('mafia.not_ready_button') : t('mafia.ready_button')}
+                                    </button>
+                                    {canRelease && (
+                                        <button
+                                            type="button"
+                                            onClick={releaseSeat}
+                                            disabled={busy}
+                                            title={t('mafia.release_seat_hint')}
+                                            className={`${BUTTON_BASE} flex-1 border border-warm-300 bg-surface text-ink-700 hover:bg-warm-50`}
+                                        >
+                                            {t('mafia.release_seat_button')}
+                                        </button>
+                                    )}
+                                    <button
+                                        type="button"
+                                        onClick={leaveRoom}
+                                        disabled={busy}
+                                        className={`${BUTTON_BASE} flex-1 border border-warm-300 bg-surface text-ink-700 hover:bg-warm-50`}
+                                    >
+                                        {t('mafia.leave_button')}
+                                    </button>
+                                </div>
+                            )}
+
+                            <SpectatorsStrip spectators={state.spectators} />
                         </div>
                     }
                 />
@@ -252,6 +311,6 @@ export default function Lobby({ room, snapshot, myPlayerId, inviteUrl }) {
                     applying={applyingMediaSettings}
                 />
             )}
-        </AuthenticatedLayout>
+        </Layout>
     );
 }

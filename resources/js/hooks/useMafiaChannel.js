@@ -15,7 +15,7 @@ import echo from '@/echo';
  * one, Lobby.jsx doesn't) to subscribe to it; received signals land in
  * `state.receivedSignals`, each with a `dismiss()`-able local id.
  */
-export default function useMafiaChannel(code, initialState, mafiaPlayerId = null) {
+export default function useMafiaChannel(code, initialState, mafiaPlayerId = null, { spectator = false } = {}) {
     const [state, setState] = useState({ receivedSignals: [], ...initialState });
 
     // Every action (nominate/vote/shoot/pass/...) redirects back into this
@@ -34,17 +34,18 @@ export default function useMafiaChannel(code, initialState, mafiaPlayerId = null
     }, [initialState]);
 
     const resync = useCallback(() => {
-        fetch(route('mafia.state', code), { headers: { Accept: 'application/json' } })
+        // A spectator has no seat: the public watch endpoint, not the player's own.
+        fetch(route(spectator ? 'mafia.watch.state' : 'mafia.state', code), { headers: { Accept: 'application/json' } })
             .then((r) => (r.ok ? r.json() : null))
             .then((fresh) => fresh && setState((prev) => ({ ...prev, ...fresh })))
             .catch(() => {});
-    }, [code]);
+    }, [code, spectator]);
 
     useEffect(() => {
         const channel = echo.channel(`mafia.${code}`);
 
         channel.listen('.lobby.updated', (payload) => {
-            setState((prev) => ({ ...prev, players: payload.players }));
+            setState((prev) => ({ ...prev, players: payload.players, spectators: payload.spectators ?? prev.spectators }));
         });
 
         channel.listen('.game.starting', (payload) => {

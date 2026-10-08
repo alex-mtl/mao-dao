@@ -59,7 +59,7 @@ async function acquireLocalStream() {
  * no client-side "hide this video" logic to bypass, because the browser
  * never received the media in the first place.
  */
-export default function useMafiaMedia(code) {
+export default function useMafiaMedia(code, { spectator = false } = {}) {
     const [enabled, setEnabled] = useState(false);
     const [connecting, setConnecting] = useState(false);
     const [remoteStreams, setRemoteStreams] = useState({});
@@ -81,6 +81,9 @@ export default function useMafiaMedia(code) {
     const videoProducerRef = useRef(null);
     const pendingRequestsRef = useRef({});
     const consumedProducerIdsRef = useRef(new Set());
+    // producerId -> { consumer, playerId, kind }: what is being received, so a
+    // stream the server takes away (nightfall, a spectator's view) can be dropped.
+    const consumersRef = useRef(new Map());
     const localStreamRef = useRef(null);
     const mountedRef = useRef(true);
     const stoppedByUserRef = useRef(false);
@@ -105,6 +108,7 @@ export default function useMafiaMedia(code) {
         audioProducerRef.current = null;
         videoProducerRef.current = null;
         consumedProducerIdsRef.current = new Set();
+        consumersRef.current = new Map();
         pendingRequestsRef.current = {};
     }, []);
 
@@ -190,6 +194,7 @@ export default function useMafiaMedia(code) {
                 kind: res.data.kind,
                 rtpParameters: res.data.rtpParameters,
             });
+            consumersRef.current.set(producerId, { consumer, playerId, kind });
 
             setRemoteStreams((prev) => {
                 const stream = prev[playerId] instanceof MediaStream ? prev[playerId] : new MediaStream();
@@ -220,7 +225,7 @@ export default function useMafiaMedia(code) {
         setError(null);
 
         try {
-            const { token, wsUrl } = await fetch(route('mafia.media-token', code), {
+            const { token, wsUrl } = await fetch(route(spectator ? 'mafia.watch.media-token' : 'mafia.media-token', code), {
                 headers: { Accept: 'application/json' },
             }).then((r) => {
                 if (!r.ok) {
@@ -229,9 +234,13 @@ export default function useMafiaMedia(code) {
                 return r.json();
             });
 
-            const stream = await acquireLocalStream();
-            setLocalStream(stream);
-            localStreamRef.current = stream;
+            // A spectator only watches and listens: no camera, no microphone,
+            // no permission prompt.
+            const stream = spectator ? null : await acquireLocalStream();
+            if (stream) {
+                setLocalStream(stream);
+                localStreamRef.current = stream;
+            }
 
             const ws = new WebSocket(wsUrl);
             wsRef.current = ws;
@@ -276,6 +285,7 @@ export default function useMafiaMedia(code) {
                     deviceRef.current = new mediasoupClient.Device();
                     await deviceRef.current.load({ routerRtpCapabilities: data.rtpCapabilities });
 
+                    if (!spectator) {
                     const transportRes = await sendRequest({ type: 'create-producer-transport' });
                     const transport = deviceRef.current.createSendTransport({
                         id: transportRes.data.id,
@@ -301,6 +311,7 @@ export default function useMafiaMedia(code) {
                             videoProducerRef.current = producer;
                         }
                     }
+                    }
 
                     setMicEnabled(Boolean(audioProducerRef.current));
                     setCamEnabled(Boolean(videoProducerRef.current));
@@ -313,6 +324,27 @@ export default function useMafiaMedia(code) {
 
                 if (data.type === 'producer-available') {
                     consumeProducer(data);
+                    return;
+                }
+
+                if (data.type === 'consumer-revoked') {
+                    const entry = consumersRef.current.get(data.producerId);
+                    consumersRef.current.delete(data.producerId);
+                    consumedProducerIdsRef.current.delete(data.producerId);
+                    if (entry) {
+                        entry.consumer.close();
+                        setRemoteStreams((prev) => {
+                            const stream = prev[entry.playerId];
+                            if (!(stream instanceof MediaStream)) {
+                                return prev;
+                            }
+                            stream.removeTrack(entry.consumer.track);
+                            // A new object so the seats re-render and fall back to the avatar.
+                            return stream.getTracks().length > 0
+                                ? { ...prev }
+                                : Object.fromEntries(Object.entries(prev).filter(([id]) => id !== String(entry.playerId)));
+                        });
+                    }
                     return;
                 }
 
@@ -353,7 +385,7 @@ export default function useMafiaMedia(code) {
             connectingRef.current = false;
             setConnecting(false);
         }
-    }, [code, sendRequest, consumeProducer, releaseConnection, scheduleReconnect]);
+    }, [code, spectator, sendRequest, consumeProducer, releaseConnection, scheduleReconnect]);
     connectRef.current = connect;
 
     // What callers (page load, a retry button) use: a fresh, deliberate

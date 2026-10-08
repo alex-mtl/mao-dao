@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { ArrowsPointingInIcon, Bars3Icon } from '@heroicons/react/24/solid';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import SpectatorLayout from '@/Layouts/SpectatorLayout';
+import SpectatorsStrip from '@/Components/Mafia/SpectatorsStrip';
 import Badge from '@/Components/Badge';
 import Dropdown from '@/Components/Dropdown';
 import PrimaryButton from '@/Components/PrimaryButton';
@@ -14,7 +16,7 @@ import useCountdown from '@/hooks/useCountdown';
 import useFullscreenGame from '@/hooks/useFullscreenGame';
 import useMirroredPreview from '@/hooks/useMirroredPreview';
 import useSectionRoutes from '@/hooks/useSectionRoutes';
-import { Head, router } from '@inertiajs/react';
+import { Head, router, usePage } from '@inertiajs/react';
 import { useLaravelReactI18n } from 'laravel-react-i18n';
 
 const PHASE_LABEL_KEYS = {
@@ -44,9 +46,17 @@ const STAGE_LABEL_KEYS = {
 // blank.
 const withLabel = (p) => (p ? { ...p, name: p.name ?? `#${p.slot}` } : p);
 
-export default function Play({ code, snapshot }) {
+/**
+ * The game screen. Players get the full set of controls; a *spectator*
+ * (`spectator`, anyone with the link — signed in or not) gets the same
+ * table read-only: no role, no action buttons, no camera or microphone, and
+ * only what the server's public snapshot lets them see and hear.
+ */
+export default function Play({ code, snapshot, spectator = false }) {
     const { t } = useLaravelReactI18n();
-    const [state, , dismissSignal] = useMafiaChannel(code, snapshot, snapshot.you.id);
+    const authUser = usePage().props.auth.user;
+    const Layout = authUser ? AuthenticatedLayout : SpectatorLayout;
+    const [state, , dismissSignal] = useMafiaChannel(code, snapshot, snapshot.you.id, { spectator });
     const [busy, setBusy] = useState(false);
     const [signalTarget, setSignalTarget] = useState(null);
     const [justSentSignal, setJustSentSignal] = useState(false);
@@ -55,7 +65,7 @@ export default function Play({ code, snapshot }) {
     const [mediaSettingsOpen, setMediaSettingsOpen] = useState(false);
     const [remoteVolumes, setRemoteVolumes] = useState({});
     const { quizRoute, mafiaRoute } = useSectionRoutes();
-    const media = useMafiaMedia(code);
+    const media = useMafiaMedia(code, { spectator });
 
     // The red "shout-out" glow ends by itself when its window passes; a light
     // clock (only running while some seat is glowing) re-renders to switch
@@ -110,7 +120,7 @@ export default function Play({ code, snapshot }) {
     // game_over rule that lets the whole table see each other again so
     // the group can keep talking after the result is announced.
     useEffect(() => {
-        const shouldAutoConnect = (state.status === 'day' && state.you.isAlive) || state.status === 'game_over';
+        const shouldAutoConnect = spectator || (state.status === 'day' && state.you.isAlive) || state.status === 'game_over';
         if (shouldAutoConnect && !media.enabled && !media.connecting && !media.error) {
             media.connect();
         }
@@ -274,7 +284,7 @@ export default function Play({ code, snapshot }) {
     }));
 
     return (
-        <AuthenticatedLayout hideChrome={isFullscreen} onEnterFullscreen={!isFullscreen ? toggleFullscreen : null}>
+        <Layout hideChrome={isFullscreen} onEnterFullscreen={!isFullscreen ? toggleFullscreen : null}>
             <Head title={t('mafia.play_title')} />
 
             {/* The grid is the dominant element on this screen — full
@@ -339,6 +349,7 @@ export default function Play({ code, snapshot }) {
                         >
                             {isFullscreen && (
                                 <div className="absolute left-1 top-1 flex items-center gap-[var(--info-menu-pad)]">
+                                    {authUser && (
                                     <Dropdown>
                                         <Dropdown.Trigger>
                                             <button
@@ -366,6 +377,7 @@ export default function Play({ code, snapshot }) {
                                             </Dropdown.Link>
                                         </Dropdown.Content>
                                     </Dropdown>
+                                    )}
 
                                     <button
                                         type="button"
@@ -401,9 +413,11 @@ export default function Play({ code, snapshot }) {
                                     >
                                         {t(state.winnerTeam === 'black' ? 'mafia.game_over_black' : 'mafia.game_over_red')}
                                     </p>
-                                    <p className="text-[length:var(--info-sub)] text-ink-500">
-                                        {t('mafia.play_your_role', { role: t(`mafia.role_${state.you.role}`) })}
-                                    </p>
+                                    {!spectator && (
+                                        <p className="text-[length:var(--info-sub)] text-ink-500">
+                                            {t('mafia.play_your_role', { role: t(`mafia.role_${state.you.role}`) })}
+                                        </p>
+                                    )}
                                 </>
                             ) : (
                                 <>
@@ -473,6 +487,7 @@ export default function Play({ code, snapshot }) {
                                     )}
                                 </>
                             )}
+                            <SpectatorsStrip spectators={state.spectators} />
                         </div>
                     }
                     className="p-1"
@@ -481,10 +496,16 @@ export default function Play({ code, snapshot }) {
 
             <div className="mx-auto max-w-2xl px-4 py-4 sm:px-6 lg:px-8">
                 <div className="flex flex-wrap items-center gap-2">
-                    <Badge color={state.you.team === 'black' ? 'danger' : 'primary'}>
-                        {t('mafia.play_your_role', { role: t(`mafia.role_${state.you.role}`) })}
-                    </Badge>
-                    {!state.you.isAlive && !isGameOver && <Badge color="neutral">{t('mafia.you_are_dead_notice')}</Badge>}
+                    {spectator ? (
+                        <Badge color="neutral">{t('mafia.spectating_badge')}</Badge>
+                    ) : (
+                        <>
+                            <Badge color={state.you.team === 'black' ? 'danger' : 'primary'}>
+                                {t('mafia.play_your_role', { role: t(`mafia.role_${state.you.role}`) })}
+                            </Badge>
+                            {!state.you.isAlive && !isGameOver && <Badge color="neutral">{t('mafia.you_are_dead_notice')}</Badge>}
+                        </>
+                    )}
                     {/* Reported directly: this manual button had no reason to
                         exist during actual gameplay — the auto-connect effect
                         above already turns the camera on for every living
@@ -495,7 +516,7 @@ export default function Play({ code, snapshot }) {
                         with no other way to retry, since VideoSeat's own
                         per-seat self-controls (mic/cam/mirror/settings) only
                         render once `media.enabled` is already true. */}
-                    {isGameOver && (
+                    {isGameOver && !spectator && (
                         <SecondaryButton
                             type="button"
                             onClick={media.enabled ? media.disconnect : media.connect}
@@ -657,6 +678,6 @@ export default function Play({ code, snapshot }) {
                     applying={applyingMediaSettings}
                 />
             )}
-        </AuthenticatedLayout>
+        </Layout>
     );
 }

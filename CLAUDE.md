@@ -903,6 +903,34 @@ rather than by Claude logging in.
 > `warn.mp3`). Deploying this needs `php artisan migrate` (new column) and a
 > `pm2 restart quiz-mafia-tick` (the engine changed).
 
+> **Spectators (added 2026-10-08).** Anyone — including **guests without an
+> account** — can watch a room. `GET /mafia/{code}` is public: a signed-in user
+> who can still join sees the join page, everyone else is redirected to
+> `/mafia/{code}/watch` (+ `/watch/state`, `/watch/media-token`, all behind the
+> `mafia.spectator` middleware, `ResolveMafiaSpectator`). Identity is a
+> `mafia_spectators` row: `user_id` for signed-in users, otherwise a random
+> `mafia_spectator_token` kept in the session. Limit
+> `config('mafia.spectator_limit')` = 20 active (heartbeat within
+> `spectator_active_seconds` = 45); the 21st gets 429. The spectator snapshot
+> (`MafiaController::spectatorSnapshot()`) is `roomSnapshot()` with every
+> private bit overridden (no `you`/role, no teammates, no check/signal history,
+> all `can*` flags false) — **roles stay hidden until game over**. Media: a
+> spectator joins the sidecar with id `s<id>`, can only consume, and sees only
+> what `MafiaRoom::canSpectatorView()` allows (lobby/game over: everyone; day:
+> living players; night/shooting/checks/sitdown: nobody). Since visibility now
+> changes mid-call, the sidecar (`media-sfu/lib/visibility.js`) polls
+> `GET /internal/mafia/visibility` once a second and on every nudge, revoking
+> (`consumer-revoked`) or re-offering (`producer-available`) streams — this also
+> closed an older leak where a player kept consuming streams across the night
+> boundary. Lobby: "Free my seat" (`POST /mafia/{code}/release-seat`, lobby only,
+> a lone player can't; the host flag moves to the longest-seated player) turns a
+> seated player into a spectator; a signed-in spectator taps a free seat
+> (`join` with `slot`) to sit. Spectator avatars strip: `SpectatorsStrip.jsx`
+> (lobby + game; included in `MafiaLobbyUpdated` and `roomSnapshot`). Deploy
+> needs `php artisan migrate --force` (new table), `pm2 restart quiz-mafia-tick`
+> and `pm2 restart quiz-media-sfu` (new sidecar files: `lib/visibility.js`,
+> changed `auth/authorize/signaling.js`, `server.js`).
+
 
 The plan's §3.1 #1 decision point (ship without video first, add it once
 the core game is validated) resolved to "build it" once the user said to

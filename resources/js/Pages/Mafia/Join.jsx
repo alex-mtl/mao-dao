@@ -1,9 +1,10 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import SpectatorLayout from '@/Layouts/SpectatorLayout';
 import PrimaryButton from '@/Components/PrimaryButton';
 import TextInput from '@/Components/TextInput';
 import InputLabel from '@/Components/InputLabel';
 import InputError from '@/Components/InputError';
-import { Head, useForm } from '@inertiajs/react';
+import { Head, Link, useForm, usePage } from '@inertiajs/react';
 import { useLaravelReactI18n } from 'laravel-react-i18n';
 
 function StateMessage({ title, description }) {
@@ -15,8 +16,11 @@ function StateMessage({ title, description }) {
     );
 }
 
-export default function Join({ state, code, playerCount, maxPlayers, requiresPassword }) {
+export default function Join({ state, code, playerCount, maxPlayers, requiresPassword, watchUrl = null }) {
     const { t } = useLaravelReactI18n();
+    // A guest can land here too (a cancelled or unknown room): they have no
+    // account menu to show.
+    const Layout = usePage().props.auth.user ? AuthenticatedLayout : SpectatorLayout;
     const { data, setData, post, processing, errors } = useForm({ password: '' });
 
     const submit = (e) => {
@@ -25,7 +29,7 @@ export default function Join({ state, code, playerCount, maxPlayers, requiresPas
     };
 
     return (
-        <AuthenticatedLayout>
+        <Layout>
             <Head title={t('mafia.join_title')} />
 
             <div className="mx-auto max-w-md px-4 py-10 sm:px-6 lg:px-8">
@@ -71,6 +75,14 @@ export default function Join({ state, code, playerCount, maxPlayers, requiresPas
                                 </PrimaryButton>
                                 <InputError message={errors.room} className="mt-2" />
                             </form>
+
+                            {watchUrl && (
+                                <p className="mt-4 text-center text-sm">
+                                    <Link href={watchUrl} className="font-medium text-primary-700 hover:underline">
+                                        {t('mafia.watch_instead')}
+                                    </Link>
+                                </p>
+                            )}
                         </>
                     )}
 
@@ -94,6 +106,6 @@ export default function Join({ state, code, playerCount, maxPlayers, requiresPas
                     )}
                 </div>
             </div>
-        </AuthenticatedLayout>
+        </Layout>
     );
 }
