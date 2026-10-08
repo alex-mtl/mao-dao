@@ -91,6 +91,8 @@ return [
     'action_shoot' => 'disparar a',
     'action_check' => 'comprobar',
     'action_sit' => 'sentarte en',
+    'shout_out_button' => 'Tomar una falta: tu micrófono se abre unos segundos y recibes una advertencia',
+    'warnings_label' => ':count advertencia(s)',
     'pick_a_seat_hint' => 'Toca un asiento libre para sentarte. La partida empieza automáticamente cuando todos estén listos.',
     'seat_action_label' => 'Toca para :action el asiento :slot',
 

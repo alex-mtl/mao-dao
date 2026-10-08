@@ -883,6 +883,26 @@ rather than by Claude logging in.
 > mediasoup worker locally (Windows-built `node_modules` bind-mounted), so
 > only the pure policy logic is tested locally.
 
+> **Shout-out / fouls (added 2026-10-08, ported from ttl10).** A living player
+> can press a button on their own seat (own-seat hover panel, `record_voice_over`
+> icon) during the day to grab `timers_ms.shout_out` (5s) of mic out of turn:
+> `MafiaController::shoutOut()` records a `shout_out` action (its window end is
+> stored in the action's `value.ends_at`), bumps `mafia_players.warnings`, and
+> `MafiaRoom::micPolicy()` lets the shouter be heard next to the current speaker
+> while the window is open (`MafiaRoom::activeShouts()`); the sidecar's 1s poll
+> closes the mic when it passes. The seat glows red (`shoutEndsAt` in the
+> snapshot) and every seat shows a red 1/2/3 counter (`bolt` = disqualified),
+> visible to everyone, as in ttl10. The 3rd warning cuts that player's NEXT
+> speaking turn to `warned_speech` (10s) exactly once
+> (`mafia_players.warned_speech_used`, ttl10's `player.skip`; the turn's real
+> length is in `state.speech_total_ms` for the countdown ring); the 4th warning
+> sets status `disqualified`, which counts as an elimination for the win check
+> (`MafiaGameEngine::concludeIfWon()`) and is skipped in the speaking order.
+> Deliberate difference: ttl10 issues the warning ~0.5s after the 5s window
+> ends, we issue it when the shout starts. No warning sound yet (ttl10 plays
+> `warn.mp3`). Deploying this needs `php artisan migrate` (new column) and a
+> `pm2 restart quiz-mafia-tick` (the engine changed).
+
 
 The plan's §3.1 #1 decision point (ship without video first, add it once
 the core game is validated) resolved to "build it" once the user said to

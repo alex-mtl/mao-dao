@@ -57,6 +57,25 @@ export default function Play({ code, snapshot }) {
     const { quizRoute, mafiaRoute } = useSectionRoutes();
     const media = useMafiaMedia(code);
 
+    // The red "shout-out" glow ends by itself when its window passes; a light
+    // clock (only running while some seat is glowing) re-renders to switch
+    // it off, since no server event fires at that moment.
+    const [nowMs, setNowMs] = useState(() => Date.now());
+    const anyShoutOpen = state.seats.some((s) => s.shoutEndsAt && new Date(s.shoutEndsAt).getTime() > nowMs);
+    useEffect(() => {
+        if (!anyShoutOpen) {
+            return undefined;
+        }
+        const timer = setInterval(() => setNowMs(Date.now()), 400);
+
+        return () => clearInterval(timer);
+    }, [anyShoutOpen]);
+    // A fresh shout-out arriving after a quiet period must not be judged
+    // against a stale clock.
+    useEffect(() => {
+        setNowMs(Date.now());
+    }, [state.seats]);
+
     const remainingMs = useCountdown(state.deadlineAt);
     const remainingSeconds = Math.ceil(remainingMs / 1000);
 
@@ -203,19 +222,29 @@ export default function Play({ code, snapshot }) {
     // relevant stream exists.
     const mediaControlsForSeat = (seat) => {
         if (seat.isYou) {
-            return media.enabled
-                ? {
-                    type: 'self',
-                    canToggleMicCam: isGameOver,
-                    micEnabled: media.micEnabled,
-                    camEnabled: media.camEnabled,
-                    mirrored,
-                    onToggleMic: media.toggleMic,
-                    onToggleCam: media.toggleCam,
-                    onToggleMirror: toggleMirrored,
-                    onOpenSettings: () => setMediaSettingsOpen(true),
+            // Always present once seated: while there is no live connection
+            // (denied, no device, reconnecting) the icons show as off and
+            // pressing mic/cam/settings retries it — same as the lobby. It
+            // also hosts the shout-out button, which must not depend on the
+            // camera working.
+            const live = media.enabled;
+            const retry = () => {
+                if (!media.connecting) {
+                    media.connect();
                 }
-                : null;
+            };
+
+            return {
+                type: 'self',
+                canToggleMicCam: isGameOver,
+                micEnabled: live && media.micEnabled,
+                camEnabled: live && media.camEnabled,
+                mirrored,
+                onToggleMic: live ? media.toggleMic : retry,
+                onToggleCam: live ? media.toggleCam : retry,
+                onToggleMirror: toggleMirrored,
+                onOpenSettings: live ? () => setMediaSettingsOpen(true) : retry,
+            };
         }
 
         return media.remoteStreams[seat.id]
@@ -235,6 +264,10 @@ export default function Play({ code, snapshot }) {
         pulse: seat.isYou ? (justSentSignal ? 'sent' : (state.receivedSignals.length > 0 ? 'received' : null)) : null,
         checkBadge: checkBadgeForSlot(seat.slot),
         mediaControls: mediaControlsForSeat(seat),
+        isShouting: Boolean(seat.shoutEndsAt) && new Date(seat.shoutEndsAt).getTime() > nowMs,
+        shoutOut: seat.isYou && state.you.isAlive && state.status === 'day'
+            ? { canShout: state.canShoutOut && !busy, onClick: () => act('mafia.shout-out') }
+            : null,
         speechTimer: isSpeakingTurn && seat.slot === state.currentSpeakerSlot
             ? { remainingSeconds, totalSeconds: speechTotalSeconds }
             : null,

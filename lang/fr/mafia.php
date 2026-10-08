@@ -91,6 +91,8 @@ return [
     'action_shoot' => 'tirer sur',
     'action_check' => 'vérifier',
     'action_sit' => 'vous asseoir sur',
+    'shout_out_button' => "Prendre une faute : votre micro s'ouvre quelques secondes et vous recevez un avertissement",
+    'warnings_label' => ':count avertissement(s)',
     'pick_a_seat_hint' => "Touchez un siège libre pour vous y asseoir. La partie démarre automatiquement dès que tout le monde est prêt.",
     'seat_action_label' => 'Touchez pour :action le siège :slot',
 

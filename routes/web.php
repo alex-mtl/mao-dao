@@ -101,6 +101,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/mafia/{code}/don-check', [MafiaController::class, 'donCheck'])->middleware('mafia.player')->name('mafia.don-check');
     Route::post('/mafia/{code}/sheriff-check', [MafiaController::class, 'sheriffCheck'])->middleware('mafia.player')->name('mafia.sheriff-check');
     Route::post('/mafia/{code}/pass', [MafiaController::class, 'pass'])->middleware('mafia.player')->name('mafia.pass');
+    Route::post('/mafia/{code}/shout-out', [MafiaController::class, 'shoutOut'])->middleware('mafia.player')->name('mafia.shout-out');
     Route::post('/mafia/{code}/disconnect-vote', [MafiaController::class, 'disconnectVote'])->middleware('mafia.player')->name('mafia.disconnect-vote');
     Route::post('/mafia/{code}/signal', [MafiaController::class, 'signal'])->middleware('mafia.player')->name('mafia.signal');
     Route::post('/mafia/{code}/leave', [MafiaController::class, 'leave'])->middleware('mafia.player')->name('mafia.leave');

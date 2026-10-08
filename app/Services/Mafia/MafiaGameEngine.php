@@ -250,7 +250,32 @@ class MafiaGameEngine
                 'spoken_slots' => [],
             ]),
         ]);
-        $this->transition($room, ms: 'speech', dispatch: true);
+        $this->beginSpeechTurn($room);
+    }
+
+    /**
+     * Starts the turn of whoever is first in `speaking_order`. A player on
+     * their 3rd warning gets a short speech (ttl10: 10s instead of 60s) —
+     * once: the penalty is spent by the first turn it applies to (ttl10's
+     * `player.skip`), later turns are normal again. The chosen length is
+     * stored so the UI's countdown ring knows the turn's real total.
+     */
+    private function beginSpeechTurn(MafiaRoom $room): void
+    {
+        $slot = $room->dayState()['speaking_order'][0] ?? null;
+        $speaker = $slot ? $room->players()->where('slot', $slot)->first() : null;
+
+        $key = 'speech';
+        if ($speaker && ! $speaker->warned_speech_used
+            && $speaker->warnings >= config('mafia.warn_speech_after')) {
+            $key = 'warned_speech';
+            $speaker->update(['warned_speech_used' => true]);
+        }
+
+        $room->update(['state' => array_merge($room->dayState(), [
+            'speech_total_ms' => config("mafia.timers_ms.{$key}"),
+        ])]);
+        $this->transition($room, ms: $key, dispatch: true);
     }
 
     private function advanceSpeaking(MafiaRoom $room): void
@@ -262,11 +287,18 @@ class MafiaGameEngine
         if (! empty($order)) {
             $spoken[] = array_shift($order);
         }
+
+        // Someone disqualified (4th warning) while waiting for their turn
+        // is skipped, same as being dead — ttl10 only ever picks living
+        // players as the next speaker.
+        $alive = $room->players()->where('status', 'alive')->pluck('slot')->all();
+        $order = array_values(array_filter($order, fn ($slot) => in_array($slot, $alive, true)));
+
         $state = array_merge($state, ['speaking_order' => $order, 'spoken_slots' => $spoken]);
 
         if (! empty($order)) {
             $room->update(['state' => $state]);
-            $this->transition($room, ms: 'speech', dispatch: true);
+            $this->beginSpeechTurn($room);
 
             return;
         }
@@ -536,6 +568,19 @@ class MafiaGameEngine
     private function startNextDay(MafiaRoom $room): void
     {
         $this->startDay($room, $room->current_day + 1);
+    }
+
+    /**
+     * A disqualification counts as an elimination for the win check (plan
+     * §9) — called by the controller right after a player's 4th warning.
+     */
+    public function concludeIfWon(MafiaRoom $room): void
+    {
+        $room->refresh();
+
+        if ($room->status !== 'game_over' && $winnerTeam = $room->checkWinner()) {
+            $this->endGame($room, $winnerTeam);
+        }
     }
 
     private function endGame(MafiaRoom $room, string $winnerTeam): void

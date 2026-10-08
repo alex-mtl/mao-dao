@@ -10,6 +10,8 @@ use App\Events\Mafia\MafiaSignalReceived;
 use App\Models\MafiaAction;
 use App\Models\MafiaPlayer;
 use App\Models\MafiaRoom;
+use App\Services\Mafia\MafiaDisciplineService;
+use App\Services\Mafia\MafiaGameEngine;
 use App\Services\Mafia\MediaSfuNotifier;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -673,6 +675,59 @@ class MafiaController extends Controller
     }
 
     /**
+     * ttl10's "shout-out": a player grabs a few seconds of mic out of turn
+     * (everyone hears them, their seat lights up) and is automatically given
+     * a warning for it. Warnings escalate via MafiaDisciplineService — the
+     * 3rd shortens their next speech, the 4th disqualifies them, which
+     * counts as an elimination for the win check. The warning is saved
+     * before the action is announced so clients never resync to a half-done
+     * state, and the media sidecar is nudged so the mic opens right away
+     * (it closes by itself when the window passes, within the sidecar's 1s
+     * poll).
+     */
+    public function shoutOut(Request $request, MafiaDisciplineService $discipline, MafiaGameEngine $engine): RedirectResponse
+    {
+        $room = $request->attributes->get('mafiaRoom');
+        $player = $request->attributes->get('mafiaPlayer');
+
+        abort_unless($player, 403);
+
+        if ($this->canShoutOut($room, $player)) {
+            $warnings = $player->warnings + 1;
+            $disqualified = $discipline->isDisqualified($warnings);
+
+            $player->update([
+                'warnings' => $warnings,
+                'status' => $disqualified ? 'disqualified' : $player->status,
+            ]);
+
+            $this->recordAction($room, $player, 'day', 'shout_out', null, [
+                'ends_at' => now()->addMilliseconds(config('mafia.timers_ms.shout_out'))->toIso8601String(),
+            ]);
+
+            app(MediaSfuNotifier::class)->refreshMics($room->fresh());
+
+            if ($disqualified) {
+                $engine->concludeIfWon($room->fresh());
+            }
+        }
+
+        return redirect()->route('mafia.play', $room->room_code);
+    }
+
+    /**
+     * Daytime only, living players only, and not while you already hold the
+     * floor (your mic is open anyway) or already have a window open.
+     */
+    private function canShoutOut(MafiaRoom $room, MafiaPlayer $player): bool
+    {
+        return $room->status === 'day'
+            && $player->isAlive()
+            && ! $this->canPass($room, $player)
+            && ! array_key_exists($player->id, $room->activeShouts());
+    }
+
+    /**
      * Lobby-only for now — once a game is running, disconnect handling
      * (plan §8) is what governs a player dropping out, not a hard leave;
      * that lands in a later phase. The host leaving the lobby cancels the
@@ -843,6 +898,7 @@ class MafiaController extends Controller
         $state = $room->dayState();
         $players = $room->players()->with('user.media')->orderBy('slot')->get();
         $stageStartedAt = $state['stage_started_at'] ?? null;
+        $activeShouts = $room->status === 'day' ? $room->activeShouts() : [];
 
         $spotlightPlayerId = match (true) {
             in_array($room->stage, ['last_speech', 'morning_speech'], true) => $state['current_elimination'] ?? null,
@@ -900,6 +956,8 @@ class MafiaController extends Controller
                 'name' => $p->user?->name,
                 'avatarUrl' => $p->user?->profile_photo_url,
                 'status' => $p->status,
+                'warnings' => $p->warnings,
+                'shoutEndsAt' => $activeShouts[$p->id] ?? null,
                 'isYou' => $p->id === $player->id,
                 'connectionStatus' => $p->connection_status,
                 // Every role is a full reveal at game-over (matches ttl10's
@@ -942,12 +1000,13 @@ class MafiaController extends Controller
             // yet), so this is safe to hardcode to that one config value
             // rather than trying to infer which timer key was used.
             'speechDurationMs' => match (true) {
-                $room->status === 'day' && $room->stage === 'speaking' => config('mafia.timers_ms.speech'),
+                $room->status === 'day' && $room->stage === 'speaking' => $state['speech_total_ms'] ?? config('mafia.timers_ms.speech'),
                 in_array($room->stage, ['last_speech', 'morning_speech'], true) => config('mafia.timers_ms.last_speech'),
                 $room->stage === 'defense_speech' => config('mafia.timers_ms.defense_speech'),
                 default => null,
             },
             'canPass' => $this->canPass($room, $player),
+            'canShoutOut' => $this->canShoutOut($room, $player),
             'nominees' => collect($nomineeIds)->map(fn ($id) => $this->playerBrief($players, $id))->filter()->values()->all(),
             // Only the player currently holding the floor during a normal
             // speaking-order turn may nominate — see nominate()'s own

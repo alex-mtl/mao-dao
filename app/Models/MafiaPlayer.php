@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable([
-    'mafia_room_id', 'user_id', 'slot', 'role', 'status', 'warnings',
+    'mafia_room_id', 'user_id', 'slot', 'role', 'status', 'warnings', 'warned_speech_used',
     'is_ready', 'is_game_host', 'connection_status', 'last_seen_at',
     'disconnected_at', 'joined_at',
 ])]
@@ -24,6 +24,7 @@ class MafiaPlayer extends Model
         return [
             'is_ready' => 'boolean',
             'is_game_host' => 'boolean',
+            'warned_speech_used' => 'boolean',
             'last_seen_at' => 'datetime',
             'disconnected_at' => 'datetime',
             'joined_at' => 'datetime',

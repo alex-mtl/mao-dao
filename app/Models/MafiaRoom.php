@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Carbon;
 
 #[Fillable([
     'host_user_id', 'room_code', 'status', 'stage', 'state', 'settings', 'current_day',
@@ -185,6 +186,27 @@ class MafiaRoom extends Model
      *
      * @return array{mode: 'all'|'none'|'only', playerIds: list<int>}
      */
+    /**
+     * Shout-outs whose mic window is still open: [playerId => ends-at ISO
+     * string]. A shout-out is a player grabbing a few seconds of mic out of
+     * turn (and taking a warning for it) — see MafiaController::shoutOut().
+     * The window end is stored on the action itself, so this stays exact to
+     * the millisecond despite created_at's one-second resolution.
+     *
+     * @return array<int, string>
+     */
+    public function activeShouts(): array
+    {
+        return MafiaAction::where('mafia_room_id', $this->id)
+            ->where('action_type', 'shout_out')
+            ->where('created_at', '>=', now()->subMinute())
+            ->orderBy('id')
+            ->get()
+            ->mapWithKeys(fn (MafiaAction $action) => [$action->actor_player_id => $action->value['ends_at'] ?? null])
+            ->filter(fn ($endsAt) => $endsAt && Carbon::parse($endsAt)->isFuture())
+            ->all();
+    }
+
     public function micPolicy(): array
     {
         if (in_array($this->status, ['lobby', 'game_over'], true)) {
@@ -203,8 +225,14 @@ class MafiaRoom extends Model
                 default => null,
             };
 
-            if ($speakerId) {
-                return ['mode' => 'only', 'playerIds' => [(int) $speakerId]];
+            // The floor-holder plus anyone inside a shout-out window.
+            $audible = array_values(array_unique(array_filter([
+                $speakerId ? (int) $speakerId : null,
+                ...array_keys($this->activeShouts()),
+            ])));
+
+            if ($audible !== []) {
+                return ['mode' => 'only', 'playerIds' => $audible];
             }
         }
 

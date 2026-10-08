@@ -204,7 +204,7 @@ export default function VideoSeat({ seat, isSpeaking = false, stream = null, vid
                 hasSelfControls ? 'outline-none' : ''
             } ${
                 isDead ? 'border-warm-200 opacity-60' : 'border-warm-200'
-            } ${isSpeaking ? 'ring-2 ring-primary-500' : ''} ${seat.isYou ? 'ring-2 ring-accent-500' : ''} ${className}`}
+            } ${isSpeaking ? 'ring-2 ring-primary-500' : ''} ${seat.isYou ? 'ring-2 ring-accent-500' : ''} ${seat.isShouting ? '!ring-2 !ring-danger-500 shadow-[0_0_1vw_red]' : ''} ${className}`}
         >
             <VideoTile
                 stream={stream}
@@ -283,6 +283,22 @@ export default function VideoSeat({ seat, isSpeaking = false, stream = null, vid
                         <MaterialIcon name={ROLE_MATERIAL_NAME} className={`text-[length:var(--seat-icon)] ${ROLE_COLORS[seat.visibleRole]}`} />
                     )}
                     <span className="sr-only">{t(`mafia.role_${seat.visibleRole}`)}</span>
+                </span>
+            )}
+
+            {seat.warnings > 0 && (
+                <span
+                    className={`absolute top-1 flex aspect-square items-center justify-center rounded-full bg-ink-900/60 p-[var(--seat-icon-pad)] ${
+                        roleType || checkBadge ? 'left-[calc(var(--seat-icon)+var(--seat-icon-pad)*2+0.5rem)]' : 'left-1'
+                    }`}
+                    title={t('mafia.warnings_label', { count: seat.warnings })}
+                >
+                    <MaterialIcon
+                        name={seat.warnings >= 4 ? 'bolt' : `counter_${seat.warnings}`}
+                        className="text-[length:var(--seat-icon)] text-danger-400"
+                        style={{ fontVariationSettings: "'FILL' 1, 'wght' 700" }}
+                    />
+                    <span className="sr-only">{t('mafia.warnings_label', { count: seat.warnings })}</span>
                 </span>
             )}
 
@@ -395,6 +411,18 @@ export default function VideoSeat({ seat, isSpeaking = false, stream = null, vid
                             }}
                             className="pointer-events-none flex items-center gap-[var(--seat-icon-pad)] rounded-full bg-ink-900/60 p-[var(--seat-icon-pad)] opacity-0 transition group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100"
                         >
+                            {seat.shoutOut && (
+                                <button
+                                    type="button"
+                                    onClick={pressSelfControl(seat.shoutOut.onClick)}
+                                    disabled={!seat.shoutOut.canShout}
+                                    aria-label={t('mafia.shout_out_button')}
+                                    title={t('mafia.shout_out_button')}
+                                    className={`transition disabled:opacity-40 ${seat.isShouting ? 'text-danger-400' : 'text-white hover:text-danger-300'}`}
+                                >
+                                    <MaterialIcon name="record_voice_over" className="text-[length:var(--seat-icon)]" />
+                                </button>
+                            )}
                             {seat.mediaControls.canToggleMicCam && (
                                 <>
                                     <button
@@ -437,6 +465,10 @@ export default function VideoSeat({ seat, isSpeaking = false, stream = null, vid
                         </div>
                     )}
                 </div>
+            )}
+
+            {seat.isShouting && (
+                <div className="pointer-events-none absolute inset-0 animate-pulse rounded-lg ring-4 ring-inset ring-danger-500" />
             )}
 
             {seat.pulse && (

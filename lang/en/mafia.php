@@ -93,6 +93,8 @@ return [
     'action_shoot' => 'shoot',
     'action_check' => 'check',
     'action_sit' => 'sit at',
+    'shout_out_button' => 'Take a foul: your mic opens for a few seconds and you get a warning',
+    'warnings_label' => ':count warning(s)',
     'pick_a_seat_hint' => 'Tap a free seat to sit there. The game starts automatically once everyone is ready.',
     'seat_action_label' => 'Tap to :action seat :slot',
 
