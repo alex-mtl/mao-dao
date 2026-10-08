@@ -96,7 +96,7 @@ const CHECK_BADGE_LABEL_KEYS = {
 
 /**
  * Bottom-left tag: the player's profile photo (if they have one) in a
- * circle twice as tall as the nickname pill, then the pill — on one row,
+ * circle 1.5x as tall as the nickname pill, then the pill — on one row,
  * centred on the same horizontal line. Sizes come from the grid's vw-based
  * `--seat-name-*` variables. A photo that fails to load is simply left out.
  */
