@@ -35,6 +35,7 @@ return [
     'color_scheme_light_soft' => 'Soft',
     'color_scheme_dark_warm' => 'Dark Warm',
     'color_scheme_dark_cool' => 'Dark Cool',
+    'color_scheme_dark_neon' => 'Neon',
 
     'tags_heading' => 'Interests',
     'tags_description' => 'Select topics you like so we can recommend quizzes for you.',

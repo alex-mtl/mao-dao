@@ -35,6 +35,7 @@ return [
     'color_scheme_light_soft' => 'Suave',
     'color_scheme_dark_warm' => 'Oscura cálida',
     'color_scheme_dark_cool' => 'Oscura fría',
+    'color_scheme_dark_neon' => 'Neón',
 
     'tags_heading' => 'Intereses',
     'tags_description' => 'Selecciona temas que te gusten para que podamos recomendarte cuestionarios.',

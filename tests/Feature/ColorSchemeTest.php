@@ -33,13 +33,15 @@ test('color scheme preference persists and is reflected on the next request', fu
     $response->assertInertia(fn ($page) => $page->where('color_scheme', 'dark-cool'));
 });
 
-test('the color scheme options shared to every page cover all five supported schemes', function () {
+test('the color scheme options shared to every page cover all six supported schemes', function () {
     $user = User::factory()->create();
 
     $response = $this->actingAs($user)->get('/dashboard');
 
     $response->assertInertia(fn ($page) => $page
-        ->has('color_scheme_options', 5)
+        ->has('color_scheme_options', 6)
+        ->where('color_scheme_options.5.value', 'dark-neon')
+        ->where('color_scheme_options.5.is_dark', true)
         ->where('color_scheme_options.3.value', 'dark-warm')
         ->where('color_scheme_options.3.is_dark', true)
         ->where('color_scheme_options.0.is_dark', false)

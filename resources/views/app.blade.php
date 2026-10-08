@@ -13,7 +13,7 @@
 
         <!-- Fonts -->
         <link rel="preconnect" href="https://fonts.bunny.net">
-        <link href="https://fonts.bunny.net/css?family=inter:400,500,600,700|manrope:600,700,800&display=swap" rel="stylesheet" />
+        <link href="https://fonts.bunny.net/css?family=inter:400,500,600,700|manrope:600,700,800|orbitron:600,800,900|rajdhani:500,600,700&display=swap" rel="stylesheet" />
 
         {{-- Material Symbols Outlined — the exact icon set ttl10 itself uses for
              its Mafia game screen (role/nominate/signal/shoot/check/device-control

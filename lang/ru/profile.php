@@ -35,6 +35,7 @@ return [
     'color_scheme_light_soft' => 'Мягкая',
     'color_scheme_dark_warm' => 'Тёмная тёплая',
     'color_scheme_dark_cool' => 'Тёмная холодная',
+    'color_scheme_dark_neon' => 'Неон',
 
     'tags_heading' => 'Интересы',
     'tags_description' => 'Выберите темы, которые вам нравятся, чтобы мы могли порекомендовать вам викторины.',

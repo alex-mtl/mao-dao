@@ -32,3 +32,97 @@
         transform: translateY(0);
     }
 }
+
+/*
+ * Ultra-neon theme (data-theme="dark-neon"): the palette itself lives in
+ * themes.css; this block adds what a color scale can't — the display/text
+ * fonts, glowing headings, glowing cards and buttons — modeled on the
+ * TikTok "Guess the Word" overlay. Scoped to the theme so nothing leaks
+ * into the other five.
+ */
+[data-theme="dark-neon"] body,
+[data-theme="dark-neon"] .font-sans {
+    font-family: 'Rajdhani', ui-sans-serif, system-ui, sans-serif;
+    font-weight: 500;
+    font-size: 1.06em;
+}
+
+[data-theme="dark-neon"] body {
+    background: radial-gradient(120% 80% at 50% 0%, #1d0640 0%, #07020f 55%) fixed, #07020f;
+}
+
+/* Page wrappers paint their own bg-warm-100; let the gradient show through. */
+[data-theme="dark-neon"] .min-h-screen.bg-warm-100 {
+    background: transparent;
+}
+
+[data-theme="dark-neon"] h1,
+[data-theme="dark-neon"] h2,
+[data-theme="dark-neon"] h3,
+[data-theme="dark-neon"] h4,
+[data-theme="dark-neon"] .font-heading {
+    font-family: 'Orbitron', 'Segoe UI', system-ui, sans-serif;
+    letter-spacing: 0.04em;
+}
+
+[data-theme="dark-neon"] h1 {
+    color: rgb(var(--color-secondary-400));
+    text-transform: uppercase;
+    text-shadow: 0 0 0.25em rgb(var(--color-secondary-400)), 0 0 0.8em rgb(var(--color-secondary-500) / 0.6);
+}
+
+[data-theme="dark-neon"] h2 {
+    color: rgb(var(--color-primary-400));
+    text-transform: uppercase;
+    text-shadow: 0 0 0.25em rgb(var(--color-primary-400)), 0 0 0.8em rgb(var(--color-primary-500) / 0.6);
+}
+
+[data-theme="dark-neon"] h3,
+[data-theme="dark-neon"] h4 {
+    color: rgb(var(--color-ink-900));
+    text-shadow: 0 0 0.5em rgb(var(--color-primary-400) / 0.55);
+}
+
+/* Cards and panels: violet outline + soft inner/outer glow. */
+[data-theme="dark-neon"] .bg-surface {
+    border-color: rgb(157 77 255 / 0.65);
+    box-shadow: 0 0 22px rgb(157 77 255 / 0.4), inset 0 0 28px rgb(157 77 255 / 0.12);
+}
+
+[data-theme="dark-neon"] .border-warm-200,
+[data-theme="dark-neon"] .border-warm-300 {
+    border-color: rgb(157 77 255 / 0.5);
+}
+
+/* Filled buttons: bright neon fill, dark text (as in the game's chips). */
+[data-theme="dark-neon"] .bg-primary-600,
+[data-theme="dark-neon"] .bg-secondary-600,
+[data-theme="dark-neon"] .bg-accent-600,
+[data-theme="dark-neon"] .bg-danger-600,
+[data-theme="dark-neon"] .bg-success-600 {
+    color: #0a0214;
+    font-family: 'Orbitron', 'Segoe UI', system-ui, sans-serif;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+[data-theme="dark-neon"] .bg-primary-600 { box-shadow: 0 0 16px rgb(var(--color-primary-500) / 0.75); }
+[data-theme="dark-neon"] .bg-secondary-600 { box-shadow: 0 0 16px rgb(var(--color-secondary-500) / 0.75); }
+[data-theme="dark-neon"] .bg-accent-600 { box-shadow: 0 0 16px rgb(var(--color-accent-500) / 0.75); }
+[data-theme="dark-neon"] .bg-danger-600 { box-shadow: 0 0 16px rgb(var(--color-danger-500) / 0.75); }
+[data-theme="dark-neon"] .bg-success-600 { box-shadow: 0 0 16px rgb(var(--color-success-500) / 0.75); }
+
+[data-theme="dark-neon"] .hover\:bg-primary-700:hover,
+[data-theme="dark-neon"] .hover\:bg-danger-700:hover {
+    box-shadow: 0 0 26px rgb(var(--color-primary-400) / 0.95);
+}
+
+[data-theme="dark-neon"] input:focus,
+[data-theme="dark-neon"] select:focus,
+[data-theme="dark-neon"] textarea:focus {
+    box-shadow: 0 0 0 2px rgb(var(--color-secondary-500) / 0.8), 0 0 16px rgb(var(--color-secondary-500) / 0.5);
+}
+
+[data-theme="dark-neon"] a:hover {
+    text-shadow: 0 0 0.6em currentColor;
+}

@@ -276,8 +276,8 @@ reintroduce raw `gray-*`/`indigo-*` classes:
 
 ## Color scheme system
 
-5 selectable themes (`light-warm` default, `light-cool`, `light-soft`,
-`dark-warm`, `dark-cool`), persisted per-user (`users.color_scheme`,
+6 selectable themes (`light-warm` default, `light-cool`, `light-soft`,
+`dark-warm`, `dark-cool`, `dark-neon`), persisted per-user (`users.color_scheme`,
 mirrors `ui_language` end-to-end: `config/color_schemes.php`,
 `HandleInertiaRequests` shares `color_scheme`/`color_scheme_options`,
 `ProfileController::updateColorScheme()` + `PATCH /profile/color-scheme`).
@@ -291,6 +291,7 @@ mirrors `ui_language` end-to-end: `config/color_schemes.php`,
   values or a theme's transform with:
   `docker compose exec laravel.test node resources/css/generate-themes.mjs`
   (then `npm run build`).
+- **[2026-10-08] Each theme now has its own primary/secondary/accent hues** (cool = ocean blue/amber/teal, soft = rose/lilac/sage, dark-warm = amber/rose/olive, dark-cool = violet/cyan/orchid, neon = magenta/cyan/lime); the old "same hue everywhere" made them look identical. `dark-neon` is written as direct lightness curves (`scaleFromL`) and its fonts (Orbitron headings, Rajdhani text), glows and dark-text-on-bright-buttons live in a scoped block at the end of `resources/css/app.css`. Semantic scales (success/warning/danger/info) keep their hues in the other four themes. The next bullet describes the original approach.
 - **Brand/semantic scales keep the same hue in every theme** ("systematic
   variants", not new brand identities) — only neutrals (`warm`/`ink`) and
   a `surface` token (replaces literal `bg-white` on cards — a `data-theme`
@@ -1254,3 +1255,14 @@ Temporarily: `sed -i 's/APP_DEBUG=false/APP_DEBUG=true/' .env && php
 artisan config:clear`, reproduce, then **always** revert:
 `sed -i 's/APP_DEBUG=true/APP_DEBUG=false/' .env && php artisan
 config:cache`. Never leave `APP_DEBUG=true` on this box.
+
+## Ziggy `route()` after client-side navigation between /quiz and /mafia (2026-10-08)
+
+`@routes` is rendered once, by the section that served the first full page
+load, so after landing on `/mafia/...` and navigating (Inertia, no reload) to
+`/quiz` pages every plain `route()` resolved against the bare host — e.g. the
+profile theme switcher sent `PATCH https://mao-dao.com/profile/color-scheme`
+and the Node app at `/` answered "Cannot PATCH". `resources/js/app.jsx` now
+wraps `window.route`: names starting with `mafia.` resolve against
+`window.location.origin`, everything else against the shared `quizUrl` prop;
+calls that pass their own config (`useSectionRoutes`) are untouched.

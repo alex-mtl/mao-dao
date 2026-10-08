@@ -117,7 +117,8 @@ function recolorKeepLightness(scale, hue, sat) {
 function softenScale(scale, { ds = 0, dl = 0 } = {}) {
     const out = {};
     for (const shade of SHADES) {
-        const [r, g, b] = hexToRgb(scale[shade]);
+        const v = scale[shade];
+        const [r, g, b] = typeof v === 'string' ? hexToRgb(v) : v;
         const [h, s, l] = rgbToHsl(r, g, b);
         out[shade] = hslToRgb(h, clamp(s + ds, 0, 100), clamp(l + dl, 0, 100));
     }
@@ -155,6 +156,21 @@ function toRgbScale(scale) {
     return out;
 }
 
+function brandBase() {
+    const scales = {};
+    for (const key of BRAND_KEYS) scales[key] = toRgbScale(BASE[key]);
+    return scales;
+}
+
+// A scale defined directly by a lightness curve at one hue/saturation.
+function scaleFromL(hue, sat, lightnesses) {
+    const out = {};
+    SHADES.forEach((shade, i) => {
+        out[shade] = hslToRgb(hue, sat, lightnesses[i]);
+    });
+    return out;
+}
+
 const THEMES = {
     'light-warm': () => {
         const scales = {};
@@ -162,42 +178,79 @@ const THEMES = {
         return { scales, surface: [255, 255, 255], shadowTint: [20, 22, 56] };
     },
 
+    // Each non-default theme now has its OWN brand hues (primary/secondary/
+    // accent recolored, lightness curve preserved) instead of only shifting
+    // neutrals — the earlier "same hue everywhere" approach made the five
+    // themes read as near-identical. Semantic scales (success/warning/
+    // danger/info) keep their meaning-bearing hues in every theme.
     'light-cool': () => {
-        const scales = {};
-        for (const key of BRAND_KEYS) scales[key] = toRgbScale(BASE[key]);
-        scales.warm = recolorKeepLightness(BASE.warm, 214, 18);
-        scales.ink = recolorKeepLightness(BASE.ink, 222, 28);
-        return { scales, surface: hslToRgb(210, 30, 99), shadowTint: hslToRgb(222, 40, 12) };
+        const scales = brandBase();
+        scales.primary = recolorKeepLightness(BASE.primary, 196, 92); // ocean blue
+        scales.secondary = recolorKeepLightness(BASE.secondary, 32, 92); // amber
+        scales.accent = recolorKeepLightness(BASE.accent, 168, 70); // teal
+        scales.warm = recolorKeepLightness(BASE.warm, 205, 28);
+        scales.ink = recolorKeepLightness(BASE.ink, 215, 40);
+        return { scales, surface: hslToRgb(205, 45, 99), shadowTint: hslToRgb(215, 55, 14) };
     },
 
     'light-soft': () => {
-        const scales = {};
-        for (const key of BRAND_KEYS) scales[key] = softenScale(BASE[key], { ds: -8, dl: 3 });
-        scales.warm = recolorKeepLightness(BASE.warm, 34, 22);
-        scales.ink = softenScale(BASE.ink, { ds: -6, dl: 2 });
-        return { scales, surface: hslToRgb(36, 35, 98), shadowTint: hslToRgb(36, 25, 32) };
+        const scales = brandBase();
+        scales.primary = softenScale(recolorKeepLightness(BASE.primary, 338, 70), { ds: -8, dl: 4 }); // rose
+        scales.secondary = softenScale(recolorKeepLightness(BASE.secondary, 268, 60), { ds: -6, dl: 4 }); // lilac
+        scales.accent = softenScale(recolorKeepLightness(BASE.accent, 140, 45), { ds: -4, dl: 3 }); // sage
+        scales.warm = recolorKeepLightness(BASE.warm, 24, 38); // peach cream
+        scales.ink = recolorKeepLightness(BASE.ink, 330, 14);
+        return { scales, surface: hslToRgb(30, 60, 98), shadowTint: hslToRgb(340, 30, 30) };
     },
 
     'dark-warm': () => {
-        const scales = {};
-        for (const key of BRAND_KEYS) scales[key] = reversePosition(toRgbScale(BASE[key]));
-        scales.warm = reversePosition(recolorKeepLightness(BASE.warm, 32, 16));
+        const scales = brandBase();
+        scales.primary = recolorKeepLightness(BASE.primary, 28, 92); // amber-orange
+        scales.secondary = recolorKeepLightness(BASE.secondary, 350, 85); // rose
+        scales.accent = recolorKeepLightness(BASE.accent, 88, 62); // olive-lime
+        for (const key of ['primary', 'secondary', 'accent']) scales[key] = reversePosition(scales[key]);
+        for (const key of ['success', 'warning', 'danger', 'info']) scales[key] = reversePosition(scales[key]);
+        scales.warm = reversePosition(recolorKeepLightness(BASE.warm, 24, 26));
         // +14 lift: pure inversion left mid-tones (e.g. ink-500, used for
         // secondary/muted body text) at only ~3.2:1 contrast against the
         // surface/page bg — under the 4.5:1 WCAG AA text threshold.
-        scales.ink = invertLightness(BASE.ink, 36, 10, { lift: 14 });
+        scales.ink = invertLightness(BASE.ink, 32, 16, { lift: 14 });
         // Surface (card bg) must read lighter than the page bg (warm-100,
         // itself the reversed warm-800 ~L28%) so cards still look "elevated"
         // toward the light, same relationship as the light themes' white-on-warm.
-        return { scales, surface: hslToRgb(32, 16, 27), shadowTint: [0, 0, 0] };
+        return { scales, surface: hslToRgb(24, 22, 24), shadowTint: [0, 0, 0] };
     },
 
     'dark-cool': () => {
-        const scales = {};
-        for (const key of BRAND_KEYS) scales[key] = reversePosition(toRgbScale(BASE[key]));
-        scales.warm = reversePosition(recolorKeepLightness(BASE.warm, 222, 14));
-        scales.ink = invertLightness(BASE.ink, 224, 22, { lift: 14 });
-        return { scales, surface: hslToRgb(222, 14, 27), shadowTint: [0, 0, 0] };
+        const scales = brandBase();
+        scales.primary = recolorKeepLightness(BASE.primary, 266, 88); // violet
+        scales.secondary = recolorKeepLightness(BASE.secondary, 188, 85); // cyan
+        scales.accent = recolorKeepLightness(BASE.accent, 320, 65); // orchid
+        for (const key of BRAND_KEYS) scales[key] = reversePosition(scales[key]);
+        scales.warm = reversePosition(recolorKeepLightness(BASE.warm, 228, 30));
+        scales.ink = invertLightness(BASE.ink, 224, 30, { lift: 14 });
+        return { scales, surface: hslToRgb(228, 28, 22), shadowTint: [0, 0, 0] };
+    },
+
+    // Ultra-neon, modeled on the TikTok "Guess the Word" overlay
+    // (election-game/app/web/common/neon.css): near-black violet page,
+    // magenta/cyan/lime light sources. Scales are written directly as a
+    // lightness curve (higher shade = lighter, as in every dark theme).
+    // Fonts, glows and dark-text-on-bright-buttons live in app.css.
+    'dark-neon': () => {
+        const L_BRAND = [9, 14, 21, 31, 44, 54, 60, 68, 78, 88, 95];
+        const scales = {
+            primary: scaleFromL(312, 100, L_BRAND), // hot magenta
+            secondary: scaleFromL(184, 100, L_BRAND), // electric cyan
+            accent: scaleFromL(108, 100, L_BRAND), // lime
+            success: scaleFromL(130, 95, L_BRAND),
+            warning: scaleFromL(52, 100, L_BRAND), // yellow
+            danger: scaleFromL(348, 100, L_BRAND), // neon pink-red
+            info: scaleFromL(212, 100, L_BRAND),
+            warm: scaleFromL(268, 62, [4, 6, 12, 19, 29, 44, 56, 68, 79, 89, 95]), // violet-black
+            ink: scaleFromL(262, 55, [10, 16, 26, 42, 64, 77, 84, 90, 95, 98, 99]), // lavender-white
+        };
+        return { scales, surface: hslToRgb(268, 72, 10), shadowTint: hslToRgb(280, 100, 60) };
     },
 };
 
@@ -214,7 +267,7 @@ function renderBlock(selector, theme) {
     return lines.join('\n');
 }
 
-const order = ['light-warm', 'light-cool', 'light-soft', 'dark-warm', 'dark-cool'];
+const order = ['light-warm', 'light-cool', 'light-soft', 'dark-warm', 'dark-cool', 'dark-neon'];
 const blocks = order.map((name) => {
     const theme = THEMES[name]();
     return renderBlock(`[data-theme="${name}"]`, theme);

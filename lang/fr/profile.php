@@ -35,6 +35,7 @@ return [
     'color_scheme_light_soft' => 'Douce',
     'color_scheme_dark_warm' => 'Sombre chaude',
     'color_scheme_dark_cool' => 'Sombre froide',
+    'color_scheme_dark_neon' => 'Néon',
 
     'tags_heading' => 'Centres d\'intérêt',
     'tags_description' => 'Sélectionnez des sujets que vous aimez afin que nous puissions vous recommander des quiz.',
