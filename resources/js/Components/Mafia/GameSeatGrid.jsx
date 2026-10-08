@@ -91,9 +91,9 @@ export default function GameSeatGrid({
                 '--seat-name-pad-y': 'clamp(1px, 0.4vw, 4px)',
                 // Height of the nickname pill (its line-height is fixed at
                 // 1.5 in VideoSeat) and of the profile photo shown beside
-                // it: 1.5x the pill, both derived from the same vw vars.
+                // it: the same height as the pill, both derived from the same vw vars.
                 '--seat-name-height': 'calc(var(--seat-name-text) * 1.5 + var(--seat-name-pad-y) * 2)',
-                '--seat-name-avatar': 'calc(var(--seat-name-height) * 1.5)',
+                '--seat-name-avatar': 'var(--seat-name-height)',
                 // Reported as needing "at least 4x bigger" — meaning 4x
                 // *surface area*, corrected after an initial pass wrongly
                 // read that as 4x the linear size (font-size), which is
