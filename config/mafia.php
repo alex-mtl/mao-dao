@@ -106,5 +106,10 @@ return [
     // after a phase change (so the speaker handoff is instant instead of
     // waiting for the sidecar's 1s poll). Unset in tests; connection errors
     // are swallowed, the poll is the safety net.
+    // At most this many viewers per room (guests included), and how recently
+    // a viewer must have been seen to count as still watching.
+    'spectator_limit' => 20,
+    'spectator_active_seconds' => 45,
+
     'media_internal_url' => env('MEDIA_SFU_INTERNAL_URL', env('APP_ENV') === 'testing' ? null : 'http://127.0.0.1:8381'),
 ];

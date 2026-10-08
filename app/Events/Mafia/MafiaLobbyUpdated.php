@@ -47,6 +47,7 @@ class MafiaLobbyUpdated implements ShouldBroadcastNow
                 'isGameHost' => $p->is_game_host,
                 'isReady' => $p->is_ready,
             ])->values()->all(),
+            'spectators' => $this->room->spectatorList(),
         ];
     }
 }

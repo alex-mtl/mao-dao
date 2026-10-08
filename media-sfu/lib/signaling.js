@@ -53,6 +53,13 @@ function handleJoin(ws, router, data) {
         videoProducer: null,
         audioProducer: null,
         cameraOn: true,
+        // A spectator only listens and watches: it may never produce.
+        isSpectator: payload.role === 'spectator',
+        // producerId -> { consumer, targetPlayerId, kind } for what this
+        // viewer is currently receiving, and producerIds it was refused or
+        // had taken away (so they can be offered again when allowed).
+        consumers: new Map(),
+        revoked: new Set(),
     };
     ws.peer = peer;
     roomsRegistry.addPeer(peer.roomCode, peer.playerId, peer);
@@ -105,6 +112,10 @@ async function handleCameraState(ws, data) {
 
 async function handleCreateProducerTransport(ws, router, data) {
     const peer = ws.peer;
+    if (peer.isSpectator) {
+        respond(ws, data.requestId, false, {}, 'Spectators cannot send audio or video');
+        return;
+    }
     const transport = await router.createWebRtcTransport({
         listenIps: [{ ip: '0.0.0.0', announcedIp: process.env.PUBLIC_IP }],
         enableUdp: true,
@@ -133,6 +144,10 @@ async function handleConnectProducerTransport(ws, data) {
 
 async function handleCreateProducer(ws, data) {
     const peer = ws.peer;
+    if (peer.isSpectator) {
+        respond(ws, data.requestId, false, {}, 'Spectators cannot send audio or video');
+        return;
+    }
     if (!peer.producerTransport) {
         respond(ws, data.requestId, false, {}, 'No producer transport — reload and try again');
         return;
@@ -199,6 +214,9 @@ async function handleConsume(ws, router, data) {
 
     const allowed = await canView(peer.roomCode, peer.playerId, targetPeer.playerId);
     if (!allowed) {
+        // Remember it, so the stream can be offered again the moment this
+        // viewer is allowed to see that player (see visibility.js).
+        peer.revoked.add(data.producerId);
         respond(ws, data.requestId, 'not-authorized', {}, 'Not allowed to view this player right now');
         return;
     }
@@ -224,6 +242,12 @@ async function handleConsume(ws, router, data) {
         rtpCapabilities: data.rtpCapabilities,
         paused: false,
     });
+
+    peer.revoked.delete(producer.id);
+    peer.consumers.set(producer.id, { consumer, targetPlayerId: targetPeer.playerId, kind: data.kind });
+    const forget = () => peer.consumers.delete(producer.id);
+    consumer.on('producerclose', forget);
+    consumer.on('transportclose', forget);
 
     respond(ws, data.requestId, 'consumer-created', {
         id: consumer.id,

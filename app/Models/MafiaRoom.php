@@ -52,6 +52,45 @@ class MafiaRoom extends Model
         return $this->hasMany(MafiaPlayer::class);
     }
 
+    public function spectators(): HasMany
+    {
+        return $this->hasMany(MafiaSpectator::class);
+    }
+
+    /**
+     * Everyone currently watching, for the "spectators" strip. A guest has
+     * no name or photo of their own (the UI shows a generic "Guest").
+     *
+     * @return list<array{id: int, name: ?string, avatarUrl: ?string, isGuest: bool}>
+     */
+    public function spectatorList(): array
+    {
+        return $this->spectators()->active()->with('user.media')->orderBy('id')->get()
+            ->map(fn (MafiaSpectator $s) => [
+                'id' => $s->id,
+                'name' => $s->user?->name,
+                'avatarUrl' => $s->user?->profile_photo_url,
+                'isGuest' => $s->user_id === null,
+            ])->values()->all();
+    }
+
+    /**
+     * What a spectator may watch. Same idea as canPlayerView(), minus
+     * everything private: while the game runs they see the open daytime
+     * discussion (living players only) and nothing during the mafia's
+     * meeting, any night phase or the sheriff/don reveals — that footage
+     * would give the roles away. Once the game is over, everyone; in the
+     * lobby, everyone seated.
+     */
+    public function canSpectatorView(MafiaPlayer $target): bool
+    {
+        return match (true) {
+            in_array($this->status, ['lobby', 'game_over'], true) => true,
+            $this->status === 'day' => $target->isAlive(),
+            default => false,
+        };
+    }
+
     public function actions(): HasMany
     {
         return $this->hasMany(MafiaAction::class);

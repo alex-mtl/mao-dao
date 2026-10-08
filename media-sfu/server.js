@@ -5,6 +5,7 @@ const mediasoup = require('mediasoup');
 const { WebSocketServer } = require('ws');
 const { dispatch, handleClose } = require('./lib/signaling');
 const { refreshRoom, startPolling } = require('./lib/micpolicy');
+const { syncRoomVisibility, startVisibilityPolling } = require('./lib/visibility');
 
 const PORT = Number(process.env.PORT) || 8381;
 
@@ -60,6 +61,7 @@ async function main() {
                     const { room } = JSON.parse(body || '{}');
                     if (typeof room === 'string' && room !== '') {
                         refreshRoom(room).catch((error) => console.error('refresh-mics failed:', error));
+                        syncRoomVisibility(room, { fresh: true }).catch((error) => console.error('visibility sync failed:', error));
                     }
                     res.writeHead(202).end();
                 } catch {
@@ -129,6 +131,7 @@ async function main() {
     });
 
     startPolling();
+    startVisibilityPolling();
 
     httpServer.listen(PORT, () => {
         console.log(`mafia-media-sfu listening on :${PORT}`);

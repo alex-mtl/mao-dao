@@ -87,10 +87,10 @@ Route::middleware('auth')->group(function () {
     // Must come before the {code} wildcard route below, or "history"
     // would be swallowed as a room code.
     Route::get('/mafia/history', [MafiaController::class, 'history'])->name('mafia.history');
-    Route::get('/mafia/{code}', [MafiaController::class, 'show'])->name('mafia.show');
     Route::post('/mafia/{code}/join', [MafiaController::class, 'join'])->name('mafia.join');
     Route::get('/mafia/{code}/lobby', [MafiaController::class, 'lobby'])->middleware('mafia.player')->name('mafia.lobby');
     Route::post('/mafia/{code}/seat', [MafiaController::class, 'seat'])->middleware('mafia.player')->name('mafia.seat');
+    Route::post('/mafia/{code}/release-seat', [MafiaController::class, 'releaseSeat'])->middleware('mafia.player')->name('mafia.release-seat');
     Route::post('/mafia/{code}/ready', [MafiaController::class, 'ready'])->middleware('mafia.player')->name('mafia.ready');
     Route::get('/mafia/{code}/play', [MafiaController::class, 'play'])->middleware('mafia.player')->name('mafia.play');
     Route::get('/mafia/{code}/state', [MafiaController::class, 'state'])->middleware('mafia.player')->name('mafia.state');
@@ -116,6 +116,18 @@ Route::middleware('auth')->group(function () {
 // route's middleware group.
 Route::get('/internal/mafia/can-view', [MafiaController::class, 'canView'])->name('internal.mafia.can-view');
 Route::get('/internal/mafia/mic-policy', [MafiaController::class, 'micPolicy'])->name('internal.mafia.mic-policy');
+Route::get('/internal/mafia/visibility', [MafiaController::class, 'visibility'])->name('internal.mafia.visibility');
+
+// Mafia spectating — public on purpose: the invitation link opens the room
+// for anyone, signed in or not (a guest is tracked by a session token, see
+// ResolveMafiaSpectator). Declared after the auth group so /mafia/history,
+// registered there, still wins over the {code} wildcard.
+Route::get('/mafia/{code}', [MafiaController::class, 'show'])->name('mafia.show');
+Route::middleware(['mafia.spectator', 'throttle:120,1'])->group(function () {
+    Route::get('/mafia/{code}/watch', [MafiaController::class, 'watch'])->name('mafia.watch');
+    Route::get('/mafia/{code}/watch/state', [MafiaController::class, 'watchState'])->name('mafia.watch.state');
+    Route::get('/mafia/{code}/watch/media-token', [MafiaController::class, 'watchMediaToken'])->name('mafia.watch.media-token');
+});
 
 // Guest-accessible: an invitation link must work without an account. Race
 // identity here is a session-stored token (see ResolveRacePlayer), not the

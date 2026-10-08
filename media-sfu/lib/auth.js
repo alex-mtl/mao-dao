@@ -43,7 +43,8 @@ function verifyToken(token, secret) {
         return null;
     }
 
-    if (!payload.roomCode || !payload.playerId || !payload.slot) {
+    // A spectator has no seat, so no slot — everyone else must have one.
+    if (!payload.roomCode || !payload.playerId || (payload.role !== 'spectator' && !payload.slot)) {
         return null;
     }
 

@@ -21,6 +21,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'race.player' => \App\Http\Middleware\ResolveRacePlayer::class,
             'mafia.player' => \App\Http\Middleware\ResolveMafiaPlayer::class,
+            'mafia.spectator' => \App\Http\Middleware\ResolveMafiaSpectator::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

@@ -54,4 +54,13 @@ async function canView(roomCode, viewerPlayerId, targetPlayerId) {
     return value;
 }
 
-module.exports = { canView };
+/** Forget cached answers for a room (used right after a phase change). */
+function invalidateRoom(roomCode) {
+    for (const key of cache.keys()) {
+        if (key.startsWith(`${roomCode}:`)) {
+            cache.delete(key);
+        }
+    }
+}
+
+module.exports = { canView, invalidateRoom };

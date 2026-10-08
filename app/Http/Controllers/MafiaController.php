@@ -48,13 +48,24 @@ class MafiaController extends Controller
         abort_unless($player, 403);
         abort_unless(filled(config('mafia.media_shared_secret')), 500, 'Voice/video is not configured on this server.');
 
-        $payload = [
+        return $this->signedMediaToken([
             'roomCode' => $room->room_code,
             'playerId' => $player->id,
             'userId' => $player->user_id,
             'slot' => $player->slot,
-            'exp' => now()->addSeconds(config('mafia.media_token_ttl_seconds'))->timestamp,
-        ];
+        ]);
+    }
+
+    /**
+     * Signs a short-lived join token for the media sidecar (the secret and
+     * format are shared with media-sfu/lib/auth.js) and returns it with the
+     * sidecar's WebSocket URL.
+     */
+    private function signedMediaToken(array $payload): JsonResponse
+    {
+        abort_unless(filled(config('mafia.media_shared_secret')), 500, 'Voice/video is not configured on this server.');
+
+        $payload['exp'] = now()->addSeconds(config('mafia.media_token_ttl_seconds'))->timestamp;
 
         $payloadB64 = rtrim(strtr(base64_encode(json_encode($payload)), '+/', '-_'), '=');
         $signature = hash_hmac('sha256', $payloadB64, (string) config('mafia.media_shared_secret'));
@@ -80,12 +91,65 @@ class MafiaController extends Controller
         abort_unless($expected !== '' && hash_equals($expected, $given), 403);
 
         $room = MafiaRoom::where('room_code', strtoupper((string) $request->query('room')))->first();
-        $viewer = $room?->players()->find($request->query('viewer'));
         $target = $room?->players()->find($request->query('target'));
+
+        // A spectator is identified to the sidecar as "s<id>" (see
+        // MafiaSpectator::mediaId()); everyone else by their player id.
+        $viewerParam = (string) $request->query('viewer');
+        if (str_starts_with($viewerParam, 's')) {
+            $spectator = $room?->spectators()->find(substr($viewerParam, 1));
+
+            return response()->json([
+                'canView' => (bool) ($room && $spectator && $target && $room->canSpectatorView($target)),
+            ]);
+        }
+
+        $viewer = $room?->players()->find($viewerParam);
 
         return response()->json([
             'canView' => (bool) ($room && $viewer && $target && $room->canPlayerView($viewer, $target)),
         ]);
+    }
+
+    /**
+     * Server-to-server only (shared secret, like canView()): for a list of
+     * connected viewers — player ids and spectator ids ("s<id>") — returns
+     * which players each of them may currently see. The sidecar polls this
+     * once a second per room to take streams away (and give them back)
+     * when the phase changes, instead of asking canView() for every pair.
+     * Unknown viewers simply get an empty list (fail closed).
+     */
+    public function visibility(Request $request): JsonResponse
+    {
+        $expected = (string) config('mafia.media_shared_secret');
+        $given = (string) $request->header('X-Media-Sfu-Secret', '');
+        abort_unless($expected !== '' && hash_equals($expected, $given), 403);
+
+        $room = MafiaRoom::where('room_code', strtoupper((string) $request->query('room')))->first();
+        if (! $room) {
+            return response()->json((object) []);
+        }
+
+        $players = $room->players()->get();
+        $spectators = $room->spectators()->get()->keyBy(fn ($s) => $s->mediaId());
+        $result = [];
+
+        foreach (array_filter(explode(',', (string) $request->query('viewers'))) as $viewerId) {
+            if (str_starts_with($viewerId, 's')) {
+                $result[$viewerId] = $spectators->has($viewerId)
+                    ? $players->filter(fn ($target) => $room->canSpectatorView($target))->pluck('id')->values()->all()
+                    : [];
+
+                continue;
+            }
+
+            $viewer = $players->firstWhere('id', (int) $viewerId);
+            $result[$viewerId] = $viewer
+                ? $players->filter(fn ($target) => $room->canPlayerView($viewer, $target))->pluck('id')->values()->all()
+                : [];
+        }
+
+        return response()->json((object) $result);
     }
 
     /**
@@ -193,7 +257,9 @@ class MafiaController extends Controller
             ]);
         }
 
-        $existingPlayer = $room->players()->where('user_id', $request->user()->id)->first();
+        $user = $request->user();
+
+        $existingPlayer = $user ? $room->players()->where('user_id', $user->id)->first() : null;
         if ($existingPlayer) {
             return redirect()->route($room->status === 'lobby' ? 'mafia.lobby' : 'mafia.play', $room->room_code);
         }
@@ -208,12 +274,22 @@ class MafiaController extends Controller
             default => 'joinable',
         };
 
+        // The invitation link opens the room itself for anyone — logged in
+        // or not: a running or finished game, a full lobby, and a guest
+        // anywhere are all just watched. Only a signed-in user facing a
+        // lobby with a free seat gets the "join" choice (which also offers
+        // to watch instead), and a cancelled room is the one dead end.
+        if ($state !== 'cancelled' && ($state !== 'joinable' || ! $user)) {
+            return redirect()->route('mafia.watch', $room->room_code);
+        }
+
         return Inertia::render('Mafia/Join', [
             'state' => $state,
             'code' => $room->room_code,
             'playerCount' => $playerCount,
             'maxPlayers' => config('mafia.seats'),
             'requiresPassword' => (bool) ($room->settings['password_hash'] ?? null),
+            'watchUrl' => route('mafia.watch', $room->room_code),
         ]);
     }
 
@@ -238,20 +314,199 @@ class MafiaController extends Controller
         }
 
         $occupiedSlots = $room->players()->pluck('slot')->all();
-        $slot = collect(range(1, config('mafia.seats')))->first(fn ($s) => ! in_array($s, $occupiedSlots, true));
 
-        $room->players()->create([
-            'user_id' => $request->user()->id,
-            'slot' => $slot,
-            'status' => 'alive',
-            'is_ready' => false,
-            'joined_at' => now(),
-            'last_seen_at' => now(),
-        ]);
+        // A spectator tapping a free seat names it; the plain invite-link
+        // join takes the first free one.
+        $requested = $request->validate(['slot' => ['nullable', 'integer', 'between:1,'.config('mafia.seats')]])['slot'] ?? null;
+        if ($requested !== null && in_array($requested, $occupiedSlots, true)) {
+            return back()->withErrors(['slot' => __('mafia.seat_taken')]);
+        }
+        $slot = $requested ?? collect(range(1, config('mafia.seats')))->first(fn ($s) => ! in_array($s, $occupiedSlots, true));
+
+        try {
+            $room->players()->create([
+                'user_id' => $request->user()->id,
+                'slot' => $slot,
+                'status' => 'alive',
+                'is_ready' => false,
+                'joined_at' => now(),
+                'last_seen_at' => now(),
+            ]);
+        } catch (\Illuminate\Database\UniqueConstraintViolationException) {
+            // Someone took that seat a moment before us.
+            return back()->withErrors(['slot' => __('mafia.seat_taken')]);
+        }
+
+        $room->spectators()->where('user_id', $request->user()->id)->delete();
 
         MafiaLobbyUpdated::dispatch($room->fresh());
 
         return redirect()->route('mafia.lobby', $room->room_code);
+    }
+
+    /**
+     * Gives up the seat and goes on watching the lobby instead. The
+     * game-host flag moves to whoever has been seated longest (a lobby
+     * can't be left without one); a lone player has nobody to hand the
+     * room to, so that case is refused. If everyone left behind is already
+     * ready, the game starts just as it would after the last "ready".
+     */
+    public function releaseSeat(Request $request): RedirectResponse
+    {
+        $room = $request->attributes->get('mafiaRoom');
+        $player = $request->attributes->get('mafiaPlayer');
+
+        abort_unless($player, 403);
+
+        if ($room->status !== 'lobby') {
+            return redirect()->route('mafia.play', $room->room_code);
+        }
+
+        $others = $room->players()->where('id', '!=', $player->id)->orderBy('joined_at')->get();
+        if ($others->isEmpty()) {
+            return redirect()->route('mafia.lobby', $room->room_code);
+        }
+
+        DB::transaction(function () use ($room, $player, $others, $request) {
+            if ($player->is_game_host) {
+                $others->first()->update(['is_game_host' => true]);
+            }
+
+            $player->delete();
+
+            $room->spectators()->updateOrCreate(
+                ['user_id' => $request->user()->id],
+                ['last_seen_at' => now()],
+            );
+        });
+
+        MafiaLobbyUpdated::dispatch($room->fresh());
+
+        if ($room->players()->where('is_ready', false)->doesntExist()) {
+            $this->startGame($room->fresh());
+        }
+
+        return redirect()->route('mafia.watch', $room->room_code);
+    }
+
+    // ---- spectators -----------------------------------------------------
+
+    /**
+     * The public watch page: anyone with the link — signed in or not —
+     * sees the room, without a seat and without any controls. A seated
+     * player is sent to their own page instead.
+     */
+    public function watch(Request $request): Response|RedirectResponse
+    {
+        $room = $request->attributes->get('mafiaRoom');
+        $spectator = $request->attributes->get('mafiaSpectator');
+        $user = $request->user();
+
+        if (! $spectator) {
+            return redirect()->route($room->status === 'lobby' ? 'mafia.lobby' : 'mafia.play', $room->room_code);
+        }
+
+        if ($room->status === 'cancelled') {
+            return redirect()->route('mafia.show', $room->room_code);
+        }
+
+        abort_if(filled($room->settings['password_hash'] ?? null), 403);
+
+        // After logging in from here, come straight back.
+        if (! $user) {
+            $request->session()->put('url.intended', route('mafia.watch', $room->room_code));
+        }
+
+        if ($room->status === 'lobby') {
+            return Inertia::render('Mafia/Lobby', [
+                'room' => ['code' => $room->room_code, 'seats' => config('mafia.seats')],
+                'snapshot' => $this->lobbyPayload($room),
+                'spectator' => true,
+                'canTakeSeat' => (bool) $user,
+                'myPlayerId' => null,
+                'inviteUrl' => route('mafia.show', $room->room_code),
+            ]);
+        }
+
+        return Inertia::render('Mafia/Play', [
+            'code' => $room->room_code,
+            'snapshot' => $this->spectatorSnapshot($room),
+            'spectator' => true,
+        ]);
+    }
+
+    public function watchState(Request $request): JsonResponse
+    {
+        $room = $request->attributes->get('mafiaRoom');
+
+        abort_unless($request->attributes->get('mafiaSpectator'), 403);
+
+        return response()->json(
+            $room->status === 'lobby' ? $this->lobbyPayload($room) : $this->spectatorSnapshot($room),
+        );
+    }
+
+    public function watchMediaToken(Request $request): JsonResponse
+    {
+        $room = $request->attributes->get('mafiaRoom');
+        $spectator = $request->attributes->get('mafiaSpectator');
+
+        abort_unless($spectator, 403);
+
+        return $this->signedMediaToken([
+            'roomCode' => $room->room_code,
+            'playerId' => $spectator->mediaId(),
+            'userId' => $spectator->user_id,
+            'slot' => null,
+            'role' => 'spectator',
+        ]);
+    }
+
+    /** What the lobby shows (and what a lobby resync returns). */
+    private function lobbyPayload(MafiaRoom $room): array
+    {
+        return [
+            'status' => $room->status,
+            'players' => $this->seatSnapshot($room->players()->with('user.media')->orderBy('slot')->get()),
+            'spectators' => $room->spectatorList(),
+            'goAt' => $room->started_at?->toIso8601String(),
+        ];
+    }
+
+    /**
+     * The in-game snapshot for someone with no seat: the same public view
+     * every player gets (seats, phase, speaker, warnings, nominees...) —
+     * built through the player snapshot with a transient, unsaved "viewer"
+     * that owns no role and no actions, then the player-only parts are
+     * emptied explicitly rather than trusting that to fall out naturally.
+     * Roles stay hidden until the game is over (roomSnapshot already only
+     * reveals them then).
+     */
+    private function spectatorSnapshot(MafiaRoom $room): array
+    {
+        $viewer = (new MafiaPlayer)->forceFill(['id' => 0, 'slot' => 0, 'role' => null, 'status' => 'spectator']);
+
+        return [
+            ...$this->roomSnapshot($room, $viewer),
+            'isSpectator' => true,
+            'you' => [
+                'id' => null, 'slot' => null, 'role' => null, 'team' => null,
+                'status' => 'spectator', 'isAlive' => false, 'currentNomineeId' => null,
+            ],
+            'disconnectedPlayers' => [],
+            'mafiaTeammates' => [],
+            'donCheckHistory' => [],
+            'sheriffCheckHistory' => [],
+            'hasActedThisStage' => false,
+            'canPass' => false,
+            'canShoutOut' => false,
+            'canNominate' => false,
+            'canVote' => false,
+            'canLockVote' => false,
+            'canShoot' => false,
+            'canDonCheck' => false,
+            'canSheriffCheck' => false,
+        ];
     }
 
     public function lobby(Request $request): Response|RedirectResponse
@@ -280,6 +535,7 @@ class MafiaController extends Controller
             'snapshot' => [
                 'status' => $room->status,
                 'players' => $this->seatSnapshot($room->players()->with('user.media')->orderBy('slot')->get()),
+                'spectators' => $room->spectatorList(),
             ],
             'isGameHost' => $player->is_game_host,
             'isReady' => $player->is_ready,
@@ -410,11 +666,7 @@ class MafiaController extends Controller
         abort_unless($player, 403);
 
         if ($room->status === 'lobby') {
-            return response()->json([
-                'status' => $room->status,
-                'players' => $this->seatSnapshot($room->players()->with('user.media')->orderBy('slot')->get()),
-                'goAt' => $room->started_at?->toIso8601String(),
-            ]);
+            return response()->json($this->lobbyPayload($room));
         }
 
         return response()->json($this->roomSnapshot($room, $player));
@@ -1039,6 +1291,7 @@ class MafiaController extends Controller
             'donCheckHistory' => $player->role === 'don' ? $this->checkHistory($room, $player, 'don_check', 'isSheriff') : [],
             'sheriffCheckHistory' => $player->role === 'sheriff' ? $this->checkHistory($room, $player, 'sheriff_check', 'isBlackTeam') : [],
             'hasActedThisStage' => $hasActedThisStage,
+            'spectators' => $room->spectatorList(),
         ];
     }
 
