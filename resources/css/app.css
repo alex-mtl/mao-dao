@@ -269,3 +269,28 @@
     color: rgb(var(--color-danger-300));
     text-shadow: 0 0 0.6em rgb(var(--color-danger-500));
 }
+
+/* Muted "dark tone" icons chosen for a light page (mafia role, check results) read as neon violet. */
+[data-theme="dark-neon"] .seat-chip .text-ink-300,
+[data-theme="dark-neon"] .seat-chip .text-ink-200 {
+    color: rgb(178 140 255);
+    text-shadow: 0 0 0.6em rgb(157 77 255);
+}
+
+/* The table's centre panel is small: keep its buttons compact and its scrollbar on theme. */
+[data-theme="dark-neon"] .mafia-info button,
+[data-theme="dark-neon"] .mafia-info a {
+    font-family: 'Rajdhani', ui-sans-serif, system-ui, sans-serif;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+}
+
+[data-theme="dark-neon"] * {
+    scrollbar-color: rgb(157 77 255 / 0.65) transparent;
+    scrollbar-width: thin;
+}
+
+/* "Sit here" outline on free seats: electric cyan rather than the magenta brand. */
+[data-theme="dark-neon"] .mafia-seat-action.ring-primary-400 {
+    --tw-ring-color: rgb(var(--color-secondary-500) / 0.85);
+}

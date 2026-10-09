@@ -238,7 +238,7 @@ const THEMES = {
     // lightness curve (higher shade = lighter, as in every dark theme).
     // Fonts, glows and dark-text-on-bright-buttons live in app.css.
     'dark-neon': () => {
-        const L_BRAND = [9, 14, 21, 31, 44, 54, 60, 68, 78, 88, 95];
+        const L_BRAND = [9, 14, 21, 52, 57, 60, 64, 70, 78, 88, 95];
         const scales = {
             primary: scaleFromL(312, 100, L_BRAND), // hot magenta
             secondary: scaleFromL(184, 100, L_BRAND), // electric cyan

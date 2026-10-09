@@ -151,7 +151,7 @@ export default function GameSeatGrid({
                     videoHidden={videoHiddenFor(seat)}
                 />
             ))}
-            <div style={{ gridArea: 'info' }} className="flex h-full w-full items-stretch justify-stretch">
+            <div style={{ gridArea: 'info' }} className="mafia-info flex h-full w-full items-stretch justify-stretch">
                 {infoPanel}
             </div>
         </div>
