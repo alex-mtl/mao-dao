@@ -25,7 +25,7 @@ export default function SpeechTimerRing({ remainingSeconds, totalSeconds, label 
     const isLow = remainingSeconds < 5;
 
     return (
-        <div role="timer" aria-label={label} className="relative h-[var(--seat-timer-size)] w-[var(--seat-timer-size)] rounded-full bg-ink-900/60">
+        <div role="timer" aria-label={label} className="relative h-[var(--seat-timer-size)] w-[var(--seat-timer-size)] rounded-full seat-chip bg-black/60">
             <svg viewBox="0 0 100 100" className="block h-full w-full -rotate-90">
                 <circle cx="50" cy="50" r={RADIUS} fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="10" />
                 <circle

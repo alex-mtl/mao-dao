@@ -115,7 +115,7 @@ function SeatNameTag({ name, avatarUrl }) {
                     className="h-[var(--seat-name-avatar)] w-[var(--seat-name-avatar)] shrink-0 rounded-full object-cover ring-2 ring-white/70"
                 />
             )}
-            <span className="min-w-0 truncate rounded-full bg-ink-900/60 px-[var(--seat-name-pad-x)] py-[var(--seat-name-pad-y)] text-[length:var(--seat-name-text)] font-medium leading-[1.5] text-white">
+            <span className="min-w-0 truncate rounded-full seat-chip bg-black/60 px-[var(--seat-name-pad-x)] py-[var(--seat-name-pad-y)] text-[length:var(--seat-name-text)] font-medium leading-[1.5] text-white">
                 {name}
             </span>
         </div>
@@ -200,7 +200,7 @@ export default function VideoSeat({ seat, isSpeaking = false, stream = null, vid
         <div
             style={{ gridArea: `s${seat.slot}` }}
             tabIndex={hasSelfControls ? 0 : undefined}
-            className={`group relative h-full w-full overflow-hidden rounded-lg border bg-warm-900 transition ${
+            className={`mafia-seat group relative h-full w-full overflow-hidden rounded-lg border bg-warm-900 transition ${isSpeaking ? 'is-speaking' : ''} ${seat.isYou ? 'is-you' : ''} ${seat.isShouting ? 'is-shouting' : ''} ${isDead ? 'is-dead' : ''} ${
                 hasSelfControls ? 'outline-none' : ''
             } ${
                 isDead ? 'border-warm-200 opacity-60' : 'border-warm-200'
@@ -239,7 +239,7 @@ export default function VideoSeat({ seat, isSpeaking = false, stream = null, vid
                     }}
                     disabled={action.disabled}
                     aria-label={t('mafia.seat_action_label', { action: t(`mafia.action_${action.type}`), slot: seat.slot })}
-                    className={`absolute inset-0 flex items-center justify-center ring-inset transition ${
+                    className={`mafia-seat-action absolute inset-0 flex items-center justify-center ring-inset transition ${
                         // A seat that's already the current pick used to
                         // stay permanently visible too (dropping out of
                         // hover-only mode entirely) — the persistent ring
@@ -250,8 +250,8 @@ export default function VideoSeat({ seat, isSpeaking = false, stream = null, vid
                         isHoverOnlyAction ? 'opacity-0 focus:opacity-100 group-hover:opacity-100 group-focus-within:opacity-100' : ''
                     } ${
                         action.disabled
-                            ? 'cursor-not-allowed bg-ink-900/50 ring-2 ring-warm-400/40'
-                            : `cursor-pointer ring-2 ${action.type === 'sit' ? 'hover:bg-white/15' : 'bg-ink-900/10 hover:bg-ink-900/30'} ${ACTION_RING_COLORS[action.type]}`
+                            ? 'cursor-not-allowed bg-black/50 ring-2 ring-warm-400/40'
+                            : `cursor-pointer ring-2 ${action.type === 'sit' ? 'hover:bg-white/15' : 'bg-black/10 hover:bg-black/30'} ${ACTION_RING_COLORS[action.type]}`
                     } ${action.isCurrentPick ? 'ring-4 ring-success-400' : ''}`}
                 >
                     {/* "Sit here" has no icon on purpose: the empty seat's
@@ -269,7 +269,7 @@ export default function VideoSeat({ seat, isSpeaking = false, stream = null, vid
 
             {roleType && (
                 <span
-                    className="absolute left-1 top-1 flex aspect-square items-center justify-center rounded-full bg-ink-900/60 p-[var(--seat-icon-pad)]"
+                    className="absolute left-1 top-1 flex aspect-square items-center justify-center rounded-full seat-chip bg-black/60 p-[var(--seat-icon-pad)]"
                     title={t(`mafia.role_${seat.visibleRole}`)}
                 >
                     {roleType === 'image' ? (
@@ -288,7 +288,7 @@ export default function VideoSeat({ seat, isSpeaking = false, stream = null, vid
 
             {seat.warnings > 0 && (
                 <span
-                    className={`absolute top-1 flex aspect-square items-center justify-center rounded-full bg-ink-900/60 p-[var(--seat-icon-pad)] ${
+                    className={`absolute top-1 flex aspect-square items-center justify-center rounded-full seat-chip bg-black/60 p-[var(--seat-icon-pad)] ${
                         roleType || checkBadge ? 'left-[calc(var(--seat-icon)+var(--seat-icon-pad)*2+0.5rem)]' : 'left-1'
                     }`}
                     title={t('mafia.warnings_label', { count: seat.warnings })}
@@ -319,7 +319,7 @@ export default function VideoSeat({ seat, isSpeaking = false, stream = null, vid
 
             {checkBadge && (
                 <span
-                    className="absolute left-1 top-1 flex aspect-square items-center justify-center rounded-full bg-ink-900/60 p-[var(--seat-icon-pad)]"
+                    className="absolute left-1 top-1 flex aspect-square items-center justify-center rounded-full seat-chip bg-black/60 p-[var(--seat-icon-pad)]"
                     title={t(`mafia.${CHECK_BADGE_LABEL_KEYS[checkBadge.type][checkBadge.positive]}`, { slot: seat.slot })}
                 >
                     {checkBadgeType === 'image' ? (
@@ -356,7 +356,7 @@ export default function VideoSeat({ seat, isSpeaking = false, stream = null, vid
                     />
                 </div>
             ) : (
-                <span className="absolute right-1 top-1 flex aspect-square items-center justify-center rounded-full bg-ink-900/60 px-[var(--seat-badge-pad-x)] py-[var(--seat-badge-pad-y)] text-[length:var(--seat-badge-text)] font-semibold leading-none text-white">
+                <span className="absolute right-1 top-1 flex aspect-square items-center justify-center rounded-full seat-chip bg-black/60 px-[var(--seat-badge-pad-x)] py-[var(--seat-badge-pad-y)] text-[length:var(--seat-badge-text)] font-semibold leading-none text-white">
                     {seat.slot}
                 </span>
             )}
@@ -374,14 +374,14 @@ export default function VideoSeat({ seat, isSpeaking = false, stream = null, vid
                             type="button"
                             onClick={seat.onSignalClick}
                             aria-label={t('mafia.signal_trigger_label', { slot: seat.slot })}
-                            className="flex aspect-square items-center justify-center rounded-full bg-ink-900/60 p-[var(--seat-icon-pad)] text-accent-300 opacity-70 transition hover:opacity-100 hover:text-accent-200"
+                            className="flex aspect-square items-center justify-center rounded-full seat-chip bg-black/60 p-[var(--seat-icon-pad)] text-accent-300 opacity-70 transition hover:opacity-100 hover:text-accent-200"
                         >
                             <MaterialIcon name="leak_add" className="text-[length:var(--seat-icon)]" />
                         </button>
                     )}
 
                     {seat.mediaControls?.type === 'volume' && (
-                        <div className="flex items-center gap-1 rounded-full bg-ink-900/60 p-[var(--seat-icon-pad)] opacity-0 transition group-hover:opacity-100 group-focus-within:opacity-100">
+                        <div className="mafia-seat-panel flex items-center gap-1 rounded-full seat-chip bg-black/60 p-[var(--seat-icon-pad)] opacity-0 transition group-hover:opacity-100 group-focus-within:opacity-100">
                             <MaterialIcon name="volume_up" className="text-[length:var(--seat-icon)] text-white" />
                             <input
                                 type="range"
@@ -409,7 +409,7 @@ export default function VideoSeat({ seat, isSpeaking = false, stream = null, vid
                             onPointerDown={(e) => {
                                 pointerTypeRef.current = e.pointerType;
                             }}
-                            className="pointer-events-none flex items-center gap-[var(--seat-icon-pad)] rounded-full bg-ink-900/60 p-[var(--seat-icon-pad)] opacity-0 transition group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100"
+                            className="mafia-seat-panel pointer-events-none flex items-center gap-[var(--seat-icon-pad)] rounded-full seat-chip bg-black/60 p-[var(--seat-icon-pad)] opacity-0 transition group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100"
                         >
                             {seat.shoutOut && (
                                 <button
@@ -492,7 +492,7 @@ export default function VideoSeat({ seat, isSpeaking = false, stream = null, vid
                 // — without this, this full-card dimming layer, painted
                 // after those buttons in the DOM, would silently swallow
                 // every click on them.
-                <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-ink-900/50">
+                <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/50">
                     <span className="rounded-full bg-danger-600 px-[var(--seat-status-pad-x)] py-[var(--seat-status-pad-y)] text-[length:var(--seat-status-text)] font-medium text-white">
                         {t(`mafia.status_${seat.status}`)}
                     </span>

@@ -126,3 +126,146 @@
 [data-theme="dark-neon"] a:hover {
     text-shadow: 0 0 0.6em currentColor;
 }
+
+/*
+ * Mafia table in the dark themes. The seat card's own backdrop was
+ * `bg-warm-900`, which is dark in the light themes but LIGHT in every dark
+ * one (warm scales are reversed there) — dark themes use warm-200 instead.
+ */
+[data-theme="dark-warm"] .mafia-seat,
+[data-theme="dark-cool"] .mafia-seat,
+[data-theme="dark-neon"] .mafia-seat {
+    background-color: rgb(var(--color-warm-200));
+}
+
+/*
+ * Mafia table in the neon theme: seats are glowing cards that lift on
+ * hover/focus (like the game-menu cards in the TikTok overlay), the
+ * hover-only controls rise into place, and the "state" rings — whose turn
+ * it is, you, a foul — become pulsing neon outlines. All sizes in vw so
+ * they scale with the grid.
+ */
+[data-theme="dark-neon"] .mafia-seat {
+    border-color: rgb(157 77 255 / 0.55);
+    box-shadow: 0 0 0.8vw rgb(157 77 255 / 0.35), inset 0 0 1.2vw rgb(157 77 255 / 0.12);
+    transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease, opacity 0.18s ease;
+}
+
+[data-theme="dark-neon"] .mafia-seat:hover,
+[data-theme="dark-neon"] .mafia-seat:focus-within {
+    z-index: 5;
+    transform: translateY(-0.35vw) scale(1.012);
+    border-color: rgb(190 140 255 / 0.9);
+    box-shadow: 0 0.7vw 1.8vw rgb(157 77 255 / 0.5), 0 0 2.4vw rgb(157 77 255 / 0.45), inset 0 0 1.6vw rgb(157 77 255 / 0.18);
+}
+
+[data-theme="dark-neon"] .mafia-seat.is-you {
+    border-color: rgb(var(--color-accent-500));
+    box-shadow: 0 0 1.1vw rgb(var(--color-accent-500) / 0.7), inset 0 0 1.4vw rgb(var(--color-accent-500) / 0.16);
+}
+
+[data-theme="dark-neon"] .mafia-seat.is-speaking {
+    border-color: rgb(var(--color-secondary-500));
+    animation: neon-speaker 1.4s ease-in-out infinite alternate;
+}
+
+[data-theme="dark-neon"] .mafia-seat.is-shouting {
+    border-color: rgb(var(--color-danger-500));
+    animation: neon-shout 0.5s ease-in-out infinite alternate;
+}
+
+[data-theme="dark-neon"] .mafia-seat.is-dead {
+    border-color: rgb(157 77 255 / 0.2);
+    box-shadow: none;
+}
+
+@keyframes neon-speaker {
+    from {
+        box-shadow: 0 0 0 0.1vw rgb(var(--color-secondary-500)), 0 0 1.2vw rgb(var(--color-secondary-500) / 0.7), 0 0 2.6vw rgb(var(--color-secondary-500) / 0.35), inset 0 0 1.4vw rgb(var(--color-secondary-500) / 0.22);
+    }
+    to {
+        box-shadow: 0 0 0 0.16vw rgb(var(--color-secondary-400)), 0 0 1.8vw rgb(var(--color-secondary-500) / 0.95), 0 0 4vw rgb(var(--color-secondary-500) / 0.5), inset 0 0 2.2vw rgb(var(--color-secondary-500) / 0.34);
+    }
+}
+
+@keyframes neon-shout {
+    from {
+        box-shadow: 0 0 0 0.12vw rgb(var(--color-danger-500)), 0 0 1.2vw rgb(var(--color-danger-500) / 0.8), inset 0 0 1.4vw rgb(var(--color-danger-500) / 0.25);
+    }
+    to {
+        box-shadow: 0 0 0 0.2vw rgb(var(--color-danger-400)), 0 0 2.4vw rgb(var(--color-danger-500)), 0 0 4.4vw rgb(var(--color-danger-500) / 0.6), inset 0 0 2.4vw rgb(var(--color-danger-500) / 0.4);
+    }
+}
+
+/* Chips over the video (role, seat number, nickname, counters, timer). */
+[data-theme="dark-neon"] .seat-chip {
+    background-color: rgb(10 2 20 / 0.72);
+    border: 1px solid rgb(157 77 255 / 0.5);
+    box-shadow: 0 0 0.6vw rgb(157 77 255 / 0.5);
+    text-shadow: 0 0 0.45em currentColor;
+}
+
+/* Hover-only panels rise into place and light up. */
+[data-theme="dark-neon"] .mafia-seat-panel {
+    transform: translateY(0.7vw);
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    border-color: rgb(var(--color-secondary-500) / 0.7);
+    box-shadow: 0 0 1vw rgb(var(--color-secondary-500) / 0.5);
+}
+
+[data-theme="dark-neon"] .mafia-seat:hover .mafia-seat-panel,
+[data-theme="dark-neon"] .mafia-seat:focus-within .mafia-seat-panel {
+    transform: translateY(0);
+}
+
+/* Whole-seat action overlays (nominate / vote / shoot / check / sit). */
+[data-theme="dark-neon"] .mafia-seat-action {
+    transition: box-shadow 0.18s ease, background-color 0.18s ease;
+}
+
+[data-theme="dark-neon"] .mafia-seat-action:not(:disabled):hover,
+[data-theme="dark-neon"] .mafia-seat-action:not(:disabled):focus-visible {
+    box-shadow: inset 0 0 0 0.22vw var(--tw-ring-color), inset 0 0 3vw var(--tw-ring-color);
+}
+
+[data-theme="dark-neon"] .mafia-seat-action > span {
+    filter: drop-shadow(0 0 0.5vw currentColor);
+    transition: transform 0.18s ease;
+}
+
+[data-theme="dark-neon"] .mafia-seat-action:not(:disabled):hover > span {
+    transform: scale(1.18);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    [data-theme="dark-neon"] .mafia-seat.is-speaking,
+    [data-theme="dark-neon"] .mafia-seat.is-shouting {
+        animation: none;
+    }
+    [data-theme="dark-neon"] .mafia-seat:hover,
+    [data-theme="dark-neon"] .mafia-seat:focus-within {
+        transform: none;
+    }
+}
+
+/* Form fields in the dark themes: the forms plugin paints them white. */
+:is([data-theme="dark-warm"], [data-theme="dark-cool"], [data-theme="dark-neon"]) :is(input:not([type="checkbox"], [type="radio"], [type="range"], [type="file"], [type="color"]), select, textarea) {
+    background-color: rgb(var(--color-warm-100));
+    color: rgb(var(--color-ink-900));
+    border-color: rgb(var(--color-warm-400));
+}
+
+:is([data-theme="dark-warm"], [data-theme="dark-cool"], [data-theme="dark-neon"]) :is(input, textarea)::placeholder {
+    color: rgb(var(--color-ink-400));
+}
+
+[data-theme="dark-neon"] :is(input:not([type="checkbox"], [type="radio"], [type="range"], [type="file"], [type="color"]), select, textarea) {
+    background-color: rgb(8 2 18);
+    border-color: rgb(157 77 255 / 0.55);
+}
+
+/* Counters/role tints that were chosen for a light page stay readable on the chips. */
+[data-theme="dark-neon"] .seat-chip .text-danger-400 {
+    color: rgb(var(--color-danger-300));
+    text-shadow: 0 0 0.6em rgb(var(--color-danger-500));
+}
