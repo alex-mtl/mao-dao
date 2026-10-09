@@ -151,11 +151,16 @@
     transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease, opacity 0.18s ease;
 }
 
-[data-theme="dark-neon"] .mafia-seat:hover,
-[data-theme="dark-neon"] .mafia-seat:focus-within {
+/* Every seat brightens under the pointer, but only a seat you can act on
+   (nominate / vote / shoot / check / sit) lifts. */
+[data-theme="dark-neon"] .mafia-seat:hover {
+    border-color: rgb(190 140 255 / 0.9);
+    box-shadow: 0 0 1.6vw rgb(157 77 255 / 0.5), inset 0 0 1.4vw rgb(157 77 255 / 0.16);
+}
+
+[data-theme="dark-neon"] .mafia-seat.has-action:hover {
     z-index: 5;
     transform: translateY(-0.35vw) scale(1.012);
-    border-color: rgb(190 140 255 / 0.9);
     box-shadow: 0 0.7vw 1.8vw rgb(157 77 255 / 0.5), 0 0 2.4vw rgb(157 77 255 / 0.45), inset 0 0 1.6vw rgb(157 77 255 / 0.18);
 }
 
@@ -242,8 +247,7 @@
     [data-theme="dark-neon"] .mafia-seat.is-shouting {
         animation: none;
     }
-    [data-theme="dark-neon"] .mafia-seat:hover,
-    [data-theme="dark-neon"] .mafia-seat:focus-within {
+    [data-theme="dark-neon"] .mafia-seat.has-action:hover {
         transform: none;
     }
 }
@@ -293,4 +297,21 @@
 /* "Sit here" outline on free seats: electric cyan rather than the magenta brand. */
 [data-theme="dark-neon"] .mafia-seat-action.ring-primary-400 {
     --tw-ring-color: rgb(var(--color-secondary-500) / 0.85);
+}
+
+/* Covert-signal button: dim neon green at rest, brighter and glowing under the pointer / on focus. */
+[data-theme="dark-neon"] .mafia-signal-btn {
+    color: rgb(var(--color-accent-500));
+    opacity: 0.8;
+    border-color: rgb(var(--color-accent-500) / 0.6);
+    box-shadow: 0 0 0.6vw rgb(var(--color-accent-500) / 0.45);
+    transition: opacity 0.18s ease, box-shadow 0.18s ease, color 0.18s ease, transform 0.18s ease;
+}
+
+[data-theme="dark-neon"] .mafia-signal-btn:hover,
+[data-theme="dark-neon"] .mafia-signal-btn:focus-visible {
+    opacity: 1;
+    color: rgb(var(--color-accent-300));
+    box-shadow: 0 0 1.2vw rgb(var(--color-accent-500) / 0.9), inset 0 0 0.5vw rgb(var(--color-accent-500) / 0.4);
+    transform: scale(1.1);
 }

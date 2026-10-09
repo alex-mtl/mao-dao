@@ -200,7 +200,7 @@ export default function VideoSeat({ seat, isSpeaking = false, stream = null, vid
         <div
             style={{ gridArea: `s${seat.slot}` }}
             tabIndex={hasSelfControls ? 0 : undefined}
-            className={`mafia-seat group relative h-full w-full overflow-hidden rounded-lg border bg-warm-900 transition ${isSpeaking ? 'is-speaking' : ''} ${seat.isYou ? 'is-you' : ''} ${seat.isShouting ? 'is-shouting' : ''} ${isDead ? 'is-dead' : ''} ${
+            className={`mafia-seat group relative h-full w-full overflow-hidden rounded-lg border bg-warm-900 transition ${isSpeaking ? 'is-speaking' : ''} ${seat.isYou ? 'is-you' : ''} ${seat.isShouting ? 'is-shouting' : ''} ${isDead ? 'is-dead' : ''} ${action && !action.disabled ? 'has-action' : ''} ${
                 hasSelfControls ? 'outline-none' : ''
             } ${
                 isDead ? 'border-warm-200 opacity-60' : 'border-warm-200'
@@ -372,9 +372,15 @@ export default function VideoSeat({ seat, isSpeaking = false, stream = null, vid
                     {seat.canSignal && (
                         <button
                             type="button"
-                            onClick={seat.onSignalClick}
+                            onClick={(e) => {
+                                // A mouse/touch press leaves the button focused, and the dialog
+                                // later hands focus straight back to it, which would pin this
+                                // seat in its focused look. Keyboard presses (detail 0) keep focus.
+                                if (e.detail > 0) e.currentTarget.blur();
+                                seat.onSignalClick();
+                            }}
                             aria-label={t('mafia.signal_trigger_label', { slot: seat.slot })}
-                            className="flex aspect-square items-center justify-center rounded-full seat-chip bg-black/60 p-[var(--seat-icon-pad)] text-accent-300 opacity-70 transition hover:opacity-100 hover:text-accent-200"
+                            className="mafia-signal-btn flex aspect-square items-center justify-center rounded-full seat-chip bg-black/60 p-[var(--seat-icon-pad)] text-accent-300 opacity-70 transition hover:opacity-100 focus-visible:opacity-100"
                         >
                             <MaterialIcon name="leak_add" className="text-[length:var(--seat-icon)]" />
                         </button>
