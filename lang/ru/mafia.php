@@ -138,6 +138,10 @@ return [
     'sheriff_check_history_heading' => 'Ваши проверки',
     'check_result_black' => 'Место :slot принадлежит Мафии.',
     'check_result_red' => 'Место :slot принадлежит Городу.',
+    'tts_check_is_sheriff' => "Игрок номер :slot — шериф.",
+    'tts_check_not_sheriff' => "Игрок номер :slot — не шериф.",
+    'tts_check_black' => "Игрок номер :slot — мафия.",
+    'tts_check_red' => "Игрок номер :slot — мирный житель.",
 
     'game_over_heading' => 'Игра окончена',
     'game_over_red' => 'Город побеждает!',

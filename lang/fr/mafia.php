@@ -138,6 +138,10 @@ return [
     'sheriff_check_history_heading' => 'Vos vérifications',
     'check_result_black' => 'La place :slot appartient à la Mafia.',
     'check_result_red' => 'La place :slot appartient à la Ville.',
+    'tts_check_is_sheriff' => "Le joueur numéro :slot est le shérif.",
+    'tts_check_not_sheriff' => "Le joueur numéro :slot n'est pas le shérif.",
+    'tts_check_black' => "Le joueur numéro :slot est de la mafia.",
+    'tts_check_red' => "Le joueur numéro :slot est un citoyen.",
 
     'game_over_heading' => 'Partie terminée',
     'game_over_red' => 'La Ville gagne !',

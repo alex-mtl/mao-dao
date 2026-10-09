@@ -138,6 +138,10 @@ return [
     'sheriff_check_history_heading' => 'Tus comprobaciones',
     'check_result_black' => 'El asiento :slot pertenece a la Mafia.',
     'check_result_red' => 'El asiento :slot pertenece al Pueblo.',
+    'tts_check_is_sheriff' => "El jugador número :slot es el sheriff.",
+    'tts_check_not_sheriff' => "El jugador número :slot no es el sheriff.",
+    'tts_check_black' => "El jugador número :slot es de la mafia.",
+    'tts_check_red' => "El jugador número :slot es un ciudadano.",
 
     'game_over_heading' => 'Fin de la partida',
     'game_over_red' => '¡El Pueblo gana!',

@@ -143,6 +143,10 @@ return [
     'sheriff_check_history_heading' => 'Your checks',
     'check_result_black' => 'Seat :slot is on the Mafia team.',
     'check_result_red' => 'Seat :slot is on the Town team.',
+    'tts_check_is_sheriff' => "Player number :slot is the sheriff.",
+    'tts_check_not_sheriff' => "Player number :slot is not the sheriff.",
+    'tts_check_black' => "Player number :slot is mafia.",
+    'tts_check_red' => "Player number :slot is a citizen.",
 
     'game_over_heading' => 'Game Over',
     'game_over_red' => 'The Town wins!',
