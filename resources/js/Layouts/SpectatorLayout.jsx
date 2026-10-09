@@ -1,4 +1,4 @@
-import ApplicationLogo from '@/Components/ApplicationLogo';
+import SectionBrand from '@/Components/SectionBrand';
 import { ArrowsPointingOutIcon } from '@heroicons/react/24/outline';
 import { Link } from '@inertiajs/react';
 import { useLaravelReactI18n } from 'laravel-react-i18n';
@@ -21,12 +21,7 @@ export default function SpectatorLayout({ children, hideChrome = false, onEnterF
             {!hideChrome && (
                 <header className="sticky top-0 z-30 border-b border-warm-200 bg-surface/90 backdrop-blur">
                     <div className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
-                        <Link href={quizRoute('welcome')} className="flex items-center gap-2">
-                            <ApplicationLogo className="h-7 w-auto fill-current text-primary-600" />
-                            <span className="hidden font-heading text-base font-bold text-ink-900 sm:inline">
-                                Quiz Platform
-                            </span>
-                        </Link>
+                        <SectionBrand guest />
 
                         <div className="flex items-center gap-2">
                             {onEnterFullscreen && (

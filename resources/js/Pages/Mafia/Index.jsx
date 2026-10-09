@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import PageHeader from '@/Components/PageHeader';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
 import TextInput from '@/Components/TextInput';
@@ -26,7 +25,7 @@ export default function Index() {
     };
 
     return (
-        <AuthenticatedLayout header={<PageHeader title={t('mafia.index_heading')} description={t('mafia.index_description')} />}>
+        <AuthenticatedLayout>
             <Head title={t('mafia.index_title')} />
 
             <div className="mx-auto max-w-xl space-y-6 px-4 py-8 sm:px-6 lg:px-8">

@@ -21,6 +21,7 @@ import ApplicationLogo from '@/Components/ApplicationLogo';
 import ResponsiveNavLink from '@/Components/ResponsiveNavLink';
 import Avatar from '@/Components/Avatar';
 import useSectionRoutes from '@/hooks/useSectionRoutes';
+import { useIsMafiaSection, useSectionName } from '@/Components/SectionBrand';
 
 function NavSection({ label, children }) {
     return (
@@ -36,6 +37,8 @@ function NavSection({ label, children }) {
 export default function NavigationDrawer({ show, onClose, user }) {
     const { t } = useLaravelReactI18n();
     const { quizRoute, mafiaRoute } = useSectionRoutes();
+    const isMafia = useIsMafiaSection();
+    const sectionName = useSectionName();
 
     return (
         <Transition show={show} leave="duration-200">
@@ -63,13 +66,13 @@ export default function NavigationDrawer({ show, onClose, user }) {
                         <DialogPanel className="flex h-full w-full max-w-xs flex-col bg-surface shadow-elevated">
                             <div className="flex items-center justify-between border-b border-warm-200 px-4 py-4">
                                 <Link
-                                    href={quizRoute('dashboard')}
+                                    href={isMafia ? mafiaRoute('mafia.index') : quizRoute('dashboard')}
                                     onClick={onClose}
                                     className="flex items-center gap-2"
                                 >
                                     <ApplicationLogo className="h-8 w-auto fill-current text-primary-600" />
                                     <span className="font-heading text-lg font-bold text-ink-900">
-                                        Quiz Platform
+                                        {sectionName}
                                     </span>
                                 </Link>
                             </div>

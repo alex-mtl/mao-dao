@@ -1,4 +1,4 @@
-import ApplicationLogo from '@/Components/ApplicationLogo';
+import SectionBrand from '@/Components/SectionBrand';
 import Avatar from '@/Components/Avatar';
 import Dropdown from '@/Components/Dropdown';
 import NavigationDrawer from '@/Components/NavigationDrawer';
@@ -51,12 +51,7 @@ export default function AuthenticatedLayout({ header, children, hideChrome = fal
                                 <Bars3Icon className="h-6 w-6" aria-hidden="true" />
                             </button>
 
-                            <Link href={quizRoute('dashboard')} className="flex items-center gap-2">
-                                <ApplicationLogo className="h-7 w-auto fill-current text-primary-600" />
-                                <span className="hidden font-heading text-base font-bold text-ink-900 sm:inline">
-                                    Quiz Platform
-                                </span>
-                            </Link>
+                            <SectionBrand />
                         </div>
 
                         <div className="flex items-center gap-2">
