@@ -322,8 +322,8 @@
 
 /*
  * Team reveal (a seat whose role you know, or one you checked as sheriff /
- * don): RED = solid neon-red badge + red frame; BLACK = solid black badge
- * with a bright white neon outline + white frame. The two can't be confused
+ * don): RED = white badge with a red figure + red frame; BLACK = white badge
+ * with a black figure + white frame. The two can't be confused
  * with each other or with the speaker (cyan) / you (lime) / foul (pink) rings.
  */
 [data-theme="dark-neon"] .mafia-seat.team-red:not(.is-speaking):not(.is-shouting):not(.is-dead) {
@@ -336,24 +336,20 @@
     box-shadow: 0 0 0 1px rgb(245 245 255), 0 0 1.2vw rgb(255 255 255 / 0.65), inset 0 0 1.8vw rgb(255 255 255 / 0.16);
 }
 
-[data-theme="dark-neon"] .seat-chip.team-chip-red {
-    background-color: rgb(255 24 58);
-    border: 2px solid rgb(255 150 165);
-    box-shadow: 0 0 1vw rgb(255 30 60 / 0.95), 0 0 2vw rgb(255 30 60 / 0.5);
+/* The badge itself is a plain white disc (no glow); the figure on it is red or black. */
+[data-theme="dark-neon"] .seat-chip.team-chip-red,
+[data-theme="dark-neon"] .seat-chip.team-chip-black {
+    background-color: #fff;
+    border: 0;
+    box-shadow: none;
 }
 
 [data-theme="dark-neon"] .seat-chip.team-chip-red .material-symbols-outlined {
-    color: #fff;
-    text-shadow: 0 0 0.3em #fff;
-}
-
-[data-theme="dark-neon"] .seat-chip.team-chip-black {
-    background-color: #000;
-    border: 2px solid rgb(245 245 255);
-    box-shadow: 0 0 1vw rgb(255 255 255 / 0.9), 0 0 2vw rgb(255 255 255 / 0.4), inset 0 0 0.5vw rgb(255 255 255 / 0.35);
+    color: rgb(255 14 52);
+    text-shadow: none;
 }
 
 [data-theme="dark-neon"] .seat-chip.team-chip-black .material-symbols-outlined {
-    color: #fff;
-    text-shadow: 0 0 0.3em #fff;
+    color: #000;
+    text-shadow: none;
 }
