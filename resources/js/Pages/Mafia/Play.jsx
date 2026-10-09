@@ -480,7 +480,7 @@ export default function Play({ code, snapshot, spectator = false }) {
                                             type="button"
                                             onClick={() => act('mafia.pass')}
                                             disabled={busy}
-                                            className="mt-1 rounded-full bg-warm-200 px-[var(--seat-name-pad-x)] py-[var(--seat-name-pad-y)] text-[length:var(--info-sub)] font-semibold text-ink-700 transition hover:bg-warm-300 disabled:cursor-not-allowed disabled:opacity-50"
+                                            className="mt-1 rounded-full border-2 border-primary-300 bg-primary-600 px-[var(--info-pass-pad-x)] py-[var(--info-pass-pad-y)] text-[length:var(--info-pass-text)] font-bold leading-none text-white shadow-elevated transition hover:bg-primary-700 focus:outline-none focus-visible:ring-4 focus-visible:ring-primary-300/60 disabled:cursor-not-allowed disabled:opacity-50"
                                         >
                                             {t('mafia.pass_button')}
                                         </button>
