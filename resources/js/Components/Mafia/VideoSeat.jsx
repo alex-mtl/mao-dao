@@ -514,8 +514,8 @@ export default function VideoSeat({ seat, isSpeaking = false, stream = null, vid
                 // — without this, this full-card dimming layer, painted
                 // after those buttons in the DOM, would silently swallow
                 // every click on them.
-                <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/50">
-                    <span className="rounded-full bg-danger-600 px-[var(--seat-status-pad-x)] py-[var(--seat-status-pad-y)] text-[length:var(--seat-status-text)] font-medium text-white">
+                <div className="seat-status-overlay pointer-events-none absolute inset-0 flex items-center justify-center bg-black/50">
+                    <span className="seat-status-pill rounded-full bg-danger-600 px-[var(--seat-status-pad-x)] py-[var(--seat-status-pad-y)] text-[length:var(--seat-status-text)] font-medium text-white">
                         {t(`mafia.status_${seat.status}`)}
                     </span>
                 </div>

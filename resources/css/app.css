@@ -179,9 +179,24 @@
     animation: neon-shout 0.5s ease-in-out infinite alternate;
 }
 
+/* An eliminated player's seat looks like any other seat (just no video); only the status label is new. */
 [data-theme="dark-neon"] .mafia-seat.is-dead {
-    border-color: rgb(157 77 255 / 0.2);
-    box-shadow: none;
+    opacity: 1;
+}
+
+[data-theme="dark-neon"] .seat-status-overlay {
+    background-color: transparent;
+}
+
+[data-theme="dark-neon"] .seat-status-pill {
+    background-color: rgb(var(--color-secondary-500));
+    color: #04101a;
+    border: 2px solid rgb(var(--color-secondary-300));
+    font-family: 'Orbitron', 'Segoe UI', system-ui, sans-serif;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    box-shadow: 0 0 1vw rgb(var(--color-secondary-500) / 0.9), 0 0 2.4vw rgb(var(--color-secondary-500) / 0.5);
 }
 
 @keyframes neon-speaker {
@@ -326,12 +341,12 @@
  * with a black figure + white frame. The two can't be confused
  * with each other or with the speaker (cyan) / you (lime) / foul (pink) rings.
  */
-[data-theme="dark-neon"] .mafia-seat.team-red:not(.is-speaking):not(.is-shouting):not(.is-dead) {
+[data-theme="dark-neon"] .mafia-seat.team-red:not(.is-speaking):not(.is-shouting) {
     border-color: rgb(255 36 66);
     box-shadow: 0 0 0 1px rgb(255 36 66), 0 0 1.2vw rgb(255 30 60 / 0.8), inset 0 0 1.8vw rgb(255 30 60 / 0.28);
 }
 
-[data-theme="dark-neon"] .mafia-seat.team-black:not(.is-speaking):not(.is-shouting):not(.is-dead) {
+[data-theme="dark-neon"] .mafia-seat.team-black:not(.is-speaking):not(.is-shouting) {
     border-color: rgb(245 245 255);
     box-shadow: 0 0 0 1px rgb(245 245 255), 0 0 1.2vw rgb(255 255 255 / 0.65), inset 0 0 1.8vw rgb(255 255 255 / 0.16);
 }
