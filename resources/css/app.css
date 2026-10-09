@@ -207,6 +207,11 @@
     background-color: rgb(10 2 20 / 0.72);
     border: 1px solid rgb(157 77 255 / 0.5);
     box-shadow: 0 0 0.6vw rgb(157 77 255 / 0.5);
+}
+
+/* Text on chips (nickname, seat number, counters) stays razor sharp — a glow
+   on top of live video smears it. Only the icon glyphs get a halo. */
+[data-theme="dark-neon"] .seat-chip .material-symbols-outlined {
     text-shadow: 0 0 0.45em currentColor;
 }
 
@@ -278,7 +283,6 @@
 [data-theme="dark-neon"] .seat-chip .text-ink-300,
 [data-theme="dark-neon"] .seat-chip .text-ink-200 {
     color: rgb(178 140 255);
-    text-shadow: 0 0 0.6em rgb(157 77 255);
 }
 
 /* The table's centre panel is small: keep its buttons compact and its scrollbar on theme. */
@@ -314,4 +318,42 @@
     color: rgb(var(--color-accent-300));
     box-shadow: 0 0 1.2vw rgb(var(--color-accent-500) / 0.9), inset 0 0 0.5vw rgb(var(--color-accent-500) / 0.4);
     transform: scale(1.1);
+}
+
+/*
+ * Team reveal (a seat whose role you know, or one you checked as sheriff /
+ * don): RED = solid neon-red badge + red frame; BLACK = solid black badge
+ * with a bright white neon outline + white frame. The two can't be confused
+ * with each other or with the speaker (cyan) / you (lime) / foul (pink) rings.
+ */
+[data-theme="dark-neon"] .mafia-seat.team-red:not(.is-speaking):not(.is-shouting):not(.is-dead) {
+    border-color: rgb(255 36 66);
+    box-shadow: 0 0 0 1px rgb(255 36 66), 0 0 1.2vw rgb(255 30 60 / 0.8), inset 0 0 1.8vw rgb(255 30 60 / 0.28);
+}
+
+[data-theme="dark-neon"] .mafia-seat.team-black:not(.is-speaking):not(.is-shouting):not(.is-dead) {
+    border-color: rgb(245 245 255);
+    box-shadow: 0 0 0 1px rgb(245 245 255), 0 0 1.2vw rgb(255 255 255 / 0.65), inset 0 0 1.8vw rgb(255 255 255 / 0.16);
+}
+
+[data-theme="dark-neon"] .seat-chip.team-chip-red {
+    background-color: rgb(255 24 58);
+    border: 2px solid rgb(255 150 165);
+    box-shadow: 0 0 1vw rgb(255 30 60 / 0.95), 0 0 2vw rgb(255 30 60 / 0.5);
+}
+
+[data-theme="dark-neon"] .seat-chip.team-chip-red .material-symbols-outlined {
+    color: #fff;
+    text-shadow: 0 0 0.3em #fff;
+}
+
+[data-theme="dark-neon"] .seat-chip.team-chip-black {
+    background-color: #000;
+    border: 2px solid rgb(245 245 255);
+    box-shadow: 0 0 1vw rgb(255 255 255 / 0.9), 0 0 2vw rgb(255 255 255 / 0.4), inset 0 0 0.5vw rgb(255 255 255 / 0.35);
+}
+
+[data-theme="dark-neon"] .seat-chip.team-chip-black .material-symbols-outlined {
+    color: #fff;
+    text-shadow: 0 0 0.3em #fff;
 }

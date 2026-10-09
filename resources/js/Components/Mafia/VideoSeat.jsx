@@ -170,6 +170,22 @@ export default function VideoSeat({ seat, isSpeaking = false, stream = null, vid
     const checkBadgeType = checkBadge ? CHECK_BADGE_TYPES[checkBadge.type][checkBadge.positive] : null;
     const action = seat.action;
 
+    // Which side a revealed role / check result belongs to — 'red' (town) or
+    // 'black' (mafia). The neon theme turns this into an unmistakable colour
+    // (solid red vs solid black with a white outline) on both the badge and
+    // the seat's frame; your own seat keeps its own frame colour.
+    const TEAM_BY_ROLE = { citizen: 'red', sheriff: 'red', mafia: 'black', don: 'black' };
+    let team = null;
+    if (seat.visibleRole) {
+        team = TEAM_BY_ROLE[seat.visibleRole] ?? null;
+    } else if (checkBadge) {
+        if (checkBadge.type === 'sheriff-check') {
+            team = checkBadge.positive ? 'black' : 'red';
+        } else if (checkBadge.positive) {
+            team = 'red'; // the don found the sheriff
+        }
+    }
+
     // Nominate happens on nearly every seat throughout the whole speaking
     // stage, unlike vote/shoot/check (fewer eligible seats, shorter
     // window) — a permanently-visible overlay on every seat during that
@@ -200,7 +216,7 @@ export default function VideoSeat({ seat, isSpeaking = false, stream = null, vid
         <div
             style={{ gridArea: `s${seat.slot}` }}
             tabIndex={hasSelfControls ? 0 : undefined}
-            className={`mafia-seat group relative h-full w-full overflow-hidden rounded-lg border bg-warm-900 transition ${isSpeaking ? 'is-speaking' : ''} ${seat.isYou ? 'is-you' : ''} ${seat.isShouting ? 'is-shouting' : ''} ${isDead ? 'is-dead' : ''} ${action && !action.disabled ? 'has-action' : ''} ${
+            className={`mafia-seat group relative h-full w-full overflow-hidden rounded-lg border bg-warm-900 transition ${isSpeaking ? 'is-speaking' : ''} ${seat.isYou ? 'is-you' : ''} ${seat.isShouting ? 'is-shouting' : ''} ${isDead ? 'is-dead' : ''} ${action && !action.disabled ? 'has-action' : ''} ${team && !seat.isYou ? `team-${team}` : ''} ${
                 hasSelfControls ? 'outline-none' : ''
             } ${
                 isDead ? 'border-warm-200 opacity-60' : 'border-warm-200'
@@ -269,7 +285,7 @@ export default function VideoSeat({ seat, isSpeaking = false, stream = null, vid
 
             {roleType && (
                 <span
-                    className="absolute left-1 top-1 flex aspect-square items-center justify-center rounded-full seat-chip bg-black/60 p-[var(--seat-icon-pad)]"
+                    className={`absolute left-1 top-1 flex aspect-square items-center justify-center rounded-full seat-chip ${team ? `team-chip-${team}` : ''} bg-black/60 p-[var(--seat-icon-pad)]`}
                     title={t(`mafia.role_${seat.visibleRole}`)}
                 >
                     {roleType === 'image' ? (
@@ -319,7 +335,7 @@ export default function VideoSeat({ seat, isSpeaking = false, stream = null, vid
 
             {checkBadge && (
                 <span
-                    className="absolute left-1 top-1 flex aspect-square items-center justify-center rounded-full seat-chip bg-black/60 p-[var(--seat-icon-pad)]"
+                    className={`absolute left-1 top-1 flex aspect-square items-center justify-center rounded-full seat-chip ${team ? `team-chip-${team}` : ''} bg-black/60 p-[var(--seat-icon-pad)]`}
                     title={t(`mafia.${CHECK_BADGE_LABEL_KEYS[checkBadge.type][checkBadge.positive]}`, { slot: seat.slot })}
                 >
                     {checkBadgeType === 'image' ? (

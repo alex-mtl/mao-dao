@@ -17,6 +17,7 @@ import useFullscreenGame from '@/hooks/useFullscreenGame';
 import useMirroredPreview from '@/hooks/useMirroredPreview';
 import useSectionRoutes from '@/hooks/useSectionRoutes';
 import { Head, router, usePage } from '@inertiajs/react';
+import useCheckVoice from '@/hooks/useCheckVoice';
 import { useLaravelReactI18n } from 'laravel-react-i18n';
 
 const PHASE_LABEL_KEYS = {
@@ -85,6 +86,8 @@ export default function Play({ code, snapshot, spectator = false }) {
     useEffect(() => {
         setNowMs(Date.now());
     }, [state.seats]);
+
+    useCheckVoice(state.donCheckHistory, state.sheriffCheckHistory);
 
     const remainingMs = useCountdown(state.deadlineAt);
     const remainingSeconds = Math.ceil(remainingMs / 1000);
