@@ -219,7 +219,7 @@ export default function VideoSeat({ seat, isSpeaking = false, stream = null, vid
             className={`mafia-seat group relative h-full w-full overflow-hidden rounded-lg border bg-warm-900 transition ${isSpeaking ? 'is-speaking' : ''} ${seat.isYou ? 'is-you' : ''} ${seat.isShouting ? 'is-shouting' : ''} ${isDead ? 'is-dead' : ''} ${action && !action.disabled ? 'has-action' : ''} ${team && !seat.isYou ? `team-${team}` : ''} ${
                 hasSelfControls ? 'outline-none' : ''
             } ${
-                isDead ? 'border-warm-200 opacity-60' : 'border-warm-200'
+                'border-warm-200'
             } ${isSpeaking ? 'ring-2 ring-primary-500' : ''} ${seat.isYou ? 'ring-2 ring-accent-500' : ''} ${seat.isShouting ? '!ring-2 !ring-danger-500 shadow-[0_0_1vw_red]' : ''} ${className}`}
         >
             <VideoTile
@@ -511,10 +511,10 @@ export default function VideoSeat({ seat, isSpeaking = false, stream = null, vid
                 // once game_over forces every player's camera on (including
                 // the eliminated ones), an eliminated player's OWN seat also
                 // gets its device-control cluster (mic/cam/mirror/settings)
-                // — without this, this full-card dimming layer, painted
+                // — without this, this full-card status layer, painted
                 // after those buttons in the DOM, would silently swallow
                 // every click on them.
-                <div className="seat-status-overlay pointer-events-none absolute inset-0 flex items-center justify-center bg-black/50">
+                <div className="seat-status-overlay pointer-events-none absolute inset-0 flex items-center justify-center">
                     <span className="seat-status-pill rounded-full bg-danger-600 px-[var(--seat-status-pad-x)] py-[var(--seat-status-pad-y)] text-[length:var(--seat-status-text)] font-medium text-white">
                         {t(`mafia.status_${seat.status}`)}
                     </span>
