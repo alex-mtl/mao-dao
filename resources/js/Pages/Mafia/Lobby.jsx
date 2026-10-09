@@ -194,6 +194,7 @@ export default function Lobby({ room, snapshot, myPlayerId, inviteUrl, spectator
     });
 
     const canRelease = !spectator && state.players.length > 1;
+    const aloneAtTable = !spectator && state.players.length <= 1;
 
     return (
         <Layout>
@@ -275,17 +276,15 @@ export default function Lobby({ room, snapshot, myPlayerId, inviteUrl, spectator
                                     >
                                         {isReady ? t('mafia.not_ready_button') : t('mafia.ready_button')}
                                     </button>
-                                    {canRelease && (
-                                        <button
-                                            type="button"
-                                            onClick={releaseSeat}
-                                            disabled={busy}
-                                            title={t('mafia.release_seat_hint')}
-                                            className={`${BUTTON_BASE} flex-1 border border-warm-300 bg-surface text-ink-700 hover:bg-warm-50`}
-                                        >
-                                            {t('mafia.release_seat_button')}
-                                        </button>
-                                    )}
+                                    <button
+                                        type="button"
+                                        onClick={releaseSeat}
+                                        disabled={busy || !canRelease}
+                                        title={t(canRelease ? 'mafia.release_seat_hint' : 'mafia.release_seat_alone_hint')}
+                                        className={`${BUTTON_BASE} flex-1 border border-warm-300 bg-surface text-ink-700 hover:bg-warm-50 disabled:cursor-not-allowed disabled:opacity-50`}
+                                    >
+                                        {t('mafia.release_seat_button')}
+                                    </button>
                                     <button
                                         type="button"
                                         onClick={leaveRoom}
@@ -295,6 +294,10 @@ export default function Lobby({ room, snapshot, myPlayerId, inviteUrl, spectator
                                         {t('mafia.leave_button')}
                                     </button>
                                 </div>
+                            )}
+
+                            {aloneAtTable && (
+                                <p className="text-[length:var(--info-label)] text-ink-400">{t('mafia.release_seat_alone_hint')}</p>
                             )}
 
                             <SpectatorsStrip spectators={state.spectators} />

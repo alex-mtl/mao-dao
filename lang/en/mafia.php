@@ -98,6 +98,7 @@ return [
     'spectating_badge' => 'You are watching',
     'release_seat_button' => 'Free my seat',
     'release_seat_hint' => 'Give up your seat and keep watching',
+    'release_seat_alone_hint' => "You are the only player, so there is nobody to take over the seat. Wait for someone to join, or leave the room.",
     'log_in_to_play' => 'Log in to play',
     'spectator_lobby_hint' => 'You are watching. Tap a free seat to sit down.',
     'spectator_guest_hint' => 'You are watching. Log in to take a seat.',

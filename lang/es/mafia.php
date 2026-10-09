@@ -96,6 +96,7 @@ return [
     'spectating_badge' => 'Estás mirando la partida',
     'release_seat_button' => 'Liberar mi asiento',
     'release_seat_hint' => 'Ceder tu asiento y seguir mirando',
+    'release_seat_alone_hint' => "Eres el único jugador, así que nadie puede tomar tu asiento. Espera a alguien o sal de la sala.",
     'log_in_to_play' => 'Inicia sesión para jugar',
     'spectator_lobby_hint' => 'Estás mirando. Toca un asiento libre para sentarte.',
     'spectator_guest_hint' => 'Estás mirando. Inicia sesión para ocupar un asiento.',

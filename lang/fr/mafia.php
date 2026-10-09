@@ -96,6 +96,7 @@ return [
     'spectating_badge' => 'Vous regardez la partie',
     'release_seat_button' => 'Libérer ma place',
     'release_seat_hint' => 'Laisser votre place et continuer à regarder',
+    'release_seat_alone_hint' => "Vous êtes le seul joueur : personne ne peut reprendre la place. Attendez quelqu'un ou quittez la salle.",
     'log_in_to_play' => 'Se connecter pour jouer',
     'spectator_lobby_hint' => 'Vous regardez. Touchez une place libre pour vous asseoir.',
     'spectator_guest_hint' => 'Vous regardez. Connectez-vous pour prendre une place.',
