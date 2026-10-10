@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ArrowsPointingInIcon, Bars3Icon } from '@heroicons/react/24/solid';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import SpectatorLayout from '@/Layouts/SpectatorLayout';
@@ -18,6 +18,8 @@ import useMirroredPreview from '@/hooks/useMirroredPreview';
 import useSectionRoutes from '@/hooks/useSectionRoutes';
 import { Head, router, usePage } from '@inertiajs/react';
 import useCheckVoice from '@/hooks/useCheckVoice';
+import useToastQueue from '@/hooks/useToastQueue';
+import GameToasts from '@/Components/Mafia/GameToasts';
 import { useLaravelReactI18n } from 'laravel-react-i18n';
 
 const PHASE_LABEL_KEYS = {
@@ -87,7 +89,26 @@ export default function Play({ code, snapshot, spectator = false }) {
         setNowMs(Date.now());
     }, [state.seats]);
 
-    useCheckVoice(state.donCheckHistory, state.sheriffCheckHistory);
+    const { toasts, push: pushToast, dismiss: dismissToast } = useToastQueue();
+
+    // Check results: seat badge (already drawn on the seat) + spoken + toast.
+    useCheckVoice(state.donCheckHistory, state.sheriffCheckHistory, pushToast);
+
+    // "You were eliminated" — once, at the moment it happens.
+    const wasAliveRef = useRef(state.you.isAlive);
+    useEffect(() => {
+        if (wasAliveRef.current && !state.you.isAlive && state.status !== 'game_over') {
+            pushToast({ kind: 'info', text: t('mafia.you_are_dead_notice'), ttl: 9000 });
+        }
+        wasAliveRef.current = state.you.isAlive;
+    }, [state.you.isAlive]);
+
+    // Media errors (camera denied, SFU unreachable, ...).
+    useEffect(() => {
+        if (media.error) {
+            pushToast({ kind: 'error', text: t(`mafia.media_error_${media.error}`), ttl: 10000 });
+        }
+    }, [media.error]);
 
     const remainingMs = useCountdown(state.deadlineAt);
     const remainingSeconds = Math.ceil(remainingMs / 1000);
@@ -308,33 +329,20 @@ export default function Play({ code, snapshot, spectator = false }) {
                 (hamburger menu + exit-fullscreen) is anchored inside the
                 info panel below, not floating over the video grid. */}
             <div className="relative w-full" style={{ height: isFullscreen ? '100vh' : 'calc(100vh - 3.5rem)' }}>
-                {state.receivedSignals.length > 0 && (
-                    <div className="absolute left-2 right-2 top-2 z-10 space-y-2" aria-live="polite">
-                        {state.receivedSignals.map((s) => (
-                            <div
-                                key={s.id}
-                                className="flex items-center justify-between gap-2 rounded-lg border border-accent-300 bg-accent-50 px-3 py-2 text-sm text-ink-800 shadow-elevated"
-                            >
-                                <span>
-                                    {t('mafia.signal_received', {
-                                        slot: s.fromSlot,
-                                        details: [s.number, s.color ? t(`mafia.signal_color_${s.color}`) : null]
-                                            .filter(Boolean)
-                                            .join(' '),
-                                    })}
-                                </span>
-                                <button
-                                    type="button"
-                                    onClick={() => dismissSignal(s.id)}
-                                    className="text-ink-400 hover:text-ink-700"
-                                    aria-label={t('mafia.signal_dismiss')}
-                                >
-                                    &times;
-                                </button>
-                            </div>
-                        ))}
-                    </div>
-                )}
+                <GameToasts
+                    toasts={[
+                        ...state.receivedSignals.map((sig) => ({
+                            id: `signal-${sig.id}`,
+                            kind: 'signal',
+                            text: t('mafia.signal_received', {
+                                slot: sig.fromSlot,
+                                details: [sig.number, sig.color ? t(`mafia.signal_color_${sig.color}`) : null].filter(Boolean).join(' '),
+                            }),
+                            onDismiss: () => dismissSignal(sig.id),
+                        })),
+                        ...toasts,
+                    ]}
+                />
 
                 <GameSeatGrid
                     seats={seatsWithOverlays}
@@ -346,7 +354,7 @@ export default function Play({ code, snapshot, spectator = false }) {
                     showDeadVideos={isGameOver}
                     infoPanel={
                         <div
-                            className="relative flex h-full w-full flex-col items-center justify-center gap-1 rounded-lg border border-warm-200 bg-surface p-2 text-center"
+                            className="relative flex h-full w-full flex-col items-center gap-1 overflow-y-auto rounded-lg border border-warm-200 bg-surface p-2 text-center [&>*:first-child]:mt-auto [&>*:last-child]:mb-auto"
                             role="status"
                             aria-live="polite"
                         >
@@ -393,6 +401,12 @@ export default function Play({ code, snapshot, spectator = false }) {
                                 </div>
                             )}
 
+                            {spectator && (
+                                <p className="text-[length:var(--info-label)] font-semibold uppercase tracking-wide text-ink-500">
+                                    {t('mafia.spectating_badge')}
+                                </p>
+                            )}
+
                             {isGameOver ? (
                                 // Reported directly: the game-over result used to
                                 // navigate the player away to an entirely separate,
@@ -417,9 +431,18 @@ export default function Play({ code, snapshot, spectator = false }) {
                                         {t(state.winnerTeam === 'black' ? 'mafia.game_over_black' : 'mafia.game_over_red')}
                                     </p>
                                     {!spectator && (
-                                        <p className="text-[length:var(--info-sub)] text-ink-500">
-                                            {t('mafia.play_your_role', { role: t(`mafia.role_${state.you.role}`) })}
-                                        </p>
+                                        // Needed once the game ends: this is the one place a
+                                        // connection can fail (or be switched off) with no other
+                                        // way back, since a seat's own controls only render once
+                                        // the camera is already on.
+                                        <button
+                                            type="button"
+                                            onClick={media.enabled ? media.disconnect : media.connect}
+                                            disabled={media.connecting}
+                                            className="mt-1 rounded-full border border-warm-300 bg-surface px-[var(--seat-name-pad-x)] py-[var(--seat-name-pad-y)] text-[length:var(--info-sub)] font-semibold text-ink-700 transition hover:bg-warm-50 disabled:opacity-50"
+                                        >
+                                            {media.enabled ? t('mafia.camera_disable_button') : t('mafia.camera_enable_button')}
+                                        </button>
                                     )}
                                 </>
                             ) : (
@@ -488,6 +511,89 @@ export default function Play({ code, snapshot, spectator = false }) {
                                             {t('mafia.pass_button')}
                                         </button>
                                     )}
+
+                                    {/* Everything the player has to read or act on lives
+                                        here, in the middle of the table, nothing is left
+                                        under the grid where it would scroll off screen. */}
+                                    {state.spotlightPlayer && (
+                                        <p className="text-[length:var(--info-sub)] font-medium text-ink-700">
+                                            {t(`mafia.spotlight_${state.stage}`, { name: withLabel(state.spotlightPlayer).name })}
+                                        </p>
+                                    )}
+
+                                    {state.canNominate && (
+                                        <p className="text-[length:var(--info-label)] text-ink-500">{t('mafia.nominate_seat_hint')}</p>
+                                    )}
+
+                                    {state.canVote && (
+                                        <p className="text-[length:var(--info-label)] text-ink-500">{t('mafia.vote_seat_hint')}</p>
+                                    )}
+
+                                    {state.canLockVote && (
+                                        <>
+                                            <p className="text-[length:var(--info-label)] text-ink-600">
+                                                {t('mafia.lock_vote_candidates_heading', {
+                                                    names: state.lockVoteCandidates.map((n) => withLabel(n).name).join(', '),
+                                                })}
+                                            </p>
+                                            <button
+                                                type="button"
+                                                onClick={() => act('mafia.lock-vote')}
+                                                disabled={busy || state.hasActedThisStage}
+                                                className="rounded-full border-2 border-primary-300 bg-primary-600 px-[var(--info-pass-pad-x)] py-[var(--info-pass-pad-y)] text-[length:var(--info-pass-text)] font-bold leading-none text-white shadow-elevated transition hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-50"
+                                            >
+                                                {t('mafia.lock_vote_button')}
+                                            </button>
+                                        </>
+                                    )}
+
+                                    {state.canShoot && (
+                                        <>
+                                            <p className="text-[length:var(--info-label)] text-ink-600">
+                                                {t('mafia.shoot_heading')} {'\u2014'} {t('mafia.shoot_seat_hint')}
+                                            </p>
+                                            <button
+                                                type="button"
+                                                onClick={() => act('mafia.shoot', {})}
+                                                disabled={busy}
+                                                className="rounded-full border border-warm-300 bg-surface px-[var(--seat-name-pad-x)] py-[var(--seat-name-pad-y)] text-[length:var(--info-sub)] font-semibold text-ink-700 transition hover:bg-warm-50 disabled:opacity-50"
+                                            >
+                                                {t('mafia.shoot_abstain_button')}
+                                            </button>
+                                        </>
+                                    )}
+
+                                    {(state.canDonCheck || state.canSheriffCheck) && (
+                                        <p className="text-[length:var(--info-label)] text-ink-600">
+                                            {t(state.canDonCheck ? 'mafia.don_check_heading' : 'mafia.sheriff_check_heading')} {'\u2014'} {t('mafia.check_seat_hint')}
+                                        </p>
+                                    )}
+
+                                    {state.disconnectedPlayers.map((p) => (
+                                        <div key={p.id} className="flex flex-col items-center gap-1 rounded-lg border border-warning-300 bg-warning-50 px-2 py-1">
+                                            <p className="text-[length:var(--info-label)] font-medium text-ink-800">
+                                                {t('mafia.disconnect_notice', { name: withLabel(p).name })}
+                                            </p>
+                                            <div className="flex gap-1">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => act('mafia.disconnect-vote', { target_player_id: p.id, choice: 'eliminate' })}
+                                                    disabled={busy}
+                                                    className={`rounded-full border border-warm-300 bg-surface px-[var(--seat-name-pad-x)] py-[var(--seat-name-pad-y)] text-[length:var(--info-label)] font-semibold text-ink-700 ${p.myVote === 'eliminate' ? 'ring-2 ring-danger-500' : ''}`}
+                                                >
+                                                    {t('mafia.disconnect_eliminate_button')}
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => act('mafia.disconnect-vote', { target_player_id: p.id, choice: 'continue' })}
+                                                    disabled={busy}
+                                                    className={`rounded-full border border-warm-300 bg-surface px-[var(--seat-name-pad-x)] py-[var(--seat-name-pad-y)] text-[length:var(--info-label)] font-semibold text-ink-700 ${p.myVote === 'continue' ? 'ring-2 ring-success-500' : ''}`}
+                                                >
+                                                    {t('mafia.disconnect_continue_button')}
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
                                 </>
                             )}
                             <SpectatorsStrip spectators={state.spectators} />
@@ -495,165 +601,6 @@ export default function Play({ code, snapshot, spectator = false }) {
                     }
                     className="p-1"
                 />
-            </div>
-
-            <div className="mx-auto max-w-2xl px-4 py-4 sm:px-6 lg:px-8">
-                <div className="flex flex-wrap items-center gap-2">
-                    {spectator ? (
-                        <Badge color="neutral">{t('mafia.spectating_badge')}</Badge>
-                    ) : (
-                        <>
-                            <Badge color={state.you.team === 'black' ? 'danger' : 'primary'}>
-                                {t('mafia.play_your_role', { role: t(`mafia.role_${state.you.role}`) })}
-                            </Badge>
-                            {!state.you.isAlive && !isGameOver && <Badge color="neutral">{t('mafia.you_are_dead_notice')}</Badge>}
-                        </>
-                    )}
-                    {/* Reported directly: this manual button had no reason to
-                        exist during actual gameplay — the auto-connect effect
-                        above already turns the camera on for every living
-                        player once day phase starts, so a redundant manual
-                        toggle was just clutter. It's still needed once the
-                        game ends, though: that's the one place a connection
-                        can fail (or the player can choose to switch back off)
-                        with no other way to retry, since VideoSeat's own
-                        per-seat self-controls (mic/cam/mirror/settings) only
-                        render once `media.enabled` is already true. */}
-                    {isGameOver && !spectator && (
-                        <SecondaryButton
-                            type="button"
-                            onClick={media.enabled ? media.disconnect : media.connect}
-                            disabled={media.connecting}
-                            loading={media.connecting}
-                        >
-                            {media.enabled ? t('mafia.camera_disable_button') : t('mafia.camera_enable_button')}
-                        </SecondaryButton>
-                    )}
-                </div>
-                {media.error && (
-                    <p className="mt-2 text-sm text-danger-600">{t(`mafia.media_error_${media.error}`)}</p>
-                )}
-
-                {state.disconnectedPlayers.length > 0 && (
-                    <div className="mt-6 space-y-3">
-                        {state.disconnectedPlayers.map((p) => {
-                            const label = withLabel(p).name;
-
-                            return (
-                                <div key={p.id} className="rounded-lg border border-warning-200 bg-warning-50 p-3">
-                                    <p className="text-sm font-medium text-ink-800">
-                                        {t('mafia.disconnect_notice', { name: label })}
-                                    </p>
-                                    <div className="mt-2 flex gap-2">
-                                        <SecondaryButton
-                                            type="button"
-                                            onClick={() => act('mafia.disconnect-vote', { target_player_id: p.id, choice: 'eliminate' })}
-                                            disabled={busy}
-                                            className={p.myVote === 'eliminate' ? 'ring-2 ring-danger-500' : ''}
-                                        >
-                                            {t('mafia.disconnect_eliminate_button')}
-                                        </SecondaryButton>
-                                        <SecondaryButton
-                                            type="button"
-                                            onClick={() => act('mafia.disconnect-vote', { target_player_id: p.id, choice: 'continue' })}
-                                            disabled={busy}
-                                            className={p.myVote === 'continue' ? 'ring-2 ring-success-500' : ''}
-                                        >
-                                            {t('mafia.disconnect_continue_button')}
-                                        </SecondaryButton>
-                                    </div>
-                                </div>
-                            );
-                        })}
-                    </div>
-                )}
-
-                {state.mafiaTeammates.length > 0 && (
-                    <p className="mt-4 text-sm text-ink-600">
-                        {t('mafia.mafia_teammates_heading', { slots: state.mafiaTeammates.map((m) => m.slot).join(', ') })}
-                    </p>
-                )}
-
-                {state.spotlightPlayer && (
-                    <p className="mt-4 rounded-lg bg-warm-50 p-3 text-center text-sm font-medium text-ink-700">
-                        {t(`mafia.spotlight_${state.stage}`, { name: withLabel(state.spotlightPlayer).name })}
-                    </p>
-                )}
-
-                {state.canNominate && (
-                    <p className="mt-4 text-sm text-ink-600">{t('mafia.nominate_seat_hint')}</p>
-                )}
-
-                {state.canVote && (
-                    <p className="mt-4 text-sm text-ink-600">{t('mafia.vote_seat_hint')}</p>
-                )}
-
-                {state.canLockVote && (
-                    <div className="mt-6 text-center">
-                        <p className="text-sm text-ink-600">
-                            {t('mafia.lock_vote_candidates_heading', {
-                                names: state.lockVoteCandidates.map((n) => withLabel(n).name).join(', '),
-                            })}
-                        </p>
-                        <PrimaryButton
-                            className="mt-3 w-full justify-center"
-                            onClick={() => act('mafia.lock-vote')}
-                            disabled={busy || state.hasActedThisStage}
-                        >
-                            {t('mafia.lock_vote_button')}
-                        </PrimaryButton>
-                    </div>
-                )}
-
-                {state.canShoot && (
-                    <div className="mt-6">
-                        <h2 className="text-sm font-semibold text-ink-700">{t('mafia.shoot_heading')}</h2>
-                        <p className="mt-1 text-xs text-ink-400">{t('mafia.shoot_seat_hint')}</p>
-                        <SecondaryButton
-                            className="mt-2 w-full justify-center"
-                            onClick={() => act('mafia.shoot', {})}
-                            disabled={busy}
-                        >
-                            {t('mafia.shoot_abstain_button')}
-                        </SecondaryButton>
-                    </div>
-                )}
-
-                {(state.canDonCheck || state.canSheriffCheck) && (
-                    <div className="mt-6">
-                        <h2 className="text-sm font-semibold text-ink-700">
-                            {t(state.canDonCheck ? 'mafia.don_check_heading' : 'mafia.sheriff_check_heading')}
-                        </h2>
-                        <p className="mt-1 text-xs text-ink-400">{t('mafia.check_seat_hint')}</p>
-                    </div>
-                )}
-
-                {state.donCheckHistory.length > 0 && (
-                    <div className="mt-6">
-                        <h2 className="text-sm font-semibold text-ink-700">{t('mafia.don_check_history_heading')}</h2>
-                        <ul className="mt-2 space-y-1 text-sm text-ink-600">
-                            {state.donCheckHistory.map((c) => (
-                                <li key={c.slot}>
-                                    {t(c.isSheriff ? 'mafia.check_result_is_sheriff' : 'mafia.check_result_not_sheriff', { slot: c.slot })}
-                                </li>
-                            ))}
-                        </ul>
-                    </div>
-                )}
-
-                {state.sheriffCheckHistory.length > 0 && (
-                    <div className="mt-6">
-                        <h2 className="text-sm font-semibold text-ink-700">{t('mafia.sheriff_check_history_heading')}</h2>
-                        <ul className="mt-2 space-y-1 text-sm text-ink-600">
-                            {state.sheriffCheckHistory.map((c) => (
-                                <li key={c.slot}>
-                                    {t(c.isBlackTeam ? 'mafia.check_result_black' : 'mafia.check_result_red', { slot: c.slot })}
-                                </li>
-                            ))}
-                        </ul>
-                    </div>
-                )}
-
             </div>
 
             {/* Covert-signal modal — opened via a seat's own small trigger

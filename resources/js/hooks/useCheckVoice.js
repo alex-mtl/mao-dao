@@ -21,7 +21,7 @@ const SPEECH_LANG = { en: 'en-US', ru: 'ru-RU', fr: 'fr-FR', es: 'es-ES' };
  * (results already there on page load are not replayed). Spectators and
  * everybody else have empty histories, so they hear nothing.
  */
-export default function useCheckVoice(donCheckHistory, sheriffCheckHistory) {
+export default function useCheckVoice(donCheckHistory, sheriffCheckHistory, onResult = null) {
     const { quizUrl, locale } = usePage().props;
     const { t } = useLaravelReactI18n();
     const seen = useRef(null);
@@ -31,11 +31,15 @@ export default function useCheckVoice(donCheckHistory, sheriffCheckHistory) {
             ...donCheckHistory.map((c) => ({
                 key: `d${c.slot}`,
                 text: t(c.isSheriff ? 'mafia.tts_check_is_sheriff' : 'mafia.tts_check_not_sheriff', { slot: c.slot }),
+                toast: t(c.isSheriff ? 'mafia.check_result_is_sheriff' : 'mafia.check_result_not_sheriff', { slot: c.slot }),
+                team: c.isSheriff ? 'red' : null,
                 sound: c.isSheriff ? FALLBACK_SOUNDS.donSheriff : FALLBACK_SOUNDS.donNotSheriff,
             })),
             ...sheriffCheckHistory.map((c) => ({
                 key: `s${c.slot}`,
                 text: t(c.isBlackTeam ? 'mafia.tts_check_black' : 'mafia.tts_check_red', { slot: c.slot }),
+                toast: t(c.isBlackTeam ? 'mafia.check_result_black' : 'mafia.check_result_red', { slot: c.slot }),
+                team: c.isBlackTeam ? 'black' : 'red',
                 sound: c.isBlackTeam ? FALLBACK_SOUNDS.sheriffMafia : FALLBACK_SOUNDS.sheriffCitizen,
             })),
         ];
@@ -50,6 +54,9 @@ export default function useCheckVoice(donCheckHistory, sheriffCheckHistory) {
                 continue;
             }
             seen.current.add(entry.key);
+            if (onResult) {
+                onResult({ kind: 'check', text: entry.toast, team: entry.team });
+            }
 
             const lang = SPEECH_LANG[locale] ?? 'en-US';
             const synth = typeof window !== 'undefined' ? window.speechSynthesis : null;
