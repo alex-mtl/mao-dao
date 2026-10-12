@@ -175,3 +175,20 @@ test('the confirmation email is localized and states the deadline', function () 
         ->and($message->getTextBody())->toContain('Здравствуйте, Анна!')
         ->and($message->getTextBody())->toContain('24 ч');
 });
+
+test('with deadline enforcement off, registration only shows a reminder and never disables', function () {
+    config(['auth.verification.enforce_deadline' => false]);
+    Notification::fake();
+
+    $this->post('/register', [
+        'name' => 'Soft',
+        'email' => 'soft@example.com',
+        'password' => 'password-123',
+        'password_confirmation' => 'password-123',
+    ]);
+
+    $user = User::where('email', 'soft@example.com')->firstOrFail();
+    expect($user->verification_expires_at)->toBeNull()
+        ->and($user->emailVerificationState())->toBe('pending');
+    Notification::assertSentTo($user, VerifyEmailNotification::class);
+});

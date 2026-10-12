@@ -49,9 +49,11 @@ class RegisteredUserController extends Controller
         // The account may be used right away but has a deadline to confirm
         // the email (see User::emailVerificationState()). The `Registered`
         // event below sends the link.
-        $user->forceFill([
-            'verification_expires_at' => now()->addMinutes((int) config('auth.verification.expire', 1440)),
-        ])->save();
+        if (config('auth.verification.enforce_deadline')) {
+            $user->forceFill([
+                'verification_expires_at' => now()->addMinutes((int) config('auth.verification.expire', 1440)),
+            ])->save();
+        }
 
         event(new Registered($user));
 

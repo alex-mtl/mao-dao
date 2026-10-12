@@ -127,6 +127,12 @@ return [
 
     'verification' => [
         'expire' => (int) env('AUTH_VERIFICATION_EXPIRE', 1440),
+
+        // Whether a fresh registration gets a deadline after which an
+        // unconfirmed account is disabled. Turn it OFF (false) on an
+        // environment whose mail transport does not really deliver, or
+        // people would be locked out for a link they never received.
+        'enforce_deadline' => (bool) env('AUTH_VERIFICATION_ENFORCE', true),
     ],
 
 ];
