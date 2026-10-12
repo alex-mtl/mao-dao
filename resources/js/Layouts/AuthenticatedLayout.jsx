@@ -1,4 +1,5 @@
-import SectionBrand from '@/Components/SectionBrand';
+import SectionBrand, { useIsMafiaSection } from '@/Components/SectionBrand';
+import { PendingValidationBadge, PendingValidationBanner } from '@/Components/EmailVerificationNotice';
 import Avatar from '@/Components/Avatar';
 import Dropdown from '@/Components/Dropdown';
 import NavigationDrawer from '@/Components/NavigationDrawer';
@@ -26,6 +27,7 @@ export default function AuthenticatedLayout({ header, children, hideChrome = fal
     const { t } = useLaravelReactI18n();
     const user = usePage().props.auth.user;
     const { quizRoute } = useSectionRoutes();
+    const isMafia = useIsMafiaSection();
 
     const [drawerOpen, setDrawerOpen] = useState(false);
 
@@ -66,6 +68,8 @@ export default function AuthenticatedLayout({ header, children, hideChrome = fal
                                 </button>
                             )}
 
+                            <PendingValidationBadge />
+
                             <NotificationBell />
 
                             <Dropdown>
@@ -95,6 +99,8 @@ export default function AuthenticatedLayout({ header, children, hideChrome = fal
                     </div>
                 </header>
             )}
+
+            {!hideChrome && !isMafia && <PendingValidationBanner />}
 
             {!hideChrome && header && (
                 <div className="border-b border-warm-200 bg-surface">

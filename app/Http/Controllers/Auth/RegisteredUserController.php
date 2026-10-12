@@ -37,11 +37,21 @@ class RegisteredUserController extends Controller
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
         ]);
 
+        $locale = app()->getLocale();
+
         $user = User::create([
             'name' => $request->name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
+            'ui_language' => in_array($locale, config('locales.supported'), true) ? $locale : config('locales.default'),
         ]);
+
+        // The account may be used right away but has a deadline to confirm
+        // the email (see User::emailVerificationState()). The `Registered`
+        // event below sends the link.
+        $user->forceFill([
+            'verification_expires_at' => now()->addMinutes((int) config('auth.verification.expire', 1440)),
+        ])->save();
 
         event(new Registered($user));
 

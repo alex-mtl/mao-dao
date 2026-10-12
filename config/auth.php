@@ -114,4 +114,19 @@ return [
 
     'password_timeout' => env('AUTH_PASSWORD_TIMEOUT', 10800),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Email confirmation
+    |--------------------------------------------------------------------------
+    |
+    | `expire` is both the lifetime of the signed confirmation link and the
+    | grace period (minutes) an email-registered account has before it is
+    | disabled while still unconfirmed. One value so the two never drift.
+    |
+    */
+
+    'verification' => [
+        'expire' => (int) env('AUTH_VERIFICATION_EXPIRE', 1440),
+    ],
+
 ];

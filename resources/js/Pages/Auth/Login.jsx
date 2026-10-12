@@ -5,7 +5,7 @@ import PrimaryButton from '@/Components/PrimaryButton';
 import TextInput from '@/Components/TextInput';
 import GuestLayout from '@/Layouts/GuestLayout';
 import SocialLoginButtons from '@/Components/SocialLoginButtons';
-import { Head, Link, useForm } from '@inertiajs/react';
+import { Head, Link, router, useForm } from '@inertiajs/react';
 import { useLaravelReactI18n } from 'laravel-react-i18n';
 
 export default function Login({ status, canResetPassword }) {
@@ -50,6 +50,17 @@ export default function Login({ status, canResetPassword }) {
                     />
 
                     <InputError message={errors.email} className="mt-2" />
+
+                    {errors.account_expired && (
+                        <button
+                            type="button"
+                            disabled={!data.email}
+                            onClick={() => router.post(route('verification.resend'), { email: data.email }, { preserveScroll: true })}
+                            className="mt-2 text-sm font-semibold text-primary-700 underline hover:text-primary-900 disabled:opacity-50"
+                        >
+                            {t('account.login_resend_button')}
+                        </button>
+                    )}
                 </div>
 
                 <div className="mt-4">

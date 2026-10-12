@@ -50,6 +50,17 @@ class LoginRequest extends FormRequest
             ]);
         }
 
+        // Right credentials, but the email was never confirmed within the
+        // grace period: the account is disabled.
+        if (Auth::user()?->isDisabledForUnverifiedEmail()) {
+            Auth::logout();
+
+            throw ValidationException::withMessages([
+                'email' => __('account.disabled_login'),
+                'account_expired' => __('account.disabled_login'),
+            ]);
+        }
+
         RateLimiter::clear($this->throttleKey());
     }
 

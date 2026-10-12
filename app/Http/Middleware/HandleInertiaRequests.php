@@ -55,6 +55,23 @@ class HandleInertiaRequests extends Middleware
             // correct quiz root lets those specific links override Ziggy's
             // per-request root explicitly — see useSectionRoutes.js.
             'quizUrl' => config('app.url'),
+            // Email confirmation status for the header badge and reminder
+            // banner: state is 'verified' | 'pending' | 'not_applicable'
+            // (an 'expired' account can't be signed in at all).
+            'emailVerification' => (function () use ($request) {
+                $user = $request->user();
+                if (! $user) {
+                    return null;
+                }
+
+                $deadline = $user->verification_expires_at;
+
+                return [
+                    'state' => $user->emailVerificationState(),
+                    'expiresAt' => $deadline?->toIso8601String(),
+                    'hoursLeft' => $deadline ? max(0, (int) ceil(now()->floatDiffInHours($deadline, false))) : null,
+                ];
+            })(),
             'notifications_unread' => fn () => $request->user()
                 ? app(NotificationFeedService::class)->unreadCount($request->user())
                 : 0,

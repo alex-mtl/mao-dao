@@ -1266,3 +1266,42 @@ and the Node app at `/` answered "Cannot PATCH". `resources/js/app.jsx` now
 wraps `window.route`: names starting with `mafia.` resolve against
 `window.location.origin`, everything else against the shared `quizUrl` prop;
 calls that pass their own config (`useSectionRoutes`) are untouched.
+
+## Email confirmation for email registrations (added 2026-10-12)
+
+- **Flow.** Registering with an email creates the account and logs the user in
+  at once, but `email_verified_at` stays null and `verification_expires_at` is
+  set to now + `config('auth.verification.expire')` (1440 min = 24 h, one value
+  for both the link lifetime and the grace period). The `Registered` event
+  triggers `User::sendEmailVerificationNotification()` →
+  `App\Notifications\VerifyEmailNotification` (localized via the user's
+  `ui_language`; `lang/*/account.php`). Resending (signed-in
+  `verification.send`, or the guest `verification.resend` by email address)
+  restarts the 24 h.
+- **State is derived, not stored**: `User::emailVerificationState()` →
+  `verified | pending | expired | not_applicable`. `expired` = unconfirmed and
+  past `verification_expires_at` → the account is **disabled**: `LoginRequest`
+  refuses it (errors `email` + `account_expired`, the login page then offers
+  "send me a new link") and `EnsureAccountIsActive` (web middleware) logs out
+  an already-open session. No cron/queue is needed for this.
+- **Never disabled**: accounts with no deadline — all pre-existing users, email
+  changes made in the profile (a reminder only, link is re-sent), and
+  Telegram sign-ins, whose throw-away `...@users.noreply.quiz-platform.local`
+  address counts as `not_applicable` (nothing to confirm).
+- **Link**: `verification.verify` is deliberately **not** behind `auth` (opened
+  on another device, signed URL + email hash are the proof; it never logs
+  anyone in). The dashboard no longer uses the `verified` middleware, so
+  pending users can use the site.
+- **UI**: shared Inertia prop `emailVerification {state, expiresAt, hoursLeft}`;
+  header pill "Pending validation" (all pages) and a banner under the header
+  with a resend button (`EmailVerificationNotice.jsx`; not shown on /mafia
+  pages, whose layout is sized to the viewport).
+- **Transport**: Mailgun via `symfony/mailgun-mailer` (+ `symfony/http-client`),
+  pinned `^7.0|^8.0` so the server's PHP 8.3 re-resolve still works. Env on the
+  server: `MAIL_MAILER=mailgun`, `MAILGUN_DOMAIN=mg.ttl10.net` (the domain
+  already verified for ttl10), `MAILGUN_SECRET=<key>`, optional
+  `MAILGUN_ENDPOINT` (EU: `api.eu.mailgun.net`), `MAIL_FROM_ADDRESS=noreply@mg.ttl10.net`,
+  `MAIL_FROM_NAME="Mao Dao Game Platform"`. To send as `@mao-dao.com`, add that
+  domain in the same Mailgun account and put its DNS records in Route 53 first
+  — a From domain that differs from the signing domain lands in spam. Until
+  `MAIL_MAILER` is changed, mails only go to the log (as before).

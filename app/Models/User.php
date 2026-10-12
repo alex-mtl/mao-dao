@@ -2,7 +2,9 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Notifications\VerifyEmailNotification;
+use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Illuminate\Contracts\Translation\HasLocalePreference;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
@@ -19,7 +21,7 @@ use Spatie\MediaLibrary\InteractsWithMedia;
 
 #[Fillable(['name', 'email', 'password', 'ui_language', 'color_scheme'])]
 #[Hidden(['password', 'remember_token'])]
-class User extends Authenticatable implements HasMedia
+class User extends Authenticatable implements HasLocalePreference, HasMedia, MustVerifyEmail
 {
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable, InteractsWithMedia;
@@ -95,8 +97,81 @@ class User extends Authenticatable implements HasMedia
     {
         return [
             'email_verified_at' => 'datetime',
+            'verification_expires_at' => 'datetime',
             'password' => 'hashed',
         ];
+    }
+
+    /** Locale for queued/mailed notifications (the account's UI language). */
+    public function preferredLocale(): ?string
+    {
+        return $this->ui_language;
+    }
+
+    /**
+     * Telegram sign-ins have no real email — they get a throw-away
+     * `...@users.noreply.quiz-platform.local` address that can neither
+     * receive a confirmation nor be asked to confirm.
+     */
+    public function hasPlaceholderEmail(): bool
+    {
+        return str_ends_with((string) $this->email, '.local');
+    }
+
+    /**
+     * 'verified' | 'pending' | 'expired' | 'not_applicable'.
+     *
+     * - pending: email not confirmed yet (with a deadline for fresh email
+     *   registrations; without one for older accounts and email changes —
+     *   those only get a reminder, never a lock-out);
+     * - expired: the deadline passed unconfirmed, the account is disabled;
+     * - not_applicable: placeholder email, nothing to confirm.
+     */
+    public function emailVerificationState(): string
+    {
+        if ($this->hasVerifiedEmail()) {
+            return 'verified';
+        }
+
+        if ($this->hasPlaceholderEmail()) {
+            return 'not_applicable';
+        }
+
+        if ($this->verification_expires_at !== null && $this->verification_expires_at->isPast()) {
+            return 'expired';
+        }
+
+        return 'pending';
+    }
+
+    public function isDisabledForUnverifiedEmail(): bool
+    {
+        return $this->emailVerificationState() === 'expired';
+    }
+
+    /**
+     * Sends the confirmation link and restarts the account's grace period
+     * (only for accounts that have a deadline — a plain reminder for the
+     * others). Never throws: a mail transport hiccup must not break
+     * registration, the user can ask for the link again.
+     */
+    public function sendEmailVerificationNotification(): void
+    {
+        if ($this->hasPlaceholderEmail()) {
+            return;
+        }
+
+        if ($this->verification_expires_at !== null) {
+            $this->forceFill([
+                'verification_expires_at' => now()->addMinutes((int) config('auth.verification.expire', 1440)),
+            ])->save();
+        }
+
+        try {
+            $this->notify(new VerifyEmailNotification);
+        } catch (\Throwable $e) {
+            report($e);
+        }
     }
 
     public function socialAccounts(): HasMany
