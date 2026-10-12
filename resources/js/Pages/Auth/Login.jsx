@@ -111,6 +111,16 @@ export default function Login({ status, canResetPassword }) {
             </form>
 
             <SocialLoginButtons />
+
+            <p className="mt-6 text-center text-sm text-ink-600">
+                {t('auth_ui.no_account')}{' '}
+                <Link
+                    href={route('register')}
+                    className="font-semibold text-primary-700 underline hover:text-primary-900"
+                >
+                    {t('auth_ui.register')}
+                </Link>
+            </p>
         </GuestLayout>
     );
 }

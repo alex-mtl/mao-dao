@@ -14,6 +14,7 @@ return [
     'name' => 'Name',
     'confirm_password' => 'Confirm Password',
     'already_registered' => 'Already registered?',
+    'no_account' => "Don't have an account?",
     'register' => 'Register',
 
     'or_continue_with' => 'Or continue with',

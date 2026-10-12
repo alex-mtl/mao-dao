@@ -14,6 +14,7 @@ return [
     'name' => 'Nom',
     'confirm_password' => 'Confirmer le mot de passe',
     'already_registered' => 'Déjà inscrit ?',
+    'no_account' => "Vous n'avez pas de compte ?",
     'register' => "S'inscrire",
 
     'or_continue_with' => 'Ou continuer avec',

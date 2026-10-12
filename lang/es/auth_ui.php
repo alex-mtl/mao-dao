@@ -14,6 +14,7 @@ return [
     'name' => 'Nombre',
     'confirm_password' => 'Confirmar contraseña',
     'already_registered' => '¿Ya estás registrado?',
+    'no_account' => '¿No tienes una cuenta?',
     'register' => 'Registrarse',
 
     'or_continue_with' => 'O continuar con',

@@ -14,6 +14,7 @@ return [
     'name' => 'Имя',
     'confirm_password' => 'Подтверждение пароля',
     'already_registered' => 'Уже зарегистрированы?',
+    'no_account' => 'Нет аккаунта?',
     'register' => 'Зарегистрироваться',
 
     'or_continue_with' => 'Или продолжить с помощью',
