@@ -113,7 +113,7 @@ test('a cancelled room is still a dead end, and an unknown code says so', functi
     $room->update(['status' => 'cancelled']);
 
     expect($this->get("/mafia/{$room->room_code}")->viewData('page')['props']['state'])->toBe('cancelled');
-    expect($this->get('/mafia/NOPE99')->viewData('page')['props']['state'])->toBe('not_found');
+    $this->get('/mafia/NOPE99')->assertNotFound()->assertInertia(fn ($page) => $page->component('Mafia/RoomUnavailable'));
     $this->get('/mafia/NOPE99/watch')->assertNotFound();
 });
 

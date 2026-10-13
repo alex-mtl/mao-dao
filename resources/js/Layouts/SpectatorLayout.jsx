@@ -12,7 +12,7 @@ import useSectionRoutes from '@/hooks/useSectionRoutes';
  * \`hideChrome\` / \`onEnterFullscreen\` props as AuthenticatedLayout, so the
  * game screen can swap one for the other.
  */
-export default function SpectatorLayout({ children, hideChrome = false, onEnterFullscreen = null }) {
+export default function SpectatorLayout({ children, hideChrome = false, onEnterFullscreen = null, loginLabelKey = 'mafia.log_in_to_play' }) {
     const { t } = useLaravelReactI18n();
     const { quizRoute } = useSectionRoutes();
 
@@ -39,7 +39,7 @@ export default function SpectatorLayout({ children, hideChrome = false, onEnterF
                                 href={quizRoute('login')}
                                 className="rounded-lg bg-primary-600 px-3.5 py-2 text-sm font-semibold text-white shadow-soft hover:bg-primary-700"
                             >
-                                {t('mafia.log_in_to_play')}
+                                {t(loginLabelKey)}
                             </Link>
                         </div>
                     </div>

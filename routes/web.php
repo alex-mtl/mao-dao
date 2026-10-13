@@ -142,3 +142,7 @@ Route::post('/race/{code}/answer', [RaceController::class, 'answer'])->middlewar
 Route::post('/race/{code}/leave', [RaceController::class, 'leave'])->middleware('race.player')->name('race.leave');
 
 require __DIR__.'/auth.php';
+
+// Any address that matches nothing: go through the web middleware group (so
+// the error page gets the session / shared props) and end in a styled 404.
+Route::fallback(fn () => abort(404));

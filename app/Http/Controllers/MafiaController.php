@@ -250,12 +250,9 @@ class MafiaController extends Controller
     {
         $room = MafiaRoom::where('room_code', strtoupper($code))->first();
 
-        if (! $room) {
-            return Inertia::render('Mafia/Join', [
-                'state' => 'not_found',
-                'code' => strtoupper($code),
-            ]);
-        }
+        // Unknown code: a real 404, rendered by the exception handler as the
+        // "this game doesn't exist or you have no access" page.
+        abort_if(! $room, 404);
 
         $user = $request->user();
 

@@ -204,12 +204,21 @@ test('visiting play while the room is still in the lobby redirects back to the l
     $response->assertRedirect(route('mafia.lobby', $room->room_code));
 });
 
-test('joining a non-existent room code shows the not-found state', function () {
+test('joining a non-existent room code is a 404 on the Mafia error page', function () {
     $user = User::factory()->create();
 
     $response = $this->actingAs($user)->get('/mafia/ZZZZZZ');
 
-    $response->assertInertia(fn ($page) => $page->component('Mafia/Join')->where('state', 'not_found'));
+    $response->assertNotFound();
+    $response->assertInertia(fn ($page) => $page->component('Mafia/RoomUnavailable')->where('code', 'ZZZZZZ'));
+});
+
+test('opening the play page of a game that does not exist shows the Mafia error page', function () {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)->get('/mafia/QX8YAS/play')
+        ->assertNotFound()
+        ->assertInertia(fn ($page) => $page->component('Mafia/RoomUnavailable')->where('code', 'QX8YAS'));
 });
 
 test('visiting a full room lets you watch it instead of hitting a dead end', function () {
