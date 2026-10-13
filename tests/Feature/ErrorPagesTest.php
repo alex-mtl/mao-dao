@@ -23,3 +23,14 @@ test('a mafia address that leads nowhere explains it instead of showing a bare 4
 test('JSON requests still get a JSON error', function () {
     $this->getJson('/nope')->assertNotFound()->assertJsonStructure(['message']);
 });
+
+test('a signed-out visitor opening the play address of a missing room sees the missing-game page, not a login form', function () {
+    $this->get('/mafia/NOROOM/play')->assertRedirect(route('mafia.show', 'NOROOM'));
+    $this->get('/mafia/NOROOM/lobby')->assertRedirect(route('mafia.show', 'NOROOM'));
+});
+
+test('a signed-out visitor opening the play address of a real room is still asked to log in', function () {
+    $room = \App\Models\MafiaRoom::factory()->create();
+
+    $this->get("/mafia/{$room->room_code}/play")->assertRedirect(route('login'));
+});

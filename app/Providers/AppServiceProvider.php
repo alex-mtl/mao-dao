@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Models\MafiaRoom;
 use Illuminate\Auth\Middleware\Authenticate;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Event;
@@ -60,7 +61,23 @@ class AppServiceProvider extends ServiceProvider
         // to the one real login page under /quiz; Laravel's normal
         // "intended URL" session mechanism still bounces them back to
         // whatever /mafia/... page they actually wanted once logged in.
-        Authenticate::redirectUsing(fn () => rtrim(config('app.url'), '/').'/login');
+        //
+        // One exception: the play/lobby address of a room that does not
+        // exist. Sending a signed-out visitor to a login form for a game
+        // that is not there is misleading (and after logging in they would
+        // only land on a 404), so they go to the public room address, which
+        // answers with the "this game doesn't exist" page.
+        Authenticate::redirectUsing(function (Request $request) {
+            if ($request->is('mafia/*/play', 'mafia/*/lobby')) {
+                $code = strtoupper((string) $request->segment(2));
+
+                if (! MafiaRoom::where('room_code', $code)->exists()) {
+                    return route('mafia.show', $code);
+                }
+            }
+
+            return rtrim(config('app.url'), '/').'/login';
+        });
 
         // When deployed under a URL path prefix (e.g. https://example.com/quiz),
         // nginx's SCRIPT_NAME-based base path detection is unreliable, so force
