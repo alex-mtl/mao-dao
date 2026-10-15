@@ -20,8 +20,8 @@ const ACCENTS = {
 
 /**
  * Platform home: one block per game with a way into its section. The list of
- * rooms open for joining (and which friends are in them) is a template for now:
- * `game.openRooms` is always empty until the mechanic is built.
+ * what can be entered right now: open Mafia rooms (friends highlighted) and the
+ * newest quizzes. Everything here is public.
  */
 export default function Home({ games, canLogin, canRegister }) {
     const { t } = useLaravelReactI18n();
@@ -76,24 +76,41 @@ export default function Home({ games, canLogin, canRegister }) {
 
                                 <div className="mt-6 border-t border-warm-200 pt-4">
                                     <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-500">
-                                        {t('platform.open_rooms_heading')}
+                                        {t(game.key === 'quiz' ? 'platform.new_quizzes_heading' : 'platform.open_rooms_heading')}
                                     </h3>
-                                    {game.openRooms.length === 0 ? (
-                                        <p className="mt-2 text-sm text-ink-400">{t('platform.no_open_rooms')}</p>
+                                    {game.items.length === 0 ? (
+                                        <p className="mt-2 text-sm text-ink-400">
+                                            {t(game.key === 'quiz' ? 'platform.no_quizzes' : 'platform.no_open_rooms')}
+                                        </p>
                                     ) : (
                                         <ul className="mt-2 space-y-2">
-                                            {game.openRooms.map((room) => (
+                                            {game.items.map((item) => (
                                                 <li
-                                                    key={room.code}
+                                                    key={item.url}
                                                     className={`flex items-center justify-between gap-3 rounded-lg border px-3 py-2 text-sm ${
-                                                        room.hasFriends ? 'border-accent-400 bg-accent-50' : 'border-warm-200'
+                                                        item.hasFriends ? 'border-accent-400 bg-accent-50' : 'border-warm-200'
                                                     }`}
                                                 >
                                                     <span className="min-w-0 truncate text-ink-700">
-                                                        {room.players.join(', ')}
+                                                        {item.kind === 'room' ? (
+                                                            <>
+                                                                <span className="font-semibold tracking-widest">{item.title}</span>
+                                                                <span className="ml-2 text-ink-400">
+                                                                    {item.playersCount}/{item.seats}
+                                                                    {item.status === 'playing' && ` · ${t('platform.room_status_playing')}`}
+                                                                </span>
+                                                                {item.hasFriends && (
+                                                                    <span className="ml-2 text-xs font-semibold text-accent-700">
+                                                                        {t('platform.friends_playing')}
+                                                                    </span>
+                                                                )}
+                                                            </>
+                                                        ) : (
+                                                            item.title
+                                                        )}
                                                     </span>
-                                                    <Link href={room.url} className="shrink-0 font-semibold text-primary-700 hover:underline">
-                                                        {t('platform.join_room')}
+                                                    <Link href={item.url} className="shrink-0 font-semibold text-primary-700 hover:underline">
+                                                        {t(item.kind === 'room' ? 'platform.watch_room' : 'platform.open_quiz')}
                                                     </Link>
                                                 </li>
                                             ))}
@@ -104,10 +121,6 @@ export default function Home({ games, canLogin, canRegister }) {
                         );
                     })}
                 </div>
-
-                {!authUser && canLogin && (
-                    <p className="mt-8 text-center text-sm text-ink-500">{t('platform.sign_in_to_play')}</p>
-                )}
             </div>
         </Layout>
     );

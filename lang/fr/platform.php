@@ -23,4 +23,12 @@ return [
     'footer_account' => "Compte",
     'footer_rights' => "Tous droits réservés.",
     'sign_in_to_play' => "Connectez-vous pour lancer ou rejoindre une partie",
+    'room_status_lobby' => "En attente de joueurs",
+    'room_status_playing' => "En cours",
+    'watch_room' => "Regarder",
+    'login_to_create_room' => "Connectez-vous pour créer une salle ou prendre une place. Regarder est ouvert à tous.",
+    'new_quizzes_heading' => "Nouveaux quiz",
+    'no_quizzes' => "Pas encore de quiz.",
+    'open_quiz' => "Ouvrir",
+    'sign_in_to_save' => "Connectez-vous pour garder vos résultats et participer aux courses.",
 ];

@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable([
-    'quiz_id', 'user_id', 'total_questions', 'correct_count', 'percentage',
+    'quiz_id', 'user_id', 'guest_token', 'total_questions', 'correct_count', 'percentage',
     'time_spent_seconds', 'passed',
 ])]
 class QuizAttempt extends Model

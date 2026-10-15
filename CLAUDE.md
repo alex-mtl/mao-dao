@@ -25,6 +25,15 @@ note turns out to apply to all games, move it here.
 
 ## Rules every game on the platform follows
 
+- **Public by default.** A visitor without an account can open every
+  section, browse (quiz library, open Mafia rooms), **play** published quizzes
+  and **watch** public games. An account is required only to *create* things
+  (quizzes, rooms), for personal pages (profile, history, recommendations,
+  friends, groups, notifications) and to take a seat in a game. Never put a
+  login wall in front of a read-only page; use `PlatformLayout` (members get
+  the full chrome, guests the slim bar with Log in / Register) and let the
+  controller treat `$request->user()` as nullable. Guest quiz attempts are
+  tied to a session token (`quiz_attempts.guest_token`), not to an account.
 - **Four languages, always.** Every user-visible string goes through
   `lang/{en,fr,es,ru}/*.php` (see "Architecture decisions"); a game is not
   done until all four exist.
@@ -347,8 +356,9 @@ production routing" notes in the old CLAUDE.md) and none of it applies.
 | `/` | platform home: a block per game (`config/games.php`, `Pages/Home.jsx`) |
 | `/login`, `/register`, `/forgot-password`, `/verify-email/...`, `/auth/{provider}/...` | accounts (Breeze + social login) |
 | `/profile`, `/friends`, `/groups`, `/notifications`, `/images` | platform-level pages |
-| `/quiz`, `/quiz/library`, `/quiz/quizzes/...`, `/quiz/race/...` | the quiz game (dashboard is `/quiz`, route name `dashboard`) |
-| `/mafia`, `/mafia/{code}/...` | the Mafia game |
+| `/quiz` (members: dashboard, guests: → library), `/quiz/library`, `/quiz/quizzes/{id}` (+`/play`), `/quiz/quiz-attempts/{id}`, `/quiz/race/{code}` | the quiz game — **public** (browse, play, results via session token) |
+| `/quiz/my-quizzes`, `/quiz/quizzes/create`/`edit`, likes, copy, history | quiz features that need an account |
+| `/mafia` (public list of open rooms), `/mafia/{code}` + `/watch` (public), `/mafia/{code}/play`/`lobby` and room actions | the Mafia game; creating/joining as a player needs an account, watching does not |
 | `/internal/mafia/*` | server-to-server calls from the media sidecar (shared secret, no session) |
 
 Rules for a new game: its routes live under its own prefix (`/<game>/...`),

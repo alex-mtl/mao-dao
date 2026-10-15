@@ -23,4 +23,12 @@ return [
     'footer_account' => "Cuenta",
     'footer_rights' => "Todos los derechos reservados.",
     'sign_in_to_play' => "Inicia sesión para empezar o unirte a una partida",
+    'room_status_lobby' => "Esperando jugadores",
+    'room_status_playing' => "En curso",
+    'watch_room' => "Ver",
+    'login_to_create_room' => "Inicia sesión para crear una sala o tomar un asiento. Mirar está abierto a todos.",
+    'new_quizzes_heading' => "Quizzes nuevos",
+    'no_quizzes' => "Aún no hay quizzes.",
+    'open_quiz' => "Abrir",
+    'sign_in_to_save' => "Inicia sesión para guardar tus resultados y participar en carreras.",
 ];

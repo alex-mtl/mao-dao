@@ -24,9 +24,13 @@ use Inertia\Response;
 
 class MafiaController extends Controller
 {
-    public function index(): Response
+    public function index(Request $request, \App\Services\MafiaRoomListService $rooms): Response
     {
-        return Inertia::render('Mafia/Index');
+        return Inertia::render('Mafia/Index', [
+            // The section is public: everybody sees the open rooms; creating
+            // a room (and joining one to play) needs an account.
+            'rooms' => $rooms->publicRooms($request->user()),
+        ]);
     }
 
     /**

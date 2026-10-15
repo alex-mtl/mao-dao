@@ -207,6 +207,14 @@ class User extends Authenticatable implements HasLocalePreference, HasMedia, Mus
                 ->orWhere('recipient_id', $this->id));
     }
 
+    /** @return \Illuminate\Support\Collection<int, int> ids of this user's accepted friends */
+    public function friendIds(): \Illuminate\Support\Collection
+    {
+        return $this->acceptedFriendRequests()->get(['sender_id', 'recipient_id'])
+            ->map(fn ($request) => $request->sender_id === $this->id ? $request->recipient_id : $request->sender_id)
+            ->values();
+    }
+
     public function ownedGroups(): HasMany
     {
         return $this->hasMany(Group::class, 'owner_id');

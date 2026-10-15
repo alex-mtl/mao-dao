@@ -13,7 +13,8 @@ class QuizLibraryController extends Controller
 {
     public function index(Request $request, QuizRecommendationService $recommendations): Response
     {
-        if ($request->query('tab') === 'recommended') {
+        // "Recommended for you" needs an account; guests get the full library.
+        if ($request->query('tab') === 'recommended' && $request->user()) {
             return Inertia::render('Quizzes/Library', [
                 'tab' => 'recommended',
                 'quizzes' => $recommendations->forUser($request->user())
@@ -63,7 +64,8 @@ class QuizLibraryController extends Controller
         $quiz->load(['user:id,name', 'tags:id,name']);
         $quiz->loadCount(['questions', 'likes']);
 
-        $canCopy = $request->user()->can('copy', $quiz);
+        $user = $request->user();
+        $canCopy = $user ? $user->can('copy', $quiz) : false;
 
         $stats = $quiz->attempts()
             ->selectRaw('count(*) as attempts_count')
@@ -89,11 +91,11 @@ class QuizLibraryController extends Controller
                 'average_time_spent_minutes' => $stats->average_time_spent_seconds !== null
                     ? (int) round($stats->average_time_spent_seconds / 60)
                     : null,
-                'liked_by_user' => $quiz->likes()->where('user_id', $request->user()->id)->exists(),
+                'liked_by_user' => $user ? $quiz->likes()->where('user_id', $user->id)->exists() : false,
                 'can_copy' => $canCopy,
                 'tags' => $quiz->tags,
                 'owner' => $quiz->user,
-                'is_owner' => $quiz->user_id === $request->user()->id,
+                'is_owner' => $user !== null && $quiz->user_id === $user->id,
             ],
         ]);
     }

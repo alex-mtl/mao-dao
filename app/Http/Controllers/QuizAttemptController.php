@@ -96,7 +96,8 @@ class QuizAttemptController extends Controller
 
             $attempt = QuizAttempt::create([
                 'quiz_id' => $quiz->id,
-                'user_id' => $request->user()->id,
+                'user_id' => $request->user()?->id,
+                'guest_token' => $request->user() ? null : $this->guestToken($request),
                 'total_questions' => $total,
                 'correct_count' => $correctCount,
                 'percentage' => $percentage,
@@ -114,7 +115,12 @@ class QuizAttemptController extends Controller
 
     public function show(Request $request, QuizAttempt $quizAttempt): Response
     {
-        $this->authorize('view', $quizAttempt);
+        $user = $request->user();
+        $owns = $user
+            ? $quizAttempt->user_id === $user->id
+            : $quizAttempt->guest_token !== null
+                && hash_equals($quizAttempt->guest_token, (string) $request->session()->get('quiz_guest_token'));
+        abort_unless($owns, 403);
 
         $quizAttempt->load(['quiz:id,title', 'answers.question.answers', 'answers.answer']);
 
@@ -137,6 +143,19 @@ class QuizAttemptController extends Controller
             ],
             'similar_quizzes' => $this->similarQuizzes($quizAttempt->quiz_id),
         ]);
+    }
+
+    /**
+     * A random per-session token that ties a guest's attempts to them
+     * (no account, nothing personal stored).
+     */
+    private function guestToken(Request $request): string
+    {
+        if (! $request->session()->has('quiz_guest_token')) {
+            $request->session()->put('quiz_guest_token', \Illuminate\Support\Str::random(40));
+        }
+
+        return $request->session()->get('quiz_guest_token');
     }
 
     /**

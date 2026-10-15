@@ -1,4 +1,4 @@
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import PlatformLayout from '@/Layouts/PlatformLayout';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
 import { Head, Link, router } from '@inertiajs/react';
@@ -54,7 +54,7 @@ export default function Play({ quiz }) {
     };
 
     return (
-        <AuthenticatedLayout>
+        <PlatformLayout>
             <Head title={quiz.title} />
 
             <div className="mx-auto flex min-h-[calc(100vh-3.5rem)] max-w-2xl flex-col px-4 py-6 sm:px-6">
@@ -155,6 +155,6 @@ export default function Play({ quiz }) {
                     </div>
                 </div>
             </div>
-        </AuthenticatedLayout>
+        </PlatformLayout>
     );
 }

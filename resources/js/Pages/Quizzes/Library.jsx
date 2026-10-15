@@ -1,4 +1,4 @@
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import PlatformLayout from '@/Layouts/PlatformLayout';
 import PageHeader from '@/Components/PageHeader';
 import TextInput from '@/Components/TextInput';
 import PrimaryButton from '@/Components/PrimaryButton';
@@ -13,6 +13,7 @@ import { useState } from 'react';
 export default function Library({ quizzes, tags, filters, tab }) {
     const { t } = useLaravelReactI18n();
     const localeOptions = usePage().props.locale_options;
+    const authUser = usePage().props.auth.user;
 
     const [search, setSearch] = useState(filters.search ?? '');
 
@@ -35,7 +36,7 @@ export default function Library({ quizzes, tags, filters, tab }) {
     };
 
     return (
-        <AuthenticatedLayout header={<PageHeader title={t('library.title')} />}>
+        <PlatformLayout header={<PageHeader title={t('library.title')} />}>
             <Head title={t('library.title')} />
 
             <div className="py-8">
@@ -43,13 +44,14 @@ export default function Library({ quizzes, tags, filters, tab }) {
                     <div role="tablist" className="flex gap-2 border-b border-warm-200">
                         {[
                             { key: 'all', label: t('library.tab_all'), href: route('library.index') },
-                            {
+                            // "Recommended for you" is personal: members only.
+                            authUser && {
                                 key: 'recommended',
                                 label: t('library.tab_recommended'),
                                 href: route('library.index', { tab: 'recommended' }),
                                 icon: SparklesIcon,
                             },
-                        ].map((item) => (
+                        ].filter(Boolean).map((item) => (
                             <Link
                                 key={item.key}
                                 href={item.href}
@@ -142,6 +144,6 @@ export default function Library({ quizzes, tags, filters, tab }) {
                     <Pagination links={quizzes.links} />
                 </div>
             </div>
-        </AuthenticatedLayout>
+        </PlatformLayout>
     );
 }

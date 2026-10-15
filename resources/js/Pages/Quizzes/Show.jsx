@@ -1,4 +1,4 @@
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import PlatformLayout from '@/Layouts/PlatformLayout';
 import SecondaryButton from '@/Components/SecondaryButton';
 import PrimaryButton from '@/Components/PrimaryButton';
 import Badge from '@/Components/Badge';
@@ -29,8 +29,15 @@ function Stat({ icon: Icon, children }) {
 
 export default function Show({ quiz }) {
     const { t } = useLaravelReactI18n();
+    const authUser = usePage().props.auth.user;
 
     const toggleLike = () => {
+        // Liking needs an account: a guest is taken to the login form.
+        if (!authUser) {
+            router.visit(route('login'));
+            return;
+        }
+
         if (quiz.liked_by_user) {
             router.delete(route('quizzes.unlike', quiz.id), { preserveScroll: true });
         } else {
@@ -52,7 +59,7 @@ export default function Show({ quiz }) {
     const averageTime = formatMinutes(quiz.average_time_spent_minutes);
 
     return (
-        <AuthenticatedLayout>
+        <PlatformLayout>
             <Head title={quiz.title} />
 
             <div className="py-8">
@@ -123,7 +130,7 @@ export default function Show({ quiz }) {
                                 </PrimaryButton>
                             </Link>
 
-                            {quiz.status === 'published' && (
+                            {authUser && quiz.status === 'published' && (
                                 <SecondaryButton onClick={startRace} loading={startingRace} disabled={startingRace}>
                                     <UserGroupIcon className="h-4 w-4" aria-hidden="true" />
                                     {t('race.start_a_race')}
@@ -155,6 +162,6 @@ export default function Show({ quiz }) {
                     </div>
                 </div>
             </div>
-        </AuthenticatedLayout>
+        </PlatformLayout>
     );
 }

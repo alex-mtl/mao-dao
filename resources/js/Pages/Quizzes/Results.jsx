@@ -1,5 +1,5 @@
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, Link } from '@inertiajs/react';
+import PlatformLayout from '@/Layouts/PlatformLayout';
+import { Head, Link, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 import QuizCard from '@/Components/QuizCard';
 import { useLaravelReactI18n } from 'laravel-react-i18n';
@@ -44,6 +44,7 @@ function ScoreRing({ percentage, passed }) {
 
 export default function Results({ attempt, similar_quizzes: similarQuizzes = [] }) {
     const { t } = useLaravelReactI18n();
+    const authUser = usePage().props.auth.user;
     const seconds = attempt.time_spent_seconds;
     const timeSpent =
         seconds !== null && seconds !== undefined && seconds < 60
@@ -74,7 +75,7 @@ export default function Results({ attempt, similar_quizzes: similarQuizzes = [] 
     };
 
     return (
-        <AuthenticatedLayout>
+        <PlatformLayout>
             <Head title={t('quiz_player.results_title')} />
 
             <div className="py-8">
@@ -182,14 +183,25 @@ export default function Results({ attempt, similar_quizzes: similarQuizzes = [] 
                                 <BookOpenIcon className="h-4 w-4" aria-hidden="true" />
                                 {t('quiz_player.back_to_library')}
                             </Link>
-                            <Link
-                                href={route('quiz-attempts.history')}
-                                className="inline-flex items-center gap-1 text-sm font-medium text-ink-500 hover:text-primary-700"
-                            >
-                                <ClockIcon className="h-4 w-4" aria-hidden="true" />
-                                {t('quiz_player.view_history')}
-                            </Link>
+                            {authUser && (
+                                <Link
+                                    href={route('quiz-attempts.history')}
+                                    className="inline-flex items-center gap-1 text-sm font-medium text-ink-500 hover:text-primary-700"
+                                >
+                                    <ClockIcon className="h-4 w-4" aria-hidden="true" />
+                                    {t('quiz_player.view_history')}
+                                </Link>
+                            )}
                         </div>
+
+                        {!authUser && (
+                            <p className="mt-4 rounded-lg bg-warm-100 px-3 py-2 text-sm text-ink-600">
+                                {t('platform.sign_in_to_save')}{' '}
+                                <Link href={route('login')} className="font-semibold text-primary-700 underline">
+                                    {t('auth_ui.log_in')}
+                                </Link>
+                            </p>
+                        )}
                     </div>
 
                     {similarQuizzes.length > 0 && (
@@ -210,6 +222,6 @@ export default function Results({ attempt, similar_quizzes: similarQuizzes = [] 
                     )}
                 </div>
             </div>
-        </AuthenticatedLayout>
+        </PlatformLayout>
     );
 }

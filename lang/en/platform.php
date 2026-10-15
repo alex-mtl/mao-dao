@@ -23,4 +23,12 @@ return [
     'footer_account' => "Account",
     'footer_rights' => "All rights reserved.",
     'sign_in_to_play' => "Sign in to start or join a game",
+    'room_status_lobby' => "Waiting for players",
+    'room_status_playing' => "In progress",
+    'watch_room' => "Watch",
+    'login_to_create_room' => "Log in to create a room or take a seat. Watching is open to everyone.",
+    'new_quizzes_heading' => "New quizzes",
+    'no_quizzes' => "No quizzes yet.",
+    'open_quiz' => "Open",
+    'sign_in_to_save' => "Log in to keep your results and take part in races.",
 ];

@@ -8,12 +8,12 @@ use App\Models\User;
 class QuizPolicy
 {
     /**
-     * Published quizzes are visible to any authenticated user; draft
-     * quizzes are visible only to their owner.
+     * Published quizzes are visible to everyone, signed in or not; draft
+     * quizzes only to their owner.
      */
-    public function view(User $user, Quiz $quiz): bool
+    public function view(?User $user, Quiz $quiz): bool
     {
-        return $quiz->isPublished() || $user->id === $quiz->user_id;
+        return $quiz->isPublished() || ($user !== null && $user->id === $quiz->user_id);
     }
 
     public function update(User $user, Quiz $quiz): bool

@@ -21,7 +21,6 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', WelcomeController::class)->name('welcome');
 
 Route::get('/quiz', [DashboardController::class, 'index'])
-    ->middleware('auth')
     ->name('dashboard');
 
 Route::middleware('auth')->group(function () {
@@ -54,12 +53,9 @@ Route::middleware('auth')->group(function () {
     Route::delete('/groups/{group}/members/{user}', [GroupController::class, 'removeMember'])->name('groups.members.remove');
     Route::post('/groups/{group}/leave', [GroupController::class, 'leave'])->name('groups.leave');
 
-    Route::get('/quiz/explorer', fn () => redirect()->route('library.index'));
-    Route::get('/quiz/library', [QuizLibraryController::class, 'index'])->name('library.index');
     Route::get('/quiz/my-quizzes', [QuizController::class, 'mine'])->name('quizzes.mine');
     Route::get('/quiz/quizzes/create', [QuizController::class, 'create'])->name('quizzes.create');
     Route::post('/quiz/quizzes', [QuizController::class, 'store'])->name('quizzes.store');
-    Route::get('/quiz/quizzes/{quiz}', [QuizLibraryController::class, 'show'])->name('quizzes.show');
     Route::get('/quiz/quizzes/{quiz}/edit', [QuizController::class, 'edit'])->name('quizzes.edit');
     Route::put('/quiz/quizzes/{quiz}', [QuizController::class, 'update'])->name('quizzes.update');
     Route::get('/quiz/quizzes/{quiz}/preview', [QuizController::class, 'preview'])->name('quizzes.preview');
@@ -70,9 +66,6 @@ Route::middleware('auth')->group(function () {
     Route::post('/quiz/quizzes/{quiz}/like', [QuizLikeController::class, 'store'])->name('quizzes.like');
     Route::delete('/quiz/quizzes/{quiz}/like', [QuizLikeController::class, 'destroy'])->name('quizzes.unlike');
 
-    Route::get('/quiz/quizzes/{quiz}/play', [QuizAttemptController::class, 'play'])->name('quizzes.play');
-    Route::post('/quiz/quizzes/{quiz}/attempts', [QuizAttemptController::class, 'store'])->name('quiz-attempts.store');
-    Route::get('/quiz/quiz-attempts/{quizAttempt}', [QuizAttemptController::class, 'show'])->name('quiz-attempts.show');
     Route::get('/quiz/quiz-history', [QuizAttemptController::class, 'history'])->name('quiz-attempts.history');
 
     Route::post('/quiz/quizzes/{quiz}/race', [RaceController::class, 'store'])->name('race.store');
@@ -83,7 +76,6 @@ Route::middleware('auth')->group(function () {
     // §3.1 #2), so there's no guest-accessible group: identity is just
     // `auth()->user()`, resolved onto the request by ResolveMafiaPlayer
     // (mafia.player) rather than a session token.
-    Route::get('/mafia', [MafiaController::class, 'index'])->name('mafia.index');
     Route::post('/mafia/rooms', [MafiaController::class, 'store'])->name('mafia.store');
     // Must come before the {code} wildcard route below, or "history"
     // would be swallowed as a room code.
@@ -108,6 +100,16 @@ Route::middleware('auth')->group(function () {
     Route::post('/mafia/{code}/leave', [MafiaController::class, 'leave'])->middleware('mafia.player')->name('mafia.leave');
     Route::get('/mafia/{code}/media-token', [MafiaController::class, 'mediaToken'])->middleware('mafia.player')->name('mafia.media-token');
 });
+
+// Public: no account needed to browse and play. Declared after the auth
+// group so /quiz/quizzes/create (auth) is matched before {quiz}.
+Route::get('/quiz/explorer', fn () => redirect()->route('library.index'));
+Route::get('/quiz/library', [QuizLibraryController::class, 'index'])->name('library.index');
+Route::get('/quiz/quizzes/{quiz}', [QuizLibraryController::class, 'show'])->name('quizzes.show');
+Route::get('/quiz/quizzes/{quiz}/play', [QuizAttemptController::class, 'play'])->name('quizzes.play');
+Route::post('/quiz/quizzes/{quiz}/attempts', [QuizAttemptController::class, 'store'])->name('quiz-attempts.store');
+Route::get('/quiz/quiz-attempts/{quizAttempt}', [QuizAttemptController::class, 'show'])->name('quiz-attempts.show');
+Route::get('/mafia', [MafiaController::class, 'index'])->name('mafia.index');
 
 // Server-to-server only (plan Phase 7) — the media-sfu sidecar, a
 // separate Node.js process with no user session of its own, calls this

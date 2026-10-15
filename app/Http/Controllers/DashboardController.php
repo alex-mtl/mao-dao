@@ -11,9 +11,15 @@ use Inertia\Response;
 
 class DashboardController extends Controller
 {
-    public function index(Request $request, QuizRecommendationService $recommendations): Response
+    public function index(Request $request, QuizRecommendationService $recommendations): Response|RedirectResponse
     {
         $user = $request->user();
+
+        // The section is public: a visitor without an account starts in the
+        // library instead of being sent to a login form.
+        if (! $user) {
+            return redirect()->route('library.index');
+        }
 
         return Inertia::render('Dashboard', [
             'onboarding' => $this->onboarding($user),
