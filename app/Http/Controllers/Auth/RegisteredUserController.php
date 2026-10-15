@@ -44,6 +44,8 @@ class RegisteredUserController extends Controller
             'email' => $request->email,
             'password' => Hash::make($request->password),
             'ui_language' => in_array($locale, config('locales.supported'), true) ? $locale : config('locales.default'),
+            // Keep the look the visitor was already seeing (the platform default is neon).
+            'color_scheme' => session('color_scheme', config('color_schemes.default')),
         ]);
 
         // The account may be used right away but has a deadline to confirm

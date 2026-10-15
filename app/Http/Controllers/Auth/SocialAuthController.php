@@ -76,6 +76,7 @@ class SocialAuthController extends Controller
                     $socialiteUser->getId(),
                 ),
                 'password' => Str::random(40),
+                'color_scheme' => session('color_scheme', config('color_schemes.default')),
                 'email_verified_at' => $email ? now() : null,
             ]);
         }

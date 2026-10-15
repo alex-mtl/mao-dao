@@ -12,7 +12,7 @@ return [
      */
     'supported' => ['light-warm', 'light-cool', 'light-soft', 'dark-warm', 'dark-cool', 'dark-neon'],
 
-    'default' => 'light-warm',
+    'default' => 'dark-neon',
 
     /*
      * Display labels are localized (lang profile.php files,

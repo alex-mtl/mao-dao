@@ -47,3 +47,26 @@ test('the color scheme options shared to every page cover all six supported sche
         ->where('color_scheme_options.0.is_dark', false)
     );
 });
+
+test('a guest sees the neon scheme by default, a member keeps their saved one', function () {
+    $this->get('/')
+        ->assertOk()
+        ->assertSee('data-theme="dark-neon"', false)
+        ->assertInertia(fn ($page) => $page->where('color_scheme', 'dark-neon'));
+
+    $user = User::factory()->create(['color_scheme' => 'light-warm']);
+    $this->actingAs($user)->get('/')
+        ->assertSee('data-theme="light-warm"', false)
+        ->assertInertia(fn ($page) => $page->where('color_scheme', 'light-warm'));
+});
+
+test('a newly registered account starts with the look the visitor was already seeing', function () {
+    $this->post('/register', [
+        'name' => 'Newcomer',
+        'email' => 'newcomer@example.com',
+        'password' => 'password-123',
+        'password_confirmation' => 'password-123',
+    ]);
+
+    expect(User::where('email', 'newcomer@example.com')->firstOrFail()->color_scheme)->toBe('dark-neon');
+});
