@@ -1,4 +1,5 @@
-import SectionBrand from '@/Components/SectionBrand';
+import PlatformFooter from '@/Components/PlatformFooter';
+import SectionBrand, { useIsMafiaSection } from '@/Components/SectionBrand';
 import { ArrowsPointingOutIcon } from '@heroicons/react/24/outline';
 import { Link } from '@inertiajs/react';
 import { useLaravelReactI18n } from 'laravel-react-i18n';
@@ -12,16 +13,17 @@ import useSectionRoutes from '@/hooks/useSectionRoutes';
  * \`hideChrome\` / \`onEnterFullscreen\` props as AuthenticatedLayout, so the
  * game screen can swap one for the other.
  */
-export default function SpectatorLayout({ children, hideChrome = false, onEnterFullscreen = null, loginLabelKey = 'mafia.log_in_to_play' }) {
+export default function SpectatorLayout({ children, hideChrome = false, onEnterFullscreen = null, loginLabelKey = 'mafia.log_in_to_play', showRegister = false }) {
     const { t } = useLaravelReactI18n();
     const { quizRoute } = useSectionRoutes();
+    const isMafia = useIsMafiaSection();
 
     return (
         <div className="min-h-screen bg-warm-100">
             {!hideChrome && (
                 <header className="sticky top-0 z-30 border-b border-warm-200 bg-surface/90 backdrop-blur">
                     <div className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
-                        <SectionBrand guest />
+                        <SectionBrand />
 
                         <div className="flex items-center gap-2">
                             {onEnterFullscreen && (
@@ -33,6 +35,15 @@ export default function SpectatorLayout({ children, hideChrome = false, onEnterF
                                 >
                                     <ArrowsPointingOutIcon className="h-5 w-5" aria-hidden="true" />
                                 </button>
+                            )}
+
+                            {showRegister && (
+                                <Link
+                                    href={quizRoute('register')}
+                                    className="hidden rounded-lg border border-warm-300 bg-surface px-3.5 py-2 text-sm font-semibold text-ink-700 hover:bg-warm-50 sm:inline-flex"
+                                >
+                                    {t('auth_ui.register')}
+                                </Link>
                             )}
 
                             <Link
@@ -47,6 +58,8 @@ export default function SpectatorLayout({ children, hideChrome = false, onEnterF
             )}
 
             <main>{children}</main>
+
+            {!hideChrome && !isMafia && <PlatformFooter />}
         </div>
     );
 }

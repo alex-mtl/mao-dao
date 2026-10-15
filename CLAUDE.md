@@ -66,7 +66,7 @@ treat it as the **test environment**. Consequences:
 - **Do not run the suite on the server itself**: `RefreshDatabase` wipes every
   table it touches, the server installs with `--no-dev` (no Pest), and a
   dedicated test DB would have to be created on a shared box. After a deploy,
-  just smoke-check `/quiz/login` and `/mafia/`.
+  just smoke-check `/login`, `/quiz` and `/mafia/`.
 - **Data on the server must not be harmed** (owner's explicit requirement).
 - Still be careful: the box is shared with other **real** production
   projects. Touch only `/var/www/quiz`, this app's own DB/user/FPM pool, and
@@ -334,169 +334,43 @@ Mafia (engine, real-time, voice/video, spectators, fouls) →
 [`docs/games/mafia.md`](docs/games/mafia.md). Mentions below of "gotcha #N"
 refer to the numbered list near the top of this file.
 
-## Two sections under one host: /quiz and /mafia (routing, root URL, assets)
+## Routing: one host, one router (since 2026-10-15)
 
-The same applies to any further section added next to `/quiz`.
+`mao-dao.com` is served by this Laravel app **at the domain root**; nginx
+sends every request that is not a static file to `public/index.php`. There is
+no path-prefix stripping, no per-section "root URL" and no Ziggy tricks any
+more — the history of those workarounds is in git (look for the "Phase 6
+production routing" notes in the old CLAUDE.md) and none of it applies.
 
-Making `/mafia` a genuine sibling of `/quiz` (same Laravel app, two nginx
-path prefixes, per plan §2.1) surfaced two non-obvious bugs that took
-real debugging to find — both are load-bearing fixes, don't revert them
-without understanding why they're there:
+| Address | What |
+|---|---|
+| `/` | platform home: a block per game (`config/games.php`, `Pages/Home.jsx`) |
+| `/login`, `/register`, `/forgot-password`, `/verify-email/...`, `/auth/{provider}/...` | accounts (Breeze + social login) |
+| `/profile`, `/friends`, `/groups`, `/notifications`, `/images` | platform-level pages |
+| `/quiz`, `/quiz/library`, `/quiz/quizzes/...`, `/quiz/race/...` | the quiz game (dashboard is `/quiz`, route name `dashboard`) |
+| `/mafia`, `/mafia/{code}/...` | the Mafia game |
+| `/internal/mafia/*` | server-to-server calls from the media sidecar (shared secret, no session) |
 
-1. **`/mafia`'s nginx block must NOT strip the prefix the way `/quiz`'s
-   does.** `/quiz`'s own app routes are defined *without* "quiz" in them
-   (`Route::get('/dashboard', ...)`, not `Route::get('/quiz/dashboard',
-   ...)`) — they work because nginx/Symfony's base-path detection strips
-   "/quiz" before Laravel's router ever sees the path. Mafia's routes are
-   defined *with* a literal "mafia/" prefix
-   (`Route::get('/mafia/history', ...)`), so stripping "/mafia" the same
-   way left the router seeing just "/history" (matching nothing → 404)
-   or "" (matching `/` → wrongly rendered the Welcome page for
-   `/mafia/`). The fix, in the mafia nginx block's PHP location only: set
-   `fastcgi_param SCRIPT_NAME /$mafiapath;` (**not** `/mafia/$mafiapath`,
-   unlike the matching `/quiz` line) — Symfony's
-   `Request::prepareBaseUrl()` derives the stripped base from
-   `dirname(SCRIPT_NAME)`, and `dirname('/index.php')` is `/`, which is
-   never treated as a real prefix to strip, so the full `/mafia/...` path
-   reaches the router intact. This is a **deliberate difference** from
-   the `/quiz` block, not a copy-paste inconsistency — the two sections
-   need opposite base-path behavior precisely because one's routes are
-   prefixed and the other's aren't.
-2. **The shared, un-prefixed Breeze `login` route only resolves under
-   `/quiz`'s stripping scheme** — after fix #1, an unauthenticated
-   `/mafia/*` request has nothing named "mafia/login" to redirect to
-   (Laravel's default unauthenticated-redirect logic would otherwise
-   produce a URL nothing matches, causing a **redirect loop**: `/mafia/*`
-   → `route('login')` under the mafia root → back to `/mafia/login` →
-   matches nothing except the `mafia/{code}` wildcard, which is itself
-   `auth`-gated → redirects again → forever). Rather than duplicate the
-   entire auth route set under a second prefix for one shared account
-   system, `AppServiceProvider::boot()` now calls
-   `Authenticate::redirectUsing(fn () => rtrim(config('app.url'),
-   '/').'/login')` — every unauthenticated redirect, from either
-   section, goes to the one real login page under `/quiz`. Laravel's
-   ordinary "intended URL" session mechanism still bounces the user back
-   to whatever `/mafia/...` page they actually wanted once they log in —
-   this needed no custom code, it's stock Laravel behavior once the
-   redirect target itself resolves to a real route.
-3. **`SESSION_PATH` was hardcoded to `/quiz`** in production `.env` —
-   harmless while only one section existed, but it would have scoped the
-   session/XSRF cookies to `/quiz` only, meaning they'd never be sent
-   back on `/mafia/*` requests at all. Widened to `SESSION_PATH=/` (the
-   whole domain) — both sections share one session/account system
-   anyway, so there's no reason to scope the cookie tighter, and a
-   domain-wide path is simpler than trying to make it dynamic per prefix.
-4. **[CORRECTED, see below] Original (buggy) design**: `config('app.mafia_url')`
-   (`.env`'s `APP_MAFIA_URL`, set to `https://mao-dao.com/mafia`) was what
-   `AppServiceProvider::rootUrlFor()` forced the root to for any request
-   whose path starts with "mafia". This shipped, went unnoticed through
-   every automated test (forceRootUrl only runs in the `production`
-   environment, so local/CI never exercised it), and surfaced as a real
-   **404 on room creation** the first time an actual human clicked
-   "Create Room" in production — Ziggy's client-side `route('mafia.store')`
-   concatenated the forced root (`.../mafia`) with the route's own URI
-   (`mafia/rooms`, since — unlike `/quiz`'s bare routes — Mafia's routes
-   carry a literal `mafia/` prefix), producing `.../mafia/mafia/rooms`,
-   which matches no route. Confirmed directly: `POST /mafia/rooms` → 419
-   (CSRF, i.e. route found) vs `POST /mafia/mafia/rooms` → 404.
-   **Fix**: `rootUrlFor()` now returns a bare `'https://'.$request->getHost()`
-   for mafia paths instead of a config value with a path suffix — since
-   Mafia's routes already embed their own prefix, the forced root must
-   contribute no path at all, or any second concatenated prefix doubles
-   up. `config('app.mafia_url')`/`APP_MAFIA_URL` were removed entirely
-   (dead once nothing needed them) — `APP_URL` itself remains untouched
-   (`https://mao-dao.com/quiz`) since it's referenced directly in the OAuth
-   callback URL env vars (`GOOGLE_REDIRECT_URI="${APP_URL}/..."` etc.),
-   which are registered with Google/Facebook and would break if changed.
-   **Lesson**: `forceRootUrl`-style logic that only runs in `production`
-   is exactly the kind of thing Pest tests can't catch — this needs a
-   real click-through in production after any future change to it, not
-   just green tests.
-6. **Follow-up bug from fix #4, same root cause**: fixing the room-creation
-   404 by forcing a bare root on `/mafia/*` requests broke the *other*
-   direction — `AuthenticatedLayout`/`NavigationDrawer` render the same
-   shared header on every page in **both** sections and link into both
-   (`dashboard`, `profile.edit`, `logout`, `friends.index`, `groups.index`,
-   `explorer.index`, `library.index`, `quizzes.mine`, `quizzes.create`,
-   plus `mafia.index`). `rootUrlFor()` forces exactly one root for the
-   *whole request* — there is no single root that's simultaneously
-   correct for a bare quiz route and a `mafia/`-prefixed route generated
-   on the same page. Result: every shared-nav link rendered on a
-   `/mafia/*` page 404'd once fix #4 shipped (reported directly: "a lot
-   of 404" right after landing on a room's lobby page).
-   **Fix**: `resources/js/hooks/useSectionRoutes.js` — a small hook
-   exposing `quizRoute(name, params)` and `mafiaRoute(name, params)`,
-   each calling Ziggy's global `route()` with an explicit 4th-arg config
-   override (`{ ...window.Ziggy, url: <the correct root> }`) instead of
-   relying on whatever root the *current* page happened to force.
-   `quizRoute` always resolves against a new `quizUrl` prop shared from
-   `HandleInertiaRequests::share()` (`config('app.url')`, stable
-   regardless of request); `mafiaRoute` always resolves against
-   `window.location.origin` (correct for mafia's self-prefixed routes on
-   whatever domain is currently serving the page — no server round trip
-   needed). `AuthenticatedLayout.jsx` and `NavigationDrawer.jsx` are the
-   only two files with cross-section links, so only those two needed
-   updating — every other `route()` call in the app stays untouched
-   since it only ever points within its own section.
-   **Lesson, generalized**: a single per-request forced root (`rootUrlFor`)
-   is only safe for `route()` calls confined to their own section. Any
-   *shared* component that links across `/quiz` and `/mafia` must resolve
-   those specific links explicitly rather than trusting the ambient root
-   — check for this pattern before adding any other shared,
-   both-sections-visible component.
-7. **The real, bigger bug underlying both of the above**: `@vite()`'s
-   entry `<script>`/`<link>` tags — the ones that load the page's *own*
-   JS/CSS bundle — are generated via `Illuminate\Foundation\Vite::asset()`,
-   whose default path resolver is just the `asset()` helper
-   (`Vite.php::assetPath()`: `$this->assetPathResolver ?? asset(...)`).
-   `asset()` respects `forceRootUrl` exactly like `route()`/`url()` do.
-   So on **every real, authenticated `/mafia/*` page** (not the
-   redirect-to-login case fix #4/#6 were verified against — that
-   redirects to a `/quiz/login` request, which forces the *correct* root)
-   — Lobby, Play, Index, Join, History — the page's own entry bundle was
-   requested from the bare/mafia root instead of `/quiz/build/...`,
-   404ing immediately and cascading into dozens of failed dynamic
-   chunk-imports for everything the entry script pulls in (reported
-   directly: a screenshot showing ~20 simultaneous 404s for
-   `https://mao-dao.com/build/assets/*.js` plus a blocked stylesheet MIME
-   error, referrer `play:1`). This is almost certainly what both of the
-   "a lot of 404s" reports in this session actually were — fix #6 (shared
-   nav links) was a real bug too, but nowhere near this scale, since a
-   plain `<Link href>` doesn't fire a request until clicked, while a
-   dead entry script blanks the whole page.
-   **Fix**: `AppServiceProvider::boot()` now calls
-   `Vite::createAssetPathsUsing(fn ($path) =>
-   rtrim(config('app.url'), '/').'/'.ltrim($path, '/'))` — Vite's own
-   asset URLs always resolve against the quiz root, completely
-   independent of `rootUrlFor()`'s per-request forced root. This is
-   correct because the compiled bundle physically exists *only* under
-   `/var/www/quiz/public/build`, reachable *only* via the `/quiz/build/`
-   nginx alias, regardless of which section's page is loading it (see
-   point 5 above) — there is no scenario where a mafia-rooted asset URL
-   would ever be right.
-   **Verified properly this time**: manually forced the root to bare
-   (`URL::forceRootUrl('https://mao-dao.com')`, the exact state a real
-   `/mafia/*` request produces) in `tinker` on production and confirmed
-   `Vite::asset(...)` still returned the `/quiz/build/...` URL while
-   `route('mafia.store')` still correctly returned the bare-rooted
-   `/mafia/rooms` — i.e. the two mechanisms are now genuinely
-   independent, not just "happened to pass because the test case didn't
-   exercise the broken state" (a mistake made once already in this
-   session — the first post-fix browser check only ever hit the
-   redirect-to-login path, which never exercises the bare-root branch at
-   all).
-   **Lesson**: when verifying a per-request-root bug, check whether the
-   *specific request path tested* actually exercises the branch you
-   changed — a redirect target on a differently-rooted page proves
-   nothing about the page that redirected to it.
-5. **No separate asset path or nginx `/build/` block was needed** —
-   `/quiz/build/...` is an nginx `alias` to the physical
-   `/var/www/quiz/public/build/` directory regardless of which prefix
-   served the page, so pages rendered under `/mafia` loading their JS/CSS
-   from the existing `/quiz/build/...` URLs (baked in at Vite build time,
-   unchanged) resolve correctly without any special-casing. The plan's
-   §2.1 originally assumed a new shared `/build/` path would be required;
-   it wasn't.
+Rules for a new game: its routes live under its own prefix (`/<game>/...`),
+route **names** stay globally unique and are used with Ziggy's plain `route()`
+(`useSectionRoutes().quizRoute/mafiaRoute` are now just aliases of it), the
+header section label comes from `Components/SectionBrand.jsx`, and the game gets
+a row in `config/games.php` plus `lang/*/platform.php` strings.
+
+**Legacy addresses.** Everything used to live under `/quiz/...`
+(`/quiz/login`, `/quiz/profile` ...). These redirect (301) to the root
+equivalents. Three things deliberately still answer at the old path because
+outside parties hold them: signed confirmation links
+(`/quiz/verify-email/{id}/{hash}` — a signature covers the path, so it cannot
+be redirected), the OAuth callback registered at Google
+(`/quiz/auth/{provider}/callback`, so `GOOGLE_REDIRECT_URI` etc. are set to the
+literal old URL on the server until the console is updated) and the sidecar's
+`LARAVEL_BASE_URL=.../quiz` (`/quiz/internal/mafia/*`). Remove them when the
+outside configuration has moved.
+
+**Static files** are served by nginx from `public/` at `/build/...`,
+`/images/...`, `/sfx/...`, `/storage/...` (media). Reference them with
+root-relative paths (`/images/mafia/...`), never with a section prefix.
 
 ## Architecture decisions worth knowing
 
@@ -570,14 +444,16 @@ into Google's consent screen correctly; it only completes end-to-end once
 the redirect URI is added in Google Cloud Console (a manual step only the
 account owner can do).
 
-## Production deployment (mao-dao.com/quiz)
+## Production deployment (mao-dao.com)
 
-Live at `https://mao-dao.com/quiz/`, deployed to `/var/www/quiz` on the
+Live at `https://mao-dao.com/`, deployed to `/var/www/quiz` on the
 `aws-dev` server (`ssh aws-dev`) — a shared box with several other live,
 unrelated sites. Never run anything destructive there without checking
-what else is running first; this project only ever touches its own
-`/var/www/quiz` folder, its own MySQL DB/user, its own PHP-FPM pool, and a
-`/quiz` location block appended to `mao-dao.com`'s existing nginx config.
+what else is running first; this project only touches its own
+`/var/www/quiz` folder, its own MySQL DB/user, its own PHP-FPM pool, its own
+PM2 processes (`quiz-*`) and the `mao-dao.com` nginx server blocks.
+The Node app that used to answer on this domain (PM2 `mao-dao-vc`, files in
+`/var/www/mao-dao`) was stopped on 2026-10-15 and is intentionally not deleted.
 
 ### Server specifics (bare metal, no Docker on this host)
 
@@ -589,10 +465,14 @@ what else is running first; this project only ever touches its own
   `www.conf` pool other sites use, so this app's higher upload limits (6M/
   8M, for the 5MB image feature) don't affect anyone else. Reload with
   `sudo systemctl reload php8.3-fpm` after editing it.
-- nginx config lives in the existing `/etc/nginx/sites-available/mao-dao.com`
-  (mao-dao's own Node app is proxied at `/`; `/quiz` is a separate location
-  block added above it — see below). Always back up before editing,
-  `sudo nginx -t` before every reload, `sudo systemctl reload nginx` after.
+- nginx config: `/etc/nginx/sites-available/mao-dao.com`. Its 443 block serves
+  `root /var/www/quiz/public` with `try_files $uri /index.php?$query_string` and
+  PHP-FPM socket `php8.3-fpm-quiz.sock`; the port-80 redirect block and the
+  8380 block (Reverb at `/`, media sidecar at `/media-sfu/`) are unchanged.
+  Always back up before editing (`.bak.<timestamp>` next to it), `sudo nginx -t`
+  before every reload, `sudo systemctl reload nginx` after. `www.mao-dao.com`
+  needs a DNS record and a certificate that includes it (certbot) before it can
+  be added to `server_name`.
 
 ### Deploying a source/code change
 
@@ -608,30 +488,18 @@ cache too if those changed — but see the route:cache warning below).
 
 Assets are built **locally** (the server's Node 20.11 is too old for Vite
 8/rolldown — `node:util`'s `styleText` needs Node 20.19+) and the compiled
-`public/build/` directory is copied over. The build MUST set the `/quiz`
-base path, or lazy-loaded page chunks (any React-split component, e.g.
-`Dashboard.jsx`) try to load from the domain root and 404 — Laravel's own
-`asset()`/Ziggy URLs are unaffected (that's a separate mechanism, fixed by
-`forceRootUrl` below), but Vite's own runtime chunk-loader defaults to
-root regardless:
+`public/build/` directory is copied over. Assets are served from `/build/`
+(Vite's default base) — no base-path override is needed any more.
 
-**Also always pass the production `VITE_REVERB_*` values** — `echo.js`
-bakes `VITE_REVERB_APP_KEY`/`HOST`/`PORT`/`SCHEME` into the compiled
-bundle at build time (Vite env vars aren't runtime-configurable). Without
-overriding them, the build silently uses local `.env`'s dev values
-(`localhost:8080`, dev app key) instead of production's
-(`mao-dao.com:8380`, `https`, production app key from `.env`'s
-`REVERB_APP_KEY`) — this genuinely happened (three rebuilds in a row
-during the Phase 7 fix-up session shipped `wss://localhost:8080/...` to
-production, silently breaking Reverb for **both** Mafia and Race Mode)
-and there's no build error or failed test to catch it — it only surfaces
-as a browser console WebSocket error on the live site. Get the current
-production values with `ssh aws-dev "grep REVERB_ /var/www/quiz/.env"`
-first (they rotate if Reverb credentials are ever regenerated), then:
+**Always pass the production `VITE_REVERB_*` values** — `echo.js` bakes
+`VITE_REVERB_APP_KEY`/`HOST`/`PORT`/`SCHEME` into the bundle at build time
+(Vite env vars aren't runtime-configurable). Without them the build silently
+uses local `.env`'s dev values (`localhost:8080`) and real-time breaks on
+production with no build error. Get the current public values with
+`ssh aws-dev "grep -E '^REVERB_(APP_KEY|HOST|PORT|SCHEME)=' /var/www/quiz/.env"`, then:
 
 ```bash
 MSYS_NO_PATHCONV=1 docker compose exec \
-  -e VITE_ASSET_BASE_PATH=/quiz/build/ \
   -e VITE_REVERB_APP_KEY=<production REVERB_APP_KEY> \
   -e VITE_REVERB_HOST=mao-dao.com \
   -e VITE_REVERB_PORT=8380 \
@@ -639,18 +507,11 @@ MSYS_NO_PATHCONV=1 docker compose exec \
   laravel.test npm run build
 ```
 
-`MSYS_NO_PATHCONV=1` is required — Git Bash mangles the `/quiz/build/`
-value passed via `-e` otherwise (same class of bug as gotcha #3 above, but
-on an env var this time, not a bind-mount path). Both `VITE_ASSET_BASE_PATH`
-and the `VITE_REVERB_*` overrides only take effect when explicitly passed
-this way, so plain local `npm run build` / Docker dev is unaffected. Then
-on the server: `rm -rf /var/www/quiz/public/build`, tar-pipe the new
-`public/build/` over. **Gotcha — `public/build` on the server is owned by `www-data`**, so the
-`ubuntu` user can't `rm -rf` it (a plain `rm -rf build && tar x` leaves the
-old build in place and fails halfway). Stage the new build next to it, then
-swap with passwordless sudo: extract to `public/build.new`, `sudo chown -R
-www-data:www-data build.new && sudo mv build build.old && sudo mv build.new
-build && sudo rm -rf build.old`. **Ship the PHP and the build together, in one
+Then run a plain `npm run build` again before resuming local work (same
+output dir). On the server the build directory is owned by `www-data`: extract
+to `public/build.new`, then `sudo chown -R www-data:www-data build.new && sudo
+mv build build.old && sudo mv build.new build && sudo rm -rf build.old`.
+**Ship the PHP and the build together, in one
 sitting** — new PHP removing a route (e.g. `explorer.index`) with the old JS
 bundle still live makes Ziggy's `route()` throw and blanks pages. Also take a
 backup first (`tar czf /home/ubuntu/quiz-<date>.tgz` of the files being
@@ -660,33 +521,15 @@ replaced); deploys of 2026-10-04 left `/home/ubuntu/quiz-20261004-pre-deploy.tgz
 `ssh aws-dev "grep -c mao-dao.com /var/www/quiz/public/build/assets/echo-*.js"`
 should be ≥1 and `grep -c localhost` should be 0.
 
-### Subfolder-hosting gotchas specific to this deployment
+### URL generation behind nginx
 
-- `AppServiceProvider::boot()` calls `URL::forceRootUrl(config('app.url'))`
-  + `URL::forceScheme('https')` when `APP_ENV=production` — without this,
-  `route()`/`url()`/Ziggy generate root-relative URLs missing the `/quiz`
-  prefix. Don't remove without an equivalent fix.
-- **`php artisan route:cache` breaks the root `/` route** specifically
-  under this subfolder nginx setup — reproducible with both a closure
-  route AND a controller-based route (`WelcomeController`), so it's not
-  about closures specifically. Route caching is intentionally left **off**
-  in production (`config:cache`/`view:cache` are fine and used). If you
-  ever re-enable it, retest `https://mao-dao.com/quiz/` — a 405 "Method Not
-  Allowed / Allow: HEAD" response means it broke again; run
-  `php artisan route:clear` to fix.
-- The nginx `/quiz` location block uses a **regex location with named
-  captures** (`location ~ ^/quiz/(?<quizpath>.+\.php)(?<quizpathinfo>/.*)?$`)
-  to build `SCRIPT_FILENAME`/`SCRIPT_NAME` directly — NOT the more common
-  `alias` + nested `\.php$` location pattern. The latter double-counts the
-  `/quiz` prefix in `$fastcgi_script_name` (because `alias` doesn't rewrite
-  `$uri`), producing "Primary script unknown" errors. Don't refactor back
-  to that pattern.
-- Two hardcoded `<Link href="/">` logo links (`GuestLayout.jsx`,
-  `AuthenticatedLayout.jsx`) were changed to `route('welcome')` /
-  `route('dashboard')` — a raw `href="/"` in an Inertia `<Link>` bypasses
-  Laravel's URL generator entirely and would send users to the ROOT
-  mao-dao.com app instead of back into `/quiz`. Any new hardcoded
-  root-style href needs the same treatment.
+- `AppServiceProvider::boot()` only forces `https` in production
+  (`URL::forceScheme('https')`); the root comes from the request host, so
+  `mao-dao.com` and, later, `www.mao-dao.com` both work. `APP_URL` is
+  `https://mao-dao.com` (used by emails, queued jobs, CLI).
+- Hardcoded root-style hrefs are fine now, but still prefer `route()`.
+- `php artisan route:cache` has not been re-tested after the move to the
+  domain root; leave route caching off (`config:cache`/`view:cache` are used).
 
 ### Google OAuth — shared credential with mao-dao
 
@@ -695,9 +538,11 @@ intentionally the **same** credentials mao-dao's Node app already uses
 (see mao-dao's own `.env`) — one Google Cloud OAuth client with both
 mao-dao's "Authorized JavaScript origin" (it uses Google Identity Services
 / ID-token POST flow via `POST /auth/google`, not a redirect flow) and
-quiz's "Authorized redirect URI"
-(`https://mao-dao.com/quiz/auth/google/callback`, Socialite's server-side
-redirect flow) registered on it. This is **not** single sign-on — the two
+quiz's "Authorized redirect URI" registered on it. The URI registered today is
+the **old** `https://mao-dao.com/quiz/auth/google/callback` (Socialite's
+server-side flow); the app still answers there and `GOOGLE_REDIRECT_URI` is set
+to that literal URL. Add `https://mao-dao.com/auth/google/callback` in the
+Google console, then switch the env value. This is **not** single sign-on — the two
 apps still have fully separate sessions/user tables; sharing the
 credential is purely an admin convenience (one Google Cloud dashboard
 instead of two, consistent consent-screen branding).
@@ -708,17 +553,6 @@ Temporarily: `sed -i 's/APP_DEBUG=false/APP_DEBUG=true/' .env && php
 artisan config:clear`, reproduce, then **always** revert:
 `sed -i 's/APP_DEBUG=true/APP_DEBUG=false/' .env && php artisan
 config:cache`. Never leave `APP_DEBUG=true` on this box.
-
-## Ziggy `route()` after client-side navigation between /quiz and /mafia (2026-10-08)
-
-`@routes` is rendered once, by the section that served the first full page
-load, so after landing on `/mafia/...` and navigating (Inertia, no reload) to
-`/quiz` pages every plain `route()` resolved against the bare host — e.g. the
-profile theme switcher sent `PATCH https://mao-dao.com/profile/color-scheme`
-and the Node app at `/` answered "Cannot PATCH". `resources/js/app.jsx` now
-wraps `window.route`: names starting with `mafia.` resolve against
-`window.location.origin`, everything else against the shared `quizUrl` prop;
-calls that pass their own config (`useSectionRoutes`) are untouched.
 
 ## Email confirmation for email registrations (added 2026-10-12)
 

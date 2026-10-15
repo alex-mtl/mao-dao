@@ -7,6 +7,7 @@ return [
     'section_main' => 'Principal',
     'section_social' => 'Social',
     'section_account' => 'Cuenta',
+    'home' => "Inicio",
     'dashboard' => 'Panel',
     'friends' => 'Amigos',
     'groups' => 'Grupos',

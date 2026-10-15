@@ -20,7 +20,7 @@ test('the host can play again after the race finishes, creating a brand new room
 
     $response = $this->withSession(["race_player_token.{$oldRoom->id}" => 'host-token'])
         ->actingAs($owner)
-        ->post("/race/{$oldRoom->room_code}/play-again");
+        ->post("/quiz/race/{$oldRoom->room_code}/play-again");
 
     $newRoom = RaceRoom::where('id', '!=', $oldRoom->id)->first();
     expect($newRoom)->not->toBeNull();
@@ -46,7 +46,7 @@ test('a non-host cannot play again', function () {
 
     $response = $this->withSession(["race_player_token.{$room->id}" => 'guest-token'])
         ->actingAs($guestUser)
-        ->post("/race/{$room->room_code}/play-again");
+        ->post("/quiz/race/{$room->room_code}/play-again");
 
     $response->assertForbidden();
     expect(RaceRoom::count())->toBe(1);
@@ -63,7 +63,7 @@ test('play again is rejected unless the race has actually finished', function ()
 
     $response = $this->withSession(["race_player_token.{$room->id}" => 'host-token'])
         ->actingAs($owner)
-        ->post("/race/{$room->room_code}/play-again");
+        ->post("/quiz/race/{$room->room_code}/play-again");
 
     $response->assertStatus(409);
     expect(RaceRoom::count())->toBe(1);
@@ -93,7 +93,7 @@ test('a player reconnecting mid-question sees the current question and their own
     // Simulates a browser refresh: a fresh GET with the same session
     // token (identity), no memory of anything from before the reload.
     $response = $this->withSession(["race_player_token.{$room->id}" => 'token-1'])
-        ->get("/race/{$room->room_code}/play");
+        ->get("/quiz/race/{$room->room_code}/play");
 
     $response->assertOk();
     $response->assertInertia(fn ($page) => $page
@@ -113,8 +113,8 @@ test('reconnecting does not create a second Race Player for the same session', f
         'nickname' => 'Fox', 'session_token' => 'token-1', 'joined_at' => now(), 'last_seen_at' => now(),
     ]);
 
-    $this->withSession(["race_player_token.{$room->id}" => 'token-1'])->get("/race/{$room->room_code}/lobby");
-    $this->withSession(["race_player_token.{$room->id}" => 'token-1'])->get("/race/{$room->room_code}/lobby");
+    $this->withSession(["race_player_token.{$room->id}" => 'token-1'])->get("/quiz/race/{$room->room_code}/lobby");
+    $this->withSession(["race_player_token.{$room->id}" => 'token-1'])->get("/quiz/race/{$room->room_code}/lobby");
 
     expect($room->players()->count())->toBe(1);
 });
@@ -192,7 +192,7 @@ test('creating a new race opportunistically cleans up old finished rooms', funct
     $owner = User::factory()->create();
     $quiz = publishedQuizWithTwoQuestions($owner);
 
-    $this->actingAs($owner)->post("/quizzes/{$quiz->id}/race");
+    $this->actingAs($owner)->post("/quiz/quizzes/{$quiz->id}/race");
 
     expect(RaceRoom::find($stale->id))->toBeNull();
 });
@@ -215,13 +215,13 @@ test('a finished race cannot be started or answered again', function () {
     // an authenticated action), unlike /answer below.
     $startResponse = $this->withSession(["race_player_token.{$room->id}" => 'host-token'])
         ->actingAs($owner)
-        ->post("/race/{$room->room_code}/start");
+        ->post("/quiz/race/{$room->room_code}/start");
     $startResponse->assertRedirect(route('race.lobby', $room->room_code));
     expect($room->fresh()->status)->toBe('finished');
 
     $question = $room->quiz->questions()->first();
     $answerResponse = $this->withSession(["race_player_token.{$room->id}" => 'host-token'])
-        ->post("/race/{$room->room_code}/answer", ['answer_id' => $question->answers()->first()->id]);
+        ->post("/quiz/race/{$room->room_code}/answer", ['answer_id' => $question->answers()->first()->id]);
     $answerResponse->assertRedirect(route('race.play', $room->room_code));
     expect($room->players()->first()->answers()->count())->toBe(0);
 });

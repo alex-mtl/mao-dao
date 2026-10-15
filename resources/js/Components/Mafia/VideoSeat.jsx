@@ -29,8 +29,8 @@ const ROLE_MATERIAL_NAME = 'frame_person';
 // production. `/mafia/` aliases to the same public/ directory `/quiz/`
 // does (see CLAUDE.md's nginx notes), so this resolves correctly.
 const ROLE_IMAGE_SRC = {
-    sheriff: '/mafia/images/mafia/sheriff-star.png',
-    don: '/mafia/images/mafia/don-ring.png',
+    sheriff: '/images/mafia/sheriff-star.png',
+    don: '/images/mafia/don-ring.png',
 };
 
 const ROLE_COLORS = {
@@ -81,7 +81,7 @@ const CHECK_BADGE_TYPES = {
 };
 
 const CHECK_BADGE_IMAGE_SRC = {
-    'don-check': { true: '/mafia/images/mafia/sheriff-star.png' },
+    'don-check': { true: '/images/mafia/sheriff-star.png' },
 };
 
 const CHECK_BADGE_COLORS = {

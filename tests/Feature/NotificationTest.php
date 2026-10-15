@@ -6,7 +6,7 @@ use App\Models\User;
 
 function unreadFor($test, User $user): int
 {
-    return $test->actingAs($user)->get('/dashboard')->viewData('page')['props']['notifications_unread'];
+    return $test->actingAs($user)->get('/quiz')->viewData('page')['props']['notifications_unread'];
 }
 
 test('a new incoming friend request raises the bell counter', function () {

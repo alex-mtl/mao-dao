@@ -29,14 +29,14 @@ test('color scheme preference persists and is reflected on the next request', fu
 
     expect($user->fresh()->color_scheme)->toBe('dark-cool');
 
-    $response = $this->actingAs($user)->get('/dashboard');
+    $response = $this->actingAs($user)->get('/quiz');
     $response->assertInertia(fn ($page) => $page->where('color_scheme', 'dark-cool'));
 });
 
 test('the color scheme options shared to every page cover all six supported schemes', function () {
     $user = User::factory()->create();
 
-    $response = $this->actingAs($user)->get('/dashboard');
+    $response = $this->actingAs($user)->get('/quiz');
 
     $response->assertInertia(fn ($page) => $page
         ->has('color_scheme_options', 6)

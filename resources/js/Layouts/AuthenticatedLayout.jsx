@@ -1,3 +1,4 @@
+import PlatformFooter from '@/Components/PlatformFooter';
 import SectionBrand, { useIsMafiaSection } from '@/Components/SectionBrand';
 import { PendingValidationBadge, PendingValidationBanner } from '@/Components/EmailVerificationNotice';
 import Avatar from '@/Components/Avatar';
@@ -111,6 +112,8 @@ export default function AuthenticatedLayout({ header, children, hideChrome = fal
             )}
 
             <main>{children}</main>
+
+            {!hideChrome && !isMafia && <PlatformFooter />}
         </div>
     );
 }

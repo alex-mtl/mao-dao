@@ -31,7 +31,7 @@ class VerifyEmailController extends Controller
         }
 
         if (Auth::check() && Auth::id() === $user->id) {
-            return redirect()->intended(route('dashboard', absolute: false).'?verified=1');
+            return redirect()->intended(route('welcome', absolute: false).'?verified=1');
         }
 
         return redirect()->route('login')->with('status', __('account.confirmed_please_login'));

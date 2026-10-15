@@ -17,15 +17,16 @@ use App\Http\Controllers\RaceController;
 use App\Http\Controllers\WelcomeController;
 use Illuminate\Support\Facades\Route;
 
+// Platform home: one block per game (see config/games.php).
 Route::get('/', WelcomeController::class)->name('welcome');
 
-Route::get('/dashboard', [DashboardController::class, 'index'])
+Route::get('/quiz', [DashboardController::class, 'index'])
     ->middleware('auth')
     ->name('dashboard');
 
 Route::middleware('auth')->group(function () {
     Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
-    Route::post('/dashboard/onboarding/dismiss', [DashboardController::class, 'dismissOnboarding'])->name('dashboard.onboarding.dismiss');
+    Route::post('/quiz/dashboard/onboarding/dismiss', [DashboardController::class, 'dismissOnboarding'])->name('dashboard.onboarding.dismiss');
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::patch('/profile/language', [ProfileController::class, 'updateLanguage'])->name('profile.language.update');
@@ -53,30 +54,30 @@ Route::middleware('auth')->group(function () {
     Route::delete('/groups/{group}/members/{user}', [GroupController::class, 'removeMember'])->name('groups.members.remove');
     Route::post('/groups/{group}/leave', [GroupController::class, 'leave'])->name('groups.leave');
 
-    Route::get('/explorer', fn () => redirect()->route('library.index'));
-    Route::get('/library', [QuizLibraryController::class, 'index'])->name('library.index');
-    Route::get('/my-quizzes', [QuizController::class, 'mine'])->name('quizzes.mine');
-    Route::get('/quizzes/create', [QuizController::class, 'create'])->name('quizzes.create');
-    Route::post('/quizzes', [QuizController::class, 'store'])->name('quizzes.store');
-    Route::get('/quizzes/{quiz}', [QuizLibraryController::class, 'show'])->name('quizzes.show');
-    Route::get('/quizzes/{quiz}/edit', [QuizController::class, 'edit'])->name('quizzes.edit');
-    Route::put('/quizzes/{quiz}', [QuizController::class, 'update'])->name('quizzes.update');
-    Route::get('/quizzes/{quiz}/preview', [QuizController::class, 'preview'])->name('quizzes.preview');
-    Route::post('/quizzes/{quiz}/publish', [QuizController::class, 'publish'])->name('quizzes.publish');
-    Route::post('/quizzes/{quiz}/copy', [QuizController::class, 'copy'])->name('quizzes.copy');
-    Route::delete('/quizzes/{quiz}', [QuizController::class, 'destroy'])->name('quizzes.destroy');
+    Route::get('/quiz/explorer', fn () => redirect()->route('library.index'));
+    Route::get('/quiz/library', [QuizLibraryController::class, 'index'])->name('library.index');
+    Route::get('/quiz/my-quizzes', [QuizController::class, 'mine'])->name('quizzes.mine');
+    Route::get('/quiz/quizzes/create', [QuizController::class, 'create'])->name('quizzes.create');
+    Route::post('/quiz/quizzes', [QuizController::class, 'store'])->name('quizzes.store');
+    Route::get('/quiz/quizzes/{quiz}', [QuizLibraryController::class, 'show'])->name('quizzes.show');
+    Route::get('/quiz/quizzes/{quiz}/edit', [QuizController::class, 'edit'])->name('quizzes.edit');
+    Route::put('/quiz/quizzes/{quiz}', [QuizController::class, 'update'])->name('quizzes.update');
+    Route::get('/quiz/quizzes/{quiz}/preview', [QuizController::class, 'preview'])->name('quizzes.preview');
+    Route::post('/quiz/quizzes/{quiz}/publish', [QuizController::class, 'publish'])->name('quizzes.publish');
+    Route::post('/quiz/quizzes/{quiz}/copy', [QuizController::class, 'copy'])->name('quizzes.copy');
+    Route::delete('/quiz/quizzes/{quiz}', [QuizController::class, 'destroy'])->name('quizzes.destroy');
 
-    Route::post('/quizzes/{quiz}/like', [QuizLikeController::class, 'store'])->name('quizzes.like');
-    Route::delete('/quizzes/{quiz}/like', [QuizLikeController::class, 'destroy'])->name('quizzes.unlike');
+    Route::post('/quiz/quizzes/{quiz}/like', [QuizLikeController::class, 'store'])->name('quizzes.like');
+    Route::delete('/quiz/quizzes/{quiz}/like', [QuizLikeController::class, 'destroy'])->name('quizzes.unlike');
 
-    Route::get('/quizzes/{quiz}/play', [QuizAttemptController::class, 'play'])->name('quizzes.play');
-    Route::post('/quizzes/{quiz}/attempts', [QuizAttemptController::class, 'store'])->name('quiz-attempts.store');
-    Route::get('/quiz-attempts/{quizAttempt}', [QuizAttemptController::class, 'show'])->name('quiz-attempts.show');
-    Route::get('/quiz-history', [QuizAttemptController::class, 'history'])->name('quiz-attempts.history');
+    Route::get('/quiz/quizzes/{quiz}/play', [QuizAttemptController::class, 'play'])->name('quizzes.play');
+    Route::post('/quiz/quizzes/{quiz}/attempts', [QuizAttemptController::class, 'store'])->name('quiz-attempts.store');
+    Route::get('/quiz/quiz-attempts/{quizAttempt}', [QuizAttemptController::class, 'show'])->name('quiz-attempts.show');
+    Route::get('/quiz/quiz-history', [QuizAttemptController::class, 'history'])->name('quiz-attempts.history');
 
-    Route::post('/quizzes/{quiz}/race', [RaceController::class, 'store'])->name('race.store');
-    Route::post('/race/{code}/start', [RaceController::class, 'start'])->middleware('race.player')->name('race.start');
-    Route::post('/race/{code}/play-again', [RaceController::class, 'playAgain'])->middleware('race.player')->name('race.play-again');
+    Route::post('/quiz/quizzes/{quiz}/race', [RaceController::class, 'store'])->name('race.store');
+    Route::post('/quiz/race/{code}/start', [RaceController::class, 'start'])->middleware('race.player')->name('race.start');
+    Route::post('/quiz/race/{code}/play-again', [RaceController::class, 'playAgain'])->middleware('race.player')->name('race.play-again');
 
     // Mafia — unlike Race Mode, every route here is accounts-only (plan
     // §3.1 #2), so there's no guest-accessible group: identity is just
@@ -133,15 +134,45 @@ Route::middleware(['mafia.spectator', 'throttle:120,1'])->group(function () {
 // identity here is a session-stored token (see ResolveRacePlayer), not the
 // `auth` guard, so these routes are reachable by anonymous and logged-in
 // visitors alike.
-Route::get('/race/{code}', [RaceController::class, 'show'])->name('race.show');
-Route::post('/race/{code}/join', [RaceController::class, 'join'])->name('race.join');
-Route::get('/race/{code}/lobby', [RaceController::class, 'lobby'])->middleware('race.player')->name('race.lobby');
-Route::get('/race/{code}/play', [RaceController::class, 'play'])->middleware('race.player')->name('race.play');
-Route::get('/race/{code}/state', [RaceController::class, 'state'])->middleware('race.player')->name('race.state');
-Route::post('/race/{code}/answer', [RaceController::class, 'answer'])->middleware('race.player')->name('race.answer');
-Route::post('/race/{code}/leave', [RaceController::class, 'leave'])->middleware('race.player')->name('race.leave');
+Route::get('/quiz/race/{code}', [RaceController::class, 'show'])->name('race.show');
+Route::post('/quiz/race/{code}/join', [RaceController::class, 'join'])->name('race.join');
+Route::get('/quiz/race/{code}/lobby', [RaceController::class, 'lobby'])->middleware('race.player')->name('race.lobby');
+Route::get('/quiz/race/{code}/play', [RaceController::class, 'play'])->middleware('race.player')->name('race.play');
+Route::get('/quiz/race/{code}/state', [RaceController::class, 'state'])->middleware('race.player')->name('race.state');
+Route::post('/quiz/race/{code}/answer', [RaceController::class, 'answer'])->middleware('race.player')->name('race.answer');
+Route::post('/quiz/race/{code}/leave', [RaceController::class, 'leave'])->middleware('race.player')->name('race.leave');
 
 require __DIR__.'/auth.php';
+
+/*
+|--------------------------------------------------------------------------
+| Legacy addresses
+|--------------------------------------------------------------------------
+|
+| Until 2026-10 the whole app was mounted under /quiz. Platform-level pages
+| (login, profile, friends, ...) now live at the domain root; old bookmarks,
+| emails and OAuth registrations keep working through these.
+*/
+Route::get('/quiz/{legacy}', function (\Illuminate\Http\Request $request, string $legacy) {
+    $query = $request->getQueryString();
+
+    return redirect('/'.$legacy.($query ? '?'.$query : ''), 301);
+})->where('legacy', '(login|register|forgot-password|reset-password|profile|friends|groups|notifications|images)(/.*)?');
+
+Route::redirect('/quiz/dashboard', '/quiz', 301);
+
+// Already-sent confirmation emails and the registered OAuth callback point
+// at the old addresses; a signed URL cannot be redirected (the signature
+// covers the path), so the routes answer there too.
+Route::get('/quiz/verify-email/{id}/{hash}', \App\Http\Controllers\Auth\VerifyEmailController::class)
+    ->middleware(['signed', 'throttle:6,1']);
+Route::get('/quiz/auth/{provider}/callback', [\App\Http\Controllers\Auth\SocialAuthController::class, 'callback'])
+    ->whereIn('provider', ['google', 'facebook', 'telegram']);
+
+// The media-sfu sidecar was configured with LARAVEL_BASE_URL=.../quiz.
+Route::get('/quiz/internal/mafia/can-view', [MafiaController::class, 'canView']);
+Route::get('/quiz/internal/mafia/mic-policy', [MafiaController::class, 'micPolicy']);
+Route::get('/quiz/internal/mafia/visibility', [MafiaController::class, 'visibility']);
 
 // Any address that matches nothing: go through the web middleware group (so
 // the error page gets the session / shared props) and end in a styled 404.

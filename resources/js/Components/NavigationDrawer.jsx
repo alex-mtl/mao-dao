@@ -66,19 +66,27 @@ export default function NavigationDrawer({ show, onClose, user }) {
                         <DialogPanel className="flex h-full w-full max-w-xs flex-col bg-surface shadow-elevated">
                             <div className="flex items-center justify-between border-b border-warm-200 px-4 py-4">
                                 <Link
-                                    href={isMafia ? mafiaRoute('mafia.index') : quizRoute('dashboard')}
+                                    href={route('welcome')}
                                     onClick={onClose}
                                     className="flex items-center gap-2"
                                 >
                                     <ApplicationLogo className="h-8 w-auto fill-current text-primary-600" />
                                     <span className="font-heading text-lg font-bold text-ink-900">
-                                        {sectionName}
+                                        {t('platform.site_name')}
                                     </span>
                                 </Link>
                             </div>
 
                             <nav className="flex-1 space-y-6 overflow-y-auto px-3 py-4">
                                 <NavSection label={t('nav.section_main')}>
+                                    <ResponsiveNavLink
+                                        href={route('welcome')}
+                                        active={route().current('welcome')}
+                                        icon={HomeIcon}
+                                        onClick={onClose}
+                                    >
+                                        {t('nav.home')}
+                                    </ResponsiveNavLink>
                                     <ResponsiveNavLink
                                         href={quizRoute('dashboard')}
                                         active={route().current('dashboard')}

@@ -9,10 +9,10 @@ test('a user can like and unlike a quiz', function () {
     $user = User::factory()->create();
     $quiz = Quiz::factory()->published()->create(['user_id' => $owner->id]);
 
-    $this->actingAs($user)->post("/quizzes/{$quiz->id}/like")->assertRedirect();
+    $this->actingAs($user)->post("/quiz/quizzes/{$quiz->id}/like")->assertRedirect();
     $this->assertDatabaseHas('quiz_likes', ['user_id' => $user->id, 'quiz_id' => $quiz->id]);
 
-    $this->actingAs($user)->delete("/quizzes/{$quiz->id}/like")->assertRedirect();
+    $this->actingAs($user)->delete("/quiz/quizzes/{$quiz->id}/like")->assertRedirect();
     $this->assertDatabaseMissing('quiz_likes', ['user_id' => $user->id, 'quiz_id' => $quiz->id]);
 });
 
@@ -21,8 +21,8 @@ test('liking the same quiz twice does not create a duplicate', function () {
     $user = User::factory()->create();
     $quiz = Quiz::factory()->published()->create(['user_id' => $owner->id]);
 
-    $this->actingAs($user)->post("/quizzes/{$quiz->id}/like");
-    $this->actingAs($user)->post("/quizzes/{$quiz->id}/like");
+    $this->actingAs($user)->post("/quiz/quizzes/{$quiz->id}/like");
+    $this->actingAs($user)->post("/quiz/quizzes/{$quiz->id}/like");
 
     expect(QuizLike::where('user_id', $user->id)->where('quiz_id', $quiz->id)->count())->toBe(1);
 });

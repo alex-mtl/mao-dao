@@ -13,7 +13,7 @@ export default function RaceLayout({ children }) {
         <div className="flex min-h-screen flex-col items-center bg-warm-100 px-4 py-8 sm:justify-center">
             <Link href={route('welcome')} className="flex items-center gap-2">
                 <ApplicationLogo className="h-10 w-10 fill-current text-primary-600" />
-                <span className="font-heading text-lg font-bold text-ink-900">Quiz Platform</span>
+                <span className="font-heading text-lg font-bold text-ink-900">Mao Dao</span>
             </Link>
 
             <div className="mt-6 w-full max-w-md rounded-2xl border border-warm-200 bg-surface p-6 shadow-elevated sm:p-8">

@@ -7,6 +7,7 @@ return [
     'section_main' => 'Main',
     'section_social' => 'Social',
     'section_account' => 'Account',
+    'home' => "Home",
     'dashboard' => 'Dashboard',
     'friends' => 'Friends',
     'groups' => 'Groups',

@@ -21,7 +21,7 @@ test('a quiz can be saved as a draft with a valid question', function () {
     $user = User::factory()->create();
     $tag = Tag::factory()->create();
 
-    $response = $this->actingAs($user)->post('/quizzes', [
+    $response = $this->actingAs($user)->post('/quiz/quizzes', [
         'title' => 'My Quiz',
         'language' => 'en',
         'allow_copying' => true,
@@ -40,7 +40,7 @@ test('a quiz can be saved as a draft with a valid question', function () {
 test('a quiz stores the authors estimated time to complete', function () {
     $user = User::factory()->create();
 
-    $response = $this->actingAs($user)->post('/quizzes', [
+    $response = $this->actingAs($user)->post('/quiz/quizzes', [
         'title' => 'Timed Quiz',
         'language' => 'en',
         'estimated_minutes' => 95,
@@ -56,7 +56,7 @@ test('estimated time is optional and can be cleared on update', function () {
     $user = User::factory()->create();
     $quiz = Quiz::factory()->create(['user_id' => $user->id, 'estimated_minutes' => 30]);
 
-    $this->actingAs($user)->put("/quizzes/{$quiz->id}", [
+    $this->actingAs($user)->put("/quiz/quizzes/{$quiz->id}", [
         'title' => $quiz->title,
         'language' => $quiz->language,
         'estimated_minutes' => null,
@@ -69,7 +69,7 @@ test('estimated time is optional and can be cleared on update', function () {
 test('estimated time over the maximum is rejected', function () {
     $user = User::factory()->create();
 
-    $response = $this->actingAs($user)->post('/quizzes', [
+    $response = $this->actingAs($user)->post('/quiz/quizzes', [
         'title' => 'Too Long',
         'language' => 'en',
         'estimated_minutes' => 6000,
@@ -85,7 +85,7 @@ test('a question must have exactly one correct answer', function () {
     $badQuestion = validQuestionPayload();
     $badQuestion['answers'][0]['is_correct'] = false; // now zero correct answers
 
-    $response = $this->actingAs($user)->post('/quizzes', [
+    $response = $this->actingAs($user)->post('/quiz/quizzes', [
         'title' => 'Bad Quiz',
         'language' => 'en',
         'allow_copying' => true,
@@ -103,7 +103,7 @@ test('a question requires exactly four answers', function () {
     $badQuestion = validQuestionPayload();
     array_pop($badQuestion['answers']); // only 3 answers now
 
-    $response = $this->actingAs($user)->post('/quizzes', [
+    $response = $this->actingAs($user)->post('/quiz/quizzes', [
         'title' => 'Bad Quiz',
         'language' => 'en',
         'allow_copying' => true,
@@ -119,7 +119,7 @@ test('question text over 150 characters is rejected', function () {
 
     $badQuestion = validQuestionPayload(str_repeat('a', 151));
 
-    $response = $this->actingAs($user)->post('/quizzes', [
+    $response = $this->actingAs($user)->post('/quiz/quizzes', [
         'title' => 'Bad Quiz',
         'language' => 'en',
         'allow_copying' => true,
@@ -136,7 +136,7 @@ test('answer text over 32 characters is rejected', function () {
     $badQuestion = validQuestionPayload();
     $badQuestion['answers'][0]['text'] = str_repeat('a', 33);
 
-    $response = $this->actingAs($user)->post('/quizzes', [
+    $response = $this->actingAs($user)->post('/quiz/quizzes', [
         'title' => 'Bad Quiz',
         'language' => 'en',
         'allow_copying' => true,
@@ -152,7 +152,7 @@ test('only the owner can update, publish, or delete a quiz', function () {
     $intruder = User::factory()->create();
     $quiz = Quiz::factory()->create(['user_id' => $owner->id]);
 
-    $this->actingAs($intruder)->put("/quizzes/{$quiz->id}", [
+    $this->actingAs($intruder)->put("/quiz/quizzes/{$quiz->id}", [
         'title' => 'Hijacked',
         'language' => 'en',
         'allow_copying' => true,
@@ -160,8 +160,8 @@ test('only the owner can update, publish, or delete a quiz', function () {
         'questions' => [],
     ])->assertForbidden();
 
-    $this->actingAs($intruder)->post("/quizzes/{$quiz->id}/publish")->assertForbidden();
-    $this->actingAs($intruder)->delete("/quizzes/{$quiz->id}")->assertForbidden();
+    $this->actingAs($intruder)->post("/quiz/quizzes/{$quiz->id}/publish")->assertForbidden();
+    $this->actingAs($intruder)->delete("/quiz/quizzes/{$quiz->id}")->assertForbidden();
 
     expect($quiz->fresh()->title)->not->toBe('Hijacked');
 });
@@ -170,7 +170,7 @@ test('a quiz cannot be published without at least one valid question', function 
     $user = User::factory()->create();
     $quiz = Quiz::factory()->create(['user_id' => $user->id]);
 
-    $response = $this->actingAs($user)->post("/quizzes/{$quiz->id}/publish");
+    $response = $this->actingAs($user)->post("/quiz/quizzes/{$quiz->id}/publish");
 
     $response->assertSessionHasErrors('questions');
     expect($quiz->fresh()->status)->toBe('draft');
@@ -185,7 +185,7 @@ test('a quiz with a fully valid question publishes successfully', function () {
     $question->answers()->create(['text' => 'C', 'is_correct' => false, 'order' => 2]);
     $question->answers()->create(['text' => 'D', 'is_correct' => false, 'order' => 3]);
 
-    $this->actingAs($user)->post("/quizzes/{$quiz->id}/publish")->assertRedirect();
+    $this->actingAs($user)->post("/quiz/quizzes/{$quiz->id}/publish")->assertRedirect();
 
     expect($quiz->fresh()->status)->toBe('published');
     expect($quiz->fresh()->published_at)->not->toBeNull();
@@ -196,8 +196,8 @@ test('a draft quiz is not visible to other users via the library', function () {
     $other = User::factory()->create();
     $quiz = Quiz::factory()->create(['user_id' => $owner->id, 'status' => 'draft']);
 
-    $this->actingAs($other)->get("/quizzes/{$quiz->id}")->assertForbidden();
-    $this->actingAs($owner)->get("/quizzes/{$quiz->id}")->assertOk();
+    $this->actingAs($other)->get("/quiz/quizzes/{$quiz->id}")->assertForbidden();
+    $this->actingAs($owner)->get("/quiz/quizzes/{$quiz->id}")->assertOk();
 });
 
 test('deleting a quiz removes it and its questions', function () {
@@ -205,7 +205,7 @@ test('deleting a quiz removes it and its questions', function () {
     $quiz = Quiz::factory()->create(['user_id' => $user->id]);
     $question = $quiz->questions()->create(['text' => 'Q?', 'order' => 0]);
 
-    $this->actingAs($user)->delete("/quizzes/{$quiz->id}")->assertRedirect();
+    $this->actingAs($user)->delete("/quiz/quizzes/{$quiz->id}")->assertRedirect();
 
     $this->assertDatabaseMissing('quizzes', ['id' => $quiz->id]);
     $this->assertDatabaseMissing('questions', ['id' => $question->id]);

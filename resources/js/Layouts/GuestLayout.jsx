@@ -8,7 +8,7 @@ export default function GuestLayout({ children }) {
                 <Link href={route('welcome')} className="flex items-center gap-2">
                     <ApplicationLogo className="h-14 w-14 fill-current text-primary-600" />
                     <span className="font-heading text-xl font-bold text-ink-900">
-                        Quiz Platform
+                        Mao Dao
                     </span>
                 </Link>
             </div>

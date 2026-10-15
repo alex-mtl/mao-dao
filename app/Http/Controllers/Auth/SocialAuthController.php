@@ -45,7 +45,7 @@ class SocialAuthController extends Controller
 
         Auth::login($user, remember: true);
 
-        return redirect()->intended(route('dashboard'));
+        return redirect()->intended(route('welcome'));
     }
 
     private function findOrCreateUser(string $provider, SocialiteUser $socialiteUser): User

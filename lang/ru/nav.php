@@ -7,6 +7,7 @@ return [
     'section_main' => 'Основное',
     'section_social' => 'Общение',
     'section_account' => 'Аккаунт',
+    'home' => "Главная",
     'dashboard' => 'Панель управления',
     'friends' => 'Друзья',
     'groups' => 'Группы',

@@ -23,7 +23,7 @@ test('registering sends a confirmation link and starts a 24 hour grace period', 
     ]);
 
     $this->assertAuthenticated();
-    $response->assertRedirect(route('dashboard', absolute: false));
+    $response->assertRedirect(route('welcome', absolute: false));
 
     $user = User::where('email', 'newbie@example.com')->firstOrFail();
     expect($user->hasVerifiedEmail())->toBeFalse()
@@ -37,7 +37,7 @@ test('registering sends a confirmation link and starts a 24 hour grace period', 
 test('a pending account can use the site and sees a reminder prop', function () {
     $user = pendingUser();
 
-    $this->actingAs($user)->get('/dashboard')
+    $this->actingAs($user)->get('/quiz')
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->where('emailVerification.state', 'pending')
@@ -45,7 +45,7 @@ test('a pending account can use the site and sees a reminder prop', function () 
 });
 
 test('a confirmed account has no reminder', function () {
-    $this->actingAs(User::factory()->create())->get('/dashboard')
+    $this->actingAs(User::factory()->create())->get('/quiz')
         ->assertOk()
         ->assertInertia(fn ($page) => $page->where('emailVerification.state', 'verified'));
 });
@@ -83,7 +83,7 @@ test('an unconfirmed account can sign in inside the grace period', function () {
     $user = pendingUser();
 
     $this->post('/login', ['email' => $user->email, 'password' => 'password'])
-        ->assertRedirect(route('dashboard', absolute: false));
+        ->assertRedirect(route('welcome', absolute: false));
 
     $this->assertAuthenticatedAs($user);
 });
@@ -101,7 +101,7 @@ test('an unconfirmed account cannot sign in after the deadline', function () {
 test('a session that outlives the deadline is ended on the next request', function () {
     $user = pendingUser(['verification_expires_at' => now()->subMinute()]);
 
-    $this->actingAs($user)->get('/dashboard')
+    $this->actingAs($user)->get('/quiz')
         ->assertRedirect(route('login'));
 
     $this->assertGuest();
@@ -113,7 +113,7 @@ test('accounts without a deadline are never disabled', function () {
     expect($legacy->emailVerificationState())->toBe('pending');
 
     $this->post('/login', ['email' => $legacy->email, 'password' => 'password'])
-        ->assertRedirect(route('dashboard', absolute: false));
+        ->assertRedirect(route('welcome', absolute: false));
 });
 
 test('placeholder (telegram) emails have nothing to confirm', function () {

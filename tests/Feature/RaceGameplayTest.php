@@ -129,7 +129,7 @@ test('a player can submit exactly one answer per question and is scored server-s
     $player = RacePlayer::factory()->create(['race_room_id' => $room->id, 'session_token' => 'token-1']);
 
     $response = $this->withSession(["race_player_token.{$room->id}" => 'token-1'])
-        ->post("/race/{$room->room_code}/answer", ['answer_id' => $correctAnswer->id]);
+        ->post("/quiz/race/{$room->room_code}/answer", ['answer_id' => $correctAnswer->id]);
 
     $response->assertRedirect(route('race.play', $room->room_code));
     $raceAnswer = RaceAnswer::where('race_player_id', $player->id)->first();
@@ -151,9 +151,9 @@ test('a duplicate answer submission for the same question is rejected and does n
     $player = RacePlayer::factory()->create(['race_room_id' => $room->id, 'session_token' => 'token-1']);
 
     $this->withSession(["race_player_token.{$room->id}" => 'token-1'])
-        ->post("/race/{$room->room_code}/answer", ['answer_id' => $correctAnswer->id]);
+        ->post("/quiz/race/{$room->room_code}/answer", ['answer_id' => $correctAnswer->id]);
     $this->withSession(["race_player_token.{$room->id}" => 'token-1'])
-        ->post("/race/{$room->room_code}/answer", ['answer_id' => $correctAnswer->id]);
+        ->post("/quiz/race/{$room->room_code}/answer", ['answer_id' => $correctAnswer->id]);
 
     expect(RaceAnswer::where('race_player_id', $player->id)->count())->toBe(1);
     $firstPoints = RaceAnswer::where('race_player_id', $player->id)->first()->points;
@@ -172,7 +172,7 @@ test('an answer submitted after the deadline is rejected', function () {
     $player = RacePlayer::factory()->create(['race_room_id' => $room->id, 'session_token' => 'token-1']);
 
     $response = $this->withSession(["race_player_token.{$room->id}" => 'token-1'])
-        ->post("/race/{$room->room_code}/answer", ['answer_id' => $correctAnswer->id]);
+        ->post("/quiz/race/{$room->room_code}/answer", ['answer_id' => $correctAnswer->id]);
 
     $response->assertSessionHasErrors('answer_id');
     expect(RaceAnswer::where('race_player_id', $player->id)->count())->toBe(0);
@@ -191,7 +191,7 @@ test('an incorrect answer earns zero points', function () {
     $player = RacePlayer::factory()->create(['race_room_id' => $room->id, 'session_token' => 'token-1']);
 
     $this->withSession(["race_player_token.{$room->id}" => 'token-1'])
-        ->post("/race/{$room->room_code}/answer", ['answer_id' => $wrongAnswer->id]);
+        ->post("/quiz/race/{$room->room_code}/answer", ['answer_id' => $wrongAnswer->id]);
 
     expect($player->fresh()->score)->toBe(0);
     expect(RaceAnswer::where('race_player_id', $player->id)->first()->is_correct)->toBeFalse();
@@ -208,7 +208,7 @@ test('a player cannot answer while the room is not in the question state', funct
     $player = RacePlayer::factory()->create(['race_room_id' => $room->id, 'session_token' => 'token-1']);
 
     $response = $this->withSession(["race_player_token.{$room->id}" => 'token-1'])
-        ->post("/race/{$room->room_code}/answer", ['answer_id' => $answer->id]);
+        ->post("/quiz/race/{$room->room_code}/answer", ['answer_id' => $answer->id]);
 
     $response->assertRedirect(route('race.play', $room->room_code));
     expect($player->answers()->count())->toBe(0);
@@ -232,7 +232,7 @@ test('visiting play while the room is still in the lobby redirects back to the l
     $room->players()->create(['nickname' => 'Fox', 'session_token' => 'token-1', 'joined_at' => now()]);
 
     $response = $this->withSession(["race_player_token.{$room->id}" => 'token-1'])
-        ->get("/race/{$room->room_code}/play");
+        ->get("/quiz/race/{$room->room_code}/play");
 
     $response->assertRedirect(route('race.lobby', $room->room_code));
 });
@@ -243,7 +243,7 @@ test('visiting the lobby once the race has started redirects to play', function 
     $room->players()->create(['nickname' => 'Fox', 'session_token' => 'token-1', 'joined_at' => now()]);
 
     $response = $this->withSession(["race_player_token.{$room->id}" => 'token-1'])
-        ->get("/race/{$room->room_code}/lobby");
+        ->get("/quiz/race/{$room->room_code}/lobby");
 
     $response->assertRedirect(route('race.play', $room->room_code));
 });
@@ -258,7 +258,7 @@ test('the state endpoint never exposes the correct answer while the question is 
     $room->players()->create(['nickname' => 'Fox', 'session_token' => 'token-1', 'joined_at' => now()]);
 
     $response = $this->withSession(["race_player_token.{$room->id}" => 'token-1'])
-        ->get("/race/{$room->room_code}/state");
+        ->get("/quiz/race/{$room->room_code}/state");
 
     $response->assertOk();
     $response->assertJson(['status' => 'question', 'correctAnswerId' => null]);
@@ -279,7 +279,7 @@ test('the state endpoint exposes the correct answer once the question has ended'
     $room->players()->create(['nickname' => 'Fox', 'session_token' => 'token-1', 'joined_at' => now()]);
 
     $response = $this->withSession(["race_player_token.{$room->id}" => 'token-1'])
-        ->get("/race/{$room->room_code}/state");
+        ->get("/quiz/race/{$room->room_code}/state");
 
     $response->assertOk();
     expect($response->json('correctAnswerId'))->toBe($question->correctAnswer()->id);

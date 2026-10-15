@@ -23,7 +23,7 @@ test('copying a quiz creates an independent draft owned by the copier', function
     $original = quizWithOneQuestion($owner, ['allow_copying' => true]);
     $original->tags()->attach($tag);
 
-    $response = $this->actingAs($copier)->post("/quizzes/{$original->id}/copy");
+    $response = $this->actingAs($copier)->post("/quiz/quizzes/{$original->id}/copy");
 
     $copy = Quiz::where('user_id', $copier->id)->first();
     $response->assertRedirect(route('quizzes.edit', $copy));
@@ -41,7 +41,7 @@ test('editing the copy does not change the original and vice versa', function ()
     $copier = User::factory()->create();
     $original = quizWithOneQuestion($owner, ['allow_copying' => true]);
 
-    $this->actingAs($copier)->post("/quizzes/{$original->id}/copy");
+    $this->actingAs($copier)->post("/quiz/quizzes/{$original->id}/copy");
     $copy = Quiz::where('user_id', $copier->id)->first();
 
     $copy->update(['title' => 'Changed']);
@@ -56,7 +56,7 @@ test('copying is blocked server-side when allow_copying is false, even via direc
     $stranger = User::factory()->create();
     $quiz = quizWithOneQuestion($owner, ['allow_copying' => false]);
 
-    $this->actingAs($stranger)->post("/quizzes/{$quiz->id}/copy")->assertForbidden();
+    $this->actingAs($stranger)->post("/quiz/quizzes/{$quiz->id}/copy")->assertForbidden();
 
     expect(Quiz::where('user_id', $stranger->id)->count())->toBe(0);
 });
@@ -65,7 +65,7 @@ test('the owner can still copy their own quiz even when allow_copying is false',
     $owner = User::factory()->create();
     $quiz = quizWithOneQuestion($owner, ['allow_copying' => false]);
 
-    $this->actingAs($owner)->post("/quizzes/{$quiz->id}/copy")->assertRedirect();
+    $this->actingAs($owner)->post("/quiz/quizzes/{$quiz->id}/copy")->assertRedirect();
 
     expect(Quiz::where('user_id', $owner->id)->where('copied_from_quiz_id', $quiz->id)->exists())->toBeTrue();
 });
@@ -75,7 +75,7 @@ test('copy lineage relations resolve in both directions', function () {
     $copier = User::factory()->create();
     $original = quizWithOneQuestion($owner, ['allow_copying' => true]);
 
-    $this->actingAs($copier)->post("/quizzes/{$original->id}/copy");
+    $this->actingAs($copier)->post("/quiz/quizzes/{$original->id}/copy");
     $copy = Quiz::where('user_id', $copier->id)->first();
 
     expect($copy->copiedFrom->id)->toBe($original->id);
@@ -87,10 +87,10 @@ test('the quiz language can be changed independently after copying', function ()
     $copier = User::factory()->create();
     $original = quizWithOneQuestion($owner, ['allow_copying' => true, 'language' => 'en']);
 
-    $this->actingAs($copier)->post("/quizzes/{$original->id}/copy");
+    $this->actingAs($copier)->post("/quiz/quizzes/{$original->id}/copy");
     $copy = Quiz::where('user_id', $copier->id)->first();
 
-    $this->actingAs($copier)->put("/quizzes/{$copy->id}", [
+    $this->actingAs($copier)->put("/quiz/quizzes/{$copy->id}", [
         'title' => $copy->title,
         'language' => 'fr',
         'allow_copying' => true,

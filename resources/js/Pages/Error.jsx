@@ -26,7 +26,7 @@ export default function Error({ status = 404 }) {
 
                     <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
                         <Link
-                            href={quizRoute(authUser ? 'dashboard' : 'welcome')}
+                            href={quizRoute('welcome')}
                             className="rounded-lg bg-primary-600 px-5 py-3 text-base font-semibold text-white shadow-soft transition hover:bg-primary-700"
                         >
                             {t('error_pages.home_button')}

@@ -1,34 +1,56 @@
 import ApplicationLogo from '@/Components/ApplicationLogo';
 import { Link, usePage } from '@inertiajs/react';
 import { useLaravelReactI18n } from 'laravel-react-i18n';
-import useSectionRoutes from '@/hooks/useSectionRoutes';
 
-/**
- * True on any /mafia/* page. The site hosts two games (quizzes and Mafia)
- * under one header, so the brand name tells you which one you are in.
- */
-export function useIsMafiaSection() {
+/** The section of the platform the current address belongs to: 'mafia' | 'quiz' | null (platform pages). */
+export function useCurrentSection() {
     const { url } = usePage();
-    return url.startsWith('/mafia') || window.location.pathname.startsWith('/mafia');
+    const path = (url || window.location.pathname).split('?')[0];
+
+    if (path === '/mafia' || path.startsWith('/mafia/')) return 'mafia';
+    if (path === '/quiz' || path.startsWith('/quiz/')) return 'quiz';
+
+    return null;
 }
 
-/** Section name for the header: "Quiz Platform" or "Mafia" (localized). */
+/** True on any /mafia/* page (the game screens are sized to the viewport: no banner, no footer). */
+export function useIsMafiaSection() {
+    return useCurrentSection() === 'mafia';
+}
+
+/** Section display name (localized), or null on platform pages. */
 export function useSectionName() {
     const { t } = useLaravelReactI18n();
-    return useIsMafiaSection() ? t('mafia.index_heading') : 'Quiz Platform';
+    const section = useCurrentSection();
+
+    return section ? t(`platform.section_${section}`) : null;
 }
 
-/** Logo + section name, linking to the section's home. */
-export default function SectionBrand({ guest = false }) {
-    const isMafia = useIsMafiaSection();
-    const name = useSectionName();
-    const { quizRoute, mafiaRoute } = useSectionRoutes();
-    const href = isMafia ? mafiaRoute('mafia.index') : quizRoute(guest ? 'welcome' : 'dashboard');
+/**
+ * Logo + "Mao Dao" (always linking to the platform home) and, inside a game,
+ * the game's name linking to that game's section.
+ */
+export default function SectionBrand() {
+    const { t } = useLaravelReactI18n();
+    const section = useCurrentSection();
+    const sectionHome = section === 'mafia' ? route('mafia.index') : section === 'quiz' ? route('dashboard') : null;
 
     return (
-        <Link href={href} className="flex items-center gap-2">
-            <ApplicationLogo className="h-7 w-auto fill-current text-primary-600" />
-            <span className="hidden font-heading text-base font-bold text-ink-900 sm:inline">{name}</span>
-        </Link>
+        <div className="flex items-center gap-2">
+            <Link href={route('welcome')} className="flex items-center gap-2">
+                <ApplicationLogo className="h-7 w-auto fill-current text-primary-600" />
+                <span className="hidden font-heading text-base font-bold text-ink-900 sm:inline">
+                    {t('platform.site_name')}
+                </span>
+            </Link>
+            {section && (
+                <>
+                    <span className="text-ink-300" aria-hidden="true">/</span>
+                    <Link href={sectionHome} className="font-heading text-base font-bold text-primary-700 hover:text-primary-900">
+                        {t(`platform.section_${section}`)}
+                    </Link>
+                </>
+            )}
+        </div>
     );
 }

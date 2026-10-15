@@ -9,7 +9,7 @@ test('an authorized user can start a race for a published quiz', function () {
     $host = User::factory()->create();
     $quiz = publishedQuizWithTwoQuestions($owner);
 
-    $response = $this->actingAs($host)->post("/quizzes/{$quiz->id}/race");
+    $response = $this->actingAs($host)->post("/quiz/quizzes/{$quiz->id}/race");
 
     $room = RaceRoom::first();
     expect($room)->not->toBeNull();
@@ -29,7 +29,7 @@ test('a user cannot start a race for a draft quiz', function () {
     $owner = User::factory()->create();
     $quiz = Quiz::factory()->create(['user_id' => $owner->id, 'status' => 'draft']);
 
-    $response = $this->actingAs($owner)->post("/quizzes/{$quiz->id}/race");
+    $response = $this->actingAs($owner)->post("/quiz/quizzes/{$quiz->id}/race");
 
     $response->assertNotFound();
     expect(RaceRoom::count())->toBe(0);
@@ -39,7 +39,7 @@ test('a guest cannot start a race', function () {
     $owner = User::factory()->create();
     $quiz = publishedQuizWithTwoQuestions($owner);
 
-    $response = $this->post("/quizzes/{$quiz->id}/race");
+    $response = $this->post("/quiz/quizzes/{$quiz->id}/race");
 
     $response->assertRedirect('/login');
 });
@@ -56,7 +56,7 @@ test('an anonymous visitor can join a race with a temporary nickname', function 
     $quiz = publishedQuizWithTwoQuestions($owner);
     $room = RaceRoom::factory()->create(['quiz_id' => $quiz->id, 'host_user_id' => $owner->id]);
 
-    $response = $this->post("/race/{$room->room_code}/join", ['nickname' => 'Fox']);
+    $response = $this->post("/quiz/race/{$room->room_code}/join", ['nickname' => 'Fox']);
 
     $response->assertRedirect(route('race.lobby', $room->room_code));
     $player = $room->players()->where('nickname', 'Fox')->first();
@@ -70,7 +70,7 @@ test('an authenticated user can join with a nickname independent of their accoun
     $room = RaceRoom::factory()->create(['quiz_id' => $quiz->id, 'host_user_id' => $owner->id]);
     $player = User::factory()->create(['name' => 'Alexander Johnson']);
 
-    $this->actingAs($player)->post("/race/{$room->room_code}/join", ['nickname' => 'Fox']);
+    $this->actingAs($player)->post("/quiz/race/{$room->room_code}/join", ['nickname' => 'Fox']);
 
     $racePlayer = $room->players()->where('user_id', $player->id)->first();
     expect($racePlayer->nickname)->toBe('Fox');
@@ -85,7 +85,7 @@ test('a duplicate nickname within the same room is rejected', function () {
         'nickname' => 'Fox', 'session_token' => 'existing-token', 'joined_at' => now(),
     ]);
 
-    $response = $this->post("/race/{$room->room_code}/join", ['nickname' => 'fox']);
+    $response = $this->post("/quiz/race/{$room->room_code}/join", ['nickname' => 'fox']);
 
     $response->assertSessionHasErrors('nickname');
     expect($room->players()->count())->toBe(1);
@@ -97,7 +97,7 @@ test('the player limit is enforced server-side', function () {
     $room = RaceRoom::factory()->create(['quiz_id' => $quiz->id, 'host_user_id' => $owner->id, 'max_players' => 1]);
     $room->players()->create(['nickname' => 'First', 'session_token' => 'token-1', 'joined_at' => now()]);
 
-    $response = $this->post("/race/{$room->room_code}/join", ['nickname' => 'Second']);
+    $response = $this->post("/quiz/race/{$room->room_code}/join", ['nickname' => 'Second']);
 
     $response->assertSessionHasErrors('nickname');
     expect($room->players()->count())->toBe(1);
@@ -108,7 +108,7 @@ test('players cannot join after the race has started', function () {
     $quiz = publishedQuizWithTwoQuestions($owner);
     $room = RaceRoom::factory()->question()->create(['quiz_id' => $quiz->id, 'host_user_id' => $owner->id]);
 
-    $response = $this->post("/race/{$room->room_code}/join", ['nickname' => 'Latecomer']);
+    $response = $this->post("/quiz/race/{$room->room_code}/join", ['nickname' => 'Latecomer']);
 
     $response->assertSessionHasErrors('nickname');
     expect($room->players()->count())->toBe(0);
@@ -130,11 +130,11 @@ test('only the host can start the race', function () {
     ]);
 
     $otherUser = User::factory()->create();
-    $joinResponse = $this->actingAs($otherUser)->post("/race/{$room->room_code}/join", ['nickname' => 'Guest']);
+    $joinResponse = $this->actingAs($otherUser)->post("/quiz/race/{$room->room_code}/join", ['nickname' => 'Guest']);
     $joinResponse->assertRedirect(route('race.lobby', $room->room_code));
 
     // Still acting as $otherUser (the guest, not the host) tries to start.
-    $response = $this->actingAs($otherUser)->post("/race/{$room->room_code}/start");
+    $response = $this->actingAs($otherUser)->post("/quiz/race/{$room->room_code}/start");
 
     $response->assertForbidden();
     expect($room->fresh()->status)->toBe('lobby');
@@ -144,10 +144,10 @@ test('the host starting the race snapshots the question order and moves to start
     $owner = User::factory()->create();
     $quiz = publishedQuizWithTwoQuestions($owner);
 
-    $this->actingAs($owner)->post("/quizzes/{$quiz->id}/race");
+    $this->actingAs($owner)->post("/quiz/quizzes/{$quiz->id}/race");
     $room = RaceRoom::first();
 
-    $response = $this->actingAs($owner)->post("/race/{$room->room_code}/start");
+    $response = $this->actingAs($owner)->post("/quiz/race/{$room->room_code}/start");
 
     $response->assertRedirect(route('race.lobby', $room->room_code));
     $room->refresh();
@@ -156,7 +156,7 @@ test('the host starting the race snapshots the question order and moves to start
 });
 
 test('joining a non-existent room code shows the not-found state', function () {
-    $response = $this->get('/race/ZZZZZZ');
+    $response = $this->get('/quiz/race/ZZZZZZ');
 
     $response->assertInertia(fn ($page) => $page
         ->component('Race/Join')
@@ -170,7 +170,7 @@ test('visiting a full room shows the full state', function () {
     $room = RaceRoom::factory()->create(['quiz_id' => $quiz->id, 'host_user_id' => $owner->id, 'max_players' => 1]);
     $room->players()->create(['nickname' => 'First', 'session_token' => 'token-1', 'joined_at' => now()]);
 
-    $response = $this->get("/race/{$room->room_code}");
+    $response = $this->get("/quiz/race/{$room->room_code}");
 
     $response->assertInertia(fn ($page) => $page->component('Race/Join')->where('state', 'full'));
 });
@@ -182,9 +182,9 @@ test('a visitor with an existing session identity is redirected straight to the 
 
     // The test client's session persists across sequential calls in the
     // same test, exactly like a real browser session would.
-    $this->post("/race/{$room->room_code}/join", ['nickname' => 'Fox']);
+    $this->post("/quiz/race/{$room->room_code}/join", ['nickname' => 'Fox']);
 
-    $response = $this->get("/race/{$room->room_code}");
+    $response = $this->get("/quiz/race/{$room->room_code}");
 
     $response->assertRedirect(route('race.lobby', $room->room_code));
 });
@@ -193,10 +193,10 @@ test('the host leaving the lobby cancels the room', function () {
     $owner = User::factory()->create();
     $quiz = publishedQuizWithTwoQuestions($owner);
 
-    $this->actingAs($owner)->post("/quizzes/{$quiz->id}/race");
+    $this->actingAs($owner)->post("/quiz/quizzes/{$quiz->id}/race");
     $room = RaceRoom::first();
 
-    $this->actingAs($owner)->post("/race/{$room->room_code}/leave");
+    $this->actingAs($owner)->post("/quiz/race/{$room->room_code}/leave");
 
     expect($room->fresh()->status)->toBe('cancelled');
     expect($room->players()->count())->toBe(0);
@@ -216,8 +216,8 @@ test('a non-host player leaving the lobby does not cancel the room', function ()
         'is_host' => true, 'joined_at' => now(),
     ]);
 
-    $this->post("/race/{$room->room_code}/join", ['nickname' => 'Guest']);
-    $this->post("/race/{$room->room_code}/leave");
+    $this->post("/quiz/race/{$room->room_code}/join", ['nickname' => 'Guest']);
+    $this->post("/quiz/race/{$room->room_code}/leave");
 
     expect($room->fresh()->status)->toBe('lobby');
     expect($room->players()->count())->toBe(1);

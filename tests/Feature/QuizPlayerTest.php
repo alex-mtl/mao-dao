@@ -26,7 +26,7 @@ test('the play page never exposes which answer is correct', function () {
     $player = User::factory()->create();
     $quiz = publishedQuizWithTwoQuestions($owner);
 
-    $response = $this->actingAs($player)->get("/quizzes/{$quiz->id}/play");
+    $response = $this->actingAs($player)->get("/quiz/quizzes/{$quiz->id}/play");
 
     $response->assertInertia(function ($page) {
         $questions = $page->toArray()['props']['quiz']['questions'];
@@ -43,7 +43,7 @@ test('questions and answers are shuffled but every id is still present', functio
     $player = User::factory()->create();
     $quiz = publishedQuizWithTwoQuestions($owner);
 
-    $response = $this->actingAs($player)->get("/quizzes/{$quiz->id}/play");
+    $response = $this->actingAs($player)->get("/quiz/quizzes/{$quiz->id}/play");
 
     $response->assertInertia(function ($page) use ($quiz) {
         $renderedQuestions = collect($page->toArray()['props']['quiz']['questions']);
@@ -67,7 +67,7 @@ test('a draft quiz cannot be played', function () {
     $player = User::factory()->create();
     $quiz = Quiz::factory()->create(['user_id' => $owner->id, 'status' => 'draft']);
 
-    $this->actingAs($player)->get("/quizzes/{$quiz->id}/play")->assertNotFound();
+    $this->actingAs($player)->get("/quiz/quizzes/{$quiz->id}/play")->assertNotFound();
 });
 
 test('the server computes the score authoritatively, ignoring client input', function () {
@@ -80,7 +80,7 @@ test('the server computes the score authoritatively, ignoring client input', fun
     $wrongAnswer = fn ($q) => $q->answers->firstWhere('is_correct', false);
 
     // Answer question 1 correctly, question 2 incorrectly.
-    $response = $this->actingAs($player)->post("/quizzes/{$quiz->id}/attempts", [
+    $response = $this->actingAs($player)->post("/quiz/quizzes/{$quiz->id}/attempts", [
         'answers' => [
             ['question_id' => $questions[0]->id, 'answer_id' => $correctAnswer($questions[0])->id],
             ['question_id' => $questions[1]->id, 'answer_id' => $wrongAnswer($questions[1])->id],
@@ -100,7 +100,7 @@ test('an attempt with all correct answers passes and one with none fails', funct
     $quiz = publishedQuizWithTwoQuestions($owner);
     $questions = $quiz->questions;
 
-    $this->actingAs($player)->post("/quizzes/{$quiz->id}/attempts", [
+    $this->actingAs($player)->post("/quiz/quizzes/{$quiz->id}/attempts", [
         'answers' => $questions->map(fn ($q) => [
             'question_id' => $q->id,
             'answer_id' => $q->answers->firstWhere('is_correct', true)->id,
@@ -120,7 +120,7 @@ test('submitting an answer_id belonging to a different question is scored as inc
 
     // Tamper: for BOTH questions, submit an answer_id taken from the
     // *other* question — neither submission can legitimately match.
-    $response = $this->actingAs($player)->post("/quizzes/{$quiz->id}/attempts", [
+    $response = $this->actingAs($player)->post("/quiz/quizzes/{$quiz->id}/attempts", [
         'answers' => [
             ['question_id' => $questions[0]->id, 'answer_id' => $questions[1]->answers->first()->id],
             ['question_id' => $questions[1]->id, 'answer_id' => $questions[0]->answers->first()->id],
@@ -138,11 +138,11 @@ test('the real time spent is measured server-side from play to submit', function
     $quiz = publishedQuizWithTwoQuestions($owner);
     $questions = $quiz->questions;
 
-    $this->actingAs($player)->get("/quizzes/{$quiz->id}/play");
+    $this->actingAs($player)->get("/quiz/quizzes/{$quiz->id}/play");
 
     $this->travel(90)->seconds();
 
-    $this->actingAs($player)->post("/quizzes/{$quiz->id}/attempts", [
+    $this->actingAs($player)->post("/quiz/quizzes/{$quiz->id}/attempts", [
         'answers' => $questions->map(fn ($q) => [
             'question_id' => $q->id,
             'answer_id' => $q->answers->first()->id,
@@ -160,7 +160,7 @@ test('submitting an attempt without visiting the play page first stores no time'
     $quiz = publishedQuizWithTwoQuestions($owner);
     $questions = $quiz->questions;
 
-    $this->actingAs($player)->post("/quizzes/{$quiz->id}/attempts", [
+    $this->actingAs($player)->post("/quiz/quizzes/{$quiz->id}/attempts", [
         'answers' => $questions->map(fn ($q) => [
             'question_id' => $q->id,
             'answer_id' => $q->answers->first()->id,
@@ -187,15 +187,15 @@ test('each attempt updates the quiz public average score and time stats', functi
         'answer_id' => $q->answers->firstWhere('is_correct', false)->id,
     ])->all();
 
-    $this->actingAs($playerOne)->get("/quizzes/{$quiz->id}/play");
+    $this->actingAs($playerOne)->get("/quiz/quizzes/{$quiz->id}/play");
     $this->travel(60)->seconds();
-    $this->actingAs($playerOne)->post("/quizzes/{$quiz->id}/attempts", ['answers' => $allCorrect]);
+    $this->actingAs($playerOne)->post("/quiz/quizzes/{$quiz->id}/attempts", ['answers' => $allCorrect]);
 
-    $this->actingAs($playerTwo)->get("/quizzes/{$quiz->id}/play");
+    $this->actingAs($playerTwo)->get("/quiz/quizzes/{$quiz->id}/play");
     $this->travel(120)->seconds();
-    $this->actingAs($playerTwo)->post("/quizzes/{$quiz->id}/attempts", ['answers' => $allWrong]);
+    $this->actingAs($playerTwo)->post("/quiz/quizzes/{$quiz->id}/attempts", ['answers' => $allWrong]);
 
-    $response = $this->actingAs($owner)->get("/quizzes/{$quiz->id}");
+    $response = $this->actingAs($owner)->get("/quiz/quizzes/{$quiz->id}");
 
     $response->assertInertia(fn ($page) => $page
         ->where('quiz.attempts_count', 2)
@@ -218,8 +218,8 @@ test('only the attempt owner can view its results', function () {
         'passed' => true,
     ]);
 
-    $this->actingAs($stranger)->get("/quiz-attempts/{$attempt->id}")->assertForbidden();
-    $this->actingAs($player)->get("/quiz-attempts/{$attempt->id}")->assertOk();
+    $this->actingAs($stranger)->get("/quiz/quiz-attempts/{$attempt->id}")->assertForbidden();
+    $this->actingAs($player)->get("/quiz/quiz-attempts/{$attempt->id}")->assertOk();
 });
 
 test('the results page reveals the correct answer text for each question', function () {
@@ -231,10 +231,10 @@ test('the results page reveals the correct answer text for each question', funct
         'question_id' => $q->id,
         'answer_id' => $q->answers->firstWhere('text', 'Wrong 1')->id,
     ])->all();
-    $this->actingAs($player)->post("/quizzes/{$quiz->id}/attempts", ['answers' => $answers]);
+    $this->actingAs($player)->post("/quiz/quizzes/{$quiz->id}/attempts", ['answers' => $answers]);
     $attempt = QuizAttempt::firstOrFail();
 
-    $props = $this->actingAs($player)->get("/quiz-attempts/{$attempt->id}")->assertOk()->viewData('page')['props'];
+    $props = $this->actingAs($player)->get("/quiz/quiz-attempts/{$attempt->id}")->assertOk()->viewData('page')['props'];
 
     expect(collect($props['attempt']['answers'])->pluck('correct_answer_text')->unique()->all())->toBe(['Right']);
     expect(collect($props['attempt']['answers'])->pluck('chosen_answer_text')->unique()->all())->toBe(['Wrong 1']);
@@ -258,7 +258,7 @@ test('the results page lists up to 4 similar published quizzes, ranked by shared
 
     $attempt = QuizAttempt::create(['quiz_id' => $quiz->id, 'user_id' => $player->id, 'total_questions' => 2, 'correct_count' => 1, 'percentage' => 50, 'time_spent_seconds' => 45, 'passed' => false]);
 
-    $props = $this->actingAs($player)->get("/quiz-attempts/{$attempt->id}")->assertOk()->viewData('page')['props'];
+    $props = $this->actingAs($player)->get("/quiz/quiz-attempts/{$attempt->id}")->assertOk()->viewData('page')['props'];
 
     expect(collect($props['similar_quizzes'])->pluck('title')->all())->toBe(['Shares two', 'Shares one']);
 });
@@ -269,7 +269,7 @@ test('a quiz without tags has no similar quizzes', function () {
     $quiz = publishedQuizWithTwoQuestions($owner);
     $attempt = QuizAttempt::create(['quiz_id' => $quiz->id, 'user_id' => $player->id, 'total_questions' => 2, 'correct_count' => 1, 'percentage' => 50, 'time_spent_seconds' => 45, 'passed' => false]);
 
-    $props = $this->actingAs($player)->get("/quiz-attempts/{$attempt->id}")->viewData('page')['props'];
+    $props = $this->actingAs($player)->get("/quiz/quiz-attempts/{$attempt->id}")->viewData('page')['props'];
 
     expect($props['similar_quizzes'])->toBe([]);
 });

@@ -36,7 +36,7 @@ test('ui language preference persists and is reflected on the next request', fun
 
     expect($user->fresh()->ui_language)->toBe('fr');
 
-    $response = $this->actingAs($user)->get('/dashboard');
+    $response = $this->actingAs($user)->get('/quiz');
     $response->assertInertia(fn ($page) => $page->where('locale', 'fr'));
 });
 
@@ -52,7 +52,7 @@ test('changing ui language does not change an existing quiz language', function 
 test('the create-quiz page shares the current user so the editor can default the quiz language to it', function () {
     $user = User::factory()->create(['ui_language' => 'ru']);
 
-    $response = $this->actingAs($user)->get('/quizzes/create');
+    $response = $this->actingAs($user)->get('/quiz/quizzes/create');
 
     // The Editor page defaults its quiz-language <select> from this shared
     // prop client-side (see resources/js/Pages/Quizzes/Editor.jsx); this
@@ -63,7 +63,7 @@ test('the create-quiz page shares the current user so the editor can default the
 test('a quiz stores whatever language is submitted, independent of the request', function () {
     $user = User::factory()->create(['ui_language' => 'ru']);
 
-    $this->actingAs($user)->post('/quizzes', [
+    $this->actingAs($user)->post('/quiz/quizzes', [
         'title' => 'Test Quiz',
         'language' => 'ru',
         'allow_copying' => true,

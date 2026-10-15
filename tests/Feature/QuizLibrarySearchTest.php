@@ -64,7 +64,7 @@ test('search never returns drafts and treats percent signs literally', function 
 test('the old explorer url redirects to the library and the route name is gone', function () {
     $user = User::factory()->create();
 
-    $this->actingAs($user)->get('/explorer')->assertRedirect(route('library.index'));
+    $this->actingAs($user)->get('/quiz/explorer')->assertRedirect(route('library.index'));
 
     expect(\Illuminate\Support\Facades\Route::has('explorer.index'))->toBeFalse();
 });

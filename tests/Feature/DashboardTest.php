@@ -23,7 +23,7 @@ test('the dashboard shows the users own quizzes, attempts, likes, and groups wit
     $group = Group::create(['owner_id' => $user->id, 'name' => 'My Group']);
     $group->members()->attach($user->id);
 
-    $response = $this->actingAs($user)->get('/dashboard');
+    $response = $this->actingAs($user)->get('/quiz');
 
     $response->assertInertia(fn ($page) => $page
         ->where('myQuizzes.0.title', 'My Own Quiz')
@@ -35,7 +35,7 @@ test('the dashboard shows the users own quizzes, attempts, likes, and groups wit
 test('an empty dashboard does not error and shows no fake data', function () {
     $user = User::factory()->create();
 
-    $response = $this->actingAs($user)->get('/dashboard');
+    $response = $this->actingAs($user)->get('/quiz');
 
     $response->assertOk();
     $response->assertInertia(fn ($page) => $page
@@ -48,7 +48,7 @@ test('an empty dashboard does not error and shows no fake data', function () {
 test('a brand-new user sees the onboarding checklist with every step pending', function () {
     $user = User::factory()->create();
 
-    $this->actingAs($user)->get('/dashboard')->assertInertia(fn ($page) => $page
+    $this->actingAs($user)->get('/quiz')->assertInertia(fn ($page) => $page
         ->where('onboarding', ['played' => false, 'created' => false, 'friend' => false]));
 });
 
@@ -62,26 +62,26 @@ test('onboarding steps tick themselves off from real activity', function () {
         'total_questions' => 1, 'correct_count' => 1, 'percentage' => 100, 'passed' => true,
     ]);
 
-    $this->actingAs($user)->get('/dashboard')->assertInertia(fn ($page) => $page
+    $this->actingAs($user)->get('/quiz')->assertInertia(fn ($page) => $page
         ->where('onboarding', ['played' => true, 'created' => false, 'friend' => false]));
 
     Quiz::factory()->create(['user_id' => $user->id]);
     FriendRequest::create(['sender_id' => $user->id, 'recipient_id' => $other->id, 'status' => 'pending']);
 
     // All three done -> the checklist retires itself.
-    $this->actingAs($user)->get('/dashboard')->assertInertia(fn ($page) => $page->where('onboarding', null));
+    $this->actingAs($user)->get('/quiz')->assertInertia(fn ($page) => $page->where('onboarding', null));
 });
 
 test('dismissing the checklist hides it permanently', function () {
     $user = User::factory()->create();
 
-    $this->actingAs($user)->post('/dashboard/onboarding/dismiss')->assertRedirect();
+    $this->actingAs($user)->post('/quiz/dashboard/onboarding/dismiss')->assertRedirect();
 
     expect($user->fresh()->onboarding_dismissed_at)->not->toBeNull();
-    $this->actingAs($user)->get('/dashboard')->assertInertia(fn ($page) => $page->where('onboarding', null));
+    $this->actingAs($user)->get('/quiz')->assertInertia(fn ($page) => $page->where('onboarding', null));
 });
 
 test('a guest cannot dismiss the checklist', function () {
-    $this->post('/dashboard/onboarding/dismiss')->assertRedirect();
+    $this->post('/quiz/dashboard/onboarding/dismiss')->assertRedirect();
     expect(User::whereNotNull('onboarding_dismissed_at')->count())->toBe(0);
 });

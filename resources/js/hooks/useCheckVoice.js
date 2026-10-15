@@ -22,7 +22,7 @@ const SPEECH_LANG = { en: 'en-US', ru: 'ru-RU', fr: 'fr-FR', es: 'es-ES' };
  * everybody else have empty histories, so they hear nothing.
  */
 export default function useCheckVoice(donCheckHistory, sheriffCheckHistory, onResult = null) {
-    const { quizUrl, locale } = usePage().props;
+    const { locale } = usePage().props;
     const { t } = useLaravelReactI18n();
     const seen = useRef(null);
 
@@ -72,7 +72,7 @@ export default function useCheckVoice(donCheckHistory, sheriffCheckHistory, onRe
                     utterance.volume = 1;
                     synth.speak(utterance);
                 } else {
-                    const audio = new Audio(`${quizUrl}/sfx/mafia/${entry.sound}`);
+                    const audio = new Audio(`/sfx/mafia/${entry.sound}`);
                     audio.volume = 0.6;
                     audio.play().catch(() => {});
                 }
