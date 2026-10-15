@@ -10,7 +10,7 @@ test('the platform home lists a block for every game, for guests and members ali
             ->has('games', 2)
             ->where('games.0.key', 'quiz')
             ->where('games.1.key', 'mafia')
-            ->where('games.0.openRooms', [])
+            ->has('games.0.items')
             ->where('canRegister', true));
 
     $this->actingAs(User::factory()->create())->get('/')
@@ -19,7 +19,8 @@ test('the platform home lists a block for every game, for guests and members ali
 });
 
 test('the quiz section lives under /quiz, with the dashboard at its root', function () {
-    $this->get('/quiz')->assertRedirect(route('login'));
+    // public section: a guest starts in the library
+    $this->get('/quiz')->assertRedirect(route('library.index'));
 
     $user = User::factory()->create();
 
