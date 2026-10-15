@@ -290,7 +290,8 @@ reintroduce raw `gray-*`/`indigo-*` classes:
 `dark-cool`, `dark-neon`). **The platform default — what every guest sees — is
 `dark-neon`** (`config/color_schemes.php`'s `default`); a new account starts with
 the scheme its visitor was already seeing, and existing members keep their saved
-choice (the DB column default is still `light-warm`), persisted per-user (`users.color_scheme`,
+choice (the DB column default is `dark-neon` too; migration `2026_10_15_110000`
+moved everyone still on the old `light-warm` default to it), persisted per-user (`users.color_scheme`,
 mirrors `ui_language` end-to-end: `config/color_schemes.php`,
 `HandleInertiaRequests` shares `color_scheme`/`color_scheme_options`,
 `ProfileController::updateColorScheme()` + `PATCH /profile/color-scheme`).

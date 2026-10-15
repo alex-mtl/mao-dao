@@ -2,13 +2,13 @@
 
 use App\Models\User;
 
-test('a new user defaults to light-warm', function () {
+test('a new user defaults to the platform neon scheme', function () {
     $user = User::factory()->create();
 
     // UserFactory deliberately doesn't set color_scheme, so the in-memory
     // model won't have it until refreshed — this is asserting the
     // database column default, not the factory.
-    expect($user->fresh()->color_scheme)->toBe('light-warm');
+    expect($user->fresh()->color_scheme)->toBe('dark-neon');
 });
 
 test('color scheme is rejected when not supported', function () {
@@ -19,7 +19,7 @@ test('color scheme is rejected when not supported', function () {
     ]);
 
     $response->assertSessionHasErrors('color_scheme');
-    expect($user->fresh()->color_scheme)->toBe('light-warm');
+    expect($user->fresh()->color_scheme)->toBe('dark-neon');
 });
 
 test('color scheme preference persists and is reflected on the next request', function () {
