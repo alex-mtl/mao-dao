@@ -28,14 +28,48 @@ def call(method, **data):
         return json.loads(r.read())
 
 
-def send(chat, text):
+markups = []                 # tests: (chat, inline keyboard) of messages with buttons
+
+
+def buttons(rows):
+    """[[(label, callback data), ...], ...] -> inline keyboard markup"""
+    return {"inline_keyboard": [[{"text": t, "callback_data": d} for t, d in row] for row in rows]}
+
+
+def send(chat, text, markup=None):
+    if sent is not None:
+        sent.append((chat, text))
+        if markup:
+            markups.append((chat, markup))
+        return
+    try:
+        data = dict(chat_id=chat, text=text, parse_mode="HTML", disable_web_page_preview=True)
+        if markup:
+            data["reply_markup"] = markup
+        call("sendMessage", **data)
+    except Exception as e:
+        print(f"send error: {type(e).__name__}")
+
+
+def answer(callback_id, text=""):
+    """confirm a button press (the button stops spinning)"""
+    if sent is not None:
+        return
+    try:
+        call("answerCallbackQuery", callback_query_id=callback_id, text=text)
+    except Exception as e:
+        print(f"answer error: {type(e).__name__}")
+
+
+def edit(chat, message_id, text):
+    """replace a message's text and drop its buttons"""
     if sent is not None:
         sent.append((chat, text))
         return
     try:
-        call("sendMessage", chat_id=chat, text=text, parse_mode="HTML", disable_web_page_preview=True)
+        call("editMessageText", chat_id=chat, message_id=message_id, text=text, parse_mode="HTML")
     except Exception as e:
-        print(f"send error: {type(e).__name__}")
+        print(f"edit error: {type(e).__name__}")
 
 
 def bot_name():

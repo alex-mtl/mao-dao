@@ -18,6 +18,7 @@ class BotTest(unittest.TestCase):
     def setUp(self):
         store.use(store.MemoryTable())
         tg.sent = []
+        tg.markups.clear()
         tg._params.update({"webhook-secret": "s", "bot_name": "test_bot", "token": "x"})
         self.key = handler.admin({"action": "add_game", "id": "mao"})["game_key"]
         self.key2 = handler.admin({"action": "add_game", "id": "other"})["game_key"]
@@ -99,6 +100,64 @@ class BotTest(unittest.TestCase):
             handler.os.urandom = real
         self.assertEqual(key, "ключ-тг---------")
         self.assertTrue(call("/game/key", {"key": key, "tiktok_id": "vorobey"}, self.key)[1]["ok"])
+
+    def test_riddle_cycle(self):
+        word = self.start()
+        key = self.get_key(word)                                     # viewer vorobey (tg 7) links
+        call("/game/key", {"key": key, "tiktok_id": "vorobey", "tiktok_name": "воробей"}, self.key)
+        call("/tg", msg("загадывает", uid=5))
+        self.assertIn("только для ведущего", tg.sent[-1][1])
+        link = call("/game/host_code", {}, self.key)[1]["link"]
+        call("/tg", msg("/start " + link.split("start=")[1], uid=5))   # tg 5 becomes the host
+        tg.markups.clear()
+        call("/tg", msg("Загадывает вороб", uid=5))
+        chat, kb = tg.markups[-1]
+        self.assertEqual(kb["inline_keyboard"][0][0]["callback_data"], "pick:vorobey")
+        call("/tg", msg("загадывает сокол", uid=5))
+        self.assertIn("Не нашёл", tg.sent[-1][1])
+        cb = lambda data: call("/tg", {"callback_query": {"id": "c", "from": {"id": 5}, "data": data,
+                                                          "message": {"chat": {"id": 5}, "message_id": 1}}})
+        cb("pick:vorobey")
+        self.assertEqual(tg.sent[-2][0], 7)                            # the question to the viewer
+        self.assertIn("Спросил", tg.sent[-1][1])
+        call("/tg", msg("Огурцы"))
+        self.assertIn("Проверяю", tg.sent[-1][1])
+        call("/tg", msg("ещё"))
+        self.assertIn("ещё проверяется", tg.sent[-1][1])
+        r = call("/game/poll", {}, self.key)[1]
+        self.assertEqual([w["word"] for w in r["words"]], ["Огурцы"])
+        wid = r["words"][0]["id"]
+        self.assertEqual(call("/game/poll", {}, self.key)[1], {"words": [], "cancel": []})   # given once
+        call("/game/poll", {"results": [{"id": wid, "ok": False}]}, self.key)
+        self.assertIn("нет в словаре", tg.sent[-2][1])
+        self.assertIn("не найдено", tg.sent[-1][1])
+        call("/tg", msg("огурец"))                                     # the question is still open
+        wid = call("/game/poll", {}, self.key)[1]["words"][0]["id"]
+        tg.markups.clear()
+        call("/game/poll", {"results": [{"id": wid, "ok": True, "word": "огурец", "round": 12}]}, self.key)
+        self.assertIn("раунде <b>12</b>", tg.sent[-2][1])
+        self.assertEqual(tg.markups[-1][1]["inline_keyboard"][0][0]["callback_data"], "rej:" + wid)
+        call("/tg", msg("привет"))                                     # question closed: normal dialog again
+        self.assertIn("Не нашёл стрим", tg.sent[-1][1])
+        cb("rej:" + wid)
+        self.assertIn("Отклонено", tg.sent[-2][1])
+        self.assertIn("отклонил", tg.sent[-1][1])
+        self.assertEqual(call("/game/poll", {}, self.key)[1]["cancel"], [wid])
+        self.assertEqual(call("/game/poll", {}, self.key)[1]["cancel"], [])
+
+    def test_riddle_played(self):
+        word = self.start()
+        key = self.get_key(word)
+        call("/game/key", {"key": key, "tiktok_id": "vorobey", "tiktok_name": "воробей"}, self.key)
+        link = call("/game/host_code", {}, self.key)[1]["link"]
+        call("/tg", msg("/start " + link.split("start=")[1], uid=5))
+        call("/tg", {"callback_query": {"id": "c", "from": {"id": 5}, "data": "pick:vorobey",
+                                        "message": {"chat": {"id": 5}, "message_id": 1}}})
+        call("/tg", msg("огурец"))
+        wid = call("/game/poll", {}, self.key)[1]["words"][0]["id"]
+        call("/game/poll", {"results": [{"id": wid, "ok": True, "word": "огурец", "round": 3}]}, self.key)
+        call("/game/poll", {"played": [wid]}, self.key)
+        self.assertIn("загадано прямо сейчас", tg.sent[-1][1])
 
     def test_auth(self):
         self.assertEqual(call("/game/stream/start", {}, "nope")[0], 401)

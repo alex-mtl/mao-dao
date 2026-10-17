@@ -18,7 +18,7 @@ import os
 import time
 from html import escape as html_escape
 
-from . import store, texts, tg
+from . import riddle, store, texts, tg
 from .words import pick_word, norm
 
 KEY_TTL = 15 * 60
@@ -68,6 +68,7 @@ def on_message(msg, now=None):
             return [(chat, t("owner_bad"))]
         store.delete("HOSTCODE#" + code)
         store.put("OWNER#" + h["game"], {"chat": chat, "tg": tg_id})
+        store.put("HOSTOF#" + tg_id, {"game": h["game"]})
         print(f"host of {h['game']}: tg {tg_id}")
         who = " ".join(filter(None, [user.get("first_name"), user.get("last_name"),
                                      "@" + user["username"] if user.get("username") else ""]))
@@ -76,6 +77,11 @@ def on_message(msg, now=None):
             if a != chat:
                 out.append((a, t("owner_new", game=h["game"], who=html_escape(who or tg_id), tg=tg_id)))
         return out
+    if riddle.is_command(text):                                 # the host: "загадывает [nick]"
+        return riddle.host_command(chat, tg_id, text)
+    ask = store.get("ASK#" + tg_id)
+    if ask and not text.startswith("/"):                       # the viewer answers the host's question
+        return riddle.viewer_word(ask, chat, tg_id, text)
     if text.startswith("/start") or text.startswith("/help"):
         store.delete("FLOW#" + tg_id)
         return [(chat, texts.TEXT[lang_of(DEFAULT_LANG)]["start"])]
@@ -179,6 +185,7 @@ def game_key(game, body, now=None):
             "tg_name": p["tg_name"], "tg_full": p.get("tg_full", ""), "game": game["id"], "at": int(now)}
     store.put("TT#" + who, link)
     store.put("TG#" + p["tg"], link)
+    riddle.add_game_user(game["id"], link)
     tg.send(p["chat"], t("done", tt=who))
     owner = store.get("OWNER#" + game["id"])                    # the streamer: links in their game
     admins = (store.get("SUPERADMINS") or {}).get("chats", [])  # the bot's owner: links in every game
@@ -217,7 +224,8 @@ def host_code(game, body, now=None):
 
 
 GAME_ROUTES = {"/game/stream/start": stream_start, "/game/stream/stop": stream_stop,
-               "/game/key": game_key, "/game/push": game_push, "/game/host_code": host_code}
+               "/game/key": game_key, "/game/push": game_push, "/game/host_code": host_code,
+               "/game/poll": riddle.game_poll}
 
 
 # ---------------------------------------------------------------- Lambda entry
@@ -245,7 +253,7 @@ def admin(event):
         return {"ok": True, "tg": u["tg"]}
     if action == "set_webhook":                      # {"action":"set_webhook","url":"https://...lambda-url.../tg"}
         return tg.call("setWebhook", url=event["url"], secret_token=tg.webhook_secret(),
-                       allowed_updates=["message"], drop_pending_updates=True)
+                       allowed_updates=["message", "callback_query"], drop_pending_updates=True)
     return {"error": "unknown action"}
 
 
@@ -265,8 +273,10 @@ def lambda_handler(event, context):
         if headers.get("x-telegram-bot-api-secret-token") != tg.webhook_secret():
             return reply(403, {"error": "forbidden"})
         if body.get("message"):
-            for chat, text in on_message(body["message"]):
-                tg.send(chat, text)
+            for out in on_message(body["message"]):
+                tg.send(*out)                                   # (chat, text) or (chat, text, buttons)
+        elif body.get("callback_query"):
+            riddle.on_callback(body["callback_query"])
         return reply(200, {"ok": True})
     route = GAME_ROUTES.get(path)
     if route:
