@@ -78,7 +78,6 @@ def on_message(msg, now=None):
                                             "lang": lang, "tg_name": user.get("username") or user.get("first_name") or ""},
               ttl=now + KEY_TTL)
     store.delete("FLOW#" + tg_id)
-    print(f"key for tg {tg_id} -> @{tt} on {flow['game']}")
     return [(chat, t("key", tt=tt, key=key))]
 
 
