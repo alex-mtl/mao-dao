@@ -27,6 +27,7 @@ Telegram-бот, который связывает Telegram зрителя с е
 `{"action":"add_game","id":"mao","lang":"ru"}` (ключ показывается один раз), `{"action":"set_webhook","url":"…/tg"}`.
 
 ## AWS (бесплатный уровень, аккаунт из aws-for-claude, us-east-1)
+- Адрес: https://d3hnpgbwbdwmqk5nbndwjnn4zq0fbewk.lambda-url.us-east-1.on.aws/ , бот @maotiktok_26_bot. Деплой кода: `./deploy.sh`; AWS CLI: `./aws.sh <args>`.
 - Lambda `tiktok-tg-bot` (Python 3.12, без зависимостей, 128 МБ) + Function URL (AuthType NONE, проверка внутри).
 - DynamoDB таблица `tiktok-tg-bot`: ключ `pk` (S), **PROVISIONED 1/1** (в always-free 25/25), TTL по атрибуту `ttl`.
 - SSM Parameter Store (Standard, бесплатно): `/tiktok-tg-bot/token`, `/tiktok-tg-bot/webhook-secret` (SecureString).
