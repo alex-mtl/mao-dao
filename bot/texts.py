@@ -14,8 +14,9 @@ TEXT = {
         "done": "✅ Готово! Аккаунт <b>@{tt}</b> подтверждён.",
         "wrong": "Ключ отправил аккаунт <b>@{who}</b>, а ты указал <b>@{tt}</b>. Отправь ключ в чат стрима "
                  "со своего аккаунта <b>@{tt}</b>.",
-        "owner_ok": "👑 Ты владелец игры <b>{game}</b>: буду присылать сюда каждую привязку зрителей.",
-        "owner_bad": "Код владельца не подошёл или истёк.",
+        "owner_ok": "👑 Ты ведущий стрима <b>{word}</b>: буду присылать сюда каждую привязку зрителей.",
+        "owner_new": "👑 У игры <b>{game}</b> новый ведущий: <a href=\"tg://user?id={tg}\">{who}</a>",
+        "owner_bad": "Ссылка ведущего не подошла или истекла (действует 10 минут). Возьми новую в меню игры.",
         "superadmin": "🛡 Ты суперадмин бота: буду присылать сюда каждую привязку во всех играх.",
     },
     "en": {
@@ -31,8 +32,9 @@ TEXT = {
         "done": "✅ Done! Account <b>@{tt}</b> confirmed.",
         "wrong": "The key was sent by <b>@{who}</b>, but you gave <b>@{tt}</b>. Send the key in the stream chat "
                  "from your account <b>@{tt}</b>.",
-        "owner_ok": "👑 You own the game <b>{game}</b>: every viewer link will be reported here.",
-        "owner_bad": "The owner code is wrong or expired.",
+        "owner_ok": "👑 You are the host of the stream <b>{word}</b>: every viewer link will be reported here.",
+        "owner_new": "👑 The game <b>{game}</b> has a new host: <a href=\"tg://user?id={tg}\">{who}</a>",
+        "owner_bad": "The host link is wrong or expired (valid 10 minutes). Get a new one in the game menu.",
         "superadmin": "🛡 You are the bot's superadmin: every link in every game will be reported here.",
     },
 }

@@ -16,6 +16,7 @@ import hashlib
 import json
 import os
 import time
+from html import escape as html_escape
 
 from . import store, texts, tg
 from .words import pick_word, norm
@@ -60,15 +61,21 @@ def on_message(msg, now=None):
         return []
     t = lambda k, **kw: texts.TEXT[lang][k].format(**kw)
     remember_user(user, chat)
-    if text.startswith("/owner"):                               # streamer: "/owner CODE" (admin invoke owner_code)
-        code = text[6:].strip()
-        o = store.get("OWNERCODE#" + code) if code else None
-        if not o:
+    if text.startswith("/start host_"):                         # the streamer opened the link from their game's menu
+        code = text[len("/start host_"):].strip()
+        h = store.get("HOSTCODE#" + code) if code else None
+        if not h:
             return [(chat, t("owner_bad"))]
-        store.delete("OWNERCODE#" + code)
-        store.put("OWNER#" + o["game"], {"chat": chat, "tg": tg_id})
-        print(f"owner of {o['game']}: tg {tg_id}")
-        return [(chat, t("owner_ok", game=o["game"]))]
+        store.delete("HOSTCODE#" + code)
+        store.put("OWNER#" + h["game"], {"chat": chat, "tg": tg_id})
+        print(f"host of {h['game']}: tg {tg_id}")
+        who = " ".join(filter(None, [user.get("first_name"), user.get("last_name"),
+                                     "@" + user["username"] if user.get("username") else ""]))
+        out = [(chat, t("owner_ok", word=(h.get("word") or h["game"]).upper()))]
+        for a in (store.get("SUPERADMINS") or {}).get("chats", []):
+            if a != chat:
+                out.append((a, t("owner_new", game=h["game"], who=html_escape(who or tg_id), tg=tg_id)))
+        return out
     if text.startswith("/start") or text.startswith("/help"):
         store.delete("FLOW#" + tg_id)
         return [(chat, texts.TEXT[lang_of(DEFAULT_LANG)]["start"])]
@@ -197,8 +204,20 @@ def game_push(game, body):
     return 200, {"ok": True, "sent": True}
 
 
+HOST_CODE_TTL = 10 * 60
+
+
+def host_code(game, body, now=None):
+    """One-time link for the game's menu: whoever opens it in the messenger becomes the game's host (owner).
+    Proof of being the host = access to the game itself (only it has the game key)."""
+    now = now or time.time()
+    code = base64.urlsafe_b64encode(os.urandom(6)).decode()
+    store.put("HOSTCODE#" + code, {"game": game["id"], "word": game.get("word", "")}, ttl=now + HOST_CODE_TTL)
+    return 200, {"link": f"https://t.me/{tg.bot_name()}?start=host_{code}", "ttl": HOST_CODE_TTL}
+
+
 GAME_ROUTES = {"/game/stream/start": stream_start, "/game/stream/stop": stream_stop,
-               "/game/key": game_key, "/game/push": game_push}
+               "/game/key": game_key, "/game/push": game_push, "/game/host_code": host_code}
 
 
 # ---------------------------------------------------------------- Lambda entry
@@ -215,10 +234,6 @@ def admin(event):
         h = hashlib.sha256(key.encode()).hexdigest()
         store.put("GAME#" + h, {"id": event["id"], "pk_hash": h, "lang": event.get("lang", "ru")})
         return {"id": event["id"], "game_key": key}  # shown once, goes to the game's .env
-    if action == "owner_code":                       # {"action":"owner_code","game":"mao"} -> the streamer sends it
-        code = base64.urlsafe_b64encode(os.urandom(6)).decode()
-        store.put("OWNERCODE#" + code, {"game": event["game"]}, ttl=time.time() + 24 * 3600)
-        return {"command": "/owner " + code}
     if action == "set_superadmin":                   # {"action":"set_superadmin","username":"x"}: wrote to the bot before
         u = store.get("USER#" + event["username"].lstrip("@").lower())
         if not u:

@@ -67,16 +67,23 @@ class BotTest(unittest.TestCase):
         self.assertIn("Не нашёл", tg.sent[-1][1])
 
     def test_owner_and_superadmin_get_every_link(self):
-        cmd = handler.admin({"action": "owner_code", "game": "mao"})["command"]
-        call("/tg", msg(cmd, uid=1))
-        self.assertIn("владелец", tg.sent[-1][1])
-        call("/tg", msg(cmd, uid=2))
-        self.assertIn("не подошёл", tg.sent[-1][1])                # one-time code
         self.assertIn("error", handler.admin({"action": "set_superadmin", "username": "boss"}))
         call("/tg", {"message": {"chat": {"id": 9}, "from": {"id": 9, "username": "Boss"}, "text": "привет"}})
         self.assertTrue(handler.admin({"action": "set_superadmin", "username": "@boss"})["ok"])
         self.assertIn("суперадмин", tg.sent[-1][1])
-        key = self.get_key(self.start())
+        word = self.start()
+        self.assertEqual(call("/game/host_code", {}, "nope")[0], 401)
+        link = call("/game/host_code", {}, self.key)[1]["link"]
+        self.assertTrue(link.startswith("https://t.me/test_bot?start=host_"))
+        cmd = "/start " + link.split("start=")[1]                  # what the messenger sends on opening the link
+        tg.sent.clear()
+        call("/tg", msg(cmd, uid=1))
+        self.assertIn("ведущий стрима <b>" + word.upper(), tg.sent[0][1])
+        self.assertEqual(tg.sent[1][0], 9)                           # the superadmin hears about the new host
+        self.assertIn("новый ведущий", tg.sent[1][1])
+        call("/tg", msg(cmd, uid=2))
+        self.assertIn("не подошла", tg.sent[-1][1])                 # one-time
+        key = self.get_key(word)
         tg.sent.clear()
         call("/game/key", {"key": key, "tiktok_id": "vorobey", "tiktok_name": "воробей"}, self.key)
         self.assertEqual([c for c, _ in tg.sent], [7, 1, 9])          # viewer, streamer, superadmin
