@@ -12,6 +12,9 @@ TEXT = {
         "key": "Отлично, <b>@{tt}</b>! Скопируй ключ и напиши его в чат стрима:\n\n<code>{key}</code>\n\n"
                "Ключ действует 15 минут.",
         "done": "✅ Готово! Telegram связан с TikTok <b>@{tt}</b>.",
+        "owner_ok": "👑 Ты владелец игры <b>{game}</b>: буду присылать сюда каждую привязку зрителей.",
+        "owner_bad": "Код владельца не подошёл или истёк.",
+        "superadmin": "🛡 Ты суперадмин бота: буду присылать сюда каждую привязку во всех играх.",
         "wrong": "Ключ написал аккаунт <b>@{who}</b>, а ты указал <b>@{tt}</b>. Напиши ключ в чат "
                  "со своего аккаунта <b>@{tt}</b>.",
     },
@@ -28,6 +31,9 @@ TEXT = {
         "key": "Great, <b>@{tt}</b>! Copy the key and type it in the stream chat:\n\n<code>{key}</code>\n\n"
                "The key is valid for 15 minutes.",
         "done": "✅ Done! Your Telegram is linked to TikTok <b>@{tt}</b>.",
+        "owner_ok": "👑 You own the game <b>{game}</b>: every viewer link will be reported here.",
+        "owner_bad": "The owner code is wrong or expired.",
+        "superadmin": "🛡 You are the bot's superadmin: every link in every game will be reported here.",
         "wrong": "The key was typed by <b>@{who}</b>, but you gave <b>@{tt}</b>. Type the key in the chat "
                  "from your account <b>@{tt}</b>.",
     },

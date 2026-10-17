@@ -11,7 +11,7 @@ def call(path, body, key=None):
 
 
 def msg(text, uid=7):
-    return {"message": {"chat": {"id": uid}, "from": {"id": uid, "username": "vasya"}, "text": text}}
+    return {"message": {"chat": {"id": uid}, "from": {"id": uid, "username": "vasya", "first_name": "Вася"}, "text": text}}
 
 
 class BotTest(unittest.TestCase):
@@ -65,6 +65,33 @@ class BotTest(unittest.TestCase):
         call("/game/stream/stop", {}, self.key)
         call("/tg", msg(word))
         self.assertIn("Не нашёл", tg.sent[-1][1])
+
+    def test_owner_and_superadmin_get_every_link(self):
+        cmd = handler.admin({"action": "owner_code", "game": "mao"})["command"]
+        call("/tg", msg(cmd, uid=1))
+        self.assertIn("владелец", tg.sent[-1][1])
+        call("/tg", msg(cmd, uid=2))
+        self.assertIn("не подошёл", tg.sent[-1][1])                # one-time code
+        self.assertIn("error", handler.admin({"action": "set_superadmin", "username": "boss"}))
+        call("/tg", {"message": {"chat": {"id": 9}, "from": {"id": 9, "username": "Boss"}, "text": "привет"}})
+        self.assertTrue(handler.admin({"action": "set_superadmin", "username": "@boss"})["ok"])
+        self.assertIn("суперадмин", tg.sent[-1][1])
+        key = self.get_key(self.start())
+        tg.sent.clear()
+        call("/game/key", {"key": key, "tiktok_id": "vorobey", "tiktok_name": "воробей"}, self.key)
+        self.assertEqual([c for c, _ in tg.sent], [7, 1, 9])          # viewer, streamer, superadmin
+        for part in ("@vorobey", "воробей", "@vasya", "Вася", "mao"):
+            self.assertIn(part, tg.sent[-1][1])
+
+    def test_key_with_dash(self):
+        real = handler.os.urandom
+        handler.os.urandom = lambda n: bytes.fromhex("fbefbe") * (n // 3)    # base64 "----"
+        try:
+            key = self.get_key(self.start())
+        finally:
+            handler.os.urandom = real
+        self.assertEqual(key, "ключ-тг---------")
+        self.assertTrue(call("/game/key", {"key": key, "tiktok_id": "vorobey"}, self.key)[1]["ok"])
 
     def test_auth(self):
         self.assertEqual(call("/game/stream/start", {}, "nope")[0], 401)

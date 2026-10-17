@@ -25,8 +25,11 @@ FLOW_TTL = 60 * 60
 STREAM_TTL = 12 * 3600       # a stream the game forgot to stop expires by itself
 
 
+KEY_PREFIX = "ключ-тг-"
+
+
 def new_key():
-    return "ключ-тг-" + base64.urlsafe_b64encode(os.urandom(6)).decode()
+    return KEY_PREFIX + base64.urlsafe_b64encode(os.urandom(6)).decode()
 
 
 def parse_tiktok(text):
@@ -52,6 +55,16 @@ def on_message(msg, now=None):
     if not chat or not text:
         return []
     t = lambda k, **kw: texts.TEXT[lang][k].format(**kw)
+    remember_user(user, chat)
+    if text.startswith("/owner"):                               # streamer: "/owner CODE" (admin invoke owner_code)
+        code = text[6:].strip()
+        o = store.get("OWNERCODE#" + code) if code else None
+        if not o:
+            return [(chat, t("owner_bad"))]
+        store.delete("OWNERCODE#" + code)
+        store.put("OWNER#" + o["game"], {"chat": chat, "tg": tg_id})
+        print(f"owner of {o['game']}: tg {tg_id}")
+        return [(chat, t("owner_ok", game=o["game"]))]
     if text.startswith("/start") or text.startswith("/help"):
         store.delete("FLOW#" + tg_id)
         return [(chat, t("start"))]
@@ -74,11 +87,22 @@ def on_message(msg, now=None):
         store.delete("FLOW#" + tg_id)
         return [(chat, t("no_stream", word=flow["word"]))]
     key = new_key()
-    store.put("KEY#" + key.split("-")[-1], {"tg": tg_id, "chat": chat, "tiktok_id": tt, "game": flow["game"],
-                                            "lang": lang, "tg_name": user.get("username") or user.get("first_name") or ""},
+    store.put("KEY#" + key[len(KEY_PREFIX):], {"tg": tg_id, "chat": chat, "tiktok_id": tt, "game": flow["game"],
+                                            "lang": lang, "tg_name": user.get("username") or "",
+                                            "tg_full": " ".join(filter(None, [user.get("first_name"), user.get("last_name")]))},
               ttl=now + KEY_TTL)
     store.delete("FLOW#" + tg_id)
     return [(chat, t("key", tt=tt, key=key))]
+
+
+def remember_user(user, chat):
+    """@username -> Telegram id, so the bot's owner can be made superadmin by username (admin invoke)."""
+    name = (user.get("username") or "").lower()
+    if name:
+        rec = {"tg": str(user.get("id", chat)), "chat": chat}
+        cur = store.get("USER#" + name)
+        if not cur or cur.get("tg") != rec["tg"] or cur.get("chat") != chat:
+            store.put("USER#" + name, rec)
 
 
 def live_stream(word, now):
@@ -111,6 +135,8 @@ def stream_start(game, body, now=None):
     else:
         store.put("WORD#" + word, {"game": gid}, ttl=now + STREAM_TTL)
     game["word"] = word
+    if body.get("tiktok"):
+        game["tiktok"] = body["tiktok"].lstrip("@").lower()
     store.put("GAME#" + game["pk_hash"], game)
     return 200, {"word": word, "bot": tg.bot_name()}
 
@@ -139,12 +165,24 @@ def game_key(game, body, now=None):
     store.delete("KEY#" + m.group(1))
     first = store.get("TT#" + who) is None
     link = {"tg": p["tg"], "chat": p["chat"], "tiktok_id": who, "tiktok_name": body.get("tiktok_name", ""),
-            "tg_name": p["tg_name"], "game": game["id"], "at": int(now)}
+            "tg_name": p["tg_name"], "tg_full": p.get("tg_full", ""), "game": game["id"], "at": int(now)}
     store.put("TT#" + who, link)
     store.put("TG#" + p["tg"], link)
     tg.send(p["chat"], t("done", tt=who))
+    owner = store.get("OWNER#" + game["id"])                    # the streamer: links in their game
+    admins = (store.get("SUPERADMINS") or {}).get("chats", [])  # the bot's owner: links in every game
+    for chat in dict.fromkeys(([owner["chat"]] if owner else []) + admins):
+        tg.send(chat, owner_note(link, first))
     print(f"linked tg {p['tg']} <-> @{who} via {game['id']}")
     return 200, {"ok": True, "linked": True, "first": first}
+
+
+def owner_note(link, first):
+    from html import escape as e
+    tgn = " ".join(filter(None, [e(link.get("tg_full", "")), "@" + e(link["tg_name"]) if link["tg_name"] else ""]))
+    return (f"📲 {'Новая привязка' if first else 'Повторная привязка'} · {e(link['game'])}\n"
+            f"TikTok: <b>@{e(link['tiktok_id'])}</b> ({e(link['tiktok_name'])})\n"
+            f"Telegram: <a href=\"tg://user?id={link['tg']}\">{tgn or link['tg']}</a>")
 
 
 def game_push(game, body):
@@ -173,6 +211,19 @@ def admin(event):
         h = hashlib.sha256(key.encode()).hexdigest()
         store.put("GAME#" + h, {"id": event["id"], "pk_hash": h, "lang": event.get("lang", "ru")})
         return {"id": event["id"], "game_key": key}  # shown once, goes to the game's .env
+    if action == "owner_code":                       # {"action":"owner_code","game":"mao"} -> the streamer sends it
+        code = base64.urlsafe_b64encode(os.urandom(6)).decode()
+        store.put("OWNERCODE#" + code, {"game": event["game"]}, ttl=time.time() + 24 * 3600)
+        return {"command": "/owner " + code}
+    if action == "set_superadmin":                   # {"action":"set_superadmin","username":"x"}: wrote to the bot before
+        u = store.get("USER#" + event["username"].lstrip("@").lower())
+        if not u:
+            return {"error": "this username hasn't written to the bot"}
+        admins = (store.get("SUPERADMINS") or {}).get("chats", [])
+        if u["chat"] not in admins:
+            store.put("SUPERADMINS", {"chats": admins + [u["chat"]]})
+        tg.send(u["chat"], texts.TEXT["ru"]["superadmin"])
+        return {"ok": True, "tg": u["tg"]}
     if action == "set_webhook":                      # {"action":"set_webhook","url":"https://...lambda-url.../tg"}
         return tg.call("setWebhook", url=event["url"], secret_token=tg.webhook_secret(),
                        allowed_updates=["message"], drop_pending_updates=True)
