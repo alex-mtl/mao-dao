@@ -113,6 +113,9 @@ class BotTest(unittest.TestCase):
         call("/tg", msg("Загадывает вороб", uid=5))
         chat, kb = tg.markups[-1]
         self.assertEqual(kb["inline_keyboard"][0][0]["callback_data"], "pick:vorobey")
+        tg.markups.clear()
+        call("/tg", msg("загадывает @Vasya", uid=5))                 # the viewer's messenger nick works too
+        self.assertEqual(tg.markups[-1][1]["inline_keyboard"][0][0]["callback_data"], "pick:vorobey")
         call("/tg", msg("загадывает сокол", uid=5))
         self.assertIn("Не нашёл", tg.sent[-1][1])
         cb = lambda data: call("/tg", {"callback_query": {"id": "c", "from": {"id": 5}, "data": data,

@@ -50,7 +50,8 @@ def host_command(chat, tg_id, text):
         return [(chat, TEXT["not_host"])]
     q = norm(text)[len("загадывает"):].strip().lstrip("@")
     users = (store.get("GAMEUSERS#" + game) or {}).get("users", {})
-    found = [(tt, u) for tt, u in users.items() if not q or q in tt or q in norm(u.get("name", ""))]
+    found = [(tt, u) for tt, u in users.items()             # TikTok nick/name or messenger nick/name
+             if not q or any(q in norm(x) for x in (tt, u.get("name"), u.get("tg_name"), u.get("tg_full")) if x)]
     found.sort(key=lambda x: -x[1].get("at", 0))
     if not found:
         return [(chat, TEXT["pick_none"].format(q=f" по «{e(q)}»" if q else ""))]
@@ -62,7 +63,8 @@ def add_game_user(game, link):
     """called on every link: the host can pick this viewer later"""
     item = store.get("GAMEUSERS#" + game) or {"users": {}}
     item["users"][link["tiktok_id"]] = {"name": link.get("tiktok_name", ""), "tg": link["tg"], "chat": link["chat"],
-                                        "at": link["at"]}
+                                        "at": link["at"], "tg_name": link.get("tg_name", ""),
+                                        "tg_full": link.get("tg_full", "")}
     store.put("GAMEUSERS#" + game, {"users": item["users"]})
 
 
