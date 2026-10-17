@@ -40,7 +40,7 @@ class BotTest(unittest.TestCase):
         self.assertRegex(key, r"^ключ-тг-[A-Za-z0-9_-]{8}$")
         code, r = call("/game/key", {"key": "вот " + key, "tiktok_id": "Vorobey", "tiktok_name": "воробей"}, self.key)
         self.assertEqual(r, {"ok": True, "linked": True, "first": True})
-        self.assertIn("Готово", tg.sent[-1][1])
+        self.assertIn("подтверждён", tg.sent[-1][1])
         self.assertEqual(call("/game/key", {"key": key, "tiktok_id": "vorobey"}, self.key)[1]["reason"], "unknown")
         call("/game/push", {"tiktok_id": "vorobey", "text": "привет"}, self.key)
         self.assertEqual(tg.sent[-1], (7, "привет"))

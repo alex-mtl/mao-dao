@@ -1,40 +1,38 @@
+# Nothing here may ask the viewer to type the messenger's name in TikTok: TikTok may cut or filter it.
 TEXT = {
     "ru": {
-        "start": "Привет! Я свяжу твой Telegram с аккаунтом TikTok для игр на стриме.\n\n"
-                 "1️⃣ На стриме напиши в чат <b>настроить связь</b> — игра покажет <b>слово стрима</b>.\n"
-                 "2️⃣ Пришли мне это слово.",
-        "no_stream": "Не нашёл стрим в эфире со словом <b>{word}</b>. Проверь слово на экране стрима "
-                     "(напиши в чат стрима <b>настроить связь</b>). Подключиться можно только во время стрима.",
-        "ask_nick": "Стрим найден ✅ Теперь пришли свой ник в TikTok (например <code>@nickname</code>) "
-                    "или ссылку на свой профиль.",
+        "start": "Привет! Я свяжу тебя с твоим аккаунтом в TikTok, чтобы ты получал сообщения от игры на стриме.\n\n"
+                 "Напиши в чат стрима <b>настроить связь</b> — на экране появится <b>слово стрима</b>. "
+                 "Пришли это слово мне.",
+        "no_stream": "Не нашёл стрим в эфире со словом <b>{word}</b>. Проверь слово на экране стрима — "
+                     "оно появляется после команды <b>настроить связь</b> в чате.",
+        "ask_nick": "Стрим найден ✅ Пришли свой ник в TikTok (например <code>@nickname</code>) или ссылку на профиль.",
         "bad_nick": "Не понял ник. Пришли его так: <code>@nickname</code> или ссылкой "
                     "<code>https://www.tiktok.com/@nickname</code>.",
-        "key": "Отлично, <b>@{tt}</b>! Скопируй ключ и напиши его в чат стрима:\n\n<code>{key}</code>\n\n"
-               "Ключ действует 15 минут.",
-        "done": "✅ Готово! Telegram связан с TikTok <b>@{tt}</b>.",
+        "key": "Твой ключ:\n\n<code>{key}</code>\n\nСкопируй и отправь его в чат стрима со своего аккаунта "
+               "<b>@{tt}</b>. Ключ действует 15 минут.",
+        "done": "✅ Готово! Аккаунт <b>@{tt}</b> подтверждён.",
+        "wrong": "Ключ отправил аккаунт <b>@{who}</b>, а ты указал <b>@{tt}</b>. Отправь ключ в чат стрима "
+                 "со своего аккаунта <b>@{tt}</b>.",
         "owner_ok": "👑 Ты владелец игры <b>{game}</b>: буду присылать сюда каждую привязку зрителей.",
         "owner_bad": "Код владельца не подошёл или истёк.",
         "superadmin": "🛡 Ты суперадмин бота: буду присылать сюда каждую привязку во всех играх.",
-        "wrong": "Ключ написал аккаунт <b>@{who}</b>, а ты указал <b>@{tt}</b>. Напиши ключ в чат "
-                 "со своего аккаунта <b>@{tt}</b>.",
     },
     "en": {
-        "start": "Hi! I link your Telegram to your TikTok account for the stream games.\n\n"
-                 "1️⃣ On the stream type <b>link telegram</b> in the chat - the game shows the <b>stream word</b>.\n"
-                 "2️⃣ Send me that word.",
-        "no_stream": "No live stream with the word <b>{word}</b>. Check the word on the stream "
-                     "(type <b>link telegram</b> in its chat). You can link only during the stream.",
-        "ask_nick": "Stream found ✅ Now send your TikTok username (like <code>@nickname</code>) "
-                    "or a link to your profile.",
+        "start": "Hi! I connect you with your TikTok account so you get messages from the stream game.\n\n"
+                 "Type <b>link up</b> in the stream chat - the <b>stream word</b> appears on screen. Send me that word.",
+        "no_stream": "No live stream with the word <b>{word}</b>. Check the word on the stream screen - "
+                     "it appears after the <b>link up</b> command in the chat.",
+        "ask_nick": "Stream found ✅ Send your TikTok username (like <code>@nickname</code>) or a link to your profile.",
         "bad_nick": "I didn't get the username. Send it like <code>@nickname</code> or "
                     "<code>https://www.tiktok.com/@nickname</code>.",
-        "key": "Great, <b>@{tt}</b>! Copy the key and type it in the stream chat:\n\n<code>{key}</code>\n\n"
-               "The key is valid for 15 minutes.",
-        "done": "✅ Done! Your Telegram is linked to TikTok <b>@{tt}</b>.",
+        "key": "Your key:\n\n<code>{key}</code>\n\nCopy it and send it in the stream chat from your account "
+               "<b>@{tt}</b>. The key is valid for 15 minutes.",
+        "done": "✅ Done! Account <b>@{tt}</b> confirmed.",
+        "wrong": "The key was sent by <b>@{who}</b>, but you gave <b>@{tt}</b>. Send the key in the stream chat "
+                 "from your account <b>@{tt}</b>.",
         "owner_ok": "👑 You own the game <b>{game}</b>: every viewer link will be reported here.",
         "owner_bad": "The owner code is wrong or expired.",
         "superadmin": "🛡 You are the bot's superadmin: every link in every game will be reported here.",
-        "wrong": "The key was typed by <b>@{who}</b>, but you gave <b>@{tt}</b>. Type the key in the chat "
-                 "from your account <b>@{tt}</b>.",
     },
 }

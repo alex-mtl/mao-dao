@@ -39,8 +39,11 @@ def parse_tiktok(text):
     return m.group(1).lower() if m else None
 
 
-def lang_of(user):
-    return "en" if ((user or {}).get("language_code") or "ru")[:2] == "en" else "ru"
+DEFAULT_LANG = os.getenv("DEFAULT_LANG", "ru")   # until the stream is known; then the game's language
+
+
+def lang_of(game_lang):
+    return game_lang if game_lang in texts.TEXT else "en"
 
 
 # ---------------------------------------------------------------- telegram dialog
@@ -50,7 +53,8 @@ def on_message(msg, now=None):
     chat = (msg.get("chat") or {}).get("id")
     user = msg.get("from") or {}
     tg_id = str(user.get("id", chat))
-    lang = lang_of(user)
+    flow = store.get("FLOW#" + tg_id) or {"step": "word"}
+    lang = lang_of(flow.get("lang", DEFAULT_LANG))
     text = (msg.get("text") or "").strip()
     if not chat or not text:
         return []
@@ -67,14 +71,14 @@ def on_message(msg, now=None):
         return [(chat, t("owner_ok", game=o["game"]))]
     if text.startswith("/start") or text.startswith("/help"):
         store.delete("FLOW#" + tg_id)
-        return [(chat, t("start"))]
-    flow = store.get("FLOW#" + tg_id) or {"step": "word"}
+        return [(chat, texts.TEXT[lang_of(DEFAULT_LANG)]["start"])]
     if flow["step"] == "word":
         word, _, rest = text.partition(" ")                     # "маринад @nick" in one message works too
         stream = live_stream(norm(word), now)
         if not stream:
             return [(chat, t("no_stream", word=word))]
-        flow = {"step": "nick", "word": norm(word), "game": stream["game"]}
+        lang = lang_of(stream.get("lang", DEFAULT_LANG))
+        flow = {"step": "nick", "word": norm(word), "game": stream["game"], "lang": lang}
         store.put("FLOW#" + tg_id, flow, ttl=now + FLOW_TTL)
         if not rest.strip():
             return [(chat, t("ask_nick"))]
@@ -127,13 +131,13 @@ def stream_start(game, body, now=None):
         word = None
         for _ in range(20):
             w = pick_word(game.get("lang", "ru"))
-            if store.claim("WORD#" + w, {"game": gid}, ttl=now + STREAM_TTL, now=now):
+            if store.claim("WORD#" + w, {"game": gid, "lang": game.get("lang", "ru")}, ttl=now + STREAM_TTL, now=now):
                 word = w
                 break
         if not word:
             return 503, {"error": "no free word"}
     else:
-        store.put("WORD#" + word, {"game": gid}, ttl=now + STREAM_TTL)
+        store.put("WORD#" + word, {"game": gid, "lang": game.get("lang", "ru")}, ttl=now + STREAM_TTL)
     game["word"] = word
     if body.get("tiktok"):
         game["tiktok"] = body["tiktok"].lstrip("@").lower()
