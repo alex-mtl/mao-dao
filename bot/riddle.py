@@ -1,13 +1,18 @@
-""""загадывает": the host lets a linked viewer pick the secret word of a coming round.
+"""Words viewers pick for the guess game. The host always decides: nothing goes into a round without ✅.
 
-  host:   "загадывает [part of a nick]" -> buttons with the game's linked viewers -> taps one
-  viewer: gets a question, replies with one word (10 minutes)
-  game:   polls /game/poll every ~10 s: takes new words, checks them in its dictionary, puts good ones in its
-          queue and answers with the round number (or "not in the dictionary")
-  bot:    tells the viewer and the host; the host sees the word with a "❌ отклонить" button
+  a word comes two ways:
+    viewer: "/zagadka" (menu) or "загадка" -> the bot asks for a word (only viewers linked to a game)
+    host:   "загадывает [part of a nick]" or "/pick" -> buttons with the game's linked viewers -> the bot asks one
+  viewer: replies with one word (10 minutes)
+  game:   polls /game/poll every ~10 s: checks new words in its dictionary (action "check")
+  host:   gets "X предлагает слово ..." with ✅ принять / ❌ отклонить; a press deletes the message (popup instead)
+  game:   ✅ -> on the next poll puts the word in its queue (action "queue") and answers with the round number
+  viewer: is told the round (or "not in the dictionary" / "rejected")
 
 pk: HOSTOF#<tg id> -> game the user hosts; GAMEUSERS#<game> -> linked viewers; ASK#<tg id> -> open question;
-PEND#<game> -> words on their way: state new (not yet given to the game) | sent | queued | cancel."""
+PEND#<game> -> words on their way, state:
+  new -> sent (being checked) -> checked (waits for the host) -> approved -> queuing -> queued -> (played: gone)
+  cancel: rejected after it reached the game's queue (old messages) -> the game drops it."""
 
 import base64
 import os
@@ -19,6 +24,8 @@ from .words import norm
 
 ASK_TTL = 10 * 60
 MAX_BUTTONS = 12
+POLL_VERSION = 2                # games older than this only get results, no new words
+OPEN = ("new", "sent", "checked", "approved", "queuing")
 
 TEXT = {
     "pick": "Кто загадывает слово? Выбери зрителя:",
@@ -26,10 +33,15 @@ TEXT = {
     "asked": "🎯 Спросил <b>{name}</b> (@{tt}), жду слово. Если не ответит за 10 минут — запрос отменится.",
     "ask": "🎯 Ведущий предлагает тебе загадать слово для игры на стриме!\n\nПришли одно слово "
            "(существительное, например <b>огурец</b>). Пока раунд с твоим словом идёт, твои догадки не принимаются.",
+    "ask_self": "🎯 Пришли одно слово, которое хочешь загадать (существительное, например <b>огурец</b>). "
+                "Ведущий решит, брать ли его в игру. Пока раунд с твоим словом идёт, твои догадки не принимаются.",
+    "need_link": "Сначала свяжи свой TikTok с ботом — напиши /start.",
+    "no_host": "У этой игры пока нет ведущего в боте — загадать слово нельзя.",
     "checking": "Проверяю слово «{w}»…",
-    "busy": "Твоё прошлое слово ещё проверяется, подожди немного.",
-    "queued": "✅ Слово «<b>{w}</b>» принято! Оно будет загадано в раунде <b>{round}</b>.",
-    "host_queued": "🎯 <b>{name}</b> (@{tt}) загадал «<b>{w}</b>» — раунд <b>{round}</b>.",
+    "busy": "Твоё прошлое слово ещё ждёт проверки или решения ведущего.",
+    "checked": "Слово «<b>{w}</b>» есть в словаре ✅ Жду решения ведущего.",
+    "host_word": "🎯 <b>{name}</b> (@{tt}) предлагает слово «<b>{w}</b>»",
+    "queued": "✅ Ведущий принял слово «<b>{w}</b>»! Оно будет загадано в раунде <b>{round}</b>.",
     "missing": "Слова «{w}» нет в словаре игры. Пришли другое слово.",
     "host_missing": "📕 Слово «{w}» от <b>{name}</b> (@{tt}) не найдено в словаре.",
     "rejected": "Ведущий отклонил слово «{w}».",
@@ -41,11 +53,20 @@ TEXT = {
 }
 
 
-COMMANDS = ("загадывает", "pick")           # "/pick" is the same command in the host's menu
+HOST_COMMANDS = ("загадывает", "pick")      # "/pick" is the same command in the host's menu
+VIEWER_COMMANDS = ("загадка", "zagadka")    # "/zagadka" in everyone's menu
+
+
+def first_word(text):
+    return (norm(text).split(" ", 1) or [""])[0]
 
 
 def is_command(text):
-    return (norm(text).split(" ", 1) or [""])[0] in COMMANDS
+    return first_word(text) in HOST_COMMANDS
+
+
+def is_viewer_command(text):
+    return first_word(text) in VIEWER_COMMANDS
 
 
 def host_command(chat, tg_id, text):
@@ -61,6 +82,24 @@ def host_command(chat, tg_id, text):
         return [(chat, TEXT["pick_none"].format(q=f" по «{e(q)}»" if q else ""))]
     rows = [[(f"{u.get('name') or tt} (@{tt})"[:48], "pick:" + tt)] for tt, u in found[:MAX_BUTTONS]]
     return [(chat, TEXT["pick"], tg.buttons(rows))]
+
+
+def viewer_command(chat, tg_id, now=None):
+    """a linked viewer offers a word themselves"""
+    now = now or time.time()
+    link = store.get("TG#" + tg_id)
+    if not link:
+        return [(chat, TEXT["need_link"])]
+    game = link["game"]
+    owner = store.get("OWNER#" + game)
+    if not owner:
+        return [(chat, TEXT["no_host"])]
+    if _open_item(game, tg_id):
+        return [(chat, TEXT["busy"])]
+    store.put("ASK#" + tg_id, {"game": game, "host": owner["chat"], "tt": link["tiktok_id"],
+                               "name": link.get("tiktok_name", "")}, ttl=now + ASK_TTL)
+    events.log(game, "ask_self", tt=link["tiktok_id"])
+    return [(chat, TEXT["ask_self"])]
 
 
 def add_game_user(game, link):
@@ -98,31 +137,42 @@ def on_callback(cb, now=None):
 
 
 def decide(cb, game, chat, mid, data):
-    """the host's ✅/❌ on a picked word: popup, the message disappears, the decision goes to the journal"""
+    """the host's ✅/❌ on an offered word: popup, the message disappears, the decision goes to the journal"""
     accept = data.startswith("ok:")
     wid = data.split(":", 1)[1]
     pend = store.get("PEND#" + game) or {"items": []}
     it = next((i for i in pend["items"] if i["id"] == wid), None)
-    if not accept and (not it or it["state"] == "cancel"):     # already played or rejected
+    if not it or it["state"] == "cancel" or (not accept and it["state"] not in ("checked", "approved", "queuing",
+                                                                               "queued")):
         tg.answer(cb.get("id"), TEXT["too_late"])
         tg.delete(chat, mid)
         return
-    w = it["word"].upper() if it else ""
-    if not accept:
-        it["state"] = "cancel"
-        store.put("PEND#" + game, {"items": pend["items"]})
+    w = it["word"].upper()
+    if accept:
+        if it["state"] == "checked":
+            it["state"] = "approved"                      # the game queues it on its next poll
+    elif it["state"] in ("checked", "approved"):          # never reached the game's queue
+        pend["items"].remove(it)
         tg.send(it["chat"], TEXT["rejected"].format(w=e(it["word"])))
+    else:                                                 # already in the game's queue (old messages)
+        it["state"] = "cancel"
+        tg.send(it["chat"], TEXT["rejected"].format(w=e(it["word"])))
+    store.put("PEND#" + game, {"items": pend["items"]})
     tg.answer(cb.get("id"), TEXT["pop_accepted" if accept else "pop_rejected"].format(w=w))
     tg.delete(chat, mid)
-    events.log(game, "word_accepted" if accept else "word_rejected", id=wid, word=it["word"] if it else "",
-               tt=it["tt"] if it else "")
+    events.log(game, "word_accepted" if accept else "word_rejected", id=wid, word=it["word"], tt=it["tt"])
+
+
+def _open_item(game, tg_id):
+    pend = store.get("PEND#" + game) or {"items": []}
+    return any(i["tg"] == tg_id and i["state"] in OPEN for i in pend["items"])
 
 
 def viewer_word(ask, chat, tg_id, text, now=None):
     """the asked viewer sent their word -> waits for the game's dictionary check"""
     game = ask["game"]
     pend = store.get("PEND#" + game) or {"items": []}
-    if any(i["tg"] == tg_id and i["state"] in ("new", "sent") for i in pend["items"]):
+    if any(i["tg"] == tg_id and i["state"] in OPEN for i in pend["items"]):
         return [(chat, TEXT["busy"])]
     word = text.strip().split()[0][:30]
     pend["items"].append({"id": base64.urlsafe_b64encode(os.urandom(6)).decode(), "word": word, "tt": ask["tt"],
@@ -133,7 +183,7 @@ def viewer_word(ask, chat, tg_id, text, now=None):
 
 
 def game_poll(game, body):
-    """the game's results for words it got, then new words and cancellations for it"""
+    """the game's results (dictionary checks, queue places, started rounds), then work for it"""
     gid = game["id"]
     pend = store.get("PEND#" + gid) or {"items": []}
     items = {i["id"]: i for i in pend["items"]}
@@ -143,14 +193,23 @@ def game_poll(game, body):
         if not it:
             continue
         changed = True
-        if r.get("ok"):
-            it.update(state="queued", word=r.get("word") or it["word"], round=r.get("round"))
+        w = e((r.get("word") or it["word"]).upper())
+        if r.get("stage") == "queue":
+            if r.get("ok"):
+                it.update(state="queued", round=r.get("round"))
+                tg.send(it["chat"], TEXT["queued"].format(w=w, round=it["round"]))
+                events.log(gid, "word_queued", tt=it["tt"], word=it["word"], round=it["round"])
+            else:                                         # e.g. the game's language changed meanwhile
+                del items[it["id"]]
+                tg.send(it["chat"], TEXT["missing"].format(w=e(it["word"])))
+                events.log(gid, "word_missing", tt=it["tt"], word=it["word"])
+        elif r.get("ok"):                                 # in the dictionary: the host decides
+            it.update(state="checked", word=r.get("word") or it["word"])
             store.delete("ASK#" + it["tg"])
-            w = e(it["word"].upper())
-            tg.send(it["chat"], TEXT["queued"].format(w=w, round=it["round"]))
-            tg.send(it["host"], TEXT["host_queued"].format(w=w, name=e(it["name"]), tt=e(it["tt"]), round=it["round"]),
+            tg.send(it["chat"], TEXT["checked"].format(w=w))
+            tg.send(it["host"], TEXT["host_word"].format(w=w, name=e(it["name"]), tt=e(it["tt"])),
                     tg.buttons([[("✅ принять", "ok:" + it["id"]), ("❌ отклонить", "rej:" + it["id"])]]))
-            events.log(gid, "word_queued", tt=it["tt"], word=it["word"], round=it["round"])
+            events.log(gid, "word_checked", tt=it["tt"], word=it["word"])
         else:
             del items[it["id"]]
             tg.send(it["chat"], TEXT["missing"].format(w=e(it["word"])))
@@ -162,14 +221,16 @@ def game_poll(game, body):
             changed = True
             tg.send(it["chat"], TEXT["played"].format(w=e(it["word"].upper()), round=it.get("round", "")))
             events.log(gid, "word_played", tt=it["tt"], word=it["word"], round=it.get("round"))
-    words = [{"id": i["id"], "word": i["word"], "tiktok_id": i["tt"], "name": i["name"]}
-             for i in items.values() if i["state"] == "new"]
+    words = []
+    if (body.get("v") or 1) >= POLL_VERSION:
+        for i in items.values():
+            if i["state"] in ("new", "approved"):
+                words.append({"id": i["id"], "word": i["word"], "tiktok_id": i["tt"], "name": i["name"],
+                              "action": "check" if i["state"] == "new" else "queue"})
+                i["state"] = "sent" if i["state"] == "new" else "queuing"
     cancel = [i["id"] for i in items.values() if i["state"] == "cancel"]
-    for i in list(items.values()):
-        if i["state"] == "new":
-            i["state"] = "sent"
-        elif i["state"] == "cancel":
-            del items[i["id"]]                  # the game removes it now
+    for cid in cancel:
+        del items[cid]                                    # the game drops it now
     if changed or words or cancel:
         store.put("PEND#" + gid, {"items": list(items.values())})
     return 200, {"words": words, "cancel": cancel}

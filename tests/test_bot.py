@@ -103,86 +103,111 @@ class BotTest(unittest.TestCase):
         self.assertEqual(key, "ключ-тг---------")
         self.assertTrue(call("/game/key", {"key": key, "tiktok_id": "vorobey"}, self.key)[1]["ok"])
 
-    def test_riddle_cycle(self):
-        word = self.start()
-        key = self.get_key(word)                                     # viewer vorobey (tg 7) links
-        call("/game/key", {"key": key, "tiktok_id": "vorobey", "tiktok_name": "воробей"}, self.key)
-        call("/tg", msg("загадывает", uid=5))
-        self.assertIn("только для ведущего", tg.sent[-1][1])
-        link = call("/game/host_code", {}, self.key)[1]["link"]
-        call("/tg", msg("/start " + link.split("start=")[1], uid=5))   # tg 5 becomes the host
-        self.assertIn((5, {"commands": ["start", "help", "pick"]}), tg.markups)   # the host's menu
-        tg.markups.clear()
-        call("/tg", msg("Загадывает вороб", uid=5))
-        chat, kb = tg.markups[-1]
-        self.assertEqual(kb["inline_keyboard"][0][0]["callback_data"], "pick:vorobey")
-        tg.markups.clear()
-        call("/tg", msg("загадывает @Vasya", uid=5))                 # the viewer's messenger nick works too
-        self.assertEqual(tg.markups[-1][1]["inline_keyboard"][0][0]["callback_data"], "pick:vorobey")
-        tg.markups.clear()
-        call("/tg", msg("/pick вороб", uid=5))                         # the menu's synonym
-        self.assertEqual(tg.markups[-1][1]["inline_keyboard"][0][0]["callback_data"], "pick:vorobey")
-        call("/tg", msg("/help", uid=5))
-        self.assertIn("/pick", tg.sent[-1][1])                         # the host's help
-        call("/tg", msg("/help", uid=8))
-        self.assertNotIn("/pick", tg.sent[-1][1])                      # a viewer's help
-        call("/tg", msg("загадывает сокол", uid=5))
-        self.assertIn("Не нашёл", tg.sent[-1][1])
-        cb = lambda data: call("/tg", {"callback_query": {"id": "c", "from": {"id": 5}, "data": data,
-                                                          "message": {"chat": {"id": 5}, "message_id": 1}}})
-        cb("pick:vorobey")
-        self.assertEqual(tg.sent[-2][0], 7)                            # the question to the viewer
-        self.assertIn("Спросил", tg.sent[-1][1])
-        call("/tg", msg("Огурцы"))
-        self.assertIn("Проверяю", tg.sent[-1][1])
-        call("/tg", msg("ещё"))
-        self.assertIn("ещё проверяется", tg.sent[-1][1])
-        r = call("/game/poll", {}, self.key)[1]
-        self.assertEqual([w["word"] for w in r["words"]], ["Огурцы"])
-        wid = r["words"][0]["id"]
-        self.assertEqual(call("/game/poll", {}, self.key)[1], {"words": [], "cancel": []})   # given once
-        call("/game/poll", {"results": [{"id": wid, "ok": False}]}, self.key)
-        self.assertIn("нет в словаре", tg.sent[-2][1])
-        self.assertIn("не найдено", tg.sent[-1][1])
-        call("/tg", msg("огурец"))                                     # the question is still open
-        wid = call("/game/poll", {}, self.key)[1]["words"][0]["id"]
-        tg.markups.clear()
-        call("/game/poll", {"results": [{"id": wid, "ok": True, "word": "огурец", "round": 12}]}, self.key)
-        self.assertIn("раунде <b>12</b>", tg.sent[-2][1])
-        self.assertEqual(tg.markups[-1][1]["inline_keyboard"][0][1]["callback_data"], "rej:" + wid)
-        call("/tg", msg("привет"))                                     # question closed: normal dialog again
-        self.assertIn("Не нашёл стрим", tg.sent[-1][1])
-        self.assertEqual([b["callback_data"] for b in tg.markups[-1][1]["inline_keyboard"][0]], ["ok:" + wid, "rej:" + wid])
-        cb("rej:" + wid)
-        self.assertIn("отклонил", tg.sent[-1][1])                     # the viewer is told
-        self.assertIn("Отклонено", tg.answers[-1])                    # the host: a popup...
-        self.assertEqual(tg.deleted[-1], (5, 1))                      # ...and the message is gone
-        cb("rej:" + wid)
-        self.assertIn("не отменить", tg.answers[-1])
-        self.assertEqual(call("/game/poll", {}, self.key)[1]["cancel"], [wid])
-        self.assertEqual(call("/game/poll", {}, self.key)[1]["cancel"], [])
-
-    def test_riddle_played(self):
+    def host_and_viewer(self):
+        """viewer vorobey (tg 7) linked, tg 5 is the host"""
         word = self.start()
         key = self.get_key(word)
         call("/game/key", {"key": key, "tiktok_id": "vorobey", "tiktok_name": "воробей"}, self.key)
         link = call("/game/host_code", {}, self.key)[1]["link"]
         call("/tg", msg("/start " + link.split("start=")[1], uid=5))
-        call("/tg", {"callback_query": {"id": "c", "from": {"id": 5}, "data": "pick:vorobey",
-                                        "message": {"chat": {"id": 5}, "message_id": 1}}})
+        return word
+
+    def cb(self, data, mid=1):
+        call("/tg", {"callback_query": {"id": "c", "from": {"id": 5}, "data": data,
+                                        "message": {"chat": {"id": 5}, "message_id": mid}}})
+
+    def poll(self, body=None):
+        return call("/game/poll", dict(body or {}, v=2), self.key)[1]
+
+    def test_host_picks_viewer(self):
+        call("/tg", msg("загадывает", uid=5))
+        self.assertIn("только для ведущего", tg.sent[-1][1])
+        self.host_and_viewer()
+        self.assertIn((5, {"commands": ["start", "help", "zagadka", "game", "pick"]}), tg.markups)
+        for q in ("Загадывает вороб", "загадывает @Vasya", "/pick вороб"):   # nick, messenger nick, menu synonym
+            tg.markups.clear()
+            call("/tg", msg(q, uid=5))
+            self.assertEqual(tg.markups[-1][1]["inline_keyboard"][0][0]["callback_data"], "pick:vorobey", q)
+        call("/tg", msg("/help", uid=5))
+        self.assertIn("/pick", tg.sent[-1][1])                         # the host's help
+        call("/tg", msg("/help", uid=8))
+        self.assertNotIn("/pick", tg.sent[-1][1])                      # a viewer's help
+        self.assertIn("/zagadka", tg.sent[-1][1])
+        call("/tg", msg("загадывает сокол", uid=5))
+        self.assertIn("Не нашёл", tg.sent[-1][1])
+        self.cb("pick:vorobey")
+        self.assertEqual(tg.sent[-2][0], 7)                            # the question to the viewer
+        self.assertIn("Спросил", tg.sent[-1][1])
+        call("/tg", msg("Огурцы"))
+        self.assertIn("Проверяю", tg.sent[-1][1])
+        call("/tg", msg("ещё"))
+        self.assertIn("ждёт проверки", tg.sent[-1][1])
+        self.assertEqual(call("/game/poll", {}, self.key)[1]["words"], [])   # an old game gets no new words
+        r = self.poll()
+        self.assertEqual([(w["word"], w["action"]) for w in r["words"]], [("Огурцы", "check")])
+        wid = r["words"][0]["id"]
+        self.assertEqual(self.poll(), {"words": [], "cancel": []})     # given once
+        self.poll({"results": [{"id": wid, "stage": "check", "ok": False}]})
+        self.assertIn("нет в словаре", tg.sent[-2][1])
+        self.assertIn("не найдено", tg.sent[-1][1])
+        call("/tg", msg("огурец"))                                     # the question is still open
+        wid = self.poll()["words"][0]["id"]
+        tg.markups.clear()
+        self.poll({"results": [{"id": wid, "stage": "check", "ok": True, "word": "огурец"}]})
+        self.assertIn("Жду решения ведущего", tg.sent[-2][1])
+        self.assertIn("предлагает слово «<b>ОГУРЕЦ", tg.sent[-1][1])
+        self.assertEqual([b["callback_data"] for b in tg.markups[-1][1]["inline_keyboard"][0]], ["ok:" + wid, "rej:" + wid])
+        self.assertEqual(self.poll()["words"], [])                     # nothing goes to a round without the host
+        call("/tg", msg("привет"))                                     # question closed: normal dialog again
+        self.assertIn("Не нашёл стрим", tg.sent[-1][1])
+        self.cb("rej:" + wid)
+        self.assertIn("отклонил", tg.sent[-1][1])                     # the viewer is told
+        self.assertIn("Отклонено", tg.answers[-1])                    # the host: a popup...
+        self.assertEqual(tg.deleted[-1], (5, 1))                      # ...and the message is gone
+        self.assertEqual(self.poll(), {"words": [], "cancel": []})     # never reached the game
+        self.cb("rej:" + wid)
+        self.assertIn("не отменить", tg.answers[-1])
+
+    def test_viewer_offers_and_host_accepts(self):
+        call("/tg", msg("/zagadka", uid=8))
+        self.assertIn("/start", tg.sent[-1][1])                        # not linked yet
+        self.host_and_viewer()
+        call("/tg", msg("/zagadka"))
+        self.assertIn("Ведущий решит", tg.sent[-1][1])
         call("/tg", msg("огурец"))
-        wid = call("/game/poll", {}, self.key)[1]["words"][0]["id"]
-        call("/game/poll", {"results": [{"id": wid, "ok": True, "word": "огурец", "round": 3}]}, self.key)
-        cb = {"callback_query": {"id": "c", "from": {"id": 5}, "data": "ok:" + wid,
-                                 "message": {"chat": {"id": 5}, "message_id": 2}}}
-        call("/tg", cb)
+        wid = self.poll()["words"][0]["id"]
+        self.poll({"results": [{"id": wid, "stage": "check", "ok": True, "word": "огурец"}]})
+        self.cb("ok:" + wid, mid=2)
         self.assertIn("Принято: ОГУРЕЦ", tg.answers[-1])
         self.assertEqual(tg.deleted[-1], (5, 2))
-        call("/game/poll", {"played": [wid]}, self.key)
+        r = self.poll()                                               # only now the game queues it
+        self.assertEqual([(w["word"], w["action"]) for w in r["words"]], [("огурец", "queue")])
+        self.poll({"results": [{"id": wid, "stage": "queue", "ok": True, "round": 7}]})
+        self.assertIn("раунде <b>7</b>", tg.sent[-1][1])
+        call("/tg", msg("загадка"))                                    # the text synonym; a new word is fine now
+        self.assertIn("Ведущий решит", tg.sent[-1][1])
+        self.poll({"played": [wid]})
         self.assertIn("загадано прямо сейчас", tg.sent[-1][1])
         log = store.get("EVLOG#mao#" + __import__("time").strftime("%Y-%m-%d", __import__("time").gmtime()))
         self.assertEqual([x["type"] for x in log["events"]],
-                         ["link", "host", "ask", "word_sent", "word_queued", "word_accepted", "word_played"])
+                         ["link", "host", "ask_self", "word_sent", "word_checked", "word_accepted", "word_queued",
+                          "ask_self", "word_played"])
+
+    def test_switch_game(self):
+        self.host_and_viewer()
+        other = self.start(self.key2)
+        call("/tg", msg("/game"))
+        self.assertIn("Пришли слово стрима", tg.sent[-1][1])
+        call("/tg", msg("абырвалг"))
+        self.assertIn("Не нашёл", tg.sent[-1][1])
+        call("/tg", msg("игра " + other.upper()))
+        self.assertIn("Теперь ты играешь", tg.sent[-1][1])
+        self.assertEqual(store.get("TG#7")["game"], "other")
+        self.assertIn("vorobey", store.get("GAMEUSERS#other")["users"])
+        call("/tg", msg("/zagadka"))
+        self.assertIn("нет ведущего", tg.sent[-1][1])                 # the other game has no host yet
+        call("/tg", msg("/game", uid=9))
+        self.assertIn("/start", tg.sent[-1][1])                        # not linked
 
     def test_auth(self):
         self.assertEqual(call("/game/stream/start", {}, "nope")[0], 401)

@@ -28,7 +28,8 @@ STREAM_TTL = 12 * 3600       # a stream the game forgot to stop expires by itsel
 
 KEY_PREFIX = "ключ-тг-"
 # the command menu: viewers see MENU_ALL; hosts and superadmins get MENU_HOST in their own chat
-MENU_ALL = [("start", "как связать аккаунт со стримом"), ("help", "помощь")]
+MENU_ALL = [("start", "как связать аккаунт со стримом"), ("help", "помощь"),
+            ("zagadka", "загадать слово для игры"), ("game", "переключиться на другой стрим")]
 MENU_HOST = MENU_ALL + [("pick", "выбрать зрителя, который загадает слово")]
 
 
@@ -84,6 +85,11 @@ def on_message(msg, now=None):
         return out
     if riddle.is_command(text):                                 # the host: "загадывает [nick]"
         return riddle.host_command(chat, tg_id, text)
+    if riddle.is_viewer_command(text):                          # a viewer: "/zagadka", "загадка"
+        store.delete("FLOW#" + tg_id)
+        return riddle.viewer_command(chat, tg_id)
+    if riddle.first_word(text) in GAME_COMMANDS:                # "/game WORD", "игра WORD": switch streams
+        return switch_game(chat, tg_id, text, False, now)
     ask = store.get("ASK#" + tg_id)
     if ask and not text.startswith("/"):                       # the viewer answers the host's question
         return riddle.viewer_word(ask, chat, tg_id, text)
@@ -92,7 +98,10 @@ def on_message(msg, now=None):
         tx = texts.TEXT[lang_of(DEFAULT_LANG)]
         host = text.startswith("/help") and (store.get("HOSTOF#" + tg_id)
                                              or chat in (store.get("SUPERADMINS") or {}).get("chats", []))
-        return [(chat, tx["start"] + ("\n\n" + tx["help_host"] if host else ""))]
+        extra = ("\n\n" + tx["help_all"] if text.startswith("/help") else "") + ("\n\n" + tx["help_host"] if host else "")
+        return [(chat, tx["start"] + extra)]
+    if flow["step"] == "switch":                                # the stream word after a bare "/game"
+        return switch_game(chat, tg_id, text, True, now)
     if flow["step"] == "word":
         word, _, rest = text.partition(" ")                     # "маринад @nick" in one message works too
         stream = live_stream(norm(word), now)
@@ -118,6 +127,35 @@ def on_message(msg, now=None):
               ttl=now + KEY_TTL)
     store.delete("FLOW#" + tg_id)
     return [(chat, t("key", tt=tt, key=key))]
+
+
+GAME_COMMANDS = ("game", "игра")
+
+
+def switch_game(chat, tg_id, text, bare_word, now):
+    """a linked viewer moves to another stream by its stream word; the TikTok link itself stays"""
+    tx = texts.TEXT[lang_of(DEFAULT_LANG)]
+    link = store.get("TG#" + tg_id)
+    if not link:
+        store.delete("FLOW#" + tg_id)
+        return [(chat, riddle.TEXT["need_link"])]
+    words = norm(text).split()
+    word = (words[0] if bare_word else (words[1] if len(words) > 1 else "")) if words else ""
+    if not word:
+        store.put("FLOW#" + tg_id, {"step": "switch"}, ttl=now + FLOW_TTL)
+        return [(chat, tx["ask_game"])]
+    store.delete("FLOW#" + tg_id)
+    stream = live_stream(word, now)
+    if not stream:
+        return [(chat, tx["no_stream"].format(word=html_escape(word)))]
+    game = stream["game"]
+    if link.get("game") != game:
+        link["game"] = game
+        store.put("TG#" + tg_id, link)
+        store.put("TT#" + link["tiktok_id"], link)
+        riddle.add_game_user(game, link)
+        events.log(game, "switch", tt=link["tiktok_id"], tg=tg_id)
+    return [(chat, tx["game_ok"].format(word=html_escape(word.upper())))]
 
 
 def remember_user(user, chat):
