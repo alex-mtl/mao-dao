@@ -36,7 +36,7 @@ window.Live = (() => {
       }
     }
     if (opts.game && msg.active && msg.active !== opts.game) {
-      location.href = '/' + msg.active + '/' + location.search;
+      location.href = msg.active + '/' + location.search;
       return;
     }
     if (msg.game !== opts.game) return;
@@ -55,7 +55,7 @@ window.Live = (() => {
     try {
       const q = '?game=' + (opts.game || '') + (lastSeq === null ? '' : '&since=' + lastSeq) +
                 (feedSeq === null ? '' : '&fsince=' + feedSeq);
-      handle(await (await fetch('/api/state' + q, { cache: 'no-store' })).json());
+      handle(await (await fetch('api/state' + q, { cache: 'no-store' })).json());
     } catch (e) { /* server unreachable: keep last state on screen */ }
   }
 
@@ -66,7 +66,7 @@ window.Live = (() => {
   function connect() {
     if (new URLSearchParams(location.search).get('poll') === '1') { startPolling(); return; }
     try {
-      ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws');
+      ws = new WebSocket(new URL('ws', document.baseURI).href.replace(/^http/, 'ws'));   // the room's socket
     } catch (e) { startPolling(); return; }
     ws.onopen = () => { clearInterval(pollTimer); pollTimer = null; };
     ws.onmessage = ev => { try { handle(JSON.parse(ev.data)); } catch (e) { console.error(e); } };

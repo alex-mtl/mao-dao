@@ -170,7 +170,7 @@ window.AudioKit = (() => {
       (vs.map(v => v.name + ' [' + v.lang + ']').join('; ') || 'none') +
       ' | chosen: ' + (voice ? voice.name : '-') + ' | ua: ' + navigator.userAgent;
     try {
-      fetch('/api/client-log', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      fetch('api/client-log', { method: 'POST', headers: { 'Content-Type': 'application/json' },
                                  body: JSON.stringify({ page: location.pathname, msg }) });
     } catch (e) {}
   }
@@ -220,7 +220,7 @@ window.AudioKit = (() => {
   function mount(o) {
     o = o || {};
     const bar = document.createElement('div'); bar.className = 'ctl-bar';
-    bar.appendChild(btn('☰', 'ctl.menu', () => { location.href = '/'; }));
+    bar.appendChild(btn('☰', 'ctl.menu', () => { location.href = './'; }));   // the room's menu
     if (o.rules) bar.appendChild(btn('?', 'ctl.rules', o.rules));
     bar.appendChild(btn('🗣', 'ctl.voice', () => { enable(); setMuted(false); nextVoice(); }));
     muteBtn = btn('🔊', 'ctl.mute', () => { enable(); setMuted(!muted); });

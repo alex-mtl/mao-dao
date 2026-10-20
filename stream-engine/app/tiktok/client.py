@@ -37,9 +37,10 @@ def sent_at(event):
 
 
 class TikTokConnector:
-    def __init__(self, hub, username):
+    def __init__(self, hub, username, sign_api_key=None):
         self.hub = hub
         self.username = username
+        self.sign_api_key = sign_api_key          # the room's own Euler key (None: anonymous signing)
         self.seen = deque(maxlen=5000)            # msg ids: drop duplicates
         self.seen_set = set()
         # Chat history TikTok replays on (re)connect: anything sent before the app started is
@@ -90,7 +91,8 @@ class TikTokConnector:
         from TikTokLive.events import (CommentEvent, ConnectEvent, FollowEvent, GiftEvent,
                                        JoinEvent, LikeEvent)
 
-        client = TikTokLiveClient(unique_id=self.username)
+        kwargs = {"web_kwargs": {"signer_kwargs": {"sign_api_key": self.sign_api_key}}} if self.sign_api_key else {}
+        client = TikTokLiveClient(unique_id=self.username, **kwargs)
         hub = self.hub
 
         def safe(fn):
@@ -178,4 +180,11 @@ class TikTokConnector:
         except Exception as e:
             print(f"[tiktok] room id via API failed ({type(e).__name__}), trying HTML")
         print(f"[tiktok] connecting to @{self.username} (room {rid or '?'}) ...")
-        await client.connect(room_id=rid)
+        try:
+            await client.connect(room_id=rid)
+        except asyncio.CancelledError:                # the room was stopped: close the connection
+            try:
+                await client.disconnect()
+            except Exception:
+                pass
+            raise

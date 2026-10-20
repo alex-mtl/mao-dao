@@ -1,0 +1,100 @@
+"""Many rooms in one process: the platform's internal API, tokens, isolation, restore after a restart."""
+
+import asyncio
+import tempfile
+import unittest
+
+from fastapi.testclient import TestClient
+
+from app import config
+from app.rooms import RoomManager
+from app.server import create_app
+
+SECRET = {"X-Internal-Secret": "s3cret"}
+
+
+class RoomsTest(unittest.TestCase):
+    def setUp(self):
+        self.saved = config.INTERNAL_SECRET, config.BASE_PATH
+        config.INTERNAL_SECRET, config.BASE_PATH = "s3cret", "/guessword/engine"
+        self.dir = tempfile.mkdtemp()
+        self.manager = RoomManager(self.dir)
+
+    def tearDown(self):
+        config.INTERNAL_SECRET, config.BASE_PATH = self.saved
+
+    def test_two_rooms_side_by_side(self):
+        with TestClient(create_app(self.manager)) as c:
+            self.assertEqual(c.get("/internal/rooms").status_code, 403)               # no secret
+            self.assertEqual(c.get("/internal/rooms", headers={"X-Internal-Secret": "x"}).status_code, 403)
+            a = c.put("/internal/rooms/a", headers=SECRET, json={"simulate": True, "lang": "ru"}).json()
+            b = c.put("/internal/rooms/b", headers=SECRET, json={"simulate": True, "username": "@Other"}).json()
+            self.assertNotEqual(a["overlay_token"], b["overlay_token"])
+            self.assertTrue(a["overlay_url"].startswith(f"/guessword/engine/r/{a['overlay_token']}/guess/"))
+            self.assertEqual(c.post("/internal/rooms/a/start", headers=SECRET).json()["running"], True)
+            c.post("/internal/rooms/b/start", headers=SECRET)
+            ca, oa, cb = a["control_token"], a["overlay_token"], b["control_token"]
+
+            menu = c.get(f"/r/{ca}/")                                    # the menu: control token only
+            self.assertEqual(menu.status_code, 200)
+            self.assertIn(f'<base href="/guessword/engine/r/{ca}/">', menu.text)
+            self.assertEqual(c.get(f"/r/{oa}/").status_code, 404)
+            self.assertEqual(c.get(f"/r/{oa}/debug/").status_code, 404)
+            page = c.get(f"/r/{oa}/guess/?tt=1")                        # the Studio page: overlay token
+            self.assertEqual(page.status_code, 200)
+            self.assertIn(f'<base href="/guessword/engine/r/{oa}/">', page.text)
+            self.assertEqual(c.get(f"/r/{oa}/common/live.js").status_code, 200)
+            self.assertEqual(c.get(f"/r/{oa}/../../app/config.py").status_code, 404)    # no way out of web/
+            self.assertEqual(c.post(f"/r/{oa}/api/settings", json={"lang": "en"}).status_code, 404)
+            self.assertEqual(c.get("/r/nope/guess/").status_code, 404)
+
+            # each room its own game, settings and feed
+            c.post(f"/r/{ca}/api/active", json={"game": "guess"})
+            c.post(f"/r/{ca}/api/settings", json={"game": "global", "options": {"balloon_likes": 500}})
+            c.post(f"/r/{ca}/api/debug/chat", json={"name": "Vasya", "text": "привет"})
+            sa, sb = c.get(f"/r/{oa}/api/state?fsince=0").json(), c.get(f"/r/{cb}/api/state?fsince=0").json()
+            self.assertEqual((sa["lang"], sa["active"]), ("ru", "guess"))
+            self.assertEqual(sa["balloons"]["perBalloon"], 500)
+            self.assertNotEqual(sb["balloons"]["perBalloon"], 500)
+            self.assertTrue(any(e.get("name") == "Vasya" for e in sa["feed"]))
+            self.assertFalse(any(e.get("name") == "Vasya" for e in sb["feed"]))
+            self.assertEqual(self.manager.rooms["b"].hub.username, "other")
+
+            with c.websocket_connect(f"/r/{oa}/ws") as ws:                 # the overlay's live updates
+                self.assertEqual(ws.receive_json()["active"], "guess")
+
+            opts = c.get("/internal/rooms/a/options", headers=SECRET).json()
+            self.assertIn("guess", [g["name"] for g in opts["games"]])
+            c.post("/internal/rooms/a/settings", headers=SECRET, json={"lang": "en"})
+            self.assertEqual(c.get(f"/r/{oa}/api/state").json()["lang"], "en")
+            self.assertEqual(c.post("/internal/rooms/b/stop", headers=SECRET).json()["running"], False)
+            self.assertEqual(c.get("/health").json()["running"], 1)
+            c.delete("/internal/rooms/b", headers=SECRET)
+            self.assertEqual(c.get(f"/r/{cb}/api/state").status_code, 404)
+
+    def test_restore_after_restart(self):
+        async def first():
+            m = RoomManager(self.dir)
+            m.upsert("a", {"simulate": True})
+            m.upsert("b", {"simulate": True})
+            await m.start("a")
+            await m.stop_all()                         # the process stops: "a" was running
+
+        async def second():
+            m = RoomManager(self.dir)
+            m.restore()
+            running = {rid for rid, r in m.rooms.items() if r.running}
+            await m.stop_all()
+            return running
+
+        asyncio.run(first())
+        self.assertEqual(asyncio.run(second()), {"a"})
+
+    def test_euler_key_per_room(self):
+        from app.tiktok.client import TikTokConnector
+        self.assertEqual(TikTokConnector(None, "x", "k1").sign_api_key, "k1")
+        self.assertIsNone(TikTokConnector(None, "x").sign_api_key)
+
+
+if __name__ == "__main__":
+    unittest.main()

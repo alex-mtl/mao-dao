@@ -22,9 +22,13 @@ def _list(name, default=""):
 # ---- platform ----
 TIKTOK_USERNAME = os.getenv("TIKTOK_USERNAME", "CHANGE_ME").lstrip("@") or "CHANGE_ME"
 SIMULATE = _b("SIMULATE")
-HOST = os.getenv("HOST", "0.0.0.0")
-PORT = _i("PORT", 8765)
+HOST = os.getenv("HOST", "127.0.0.1")         # the platform's nginx is in front: only local connections
+PORT = _i("PORT", 8770)
 DATA_DIR = os.getenv("DATA_DIR", "data")
+# ---- the platform ----
+BASE_PATH = os.getenv("BASE_PATH", "").rstrip("/")   # where nginx publishes the engine, e.g. /guessword/engine
+INTERNAL_SECRET = os.getenv("INTERNAL_SECRET", "")   # the platform's calls to /internal/* carry it; empty = off
+DEV_ROOMS = _i("DEV_ROOMS", 0)                      # local testing: this many simulated rooms with fixed tokens
 ASSETS_DIR = os.getenv("ASSETS_DIR", "assets")
 RECONNECT_SEC = _f("RECONNECT_SEC", 15)
 DEBUG_CONTROLS = _b("DEBUG_CONTROLS", "1")     # /debug page + /api/debug/*

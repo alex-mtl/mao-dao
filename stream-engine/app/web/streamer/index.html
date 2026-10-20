@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <title>Streamer Overlay</title>
-<link rel="stylesheet" href="/common/base.css">
+<link rel="stylesheet" href="common/base.css">
 <style>
   /* Transparent overlay for the streamer's video. ?bg=green -> chroma key, ?bg=dark -> preview */
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -20,17 +20,17 @@
 <body>
 <button id="menu" class="ctl-btn" title="Menu">☰</button>
 
-<script src="/common/i18n.js"></script>
-<script src="/common/live.js"></script>
-<script src="/common/audio.js"></script>
-<script src="/common/greet.js"></script>
-<script src="/common/balloons.js"></script>
-<script src="/common/plane.js"></script>
+<script src="common/i18n.js"></script>
+<script src="common/live.js"></script>
+<script src="common/audio.js"></script>
+<script src="common/greet.js"></script>
+<script src="common/balloons.js"></script>
+<script src="common/plane.js"></script>
 <script>
 (() => {
   const qs = new URLSearchParams(location.search);
   if (qs.get('bg')) document.body.classList.add('bg-' + qs.get('bg'));
-  document.getElementById('menu').onclick = () => { location.href = '/'; };
+  document.getElementById('menu').onclick = () => { location.href = './'; };
   const sound = qs.get('sound') === '1';
   if (sound) AudioKit.mount({ hello: 'b.v.hello' });
 

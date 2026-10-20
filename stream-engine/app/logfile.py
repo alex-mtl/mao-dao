@@ -6,6 +6,8 @@ import sys
 import threading
 import time
 
+from .context import current_room
+
 
 class DailyTee:
     def __init__(self, stream, folder):
@@ -24,6 +26,9 @@ class DailyTee:
         return self.file
 
     def write(self, text):
+        room = current_room.get()
+        if room and text.strip():                    # several rooms in one process: say whose line it is
+            text = "".join(f"<{room}> " + line if line.strip() else line for line in text.splitlines(True))
         self.stream.write(text)
         try:
             with self.lock:

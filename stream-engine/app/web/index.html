@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <title>Live Games</title>
-<link rel="stylesheet" href="/common/neon.css">
+<link rel="stylesheet" href="common/neon.css">
 <style>
   html, body { overflow-y: auto; }
   body { display: flex; flex-direction: column; align-items: center; justify-content: safe center; min-height: 100%;
@@ -95,9 +95,9 @@
   <button class="alerts" id="alerts" data-i18n="alert.off">🔕 STREAM ALERTS: OFF</button>
   <div id="feed" class="panel" hidden><div class="ft" data-i18n="alert.feed">LIVE CHAT</div><div id="feedList"></div></div>
   <div class="foot" data-i18n="menu.foot">The game screen follows your choice on every device</div>
-<script src="/common/i18n.js"></script>
-<script src="/common/live.js"></script>
-<script src="/common/audio.js"></script>
+<script src="common/i18n.js"></script>
+<script src="common/live.js"></script>
+<script src="common/audio.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <script>
 const t = I18N.t;
@@ -130,9 +130,9 @@ const optLabel = (key, v, choices) => {
   return t('set.' + key + '.v', { n: v });
 };
 async function startGame(g, options) {
-  if (options) await post('/api/settings', { game: g.name, options });
-  await post('/api/active', { game: g.name });
-  location.href = '/' + g.name + '/' + location.search;
+  if (options) await post('api/settings', { game: g.name, options });
+  await post('api/active', { game: g.name });
+  location.href = g.name + '/' + location.search;
 }
 function openSetup(g, onSave) {
   document.getElementById('setTitle').textContent = '⚙ ' + t(g.name === 'global' ? 'set.global' : 'game.' + g.name);
@@ -154,7 +154,7 @@ function openSetup(g, onSave) {
   });
   if (g.name === 'guess') {                          // TikTok LIVE Studio: Link source address / Chrome launcher
     const tt = document.createElement('div'); tt.className = 'sttrow';
-    const link = `http://localtest.me:${location.port || 80}/guess/?tt=1`;
+    const link = new URL(state.overlay + 'guess/?tt=1', location.href).href;   // the room's Studio link
     const copy = document.createElement('button'); copy.className = 'sbtn'; copy.textContent = t('set.tt.link');
     copy.title = link;
     copy.onclick = async () => {
@@ -162,8 +162,8 @@ function openSetup(g, onSave) {
       catch (e) { prompt(t('set.tt.link'), link); }
     };
     const bat = document.createElement('a'); bat.className = 'sbtn'; bat.textContent = t('set.tt.bat');
-    bat.href = '/api/tt.bat'; bat.download = 'LiveGames-TT.bat';
-    const alink = `http://localtest.me:${location.port || 80}/guess/?tt=1&alpha=1`;
+    bat.href = 'api/tt.bat'; bat.download = 'LiveGames-TT.bat';
+    const alink = new URL(state.overlay + 'guess/?tt=1&alpha=1', location.href).href;
     const copyA = document.createElement('button'); copyA.className = 'sbtn'; copyA.textContent = t('set.tt.alpha');
     copyA.title = alink;
     copyA.onclick = async () => {
@@ -180,7 +180,7 @@ function openSetup(g, onSave) {
     btn.onclick = async () => {
       btn.disabled = true;
       try {
-        const r = await fetch('/api/tg/host-link', { method: 'POST' });
+        const r = await fetch('api/tg/host-link', { method: 'POST' });
         if (!r.ok) throw new Error(r.status);
         const { link } = await r.json();
         out.replaceChildren();
@@ -212,14 +212,14 @@ function openSetup(g, onSave) {
 // general settings (all games): likes, plane, voice, greetings - saved without starting anything
 document.getElementById('gset').onclick = () => openSetup(
   { name: 'global', options: state.global.options, values: state.global.values },
-  async options => { await post('/api/settings', { game: 'global', options }); document.getElementById('setup').hidden = true; load(); });
+  async options => { await post('api/settings', { game: 'global', options }); document.getElementById('setup').hidden = true; load(); });
 document.querySelectorAll('.langs button[data-lang]').forEach(b => b.onclick = async () => {
-  await fetch('/api/settings', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+  await fetch('api/settings', { method: 'POST', headers: { 'Content-Type': 'application/json' },
                                  body: JSON.stringify({ lang: b.dataset.lang }) });
   load();
 });
 async function load() {
-  state = await (await fetch('/api/games', { cache: 'no-store' })).json();
+  state = await (await fetch('api/games', { cache: 'no-store' })).json();
   I18N.set(state.lang);
   I18N.apply();
   render();
@@ -328,7 +328,7 @@ let armed = false;
 // tell the server what happens here, so it shows up in `docker logs`
 function clientLog(msg) {
   try {
-    fetch('/api/client-log', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+    fetch('api/client-log', { method: 'POST', headers: { 'Content-Type': 'application/json' },
                                body: JSON.stringify({ page: 'menu', msg }), keepalive: true });
   } catch (e) {}
 }

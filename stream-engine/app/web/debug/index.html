@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Debug Controls</title>
-<link rel="stylesheet" href="/common/neon.css">
+<link rel="stylesheet" href="common/neon.css">
 <style>
   html, body { overflow: auto; }
   body { padding: 16px; font-size: 16px; max-width: 720px; margin: 0 auto; }
@@ -26,7 +26,7 @@
 <body>
 <h1><span class="neon-cyan">DEBUG</span> CONTROLS</h1>
 <div class="muted">Acts on the <b id="active">?</b> game. Open the overlay in another tab to watch.
-  <a href="/" style="color:var(--cyan)">Menu</a></div>
+  <a href="./" style="color:var(--cyan)">Menu</a></div>
 
 <fieldset>
   <legend>PLAYER</legend>
@@ -80,13 +80,13 @@
 <script>
 const v = id => document.getElementById(id).value;
 async function refresh() {
-  try { document.getElementById('active').textContent = (await (await fetch('/api/games')).json()).active; } catch (e) {}
+  try { document.getElementById('active').textContent = (await (await fetch('api/games')).json()).active; } catch (e) {}
 }
 document.querySelectorAll('button[data-a]').forEach(b => b.onclick = async () => {
   const a = b.dataset.a;
   if (a === 'reset' && !confirm('Reset the active game to zero?')) return;
   const body = { text: b.dataset.text, follows: document.getElementById('nofollow').checked ? '0' : '', name: v('name'), word: v('word'), gift: v('gift'), level: v('level'), n: v('n'), color: b.dataset.color };
-  const r = await fetch('/api/debug/' + a, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  const r = await fetch('api/debug/' + a, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
   document.getElementById('out').textContent = a + ' → ' + r.status + ' ' + await r.text();
   refresh();
 });

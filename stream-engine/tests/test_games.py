@@ -442,8 +442,8 @@ class ChromaTest(unittest.TestCase):
 class TTLauncherTest(unittest.TestCase):
     def test_bat(self):
         from app.server import tt_bat
-        b = tt_bat(8765)
-        self.assertIn("http://localhost:8765/guess/?tt=1", b)
+        b = tt_bat("https://mao-dao.com/guessword/engine/r/tok/guess/?tt=1")     # the room's Studio page
+        self.assertIn("set URL=https://mao-dao.com/guessword/engine/r/tok/guess/?tt=1", b)
         self.assertIn("--autoplay-policy=no-user-gesture-required", b)
         self.assertIn(r"\Google\Chrome\Application\chrome.exe", b)
         self.assertIn("\r\n", b)                                        # Windows line ends

@@ -116,7 +116,7 @@ window.Plane = (() => {
   // engine: a recorded An-2 ("кукурузник") loop, loud when the plane appears, fading by the end,
   // panned from the side it comes from. Recording: "Low passing aeroplane, An-2R (HA-MEN)" by ycbcr,
   // freesound.org/s/350574, CC BY 4.0 (10-16 s cut into a loop).
-  const ENGINE = '/common/sounds/an2-loop.mp3';
+  const ENGINE = 'common/sounds/an2-loop.mp3';
   function engine(sec, dir) {
     if (!window.AudioKit || !AudioKit.ready || !AudioKit.loop) return;
     AudioKit.loop(ENGINE, sec, { vol: 0.6, rate: 0.93 + Math.random() * 0.14, hold: 0.25,
