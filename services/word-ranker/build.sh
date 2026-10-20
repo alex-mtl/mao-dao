@@ -3,7 +3,10 @@
 # taken from the "assets" build stage of the game's Dockerfile (the game image itself has no embeddings).
 # build/assets is also what the tests mount as /app/assets.
 cd "$(dirname "$0")" && rm -rf build && mkdir -p build
-docker build -q --target assets -t election-game-assets .. >/dev/null || exit 1
+# the dictionaries are built by the game's Dockerfile ("assets" stage); until the engine moves into
+# stream-engine/ that is the election-game repo next to this one. Override: GAME_DIR=/path ./build.sh
+GAME_DIR=${GAME_DIR:-../../../election-game}
+docker build -q --target assets -t election-game-assets "$GAME_DIR" >/dev/null || exit 1
 id=$(docker create election-game-assets) && docker cp "$id:/assets" build/assets >/dev/null && docker rm "$id" >/dev/null
 MSYS_NO_PATHCONV=1 docker run --rm -v "$(pwd -W)":/w -w /w python:3.12-slim sh -c '
 pip install -q --no-cache-dir --platform manylinux2014_x86_64 --only-binary=:all: --python-version 3.12 numpy -t build/numpy-pkg 2>&1 | grep -v "^\[notice\]"
