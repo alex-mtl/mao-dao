@@ -11,7 +11,7 @@ a quiz app and the quiz is simply the *first game*.
 |---|---|---|
 | Quizzes (solo quizzes + Race Mode) — first game | `/quiz` | [`docs/games/quiz.md`](docs/games/quiz.md) |
 | Mafia (10-seat social deduction, voice/video) — second game | `/mafia` | [`docs/games/mafia.md`](docs/games/mafia.md) |
-| Guess the Word for TikTok LIVE streamers — third game (**planned**, not in the main menu yet) | `/guessword` | `docs/games/guessword.md` (to be added); plan: `../Stream Games — Requirements and Implementation Plan.md`, section 0 |
+| Guess the Word for TikTok LIVE streamers — third game (**planned**, not in the main menu yet) | `/guessword` | [`docs/games/guessword.md`](docs/games/guessword.md); plan: `../Stream Games — Requirements and Implementation Plan.md`, section 0 |
 
 More games will follow (prototypes such as `../flight-shooter` live in their
 own folders until they are merged in; `../election-game` is frozen at tag
