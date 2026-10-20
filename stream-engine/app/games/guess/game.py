@@ -42,9 +42,18 @@ MAX_WORDS = 5000              # cap of aggregated words per round (memory guard)
 SIM_NAMES = ["Alex", "Mike", "Sarah", "John", "Emma", "Liam", "Olivia", "Noah", "Mia", "Leo"]
 
 
+_INDEXES = {}                                    # assets dir -> indexes: one copy per process, shared by rooms
+
+
 def load_indexes(assets_dir):
     """{key: SemanticIndex} for every folder in assets: "en", "ru" (normal level) and
-    "en-easy", "ru-easy" (easy level, the original dictionary)."""
+    "en-easy", "ru-easy" (easy level, the original dictionary). Loaded once per process."""
+    if assets_dir not in _INDEXES:
+        _INDEXES[assets_dir] = _load_indexes(assets_dir)
+    return _INDEXES[assets_dir]
+
+
+def _load_indexes(assets_dir):
     from .semantic import SemanticIndex
     out = {}
     try:
@@ -416,7 +425,7 @@ class GuessGame(BaseGame):
 
     def _needs_follow(self, viewer):
         return (self.follow_required and viewer.follows == 0
-                and viewer.id.lower() != config.TIKTOK_USERNAME.lower())
+                and viewer.id.lower() != getattr(self, "host_id", config.TIKTOK_USERNAME.lower()))
 
     def _confirm(self, p, now):
         """Player followed: keep their place (or get it back)."""

@@ -651,19 +651,17 @@ class AutoPlaneTest(unittest.TestCase):
 class GlobalSettingsTest(unittest.TestCase):
     def test_set_and_validate(self):
         from app.settings import GlobalSettings
-        gs, saved = GlobalSettings(), (config.PLANE_AUTO_LIKES, config.GREET_JOINS, config.VOICE_RATE)
-        try:
-            self.assertTrue(gs.set("plane_auto", 2000))
-            self.assertEqual(config.PLANE_AUTO_LIKES, 2000)
-            self.assertFalse(gs.set("plane_auto", 1234))             # not one of the choices
-            self.assertEqual(config.PLANE_AUTO_LIKES, 2000)
-            self.assertTrue(gs.set("greet", 0))
-            self.assertIs(config.GREET_JOINS, False) if isinstance(saved[1], bool) else None
-            self.assertEqual(gs.values()["greet"], 0)
-            self.assertTrue(gs.set("voice_rate", 1.25))
-            self.assertEqual(config.VOICE_RATE, 1.25)
-        finally:
-            config.PLANE_AUTO_LIKES, config.GREET_JOINS, config.VOICE_RATE = saved
+        gs, other = GlobalSettings(), GlobalSettings()          # e.g. two rooms on the platform
+        default = config.PLANE_AUTO_LIKES
+        self.assertTrue(gs.set("plane_auto", 2000))
+        self.assertEqual(gs.get("PLANE_AUTO_LIKES"), 2000)
+        self.assertFalse(gs.set("plane_auto", 1234))             # not one of the choices
+        self.assertEqual(gs.get("PLANE_AUTO_LIKES"), 2000)
+        self.assertTrue(gs.set("greet", 0))
+        self.assertEqual(gs.values()["greet"], 0)
+        self.assertTrue(gs.set("voice_rate", 1.25))
+        self.assertEqual(gs.get("VOICE_RATE"), 1.25)
+        self.assertEqual((other.get("PLANE_AUTO_LIKES"), config.PLANE_AUTO_LIKES), (default, default))  # isolated
 
 
 class BomberTest(unittest.TestCase):

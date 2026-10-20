@@ -10,17 +10,17 @@ INFLATE_VISIBLE_SEC = 25   # a balloon stays there this long after the viewer's 
 
 
 
-def bomber(total, before):
+def bomber(total, before, step):
     """The plane that marks every new PLANE_BOMBER_LIKES likes this stream (10 000, 20 000, ...)
     drops bombs that turn into butterflies with the viewer's avatar."""
-    step = config.PLANE_BOMBER_LIKES
     return bool(step) and total // step > before // step
 
 class LikeBalloons:
     FILE = "balloons.json"
 
-    def __init__(self, store):
+    def __init__(self, store, settings=None):
         self.store = store
+        self.settings = settings                    # the hub's GlobalSettings (None: config defaults)
         d = store.load(self.FILE) or store.load("streamer.json") or {}   # old streamer-only file
         self.likes = d.get("likes", {})  # viewer id -> {name, avatar, progress, total, launched, last}
         self.dirty = True
@@ -33,7 +33,7 @@ class LikeBalloons:
         u["total"] += count
         u["progress"] += count
         u["last"] = time.time()
-        per = max(1, config.LIKES_PER_BALLOON)
+        per = max(1, self._s("LIKES_PER_BALLOON"))
         launches = []
         while u["progress"] >= per:
             u["progress"] -= per
@@ -50,12 +50,15 @@ class LikeBalloons:
 
     def auto_plane(self, viewer, before):
         """Plane without a command when the viewer crosses 1000, 2000, ... likes this stream."""
-        step = config.PLANE_AUTO_LIKES
+        step = self._s("PLANE_AUTO_LIKES")
         u = self.likes.get(viewer.id)
         if not step or not u or u["total"] // step <= before // step:
             return None
         return {"id": viewer.id, "name": u["name"], "avatar": u["avatar"], "total": u["total"], "auto": True,
-                "bomber": bomber(u["total"], before)}
+                "bomber": bomber(u["total"], before, self._s("PLANE_BOMBER_LIKES"))}
+
+    def _s(self, attr):
+        return self.settings.get(attr) if self.settings else getattr(config, attr)
 
     def new_session(self):
         self.likes = {}
@@ -69,8 +72,8 @@ class LikeBalloons:
         """Top likers of the stream (TT mode block): 1st-3rd place by planes (one per PLANE_AUTO_LIKES
         likes) and the 1st place by balloons among those without a plane yet. A tie shares the place.
         One function on purpose: the ranking rules will change (activity-based)."""
-        step = config.PLANE_AUTO_LIKES or 1000
-        per = max(1, config.LIKES_PER_BALLOON)
+        step = self._s("PLANE_AUTO_LIKES") or 1000
+        per = max(1, self._s("LIKES_PER_BALLOON"))
 
         def group(rows, key, limit):
             groups = {}
@@ -92,7 +95,7 @@ class LikeBalloons:
 
     def snapshot(self):
         now = time.time()
-        per = max(1, config.LIKES_PER_BALLOON)
+        per = max(1, self._s("LIKES_PER_BALLOON"))
         active = [dict(id=k, **u) for k, u in self.likes.items()
                   if u["progress"] and now - u["last"] <= INFLATE_VISIBLE_SEC]
         active.sort(key=lambda u: -u["last"])

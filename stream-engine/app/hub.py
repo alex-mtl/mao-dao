@@ -18,9 +18,13 @@ from .settings import GlobalSettings
 class Hub:
     SESSION = "session.json"
 
-    def __init__(self, store):
+    def __init__(self, store, username=None):
         self.store = store
+        # the stream's own TikTok account (one hub = one streamer's room on the platform)
+        self.username = (username or config.TIKTOK_USERNAME).lstrip("@").lower()
         self.games = {G.name: G(store) for G in GAMES}
+        for g in self.games.values():
+            g.host_id = self.username
         s = store.load(self.SESSION) or {}
         self.room_id = s.get("room_id") or (store.load("state.json") or {}).get("room_id")
         self.active = s.get("active") if s.get("active") in self.games else config.DEFAULT_GAME
@@ -50,7 +54,7 @@ class Hub:
         self.names = {}                           # viewer id -> their TikTok nickname as of their last event
         for g in self.games.values():
             g.names = self.names
-        self.balloons = LikeBalloons(store)       # like balloons fly over every page
+        self.balloons = LikeBalloons(store, self.global_settings)   # like balloons fly over every page
         self.closed = False                       # set on shutdown: incoming events are ignored
         self.game.on_activate()
 
@@ -136,7 +140,7 @@ class Hub:
             return
         self._seen(v)
         self._feed(type="chat", name=v.name, avatar=v.avatar, text=text[:200], sent=ts,
-                   host=v.id.lower() == config.TIKTOK_USERNAME.lower())
+                   host=v.id.lower() == self.username)
         if self.tg and self.tg.on_comment(v, text):  # "настроить связь" / a Telegram key: not a guess
             return
         self.game.on_comment(v, text, ts)
@@ -146,7 +150,7 @@ class Hub:
             return
         self._seen(v)
         # welcome each viewer once per stream (pages throttle and merge the greetings)
-        if config.GREET_JOINS and v.id not in self.greeted and v.id.lower() != config.TIKTOK_USERNAME.lower():
+        if self.global_settings.get("GREET_JOINS") and v.id not in self.greeted and v.id.lower() != self.username:
             if len(self.greeted) > 20000:
                 self.greeted.clear()
             self.greeted.add(v.id)
@@ -161,7 +165,7 @@ class Hub:
         self._seen(v)
         self._feed(type="gift", name=v.name, avatar=v.avatar, gift=gift, count=count, to=to)
         self._journal_gift(v, gift, count, to)
-        if to and to.lower() != config.TIKTOK_USERNAME.lower():
+        if to and to.lower() != self.username:
             print(f"[gift] {v.name}: {gift} went to @{to}, not to the host -> no game action")
             return
         self.game.on_gift(v, gift, count)
@@ -172,7 +176,7 @@ class Hub:
             line = json.dumps({"t": int(time.time()), "time": time.strftime("%Y-%m-%d %H:%M:%S"), "id": v.id,
                                "name": v.name, "gift": gift, "count": count, "to": to or None,
                                "game": self.active}, ensure_ascii=False)
-            with open(os.path.join(config.DATA_DIR, "gifts.jsonl"), "a", encoding="utf-8") as f:
+            with open(self.store.path("gifts.jsonl"), "a", encoding="utf-8") as f:
                 f.write(line + "\n")
         except Exception as e:
             print(f"[gift] journal error: {e}")
@@ -204,7 +208,7 @@ class Hub:
                 "feed": [e for e in self.feed if e["seq"] > feed_since] if feed_since is not None else [],
                 "tiktok": self.tiktok_status, "tgBot": self.tg.bot if self.tg and self.tg.word else "",
                 "version": getattr(self, "web_version", ""),
-                "lang": self.lang, "voiceRate": config.VOICE_RATE,
+                "lang": self.lang, "voiceRate": self.global_settings.get("VOICE_RATE"),
                 "events": g.events_since(since) if since is not None else [],
                 "balloons": self.balloons.snapshot(),
                 "state": g.snapshot()}

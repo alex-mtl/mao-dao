@@ -73,7 +73,7 @@ class TelegramLink:
             if self.hub.tiktok_status == "connected":
                 self.offline_since = None
                 if not self.word:
-                    r = await self.api("/game/stream/start", tiktok=config.TIKTOK_USERNAME)
+                    r = await self.api("/game/stream/start", tiktok=self.hub.username)
                     self.word, self.bot = r.get("word", ""), r.get("bot", "")
                     if self.word:
                         print(f"[telegram] stream word: {self.word} (bot @{self.bot})")

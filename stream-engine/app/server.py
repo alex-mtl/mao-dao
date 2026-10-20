@@ -138,7 +138,7 @@ def create_app(hub):
             hub.like(Viewer(name.lower(), name, ""), int(params.get("n") or 10))
             return {"ok": True}
         if action == "balloon":
-            hub.like(Viewer(name.lower(), name, ""), config.LIKES_PER_BALLOON)
+            hub.like(Viewer(name.lower(), name, ""), hub.global_settings.get("LIKES_PER_BALLOON"))
             return {"ok": True}
         if action == "join":
             hub.join(Viewer(name.lower(), name, ""))

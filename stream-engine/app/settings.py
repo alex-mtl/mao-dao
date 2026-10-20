@@ -1,13 +1,13 @@
-"""Global settings (shared by all games): like balloons, the likes plane, voice, greetings.
-Shown in the menu ("⚙ General settings"); defaults come from config, choices are fixed here.
-The values are applied to the config module, which the rest of the code reads at use time."""
+"""General settings of one game hub (shared by all its games): like balloons, the likes plane, voice,
+greetings. Shown in the menu ("⚙ General settings"); defaults come from config, choices are fixed here.
+Each hub (one per room on the platform) keeps its own values."""
 
 from . import config
 
 
 class GlobalSettings:
     name = "global"
-    # key -> (config attribute, choices); 1/0 = on/off
+    # key -> (config attribute = default, choices); 1/0 = on/off
     OPTIONS = {
         "balloon_likes": ("LIKES_PER_BALLOON", [50, 100, 200, 500]),
         "plane_auto": ("PLANE_AUTO_LIKES", [0, 500, 1000, 2000, 5000]),
@@ -16,13 +16,20 @@ class GlobalSettings:
         "greet": ("GREET_JOINS", [1, 0]),
     }
 
+    def __init__(self):
+        self._v = {attr: getattr(config, attr) for attr, _ in self.OPTIONS.values()}
+
+    def get(self, attr):
+        """current value by its config name, e.g. get("LIKES_PER_BALLOON")"""
+        return self._v[attr]
+
     def schema(self):
         return {k: choices for k, (_, choices) in self.OPTIONS.items()}
 
     def values(self):
         out = {}
         for k, (attr, _) in self.OPTIONS.items():
-            v = getattr(config, attr)
+            v = self._v[attr]
             out[k] = int(v) if isinstance(v, bool) else v
         return out
 
@@ -32,6 +39,6 @@ class GlobalSettings:
         attr, choices = self.OPTIONS[key]
         if value not in choices:
             return False
-        current = getattr(config, attr)
-        setattr(config, attr, bool(value) if isinstance(current, bool) else type(current)(value))
+        current = self._v[attr]
+        self._v[attr] = bool(value) if isinstance(current, bool) else type(current)(value)
         return True
