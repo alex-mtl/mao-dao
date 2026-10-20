@@ -18,6 +18,7 @@ return [
     'join_room' => "Join",
     'section_quiz' => "Quizzes",
     'section_mafia' => "Mafia",
+    'section_guessword' => "Guess the Word",
     'footer_tagline' => "Games to play together.",
     'footer_games' => "Games",
     'footer_account' => "Account",

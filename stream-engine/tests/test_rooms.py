@@ -44,6 +44,8 @@ class RoomsTest(unittest.TestCase):
             self.assertEqual(page.status_code, 200)
             self.assertIn(f'<base href="/guessword/engine/r/{oa}/">', page.text)
             self.assertEqual(c.get(f"/r/{oa}/common/live.js").status_code, 200)
+            r = c.get(f"/r/{oa}/guess?tt=1&alpha=1", follow_redirects=False)    # no slash: the mode survives
+            self.assertEqual(r.headers["location"], f"/guessword/engine/r/{oa}/guess/?tt=1&alpha=1")
             self.assertEqual(c.get(f"/r/{oa}/../../app/config.py").status_code, 404)    # no way out of web/
             self.assertEqual(c.post(f"/r/{oa}/api/settings", json={"lang": "en"}).status_code, 404)
             self.assertEqual(c.get("/r/nope/guess/").status_code, 404)

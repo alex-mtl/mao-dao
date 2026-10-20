@@ -1,0 +1,53 @@
+# Guess the Word for TikTok LIVE — third game
+
+Status: **pilot** (2026-10-20). Not in the platform's main menu yet; the section answers at `/guessword`.
+Plan and decisions: `../../../Stream Games — Requirements and Implementation Plan.md`, section 0.
+
+## What it is
+
+A streamer runs the game during their TikTok LIVE: viewers type words in the TikTok chat, the game ranks
+them by meaning and shows who is closest on an overlay that TikTok LIVE Studio captures. A web-only mode
+(play on the site without TikTok) is planned later, not now.
+
+## Pieces
+
+| Piece | Where | Role |
+|---|---|---|
+| Section and rooms (Laravel) | `app/Games/Guessword/`, `routes/games/guessword.php`, `config/guessword.php`, `resources/js/Pages/Guessword/`, `lang/*/guessword.php`, table `guessword_rooms` | who owns which room, TikTok username, language, Euler key (encrypted), Studio link, start / stop |
+| Game engine (Python sidecar) | `stream-engine/` | one process, many rooms: TikTok connection, rounds, overlays, the game's own menu |
+| Telegram bot (AWS Lambda) | `services/telegram-bot/` | viewers link Telegram ↔ TikTok, offer words; the host approves |
+| Word ranking (AWS Lambdas) | `services/word-ranker/` | the round's ranking table per language (no embeddings on the server) |
+
+## Access
+
+Who may run a room is answered by the platform service `App\Services\Capabilities`
+(`guessword.tiktok`): super admins and the e-mails in `GUESSWORD_STREAMERS` (pilot allowlist; the
+planned "streamer pack" replaces it there, not in the game).
+
+## Laravel ↔ engine
+
+`App\Games\Guessword\Services\EngineClient` calls the engine's `/internal/*` with header
+`X-Internal-Secret` (`GUESSWORD_ENGINE_SECRET` = the engine's `INTERNAL_SECRET`). The engine id of a
+room is `gw<id>`. Laravel sends the whole room each time (`PUT /internal/rooms/{id}`); the engine
+keeps its own copy in `rooms.json` so rooms come back after a restart.
+
+Browser / Studio addresses go through nginx: `GUESSWORD_ENGINE_PUBLIC_PATH` (default
+`/guessword/engine`) → the engine (its `BASE_PATH`). Two links per room:
+
+- **Studio link** `/guessword/engine/r/<overlay_token>/guess/?tt=1&alpha=1` — read-only pages; can be
+  regenerated (the old one stops working);
+- **control link** `/guessword/engine/r/<control_token>/` — the game's menu, embedded on the room page.
+
+## Environment
+
+| Variable | Meaning |
+|---|---|
+| `GUESSWORD_ENGINE_URL` | engine for server-to-server calls, default `http://127.0.0.1:8770` |
+| `GUESSWORD_ENGINE_SECRET` | shared secret with the engine |
+| `GUESSWORD_ENGINE_PUBLIC_PATH` | where nginx publishes the engine, default `/guessword/engine` |
+| `GUESSWORD_STREAMERS` | pilot allowlist: e-mails, comma separated |
+
+## Tests
+
+`tests/Feature/Guessword/` (Pest, engine faked with `Http::fake`); the engine has its own unittest
+suite in `stream-engine/tests/`.

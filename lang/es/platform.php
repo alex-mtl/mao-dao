@@ -18,6 +18,7 @@ return [
     'join_room' => "Unirse",
     'section_quiz' => "Quizzes",
     'section_mafia' => "Mafia",
+    'section_guessword' => "Adivina la palabra",
     'footer_tagline' => "Juegos para jugar juntos.",
     'footer_games' => "Juegos",
     'footer_account' => "Cuenta",

@@ -2,13 +2,14 @@ import ApplicationLogo from '@/Components/ApplicationLogo';
 import { Link, usePage } from '@inertiajs/react';
 import { useLaravelReactI18n } from 'laravel-react-i18n';
 
-/** The section of the platform the current address belongs to: 'mafia' | 'quiz' | null (platform pages). */
+/** The section of the platform the current address belongs to: 'mafia' | 'quiz' | 'guessword' | null (platform pages). */
 export function useCurrentSection() {
     const { url } = usePage();
     const path = (url || window.location.pathname).split('?')[0];
 
     if (path === '/mafia' || path.startsWith('/mafia/')) return 'mafia';
     if (path === '/quiz' || path.startsWith('/quiz/')) return 'quiz';
+    if (path === '/guessword' || path.startsWith('/guessword/')) return 'guessword';
 
     return null;
 }
@@ -33,7 +34,7 @@ export function useSectionName() {
 export default function SectionBrand() {
     const { t } = useLaravelReactI18n();
     const section = useCurrentSection();
-    const sectionHome = section === 'mafia' ? route('mafia.index') : section === 'quiz' ? route('dashboard') : null;
+    const sectionHome = { mafia: 'mafia.index', quiz: 'dashboard', guessword: 'guessword.index' }[section];
 
     return (
         <div className="flex items-center gap-2">
@@ -46,7 +47,7 @@ export default function SectionBrand() {
             {section && (
                 <>
                     <span className="text-ink-300" aria-hidden="true">/</span>
-                    <Link href={sectionHome} className="font-heading text-base font-bold text-primary-700 hover:text-primary-900">
+                    <Link href={route(sectionHome)} className="font-heading text-base font-bold text-primary-700 hover:text-primary-900">
                         {t(`platform.section_${section}`)}
                     </Link>
                 </>

@@ -290,7 +290,7 @@ def create_app(manager):
         return RedirectResponse(room_base(token))
 
     @app.get("/r/{token}/{path:path}")
-    def room_file(token: str, path: str):
+    def room_file(token: str, path: str, request: Request):
         _, kind, _ = room_of(token)
         clean = path.strip("/")
         if clean.split("/")[0] in CONTROL_ONLY and kind != "control":
@@ -300,8 +300,9 @@ def create_app(manager):
         if full != web and not full.startswith(web + os.sep):
             raise HTTPException(404, "not found")
         if os.path.isdir(full):
-            if clean and not path.endswith("/"):
-                return RedirectResponse(room_base(token) + clean + "/")
+            if clean and not path.endswith("/"):           # keep ?tt=1&alpha=1 (the Studio mode)
+                query = f"?{request.url.query}" if request.url.query else ""
+                return RedirectResponse(room_base(token) + clean + "/" + query)
             full = os.path.join(full, "index.html")
         if not os.path.isfile(full):
             raise HTTPException(404, "not found")

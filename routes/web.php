@@ -176,6 +176,9 @@ Route::get('/quiz/internal/mafia/can-view', [MafiaController::class, 'canView'])
 Route::get('/quiz/internal/mafia/mic-policy', [MafiaController::class, 'micPolicy']);
 Route::get('/quiz/internal/mafia/visibility', [MafiaController::class, 'visibility']);
 
+// Games that keep their routes in routes/games/ (CLAUDE.md, "Repository layout and code boundaries").
+require __DIR__.'/games/guessword.php';
+
 // Any address that matches nothing: go through the web middleware group (so
 // the error page gets the session / shared props) and end in a styled 404.
 Route::fallback(fn () => abort(404));

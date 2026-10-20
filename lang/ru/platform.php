@@ -18,6 +18,7 @@ return [
     'join_room' => "Присоединиться",
     'section_quiz' => "Квизы",
     'section_mafia' => "Мафия",
+    'section_guessword' => "Угадай слово",
     'footer_tagline' => "Игры, в которые играют вместе.",
     'footer_games' => "Игры",
     'footer_account' => "Аккаунт",
