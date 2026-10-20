@@ -1,0 +1,411 @@
+/* Guess the Word overlay, 9:16. --u = 1% of the stage width. Colors live in /common/neon.css. */
+body { display: flex; justify-content: center; }
+/* the whole window, edge to edge (it is a layer over the TikTok video); sizes still follow --u */
+#stage { position: relative; width: 100vw; height: 100vh;
+         display: flex; flex-direction: column; gap: calc(var(--u) * 2);
+         padding: calc(var(--u) * 3) calc(var(--u) * 1.2);
+         font-size: calc(var(--u) * 4); overflow: hidden; }
+.title { font: 900 calc(var(--u) * 3.6) var(--font-display); letter-spacing: .14em;
+         margin-bottom: calc(var(--u) * 1.6); }
+.chip { font: 800 calc(var(--u) * 3.4) var(--font-display); padding: .45em .9em; border-radius: 999px;
+        border: 1px solid var(--line); background: rgba(0,0,0,.35); letter-spacing: .06em; }
+#roundChip.speed { color: var(--yellow); border-color: var(--yellow); box-shadow: 0 0 1em rgba(255,230,0,.5); }
+
+/* ---- TikTok chroma key mode: pure green top (keyed out in LIVE Studio), the game below it.
+   Flying effects (toasts, plane, butterflies, balloons) still use the whole screen; nothing green. */
+   The game is a fixed 9:16 frame (1080x1920 for the stream) with a 1 px green border, centred in the
+   window: it only scales as a whole, it never stretches to the window's width or height. */
+#chromaZone { display: none; }
+html.chroma body { background: #000; align-items: center; }
+html.chroma { --fh: 177.78; --fr: 1.7778; }   /* frame height in u and height/width: 9:16 (9:19.5, 9:20 from the setting) */
+html.chroma #stage { width: calc(var(--u) * 100); height: calc(var(--u) * var(--fh)); flex: none;
+                     outline: 1px solid #00ff00;   /* keyed out in Studio together with the green zone */ background: radial-gradient(120% 80% at 50% 0%, #1d0640 0%, var(--bg) 55%);
+                     padding-top: calc(var(--chroma-top) + var(--u) * 1); }
+html.chroma #chromaZone { display: block; position: absolute; left: 0; right: 0; top: 0; height: var(--chroma-top);
+                          background: #00ff00; z-index: 0; }
+html.chroma .overlay, html.chroma #rules { top: var(--chroma-top); }      /* winner, results, rules: game zone only */
+html.alpha .overlay, html.alpha #rules { top: var(--game-bg-top, var(--chroma-top)); }   /* alpha: below the timer row too */
+/* controls go under the frame (outside the stream picture): the frame fits above a 56 px strip */
+/* outer 9:16 frame around everything: the game frame on top, the controls under it, its bottom edge
+   3 px below them. In u: game 100 x fh, gap 1, controls 6.5, then 3 px -> outer height (fh + 7.5)u + 3px,
+   width = height / fr. --u is 1% of the game frame width, sized so the outer frame fits the window. */
+html.chroma { --u: min(calc((100vw - 4px) / ((var(--fh) + 7.5) / var(--fr))), calc((100vh - 5px) / (var(--fh) + 7.5))); }
+html.chroma #outer { position: relative; flex: none; display: flex; justify-content: center; align-items: flex-start;
+                     width: calc((var(--u) * (var(--fh) + 7.5) + 3px) / var(--fr)); height: calc(var(--u) * (var(--fh) + 7.5) + 3px);
+                     outline: 1px solid #00ff00; }
+html.chroma #outer .ctl-bar { position: absolute; left: 50%; right: auto; bottom: 3px; transform: translateX(-50%); }
+/* no controls inside the frame any more: the CTA line sits on the bottom edge, the guesses get the room */
+html.chroma #stage { padding-bottom: 2px; }
+html.chroma #bottom { padding-bottom: 0; }
+html.chroma #ticker { bottom: 0; }
+/* like balloons inflate right on the bottom edge of the frame (the controls are outside it) */
+html.chroma #stage .bl-ground { bottom: 2px !important; }
+/* popups live in the lower part of the camera zone, just above the game:
+   hint card at its bottom edge, small notes above it (stacking up), big toasts above those */
+html.chroma { --above-game: calc(var(--u) * var(--fh) - var(--chroma-top)); }
+html.chroma #events { min-height: 0; position: static; }   /* the hint card is placed against the frame */
+html.chroma #hintCard { position: absolute; left: calc(var(--u) * 3); right: calc(var(--u) * 3); width: auto; z-index: 6;
+                        bottom: calc(var(--above-game) + var(--u) * 1.5); padding: calc(var(--u) * 1.6) calc(var(--u) * 3);
+                        border-radius: calc(var(--u) * 3); background: rgba(8, 0, 20, .88); border: 2px solid var(--yellow); }
+html.chroma #miniToasts { top: auto; bottom: calc(var(--above-game) + var(--u) * 12); flex-direction: column-reverse; }
+html.chroma #toast { top: auto; bottom: calc(var(--above-game) + var(--u) * 24); }
+html.chroma #bigNum { inset: 0 0 auto 0; height: var(--chroma-top); }
+/* stream champions: right edge of the camera zone, right above the round / timer / players row.
+   Avatars as big as TikTok's own viewer avatars (~7% of the width), overlapping when tied */
+#champs, #likers { display: none; }
+html.chroma #likers { display: flex; position: absolute; left: calc(var(--u) * 2.8); z-index: 7;
+                      bottom: calc(var(--above-game) + var(--u) * .6); flex-direction: column; align-items: flex-start;
+                      gap: calc(var(--u) * .5); pointer-events: none; }
+.champ.liker { padding: calc(var(--u) * .25) calc(var(--u) * .25) calc(var(--u) * .25) calc(var(--u) * 2.2); }
+.champ.liker .cn { padding-right: calc(var(--u) * 1.6); }
+.champ.liker .cm { font-size: calc(var(--u) * 4.4); }
+html.chroma #champs { display: flex; position: absolute; right: calc(var(--u) * 2.8); z-index: 7;
+                      bottom: calc(var(--above-game) + var(--u) * .6); flex-direction: column; align-items: flex-end;
+                      gap: calc(var(--u) * .5); pointer-events: none; }
+#champs .tgbot { font: 800 calc(var(--u) * 3.4) var(--font-text); color: #fff; white-space: nowrap;
+                 padding: 0 calc(var(--u) * 1); text-shadow: 0 1px 2px rgba(0,0,0,.9), 0 0 .5em rgba(0,0,0,.7); }
+/* dense columns: little space between and inside the lines, right on top of the timer row */
+.champ { display: flex; align-items: center; gap: calc(var(--u) * 1.6); border-radius: 999px;
+         padding: calc(var(--u) * .25) calc(var(--u) * 2.2) calc(var(--u) * .25) calc(var(--u) * .25); background: rgba(0, 0, 0, .40); }
+html.chroma:not(.alpha) .champ { background: rgb(10, 0, 25); }          /* opaque over the green key */
+.champ .av { width: calc(var(--u) * 7.2); height: calc(var(--u) * 7.2); font-size: calc(var(--u) * 3.2);
+             border: calc(var(--u) * .4) solid #fff; flex: none; }
+.champ .stack { display: flex; align-items: center; }
+.champ .stack .av + .av { margin-left: calc(var(--u) * -2.5); }
+.champ .more { margin-left: calc(var(--u) * 1); font: 800 calc(var(--u) * 3) var(--font-text); color: #fff; }
+.champ .cn { font: 700 calc(var(--u) * 3.4) var(--font-text); color: #fff; max-width: calc(var(--u) * 27);
+             overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.champ .cw { font: 800 calc(var(--u) * 3.8) var(--font-text); color: #fff; }
+.champ .cm { font-size: calc(var(--u) * 5); line-height: 1; }
+/* big toasts in the middle of the camera zone, small notes right under them, the hint card on the
+   zone's bottom edge - all over the side columns for the few seconds they show */
+html.chroma #toast { top: calc(var(--chroma-top) * .42); bottom: auto; transform: translateY(-50%); z-index: 8; }
+html.chroma #miniToasts { top: calc(var(--chroma-top) * .42 + var(--u) * 13); bottom: auto; flex-direction: column; z-index: 8; }
+html.chroma #hintCard { z-index: 8; }
+/* full-width card: no "pop" (it scaled to 125% and got cut at the frame edges), a soft slide-in instead */
+html.chroma #hintCard.new { animation: hintIn .45s ease-out; }
+@keyframes hintIn { from { opacity: 0; transform: translateY(25%); } }
+/* over the green they must be opaque: half-transparent pixels would be half keyed out */
+html.chroma .mini { background: rgb(10, 0, 25); }
+html.chroma .tcard { background: rgb(8, 0, 20); }
+/* welcome pill: top of the camera zone (it is fixed to the window, the frame is centred above the controls) */
+html.chroma .greet { bottom: auto; top: calc((100vh - var(--u) * (var(--fh) + 7.5) - 3px) / 2 + var(--u) * 10); }
+/* TT mode: just the 9:16 game frame filling the source / window, no controls, no outer frame */
+html.chroma.tt { --u: min(calc((100vw - 2px) / 100), calc((100vh - 2px) / var(--fh))); }
+html.tt .ctl-bar { display: none; }
+html.chroma.tt .greet { top: calc((100vh - var(--u) * var(--fh)) / 2 + var(--u) * 10); }
+html.chroma:not(.alpha) { --lime: #ff4fd8; --t-warm: #fff04a; }
+html.chroma:not(.alpha) .neon-lime { text-shadow: 0 0 .25em var(--lime), 0 0 .8em rgba(255,79,216,.6); }
+/* alpha mode (?alpha=1): the camera zone is fully transparent - for a Link / browser source that keeps
+   transparency, no chroma key filter, so every colour of the game stays intact */
+html.alpha, html.alpha body { background: transparent !important; }
+html.alpha #stage { background: transparent; outline: none; isolation: isolate; }
+/* the dark game background starts at the guesses panel: the round / timer / players row floats over the camera */
+html.alpha #stage::before { content: ''; position: absolute; left: 0; right: 0; bottom: 0; top: var(--game-bg-top, var(--chroma-top));
+                            background: radial-gradient(120% 80% at 50% 0%, #1d0640 0%, var(--bg) 55%); z-index: -1; }
+html.alpha #chromaZone { background: transparent; }
+/* alpha: the timer row sits inside the camera zone, at its bottom; the side columns and the hint go
+   up by the same height so they stay on top of it */
+/* the round / timer / players row: a compact strip at the very top of the frame, above TikTok's own
+   elements; no "best guesses" title - the guesses start right under the camera zone */
+html.chroma #top { position: absolute; left: calc(var(--u) * 2); right: calc(var(--u) * 2); top: calc(var(--u) * .8); z-index: 9; }
+html.chroma #top .chip { font-size: calc(var(--u) * 2.8); padding: .3em .8em; }
+html.chroma:not(.alpha) #top .chip { background: rgb(10, 0, 25); }
+html.chroma #timer { font-size: calc(var(--u) * 6.5); }
+html.chroma #recent > .title { display: none; }
+
+/* ---- top ---- */
+.toprow { display: flex; align-items: center; justify-content: space-between; }
+#timer { font: 900 calc(var(--u) * 9)/1 var(--font-display); color: var(--cyan);
+         text-shadow: 0 0 .2em var(--cyan), 0 0 .6em rgba(0,240,255,.6); font-variant-numeric: tabular-nums; }
+#timer.low { color: var(--pink); text-shadow: 0 0 .2em var(--pink), 0 0 .7em var(--pink); animation: pulse 1s infinite; }
+#goal { display: flex; align-items: center; gap: calc(var(--u) * 2); margin-bottom: calc(var(--u) * 1.5);
+        font: 800 calc(var(--u) * 3) var(--font-display); color: var(--muted); }
+#goal[hidden] { display: none; }
+.goalbar { flex: 1; height: calc(var(--u) * 2.2); border-radius: 999px; background: rgba(255,255,255,.08); overflow: hidden; }
+.goalbar i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--magenta), var(--cyan));
+             box-shadow: 0 0 1em var(--magenta); transition: width .5s; }
+
+/* ---- secret ---- */
+#secret { text-align: center; padding: calc(var(--u) * 3) calc(var(--u) * 3) calc(var(--u) * 2.5); }
+#secret .label { font: 800 calc(var(--u) * 3) var(--font-display); color: var(--muted); letter-spacing: .3em; }
+#secretWord { font: 900 calc(var(--u) * 11)/1.15 var(--font-display); letter-spacing: .12em; margin: .1em 0; }
+#tagline { min-height: 1.3em; font-weight: 700; font-size: calc(var(--u) * 4.2); color: #e9ddff; }
+#tagline.swap { animation: fadeIn .5s; }
+
+/* ---- top hunters ---- */
+#hunters { padding: calc(var(--u) * 2.5) calc(var(--u) * 3); }
+#hunterList { list-style: none; display: flex; flex-direction: column; gap: calc(var(--u) * 1); }
+.hrow { display: grid; grid-template-columns: calc(var(--u) * 7) calc(var(--u) * 6.5) 1fr auto; align-items: center;
+        gap: calc(var(--u) * 2); font-weight: 700; font-size: calc(var(--u) * 4.4); padding: .1em .4em; border-radius: .5em; }
+.hrow .pos { font: 900 calc(var(--u) * 4) var(--font-display); text-align: center; }
+.hrow .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hrow .rk { font: 900 calc(var(--u) * 4.2) var(--font-display); }
+.hrow.leader { background: linear-gradient(90deg, rgba(255,216,74,.22), transparent); box-shadow: inset 2px 0 0 var(--gold); }
+.hrow.up { animation: flashUp 1.2s; }
+.hrow.empty { color: var(--muted); font-weight: 600; grid-template-columns: 1fr; }
+
+/* ---- recent guesses ---- */
+#recent { flex: 1; min-height: 0; padding: calc(var(--u) * 2.5) calc(var(--u) * 3); overflow: hidden; }
+#guessList { display: flex; flex-direction: column; gap: calc(var(--u) * 1.3); }
+.grow { display: grid; grid-template-columns: calc(var(--u) * 19) 1fr auto; grid-template-rows: auto auto;
+        column-gap: calc(var(--u) * 2); row-gap: calc(var(--u) * .5); align-items: center; }
+.grow.new { animation: slideIn .45s ease-out; }
+.grow.more .cnt { animation: pop .5s; }
+.grow .rk { font: 900 calc(var(--u) * 3.9) var(--font-display); grid-row: span 2; white-space: nowrap; }
+.grow .wd { font: 800 calc(var(--u) * 4.6)/1.15 var(--font-display); letter-spacing: .04em;
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.grow .tp { font: 800 calc(var(--u) * 2.8) var(--font-display); padding: .25em .6em; border-radius: 999px;
+            border: 1px solid currentColor; white-space: nowrap; }
+.grow .meta { grid-column: 2 / span 2; display: flex; align-items: center; gap: calc(var(--u) * 1.5);
+              font-size: calc(var(--u) * 3.2); color: var(--muted); font-weight: 700; min-width: 0; }
+.bar { flex: 1; height: calc(var(--u) * 1.4); border-radius: 999px; background: rgba(255,255,255,.08); overflow: hidden; min-width: calc(var(--u) * 12); }
+.bar i { display: block; height: 100%; border-radius: 999px; background: currentColor; box-shadow: 0 0 .8em currentColor; }
+.meta .who { display: flex; align-items: center; gap: .4em; max-width: 45%; overflow: hidden; white-space: nowrap; }
+.meta .who span { overflow: hidden; text-overflow: ellipsis; }
+.meta .cnt { color: var(--lime); white-space: nowrap; }
+.empty-hint { color: var(--muted); font-weight: 700; text-align: center; padding: 1em 0; }
+
+/* temperature colors (change in neon.css) */
+.t-perfect  { color: var(--t-perfect); text-shadow: 0 0 .4em var(--gold); }
+.t-burning  { color: var(--t-burning); }
+.t-veryhot  { color: var(--t-veryhot); }
+.t-hot      { color: var(--t-hot); }
+.t-warm     { color: var(--t-warm); }
+.t-cold     { color: var(--t-cold); }
+.t-freezing { color: var(--t-freezing); }
+
+/* ---- avatars ---- */
+.av { width: calc(var(--u) * 6); height: calc(var(--u) * 6); border-radius: 50%; object-fit: cover;
+      flex: none; display: inline-flex; align-items: center; justify-content: center;
+      font: 800 calc(var(--u) * 3) var(--font-display); color: #000; border: 1px solid rgba(255,255,255,.4); }
+.meta .av { width: calc(var(--u) * 4.2); height: calc(var(--u) * 4.2); font-size: calc(var(--u) * 2.2); }
+
+/* ---- events strip / hint ---- */
+#events { position: relative; min-height: calc(var(--u) * 9); flex: none; display: flex; align-items: center; }
+#hintCard { width: 100%; display: flex; align-items: center; gap: 0 .6em; flex-wrap: wrap; font-weight: 700; font-size: calc(var(--u) * 3.6);
+            padding: calc(var(--u) * 1.6) calc(var(--u) * 3); border-radius: calc(var(--u) * 2.5);
+            border: 1px solid var(--yellow); background: rgba(255,230,0,.08); box-shadow: 0 0 1.2em rgba(255,230,0,.25); }
+#hintCard[hidden] { display: none; }
+.grow .main .rk .hk { margin-left: calc(var(--u) * .6); font-size: 1.15em; text-shadow: none; }   /* bulb inside the rank column */
+#hintCard .hk { font: 900 calc(var(--u) * 3.2) var(--font-display); color: var(--yellow); }
+#hintCard b { font: 900 calc(var(--u) * 4.4) var(--font-display); color: var(--yellow); text-shadow: 0 0 .4em var(--yellow); }
+#hintCard.new { animation: pop .6s; }
+#miniToasts { position: absolute; left: 0; right: 0; top: calc(var(--u) * 27); z-index: 5; display: flex; flex-direction: column;
+              gap: calc(var(--u) * 1); align-items: center; pointer-events: none; }
+.mini { font-weight: 700; font-size: calc(var(--u) * 3.4); padding: .35em .9em; border-radius: 999px;
+        background: rgba(10,0,25,.85); border: 1px solid var(--line); animation: slideIn .35s, fadeOut .5s 2.3s forwards; }
+.mini.gift { border-color: var(--magenta); box-shadow: 0 0 1em rgba(255,43,214,.45); }
+.mini.follow { border-color: var(--violet); }
+.mini.unknown { color: var(--muted); }
+.mini.small { border-color: var(--orange); }
+
+/* ---- bottom ---- */
+#bottom { padding-bottom: calc(var(--u) * 7); text-align: center; font: 900 calc(var(--u) * 4) var(--font-display); letter-spacing: .06em; }
+#subs { font-size: calc(var(--u) * 3.2); color: var(--gold); margin-bottom: .3em; }
+#subs[hidden] { display: none; }
+#cta span { animation: breathe 2.4s ease-in-out infinite; display: inline-block; }
+/* news ticker at the CTA line: last round's word, podium, stream top (over balloons, under the plane) */
+#bottom { position: relative; z-index: 32; }
+#bottom.ticking #cta { visibility: hidden; }
+#ticker { position: absolute; left: calc(var(--u) * -1.2); right: calc(var(--u) * -1.2); bottom: calc(var(--u) * 7);
+          height: calc(var(--u) * 7); overflow: hidden; pointer-events: none; }
+/* plain, crisp text like the table rows: no glow, no shadow (blur is hard to read on a stream) */
+#ticker span { position: absolute; left: 0; top: 0; white-space: nowrap; line-height: 1.5em; color: #fff;
+               font: 700 calc(var(--u) * 4.4) var(--font-text); letter-spacing: .02em; text-shadow: none;
+               animation: tick var(--dur) linear forwards; }
+#ticker span b { color: var(--gold); font-weight: 800; }
+#ticker .alarm { position: static; color: #ff2d3d; font-weight: 800; animation: none; }   /* "… вызывает Мао!" */
+@keyframes tick { from { transform: translateX(var(--from)); } to { transform: translateX(var(--to)); } }
+
+/* ---- big event toast ---- */
+#toast { position: absolute; left: 0; right: 0; top: calc(var(--u) * 30); display: flex; justify-content: center;
+         pointer-events: none; z-index: 12; }
+.tcard { text-align: center; padding: calc(var(--u) * 3) calc(var(--u) * 5); border-radius: calc(var(--u) * 4);
+         background: rgba(8,0,20,.88); border: 2px solid var(--c); max-width: 92%;
+         box-shadow: 0 0 calc(var(--u) * 5) var(--c), inset 0 0 calc(var(--u) * 5) color-mix(in srgb, var(--c) 30%, transparent);
+         animation: toastIn .35s cubic-bezier(.2,1.6,.4,1), toastOut .35s ease-in var(--hold, 1.6s) forwards; }
+.tcard .h { font: 900 calc(var(--u) * 8)/1.05 var(--font-display); color: var(--c); text-shadow: 0 0 .2em var(--c), 0 0 .6em var(--c); }
+.tcard .s { font: 800 calc(var(--u) * 4.6) var(--font-display); margin-top: .35em; color: #fff; }
+.tcard.huge .h { font-size: calc(var(--u) * 10.5); }
+.tcard.huge { animation: toastIn .35s cubic-bezier(.2,1.6,.4,1), shake .5s .35s, toastOut .35s ease-in var(--hold, 2.2s) forwards; }
+
+/* ---- big countdown numbers ---- */
+#bigNum { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+          pointer-events: none; z-index: 11; font: 900 calc(var(--u) * 42)/1 var(--font-display); }
+#bigNum span { animation: numPop .9s ease-out forwards; }
+#bigNum.cd span { color: var(--cyan); text-shadow: 0 0 .1em var(--cyan), 0 0 .4em var(--cyan); }
+#bigNum.go span { color: var(--lime); text-shadow: 0 0 .1em var(--lime), 0 0 .4em var(--lime); }
+#bigNum.final span { color: var(--pink); opacity: .55; text-shadow: 0 0 .1em var(--pink), 0 0 .4em var(--pink); }
+
+/* ---- overlays ---- */
+.overlay { position: absolute; inset: 0; z-index: 20; display: flex; flex-direction: column; align-items: center;
+           justify-content: center; text-align: center; gap: calc(var(--u) * 2.5); padding: calc(var(--u) * 5);
+           background: radial-gradient(90% 60% at 50% 40%, #3c0a6e, #05000e); }
+.overlay[hidden] { display: none; }
+#winner { animation: fadeIn .4s; }
+.wtitle { font: 900 calc(var(--u) * 8)/1.1 var(--font-display); color: var(--lime);
+          text-shadow: 0 0 .2em var(--lime), 0 0 .6em var(--lime); animation: shake .6s .2s; }
+.wtitle.timeout { color: var(--orange); text-shadow: 0 0 .2em var(--orange), 0 0 .6em var(--orange); }
+.wavatar .av { width: calc(var(--u) * 24); height: calc(var(--u) * 24); font-size: calc(var(--u) * 10);
+               border: 3px solid var(--gold); box-shadow: 0 0 2em var(--gold); }
+.wname { font: 900 calc(var(--u) * 9)/1.1 var(--font-display); max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.wsub { font-weight: 700; font-size: calc(var(--u) * 5); color: #e6dcff; }
+.wword { font: 900 calc(var(--u) * 14)/1 var(--font-display); letter-spacing: .08em; animation: wordIn .7s .3s both; }
+.wchips { display: flex; flex-wrap: wrap; justify-content: center; gap: calc(var(--u) * 2); }
+.wchips .chip { font-size: calc(var(--u) * 3.6); }
+.wchips .chip.streak { color: var(--orange); border-color: var(--orange); box-shadow: 0 0 1em rgba(255,122,0,.5); }
+
+#reveal { justify-content: flex-start; padding-top: calc(var(--u) * 10); padding-bottom: calc(var(--u) * 11); animation: fadeIn .4s; }
+.rlabel { font: 800 calc(var(--u) * 3.4) var(--font-display); color: var(--muted); letter-spacing: .25em; }
+.rword { font: 900 calc(var(--u) * 13)/1 var(--font-display); letter-spacing: .08em; }
+.podium { display: flex; align-items: flex-end; justify-content: center; gap: calc(var(--u) * 3); margin: calc(var(--u) * 3) 0; }
+.pcol { width: calc(var(--u) * 26); display: flex; flex-direction: column; align-items: center; gap: .3em; font-weight: 700; }
+.pcol .nm { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: calc(var(--u) * 4); }
+.pcol .step { width: 100%; border-radius: calc(var(--u) * 2) calc(var(--u) * 2) 0 0; display: flex; align-items: flex-start;
+              justify-content: center; padding-top: .3em; font: 900 calc(var(--u) * 7) var(--font-display); color: #000; }
+.pcol.p1 .step { height: calc(var(--u) * 22); background: linear-gradient(var(--gold), #b8860b); box-shadow: 0 0 2em var(--gold); }
+.pcol.p2 .step { height: calc(var(--u) * 15); background: linear-gradient(#e6f7ff, #8fa8b8); box-shadow: 0 0 1.2em #bfe9ff; }
+.pcol.p3 .step { height: calc(var(--u) * 10); background: linear-gradient(#ffb36b, #a0522d); box-shadow: 0 0 1.2em #ff9a4d; }
+.pcol .rk { font: 800 calc(var(--u) * 3.2) var(--font-display); color: var(--muted); }
+.rcols { display: grid; grid-template-columns: 1fr 1fr; gap: calc(var(--u) * 3); width: 100%; text-align: left; }
+.rbox { padding: calc(var(--u) * 2.5); font-size: calc(var(--u) * 3.6); font-weight: 700; }
+.rbox .line { display: flex; justify-content: space-between; gap: .5em; padding: .15em 0; }
+.rbox .line span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rnext { margin-top: auto; font: 900 calc(var(--u) * 5.5) var(--font-display); color: var(--lime);
+         text-shadow: 0 0 .3em var(--lime); }
+
+#rules { background: rgba(5,0,14,.82); z-index: 25; animation: fadeIn .3s; }
+.rulesbox { padding: calc(var(--u) * 5); text-align: left; width: 92%; }
+.rulesbox ol { margin-left: 1.2em; display: flex; flex-direction: column; gap: .5em; font-size: calc(var(--u) * 5); font-weight: 700; }
+.rulesbox b { color: var(--cyan); }
+.rulesbox .temps { display: flex; justify-content: space-between; margin-top: 1em; font: 800 calc(var(--u) * 3) var(--font-display); }
+.errbox { padding: calc(var(--u) * 5); color: var(--pink); font-weight: 700; font-size: calc(var(--u) * 4.4); }
+
+/* ---- motion ---- */
+@keyframes pulse { 50% { opacity: .55; } }
+@keyframes breathe { 50% { transform: scale(1.04); filter: brightness(1.3); } }
+@keyframes fadeIn { from { opacity: 0; } }
+@keyframes fadeOut { to { opacity: 0; transform: translateY(-.4em); } }
+@keyframes slideIn { from { opacity: 0; transform: translateX(-12%); } }
+@keyframes pop { 40% { transform: scale(1.25); } }
+@keyframes flashUp { 0% { background: rgba(57,255,20,.45); } }
+@keyframes toastIn { from { opacity: 0; transform: scale(.5); } }
+@keyframes toastOut { to { opacity: 0; transform: scale(1.15); } }
+@keyframes shake { 20%, 60% { transform: translateX(-2%) rotate(-1deg); } 40%, 80% { transform: translateX(2%) rotate(1deg); } }
+@keyframes numPop { from { transform: scale(1.8); opacity: 0; } 25% { opacity: 1; } to { transform: scale(.9); opacity: 0; } }
+@keyframes wordIn { from { opacity: 0; letter-spacing: .6em; filter: blur(6px); } }
+@media (prefers-reduced-motion: reduce) { * { animation-duration: .01s !important; } }
+
+/* corner controls: one small row under the call to action, not over the lists */
+.ctl-bar { flex-direction: row; right: 50%; bottom: .8vh; transform: translateX(50%); gap: calc(var(--u) * 2); }
+.ctl-btn { width: calc(var(--u) * 6.5); height: calc(var(--u) * 6.5); font-size: calc(var(--u) * 3.2); }
+
+
+/* brand-new guess: shown on top for a few seconds, then drops to its place by rank */
+.grow.fresh { position: relative; padding: calc(var(--u) * 1.2) calc(var(--u) * 2); margin: 0 calc(var(--u) * -2);
+              border-radius: calc(var(--u) * 2); background: rgba(0,240,255,.08); border: 1px solid rgba(0,240,255,.45);
+              }
+.grow.fresh::before { content: attr(data-badge); position: absolute; top: 0; left: calc(var(--u) * 2); transform: translateY(-50%);
+              font: 800 calc(var(--u) * 2.2) var(--font-display); color: #000; background: var(--cyan);
+              padding: .15em .5em; border-radius: 999px; letter-spacing: .1em; }
+
+/* guess row v2: no temperature badge, the player takes the right side (big avatar + name) */
+.grow { grid-template-columns: calc(var(--u) * 17) minmax(0, 1fr) minmax(0, calc(var(--u) * 33));
+        grid-template-rows: auto auto; row-gap: calc(var(--u) * 1); }
+.grow .rk { grid-row: 1 / span 2; overflow: hidden; min-width: 0; }
+.grow .wd { grid-column: 2; grid-row: 1; }
+.grow .bar { grid-column: 2; grid-row: 2; min-width: 0; }
+.grow .who { grid-column: 3; grid-row: 1 / span 2; display: flex; align-items: center; gap: calc(var(--u) * 1.6);
+             min-width: 0; max-width: 100%; overflow: hidden; justify-self: end; }
+.grow .who .av { width: calc(var(--u) * 8.5); height: calc(var(--u) * 8.5); font-size: calc(var(--u) * 4);
+                 border: 2px solid rgba(255,255,255,.55); box-shadow: 0 0 .8em rgba(157,77,255,.6); }
+.grow .who .nm { display: flex; flex-direction: column; min-width: 0; }
+.grow .who .n { font: 700 calc(var(--u) * 4.2)/1.1 var(--font-text); color: #fff; white-space: nowrap;
+                overflow: hidden; text-overflow: ellipsis; }
+.grow .who .cnt { font: 800 calc(var(--u) * 2.8) var(--font-display); color: var(--lime); white-space: nowrap; }
+.grow.more .cnt { animation: pop .5s; }
+
+/* break between rounds: results first, then a promo "lobby" */
+.rpart { display: flex; flex-direction: column; align-items: center; gap: calc(var(--u) * 2.5); width: 100%; }
+.rpart[hidden] { display: none; }
+#lobby { gap: calc(var(--u) * 3.5); animation: fadeIn .6s; }
+#lobby .lk { font: 800 calc(var(--u) * 4) var(--font-display); color: var(--muted); letter-spacing: .3em; }
+#lobby .ltime { font: 900 calc(var(--u) * 18)/1 var(--font-display); font-variant-numeric: tabular-nums; }
+#lobby .ltime.soon { color: var(--lime); text-shadow: 0 0 .15em var(--lime), 0 0 .5em var(--lime); animation: pulse 1s infinite; }
+.promo { display: flex; flex-direction: column; gap: calc(var(--u) * 2); width: 100%; }
+.promo .p { font: 900 calc(var(--u) * 5.4)/1.15 var(--font-display); padding: .55em .8em; border-radius: calc(var(--u) * 3);
+            border: 2px solid var(--c); color: var(--c); background: color-mix(in srgb, var(--c) 10%, transparent);
+            text-shadow: 0 0 .3em var(--c); box-shadow: 0 0 1.2em color-mix(in srgb, var(--c) 45%, transparent); }
+.promo .p.on { animation: pop .7s, breathe 2.4s ease-in-out .7s infinite; }
+.lhow { padding: calc(var(--u) * 3); font-weight: 700; font-size: calc(var(--u) * 4.2); width: 100%; }
+.lhow b { color: var(--cyan); }
+.lleaders { padding: calc(var(--u) * 3); width: 100%; font-weight: 700; font-size: calc(var(--u) * 3.8); text-align: left; }
+.lleaders .line { display: flex; justify-content: space-between; padding: .15em 0; }
+
+/* unknown word: grey row on top for a moment, so the player knows it was read */
+.grow.unknown { opacity: .8; border-color: rgba(255,255,255,.3) !important; background: rgba(255,255,255,.05) !important; }
+.grow.unknown::before { background: #aaa !important; }
+.grow.unknown .wd { color: var(--muted); text-decoration: line-through; text-decoration-thickness: 2px; }
+.grow .bar-note { grid-column: 2; grid-row: 2; font: 800 calc(var(--u) * 2.6) var(--font-display); color: var(--muted); letter-spacing: .08em; }
+
+/* non-follower in TOP HUNTERS: countdown to follow */
+.hrow .nm { display: flex; flex-direction: column; min-width: 0; }
+.hrow .nm .n { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hrow .fw { font: 800 calc(var(--u) * 2.6) var(--font-display); color: var(--magenta); letter-spacing: .05em;
+            text-shadow: 0 0 .4em var(--magenta); animation: pulse 1s infinite; }
+.hrow.pending { background: linear-gradient(90deg, rgba(255,43,214,.16), transparent); box-shadow: inset 2px 0 0 var(--magenta); }
+.hrow.pending .av { opacity: .8; }
+
+/* during play only the list matters: no "secret word" and "top hunters" panels
+   (winner / results screens keep the word, podium and leaders) */
+#secret, #hunters { display: none; }
+#toast { top: calc(var(--u) * 16); }
+#miniToasts { top: calc(var(--u) * 15); }
+
+/* guess row v3: one line. The proximity bar is a background plate behind "rank WORD",
+   starting at the row start, 1.2x the word height; player on the right */
+#guessList { gap: calc(var(--u) * 1.1); }
+.grow { display: flex; align-items: center; gap: calc(var(--u) * 2); }
+.grow .main { position: relative; flex: 1; min-width: 0; height: calc(var(--u) * 5.6); display: flex;
+              align-items: center; gap: calc(var(--u) * 2); padding: 0 calc(var(--u) * 1.6); }
+.grow .main .bar { position: absolute; left: 0; top: 0; bottom: 0; height: auto; min-width: 0; flex: none;
+                   border-radius: calc(var(--u) * 1.4); background: currentColor; opacity: .28;
+                   box-shadow: 0 0 .8em currentColor; overflow: visible; }
+.grow .rk { position: relative; flex: none; min-width: calc(var(--u) * 9); grid-row: auto; overflow: visible;
+            font: 900 calc(var(--u) * 3) var(--font-display); }
+.grow .wd { position: relative; flex: 1; min-width: 0; font: 800 calc(var(--u) * 4.6)/1 var(--font-display); }
+.grow .who { flex: none; max-width: 38%; display: flex; align-items: center; gap: calc(var(--u) * 1.2);
+             grid-column: auto; grid-row: auto; justify-self: auto; }
+.grow .who .av { width: calc(var(--u) * 5.6); height: calc(var(--u) * 5.6); font-size: calc(var(--u) * 2.6);
+                 border-width: 1.5px; }
+.grow .who .n { font: 700 calc(var(--u) * 3.8)/1 var(--font-text); color: #fff; min-width: 0;
+                white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.grow .who .cnt { font: 800 calc(var(--u) * 2.6) var(--font-display); color: var(--lime); white-space: nowrap; }
+.grow .note { position: relative; flex: none; font: 800 calc(var(--u) * 2.3) var(--font-display); color: var(--muted); }
+.grow.fresh { padding: calc(var(--u) * .9) calc(var(--u) * 1.6); }
+
+/* bright neon plates (instead of the dim 28% ones) */
+.grow .main .bar { opacity: .88;
+                   background: linear-gradient(180deg, color-mix(in srgb, currentColor 75%, #fff) 0%, currentColor 45%,
+                                               color-mix(in srgb, currentColor 80%, #000) 100%);
+                   box-shadow: 0 0 1.1em currentColor, 0 0 .3em currentColor, inset 0 1px 0 rgba(255,255,255,.5); }
+.grow .main .rk { color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.9), 0 0 .5em rgba(0,0,0,.6);
+                  /* fixed width (fits "38 360"), number on the left edge: every word starts on the same line */
+                  flex: 0 0 calc(var(--u) * 13.6); width: calc(var(--u) * 13.6); text-align: left;
+                  font-variant-numeric: tabular-nums; }
+/* guessed words: "плакатный белый капс" (the owner's name for it) - the game's display font, white, capitals,
+   dark blurred halo for the coloured bars. Tried and rejected: soft grey, Arial, lower case, blue. */
+.grow .main .wd { color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.9), 0 0 .5em rgba(0,0,0,.6); }
+
+/* crisp plates: no glow/blur, solid contrast against the dark background */
+.grow .main .bar { opacity: 1; background: currentColor; box-shadow: none; }
+/* fixed player column -> every proximity plate is measured against the same width */
+.grow .who { flex: 0 0 34%; max-width: 34%; justify-content: flex-end; overflow: hidden; }
+
+/* not following yet: magenta countdown next to the name */
+.grow .who .fw { font: 800 calc(var(--u) * 2.6) var(--font-display); color: var(--magenta); white-space: nowrap;
+                 text-shadow: 0 0 .4em var(--magenta); animation: pulse 1s infinite; }
+
+/* toasts: the player name is the neon headline, the event is plain text under it */
+.tcard .s { font: 700 calc(var(--u) * 5)/1.2 var(--font-text); color: #fff; margin-top: .3em; white-space: normal; }

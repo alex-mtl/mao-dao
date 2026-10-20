@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Streamer Overlay</title>
+<link rel="stylesheet" href="/common/base.css">
+<style>
+  /* Transparent overlay for the streamer's video. ?bg=green -> chroma key, ?bg=dark -> preview */
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: transparent;
+               font-family: 'Segoe UI', system-ui, sans-serif; -webkit-user-select: none; user-select: none; }
+  body.bg-green { background: #00ff00; }
+  body.bg-dark  { background: #14121c; }
+  /* menu button only on hover, so nothing shows on stream */
+  #menu { position: fixed; right: 1vw; top: 1vw; z-index: 50; opacity: 0; transition: opacity .2s; }
+  #menu:hover, body.bg-dark #menu { opacity: .6; }
+</style>
+</head>
+<body>
+<button id="menu" class="ctl-btn" title="Menu">☰</button>
+
+<script src="/common/i18n.js"></script>
+<script src="/common/live.js"></script>
+<script src="/common/audio.js"></script>
+<script src="/common/greet.js"></script>
+<script src="/common/balloons.js"></script>
+<script src="/common/plane.js"></script>
+<script>
+(() => {
+  const qs = new URLSearchParams(location.search);
+  if (qs.get('bg')) document.body.classList.add('bg-' + qs.get('bg'));
+  document.getElementById('menu').onclick = () => { location.href = '/'; };
+  const sound = qs.get('sound') === '1';
+  if (sound) AudioKit.mount({ hello: 'b.v.hello' });
+
+  // heart balloons: inflating at the bottom (20% of the screen wide), lift off at 100 likes
+  Balloons.mount({ ground: true, width: '20vw', sound });
+  Live.start({
+    game: 'streamer',
+    onState: (s, msg) => Balloons.render(msg.balloons),
+    onFeed: e => {
+      if (e.type === 'balloon') Balloons.launch(e);
+      else if (e.type === 'plane') Plane.fly(e, { sound });
+      else Greeter.push(e);
+    },
+  });
+})();
+</script>
+</body>
+</html>

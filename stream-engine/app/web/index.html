@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Live Games</title>
+<link rel="stylesheet" href="/common/neon.css">
+<style>
+  html, body { overflow-y: auto; }
+  body { display: flex; flex-direction: column; align-items: center; justify-content: safe center; min-height: 100%;
+         gap: calc(var(--u) * 4); padding: calc(var(--u) * 5); }
+  h1 { font: 900 calc(var(--u) * 9)/1 var(--font-display); letter-spacing: .06em; text-align: center; }
+  .sub { font: 700 calc(var(--u) * 4.2) var(--font-text); color: var(--muted); letter-spacing: .2em;
+         margin-top: calc(var(--u) * 2); text-align: center; }
+  .games { display: flex; flex-direction: column; gap: calc(var(--u) * 3.5); width: calc(var(--u) * 86); }
+  .card { position: relative; display: block; width: 100%; text-align: left; cursor: pointer;
+          padding: calc(var(--u) * 4) calc(var(--u) * 5); border-radius: calc(var(--u) * 4);
+          background: var(--bg-panel); color: var(--text); font-family: var(--font-text);
+          border: 2px solid var(--c); transition: transform .15s, box-shadow .15s;
+          box-shadow: 0 0 calc(var(--u) * 3) var(--c), inset 0 0 calc(var(--u) * 5) color-mix(in srgb, var(--c) 25%, transparent); }
+  .card:hover, .card:focus-visible { transform: scale(1.03); outline: none;
+          box-shadow: 0 0 calc(var(--u) * 6) var(--c), inset 0 0 calc(var(--u) * 8) color-mix(in srgb, var(--c) 35%, transparent); }
+  .card .t { font: 900 calc(var(--u) * 6)/1.05 var(--font-display); color: var(--c);
+             text-shadow: 0 0 .2em var(--c), 0 0 .7em var(--c); }
+  .card .d { font-size: calc(var(--u) * 3.8); margin-top: calc(var(--u) * 1.8); color: #e6dcff; }
+  .card .chat { display: inline-block; margin-top: calc(var(--u) * 2.2); font: 800 calc(var(--u) * 3.6) var(--font-display);
+                padding: .35em .8em; border-radius: 999px; border: 1px solid var(--c); color: var(--c); }
+  .card .now { position: absolute; top: 0; right: calc(var(--u) * 5); transform: translateY(-50%);
+               font: 800 calc(var(--u) * 3) var(--font-display); color: #000; background: var(--c);
+               padding: .3em .7em; border-radius: 999px; display: none; }
+  .card.active .now { display: block; }
+  .battle { --c: var(--pink); }
+  .guess  { --c: var(--cyan); }
+  .streamer { --c: var(--lime); }
+  .foot { color: var(--muted); font-size: calc(var(--u) * 3.4); text-align: center; }
+  .langs { display: flex; align-items: center; gap: calc(var(--u) * 2); font: 800 calc(var(--u) * 3.2) var(--font-display);
+           color: var(--muted); letter-spacing: .15em; }
+  .langs button { font: 900 calc(var(--u) * 3.6) var(--font-display); padding: .45em .9em; border-radius: 999px; cursor: pointer;
+                  background: transparent; color: var(--muted); border: 1px solid var(--line); }
+  .alerts { font: 900 calc(var(--u) * 3.6) var(--font-display); padding: .55em 1.1em; border-radius: 999px; cursor: pointer;
+            background: transparent; color: var(--gold); border: 2px solid var(--gold); box-shadow: 0 0 1em rgba(255,216,74,.35); }
+  .alerts.on { color: #000; background: var(--gold); }
+  .alerts.armed { animation: blink 1.2s infinite; }
+  .alerts.missed { color: #fff; border-color: var(--pink); background: var(--pink); box-shadow: 0 0 1.4em var(--pink); }
+  @keyframes blink { 50% { opacity: .45; } }
+  #feed { width: calc(var(--u) * 86); padding: calc(var(--u) * 3); }
+  #feed[hidden] { display: none; }
+  #feed .ft { font: 900 calc(var(--u) * 3.2) var(--font-display); color: var(--cyan); letter-spacing: .15em; margin-bottom: .4em; }
+  .fl { font-size: calc(var(--u) * 3.6); font-weight: 700; padding: .2em 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .fl.gift { color: var(--gold); }
+  .gset { font: 800 calc(var(--u) * 3.4) var(--font-display); padding: .5em 1.1em; border-radius: 999px; cursor: pointer;
+          background: transparent; color: var(--cyan); border: 1px solid var(--cyan); }
+  .setup { position: fixed; inset: 0; z-index: 50; display: flex; align-items: center; justify-content: center;
+           background: rgba(5, 0, 14, .82); padding: calc(var(--u) * 5); }
+  .setup[hidden] { display: none; }
+  .setbox { width: calc(var(--u) * 86); padding: calc(var(--u) * 5); display: flex; flex-direction: column;
+            gap: calc(var(--u) * 3.5); }
+  .setbox .st { font: 900 calc(var(--u) * 5.6) var(--font-display); color: var(--cyan);
+                text-shadow: 0 0 .3em var(--cyan); }
+  .sfield { display: flex; align-items: center; justify-content: space-between; gap: calc(var(--u) * 3);
+            font: 700 calc(var(--u) * 4.2) var(--font-text); }
+  .sfield select { font: 800 calc(var(--u) * 4) var(--font-display); color: var(--text); background: #12062a;
+                   border: 2px solid var(--line); border-radius: calc(var(--u) * 2); padding: .35em .6em; cursor: pointer; }
+  .sbtns { display: flex; justify-content: flex-end; gap: calc(var(--u) * 3); margin-top: calc(var(--u) * 2); }
+  .sbtn { font: 900 calc(var(--u) * 4) var(--font-display); padding: .55em 1.1em; border-radius: 999px; cursor: pointer;
+          background: transparent; color: var(--muted); border: 1px solid var(--line); }
+  .sttrow { display: flex; flex-wrap: wrap; gap: calc(var(--u) * 2.5); margin-top: calc(var(--u) * 2); }
+  .shost { display: flex; flex-direction: column; align-items: center; gap: calc(var(--u) * 1.5); margin-top: calc(var(--u) * 2); }
+  .shost .qr { background: #fff; line-height: 0; }
+  .shost a { color: var(--cyan); word-break: break-all; font-size: calc(var(--u) * 3); }
+  .shost .snote { color: #ffb347; font-size: calc(var(--u) * 3); text-align: center; }
+  .sttrow .sbtn { color: var(--cyan); border-color: var(--cyan); text-decoration: none; font-size: calc(var(--u) * 3.4); }
+  .sbtn.go { color: #000; background: var(--lime); border-color: var(--lime); box-shadow: 0 0 1em var(--lime); }
+  .langs button.on { color: #000; background: var(--lime); border-color: var(--lime); box-shadow: 0 0 1em var(--lime); }
+</style>
+</head>
+<body>
+  <div>
+    <h1><span class="neon-magenta">LIVE</span> <span class="neon-cyan">GAMES</span></h1>
+    <div class="sub" data-i18n="menu.sub">CHOOSE WHAT WE PLAY</div>
+  </div>
+  <div class="langs"><span data-i18n="menu.lang">LANGUAGE</span>
+    <button data-lang="en">EN</button><button data-lang="ru">RU</button><button data-lang="fr">FR</button><button data-lang="es">ES</button></div>
+  <!-- game settings dialog, shown when a game is started -->
+  <div id="setup" class="setup" hidden>
+    <div class="panel setbox">
+      <div class="st" id="setTitle"></div>
+      <div id="setFields"></div>
+      <div class="sbtns"><button id="setCancel" class="sbtn" data-i18n="set.cancel">Cancel</button>
+        <button id="setStart" class="sbtn go" data-i18n="set.start">▶ START</button></div>
+    </div>
+  </div>
+  <button class="gset" id="gset" data-i18n="set.global.open">⚙ GENERAL SETTINGS</button>
+  <div class="games" id="games"></div>
+  <button class="alerts" id="alerts" data-i18n="alert.off">🔕 STREAM ALERTS: OFF</button>
+  <div id="feed" class="panel" hidden><div class="ft" data-i18n="alert.feed">LIVE CHAT</div><div id="feedList"></div></div>
+  <div class="foot" data-i18n="menu.foot">The game screen follows your choice on every device</div>
+<script src="/common/i18n.js"></script>
+<script src="/common/live.js"></script>
+<script src="/common/audio.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+<script>
+const t = I18N.t;
+let state = null;
+function render() {
+  document.querySelectorAll('.langs button[data-lang]').forEach(b => b.classList.toggle('on', b.dataset.lang === state.lang));
+  const box = document.getElementById('games');
+  box.replaceChildren();
+  state.games.forEach(g => {
+    const b = document.createElement('button');
+    b.className = 'card ' + g.name + (g.name === state.active ? ' active' : '');
+    const now = document.createElement('div'); now.className = 'now'; now.textContent = t('menu.now');
+    const ti = document.createElement('div'); ti.className = 't'; ti.textContent = t('game.' + g.name);
+    const d = document.createElement('div'); d.className = 'd'; d.textContent = t('menu.' + g.name + '.d');
+    const c = document.createElement('div'); c.className = 'chat'; c.textContent = t('menu.' + g.name + '.chat');
+    b.append(now, ti, d, c);
+    b.onclick = () => (Object.keys(g.options || {}).length ? openSetup(g) : startGame(g, null));
+    box.appendChild(b);
+  });
+}
+// ---------- game settings dialog (each game describes its options; see OPTIONS on the server) ----------
+const post = (url, body) => fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+                                         body: JSON.stringify(body) });
+// option labels: on/off switches are [1, 0]; "0" of some options has its own word ("no break", "off")
+const optLabel = (key, v, choices) => {
+  const own = 'set.' + key + '.' + v;                   // a word for this exact value ("easy")
+  if (I18N.t(own) !== own) return t(own);
+  if (choices.length === 2 && choices.includes(1) && choices.includes(0)) return t(v ? 'set.on' : 'set.off');
+  if (v === 0 && I18N.t('set.' + key + '.none') !== 'set.' + key + '.none') return t('set.' + key + '.none');
+  return t('set.' + key + '.v', { n: v });
+};
+async function startGame(g, options) {
+  if (options) await post('/api/settings', { game: g.name, options });
+  await post('/api/active', { game: g.name });
+  location.href = '/' + g.name + '/' + location.search;
+}
+function openSetup(g, onSave) {
+  document.getElementById('setTitle').textContent = '⚙ ' + t(g.name === 'global' ? 'set.global' : 'game.' + g.name);
+  document.getElementById('setStart').textContent = t(onSave ? 'set.save' : 'set.start');
+  const box = document.getElementById('setFields');
+  box.replaceChildren();
+  Object.entries(g.options).forEach(([key, choices]) => {
+    const row = document.createElement('label'); row.className = 'sfield';
+    const cap = document.createElement('span'); cap.textContent = t('set.' + key);
+    const sel = document.createElement('select'); sel.dataset.key = key;
+    choices.forEach(v => {
+      const o = document.createElement('option');
+      o.value = v; o.textContent = optLabel(key, v, choices);
+      if ((g.values || {})[key] === v) o.selected = true;
+      sel.appendChild(o);
+    });
+    row.append(cap, sel);
+    box.appendChild(row);
+  });
+  if (g.name === 'guess') {                          // TikTok LIVE Studio: Link source address / Chrome launcher
+    const tt = document.createElement('div'); tt.className = 'sttrow';
+    const link = `http://localtest.me:${location.port || 80}/guess/?tt=1`;
+    const copy = document.createElement('button'); copy.className = 'sbtn'; copy.textContent = t('set.tt.link');
+    copy.title = link;
+    copy.onclick = async () => {
+      try { await navigator.clipboard.writeText(link); copy.textContent = t('set.tt.copied'); }
+      catch (e) { prompt(t('set.tt.link'), link); }
+    };
+    const bat = document.createElement('a'); bat.className = 'sbtn'; bat.textContent = t('set.tt.bat');
+    bat.href = '/api/tt.bat'; bat.download = 'LiveGames-TT.bat';
+    const alink = `http://localtest.me:${location.port || 80}/guess/?tt=1&alpha=1`;
+    const copyA = document.createElement('button'); copyA.className = 'sbtn'; copyA.textContent = t('set.tt.alpha');
+    copyA.title = alink;
+    copyA.onclick = async () => {
+      try { await navigator.clipboard.writeText(alink); copyA.textContent = t('set.tt.copied'); }
+      catch (e) { prompt(t('set.tt.alpha'), alink); }
+    };
+    tt.append(copy, copyA, bat);
+    box.appendChild(tt);
+  }
+  if (g.name === 'global') {                         // the streamer becomes the host in the bot: one-time link + QR
+    const row = document.createElement('div'); row.className = 'sttrow';
+    const btn = document.createElement('button'); btn.className = 'sbtn'; btn.textContent = t('set.host.btn');
+    const out = document.createElement('div'); out.className = 'shost';
+    btn.onclick = async () => {
+      btn.disabled = true;
+      try {
+        const r = await fetch('/api/tg/host-link', { method: 'POST' });
+        if (!r.ok) throw new Error(r.status);
+        const { link } = await r.json();
+        out.replaceChildren();
+        if (window.qrcode) {
+          const q = qrcode(0, 'M'); q.addData(link); q.make();
+          const img = document.createElement('div'); img.className = 'qr'; img.innerHTML = q.createSvgTag({ cellSize: 3, margin: 2 });
+          out.append(img);
+        }
+        const a = document.createElement('a'); a.href = link; a.target = '_blank'; a.textContent = link;
+        const note = document.createElement('div'); note.className = 'snote'; note.textContent = t('set.host.note');
+        out.append(a, note);
+      } catch (e) {
+        out.textContent = t('set.host.err');
+      }
+      btn.disabled = false;
+    };
+    row.append(btn);
+    box.append(row, out);
+  }
+  const dlg = document.getElementById('setup');
+  dlg.hidden = false;
+  document.getElementById('setCancel').onclick = () => { dlg.hidden = true; };
+  document.getElementById('setStart').onclick = () => {
+    const options = {};
+    box.querySelectorAll('select').forEach(s => { options[s.dataset.key] = Number(s.value); });
+    if (onSave) onSave(options); else startGame(g, options);
+  };
+}
+// general settings (all games): likes, plane, voice, greetings - saved without starting anything
+document.getElementById('gset').onclick = () => openSetup(
+  { name: 'global', options: state.global.options, values: state.global.values },
+  async options => { await post('/api/settings', { game: 'global', options }); document.getElementById('setup').hidden = true; load(); });
+document.querySelectorAll('.langs button[data-lang]').forEach(b => b.onclick = async () => {
+  await fetch('/api/settings', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+                                 body: JSON.stringify({ lang: b.dataset.lang }) });
+  load();
+});
+async function load() {
+  state = await (await fetch('/api/games', { cache: 'no-store' })).json();
+  I18N.set(state.lang);
+  I18N.apply();
+  render();
+  fit();
+}
+load();
+
+// The menu is sized in --u (a 9:16 unit); in a window where it doesn't fit, shrink every size
+// in proportion so it fits without scrolling. The live chat feed below may still scroll.
+let fitK = 1;
+function fit() {
+  const root = document.documentElement, feed = document.getElementById('feed');
+  fitK = 1;                                          // from scratch: language, window, alerts
+  for (let i = 0; i < 4; i++) {
+    root.style.setProperty('--u', `calc(min(1vw, 0.5625vh) * ${fitK})`);
+    const extra = feed.hidden ? 0 : feed.offsetHeight + parseFloat(getComputedStyle(document.body).rowGap || 0);
+    const need = document.body.scrollHeight - extra, have = window.innerHeight;
+    const k = Math.min(1, fitK * have / need);
+    if (Math.abs(k - fitK) < 0.005) break;
+    fitK = need > have ? k * 0.99 : Math.min(1, k);
+  }
+}
+window.addEventListener('resize', fit);
+if (document.fonts) document.fonts.ready.then(fit);
+
+// ---------- stream alerts (only on the menu page) ----------
+// comment -> phone ring + the comment read aloud; gift -> church bell + the gifter's name
+const A = AudioKit;
+A.ignoreMute();                                    // the games' 🔇 must not silence the alerts
+let alertsOn = false, lastRing = 0;
+const queue = [];
+const clean = n => (n || '').replace(/[^\p{L}\p{N} ._'-]/gu, '').trim() || '?';
+
+function ring() {                                  // classic phone trill, two bursts
+  for (let burst = 0; burst < 2; burst++) {
+    for (let i = 0; i < 18; i++) {
+      A.tone(i % 2 ? 1300 : 1600, burst * 0.75 + i * 0.025, 0.03, 'sine', 0.13);
+    }
+  }
+}
+function bell() {                                  // "ding-dong" with bell partials
+  [[660, 0], [520, 0.55]].forEach(([f, d]) => {
+    A.tone(f, d, 2.2, 'sine', 0.22);
+    A.tone(f * 2.01, d, 1.4, 'sine', 0.08);
+    A.tone(f * 2.76, d, 0.9, 'sine', 0.05);
+    A.tone(f * 0.5, d, 2.6, 'sine', 0.06);
+  });
+}
+function chime() {                                 // soft "ding" for a new viewer
+  A.tone(1047, 0, 0.5, 'sine', 0.12); A.tone(1568, 0.12, 0.6, 'sine', 0.1);
+}
+function addFeedLine(e) {
+  const box = document.getElementById('feedList');
+  const li = document.createElement('div');
+  li.className = 'fl ' + e.type;
+  li.textContent = e.type === 'gift'
+    ? '🎁 ' + clean(e.name) + ' — ' + clean(e.gift) + (e.count > 1 ? ' ×' + e.count : '')
+    : e.type === 'join' ? t('alert.joinLine', { name: clean(e.name) })
+    : '💬 ' + clean(e.name) + ': ' + (e.text || '');
+  box.prepend(li);
+  while (box.children.length > 6) box.lastChild.remove();
+  document.getElementById('feed').hidden = false;
+}
+let speakingSince = 0;
+function next() {                                  // one alert at a time, never piling up
+  if (A.speaking) {                                // Chrome/Edge bug: speech can get stuck "speaking"
+    speakingSince = speakingSince || Date.now();
+    if (Date.now() - speakingSince > 20000) { A.resetSpeech(); speakingSince = 0; clientLog('speech was stuck -> reset'); }
+    return;
+  }
+  speakingSince = 0;
+  if (!alertsOn || !A.ready || !queue.length) return;
+  // busy chat: don't read out comments that are already old (they stay in the feed list)
+  while (queue.length && queue[0].type === 'chat' && Live.now() - (queue[0].sent || queue[0].t) > 30) queue.shift();
+  if (!queue.length) return;
+  const e = queue.shift();
+  const now = Date.now();
+  if (e.type === 'join') {                         // merge everyone who joined meanwhile
+    const names = [clean(e.name)];
+    while (queue.length && queue[0].type === 'join') names.push(clean(queue.shift().name));
+    chime();
+    const list = names.length > 3 ? names.slice(0, 3).join(', ') + ' +' + (names.length - 3) : names.join(', ');
+    setTimeout(() => A.say(t('alert.join', { names: list })), 600);
+    return;
+  }
+  if (e.type === 'gift') {
+    bell();
+    setTimeout(() => A.say(t('alert.gift', { name: clean(e.name), gift: clean(e.gift) })), 900);
+  } else {
+    let delay = 0;
+    if (now - lastRing > 10000) { ring(); lastRing = now; delay = 1500; }
+    setTimeout(() => A.say(t('alert.chat', { name: clean(e.name), text: e.text })), delay);
+  }
+}
+setInterval(next, 400);
+function onFeed(e) {
+  addFeedLine(e);
+  if (e.type === 'chat' && e.host) return;        // your own comments don't ring
+  if (armed) document.getElementById('alerts').classList.add('missed');   // sound still locked: flash
+  queue.push(e);
+  while (queue.length > 6) queue.shift();         // busy chat: keep only the latest
+  next();
+}
+// "armed": alerts were on before a reload, but the browser needs one click to allow sound again
+let armed = false;
+// tell the server what happens here, so it shows up in `docker logs`
+function clientLog(msg) {
+  try {
+    fetch('/api/client-log', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+                               body: JSON.stringify({ page: 'menu', msg }), keepalive: true });
+  } catch (e) {}
+}
+window.clientLog = clientLog;
+function setAlerts(on, why) {
+  if (why) clientLog('alerts ' + (on ? 'ON' : 'OFF') + ' (' + why + ')');
+  alertsOn = on;
+  armed = false;
+  const b = document.getElementById('alerts');
+  b.dataset.i18n = on ? 'alert.on' : 'alert.off';
+  b.textContent = t(b.dataset.i18n);
+  b.classList.toggle('on', on);
+  b.classList.remove('armed', 'missed');
+  try { localStorage.setItem('alerts', on ? '1' : '0'); } catch (e) {}
+}
+document.getElementById('alerts').onclick = ev => {
+  ev.stopPropagation();
+  A.enable();
+  setAlerts(armed ? true : !alertsOn, 'button click');
+  if (alertsOn) A.say(t('alert.hello'));
+};
+let saved = false;
+try { saved = localStorage.getItem('alerts') === '1'; } catch (e) {}
+setAlerts(false);
+clientLog('menu loaded, alerts were ' + (saved ? 'ON -> waiting for sound permission' : 'OFF'));
+if (saved) {                                       // restore after a reload
+  A.enable();                                      // works without a click if the site may autoplay
+  setTimeout(() => { if (armed && A.running) setAlerts(true, 'restored after reload, autoplay allowed'); }, 400);
+  armed = true;
+  const b = document.getElementById('alerts');
+  b.dataset.i18n = 'alert.armed';
+  b.textContent = t('alert.armed');
+  b.classList.add('armed');
+  try { localStorage.setItem('alerts', '1'); } catch (e) {}
+  document.addEventListener('click', ev => {
+    if (!armed || (ev.target && ev.target.id === 'alerts')) return;   // the button handles itself
+    A.enable();
+    setAlerts(true, 'click on page after reload');
+    queue.length = 0;
+  }, { capture: true, once: true });
+}
+document.addEventListener('visibilitychange', () => clientLog('tab ' + document.visibilityState + (alertsOn ? ' (alerts on)' : '')));
+window.addEventListener('pagehide', () => clientLog('page closed or reloaded'));
+Live.start({ game: null, onFeed });
+</script>
+</body>
+</html>

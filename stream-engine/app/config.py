@@ -1,0 +1,89 @@
+"""All settings come from environment variables (.env in Docker, see .env.example)."""
+
+import os
+
+
+def _f(name, default):
+    return float(os.getenv(name, default))
+
+
+def _i(name, default):
+    return int(float(os.getenv(name, default)))
+
+
+def _b(name, default="0"):
+    return os.getenv(name, default).strip().lower() in ("1", "true", "yes", "on")
+
+
+def _list(name, default=""):
+    return [x.strip() for x in os.getenv(name, default).split(",") if x.strip()]
+
+
+# ---- platform ----
+TIKTOK_USERNAME = os.getenv("TIKTOK_USERNAME", "CHANGE_ME").lstrip("@") or "CHANGE_ME"
+SIMULATE = _b("SIMULATE")
+HOST = os.getenv("HOST", "0.0.0.0")
+PORT = _i("PORT", 8765)
+DATA_DIR = os.getenv("DATA_DIR", "data")
+ASSETS_DIR = os.getenv("ASSETS_DIR", "assets")
+RECONNECT_SEC = _f("RECONNECT_SEC", 15)
+DEBUG_CONTROLS = _b("DEBUG_CONTROLS", "1")     # /debug page + /api/debug/*
+LOG_CHAT = _b("LOG_CHAT")                      # log every incoming comment (diagnostics)
+DEFAULT_GAME = os.getenv("DEFAULT_GAME", "battle")
+
+# ---- battle (tug of war) ----
+STEP_PCT = _f("STEP_PCT", 1.0)
+TAP_COOLDOWN_SEC = _f("TAP_COOLDOWN_SEC", 1.0)
+TEAM_COOLDOWN_SEC = _f("TEAM_COOLDOWN_SEC", 5)
+WIN_PAUSE_SEC = _f("WIN_PAUSE_SEC", 15)
+
+# ---- streamer overlay ----
+LIKES_PER_BALLOON = _i("LIKES_PER_BALLOON", 100)        # likes from one viewer -> their balloon takes off
+PLANE_AUTO_LIKES = _i("PLANE_AUTO_LIKES", 1000)          # the plane flies by itself at 1000, 2000, ... likes (0 = off)
+PLANE_BOMBER_LIKES = 10000      # every 10 000, 20 000, ... likes the plane drops bombs -> butterflies (0 = off; menu setting)
+
+# ---- guess the word ----
+ROUND_DURATION = _i("ROUND_DURATION", 210)
+SPEED_ROUND_DURATION = _i("SPEED_ROUND_DURATION", 75)
+SPEED_ROUND_EVERY = _i("SPEED_ROUND_EVERY", 4)          # every Nth round is SPEED (0 = never)
+COUNTDOWN_SEC = _i("COUNTDOWN_SEC", 4)                  # 3, 2, 1, GO
+WINNER_SEC = _i("WINNER_SEC", 5)                        # winner card
+REVEAL_SEC = _i("REVEAL_SEC", 115)                      # break between rounds: results, then promo/lobby
+ROUND_BREAK = _b("ROUND_BREAK", "1")                    # default for the menu switch: pause between rounds
+RESULTS_SEC = _i("RESULTS_SEC", 25)                     # first part of the break shows the round results
+LANGUAGES = ["en", "ru", "fr", "es"]
+GREET_JOINS = _b("GREET_JOINS", "1")                    # welcome viewers who join the LIVE (once per stream)
+VOICE_RATE = _f("VOICE_RATE", 1.5)                      # speech speed multiplier (1 = normal browser speed)
+LANGUAGE = os.getenv("LANGUAGE", "en")                   # default language: en | ru | fr | es (menu can switch)
+PROMO_LINES_RU = [x.strip() for x in os.getenv("PROMO_LINES_RU", "ПОДПИШИСЬ, чтобы не пропустить раунд|ПОДПИШИСЬ и играй с нами|Зови друзей — чем больше игроков, тем веселее").split("|") if x.strip()]
+PROMO_LINES = [x.strip() for x in os.getenv("PROMO_LINES", "FOLLOW so you never miss a round|SUBSCRIBE to join the game|Invite friends - more players, more fun").split("|") if x.strip()]
+PROMO_LINES_BY_LANG = {
+    "en": PROMO_LINES, "ru": PROMO_LINES_RU,
+    "fr": ["ABONNE-TOI pour ne rater aucune manche", "ABONNE-TOI et joue avec nous",
+           "Ramène tes potes — plus on est de fous, plus on rit"],
+    "es": ["SÍGUEME para no perderte ninguna ronda", "SÍGUEME y juega con nosotros",
+           "Invita a tus amigos — ¡cuantos más, mejor!"],
+}
+GUESS_COOLDOWN_SECONDS = _f("GUESS_COOLDOWN_SECONDS", 3)
+# rank upper bounds: PERFECT, BURNING, VERY HOT, HOT, WARM, COLD (rest = FREEZING)
+TEMPERATURE_BOUNDS = [int(x) for x in _list("TEMPERATURE_BOUNDS", "1,10,50,200,1000,5000")]
+DYNAMIC_DIFFICULTY = _b("DYNAMIC_DIFFICULTY", "1")
+AUTO_HINT = _b("AUTO_HINT", "1")                        # hint when nobody gets close
+HINT_TYPES = _list("HINT_TYPES", "semantic,category,letter,semantic")
+HINT_COOLDOWN_SEC = _f("HINT_COOLDOWN_SEC", 20)
+# Only followers can win: a non-follower stays in TOP HUNTERS for FOLLOW_GRACE_SEC to follow,
+# otherwise is removed ("follow to win"). The host is never checked.
+FOLLOW_REQUIRED = _b("FOLLOW_REQUIRED", "1")
+FOLLOW_GRACE_SEC = _f("FOLLOW_GRACE_SEC", 30)
+# any gift gives a hint, except the gifts reserved for other actions (lower-case names)
+GIFT_HINT_EXCLUDE = []
+GIFT_NEW_ROUND_NAMES = [g.lower() for g in _list("GIFT_NEW_ROUND_NAMES", "")]
+SUBSCRIBERS_ONLY = _b("SUBSCRIBERS_ONLY")
+GOAL_LABEL = os.getenv("GOAL_LABEL", "FOLLOW GOAL")
+# ---- telegram bot (project tiktok-tg-bot on AWS); empty = off ----
+TG_BOT_URL = os.getenv("TG_BOT_URL", "")
+TG_GAME_KEY = os.getenv("TG_GAME_KEY", "")
+# ---- word-ranker Lambdas (next round's table during the break): "en=https://...,ru=https://..."; empty = off ----
+RANKER_URLS = dict(x.split("=", 1) for x in _list("RANKER_URLS") if "=" in x)
+RANKER_KEY = os.getenv("RANKER_KEY", "") or TG_GAME_KEY
+GOAL_TARGET = _i("GOAL_TARGET", 0)                       # follows this stream; 0 hides the goal bar

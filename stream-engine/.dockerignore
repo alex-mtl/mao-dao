@@ -1,0 +1,7 @@
+.git
+.env
+*.md
+LICENSE
+__pycache__
+**/__pycache__
+data
