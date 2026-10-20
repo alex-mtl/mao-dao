@@ -281,6 +281,22 @@ class BotTest(unittest.TestCase):
         call("/tg", msg("/game", uid=9))
         self.assertIn("/start", tg.sent[-1][1])                        # not linked
 
+    def test_platform_registers_rooms(self):
+        tg._params["platform-secret"] = "plat"
+        post = lambda body, secret="plat": handler.lambda_handler(
+            {"rawPath": "/platform/games", "headers": {"X-Platform-Secret": secret}, "body": json.dumps(body)}, None)
+        self.assertEqual(post({"id": "gw5"}, secret="nope")["statusCode"], 403)
+        self.assertEqual(post({"id": "../x"})["statusCode"], 400)
+        r = json.loads(post({"id": "gw5", "lang": "en"})["body"])
+        self.assertEqual(r["id"], "gw5")
+        k1 = r["game_key"]
+        code, s1 = call("/game/stream/start", {"tiktok": "streamer"}, k1)    # the key works for the game API
+        self.assertEqual(code, 200)
+        k2 = json.loads(post({"id": "gw5"})["body"])["game_key"]           # again: a new key, the old one is dead
+        self.assertNotEqual(k1, k2)
+        self.assertEqual(call("/game/stream/start", {}, k1)[0], 401)
+        self.assertEqual(call("/game/stream/start", {}, k2)[0], 200)
+
     def test_auth(self):
         self.assertEqual(call("/game/stream/start", {}, "nope")[0], 401)
         r = handler.lambda_handler({"rawPath": "/tg", "headers": {"x-telegram-bot-api-secret-token": "bad"},

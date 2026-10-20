@@ -13,6 +13,7 @@ The viewer's cycle (see README): stream word on screen -> bot: word + TikTok nic
 
 import base64
 import hashlib
+import hmac
 import json
 import os
 import time
@@ -287,14 +288,37 @@ def reply(code, body):
             "body": json.dumps(body, ensure_ascii=False)}
 
 
+def new_game(gid, lang="ru"):
+    """register a game (a room on the platform, or a home game) -> its key, shown once. A game id that
+    already has a key gets a new one and the old key stops working (GAMEID#<id> remembers the current)."""
+    key = base64.urlsafe_b64encode(os.urandom(24)).decode()
+    h = hashlib.sha256(key.encode()).hexdigest()
+    old = store.get("GAMEID#" + gid)
+    if old and old.get("pk_hash") != h:
+        store.delete("GAME#" + old["pk_hash"])
+    store.put("GAME#" + h, {"id": gid, "pk_hash": h, "lang": lang})
+    store.put("GAMEID#" + gid, {"pk_hash": h})
+    return key
+
+
+GAME_ID_RE = __import__("re").compile(r"^[a-z0-9][a-z0-9_-]{1,39}$")
+
+
+def platform_games(body):
+    """POST /platform/games {id, lang}: the platform (mao-dao) registers a room -> {id, game_key}.
+    The key serves both this bot and the word-ranker Lambdas (they check the same table)."""
+    gid = str(body.get("id") or "").lower()
+    if not GAME_ID_RE.match(gid):
+        return 400, {"error": "bad game id"}
+    lang = body.get("lang") if body.get("lang") in ("ru", "en", "fr", "es") else "ru"
+    return 200, {"id": gid, "game_key": new_game(gid, lang)}
+
+
 def admin(event):
     """Direct invoke only (aws lambda invoke, needs IAM; the Function URL never gets here)."""
     action = event["action"]
     if action == "add_game":                         # {"action":"add_game","id":"mao","lang":"ru"}
-        key = base64.urlsafe_b64encode(os.urandom(24)).decode()
-        h = hashlib.sha256(key.encode()).hexdigest()
-        store.put("GAME#" + h, {"id": event["id"], "pk_hash": h, "lang": event.get("lang", "ru")})
-        return {"id": event["id"], "game_key": key}  # shown once, goes to the game's .env
+        return {"id": event["id"], "game_key": new_game(event["id"], event.get("lang", "ru"))}
     if action == "set_superadmin":                   # {"action":"set_superadmin","username":"x"}: wrote to the bot before
         u = store.get("USER#" + event["username"].lstrip("@").lower())
         if not u:
@@ -343,6 +367,14 @@ def lambda_handler(event, context):
         elif body.get("callback_query"):
             riddle.on_callback(body["callback_query"])
         return reply(200, {"ok": True})
+    if path == "/platform/games":                       # the platform's server, secret header
+        try:
+            secret = tg.param("platform-secret")
+        except Exception:                              # not configured: the platform API is off
+            secret = ""
+        if not secret or not hmac.compare_digest(headers.get("x-platform-secret", ""), secret):
+            return reply(403, {"error": "forbidden"})
+        return reply(*platform_games(body))
     route = GAME_ROUTES.get(path)
     if route:
         game = game_by_key(headers)
