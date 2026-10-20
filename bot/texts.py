@@ -18,6 +18,7 @@ TEXT = {
         "owner_new": "👑 У игры <b>{game}</b> новый ведущий: <a href=\"tg://user?id={tg}\">{who}</a>",
         "owner_bad": "Ссылка ведущего не подошла или истекла (действует 10 минут). Возьми новую в меню игры.",
         "superadmin": "🛡 Ты суперадмин бота: буду присылать сюда каждую привязку во всех играх.",
+        "help_host": "🎬 <b>Для ведущего</b>\n<b>загадывает</b> [часть ника] или /pick — выбрать зрителя, который загадает слово.",
     },
     "en": {
         "start": "Hi! I connect you with your TikTok account so you get messages from the stream game.\n\n"
@@ -36,5 +37,6 @@ TEXT = {
         "owner_new": "👑 The game <b>{game}</b> has a new host: <a href=\"tg://user?id={tg}\">{who}</a>",
         "owner_bad": "The host link is wrong or expired (valid 10 minutes). Get a new one in the game menu.",
         "superadmin": "🛡 You are the bot's superadmin: every link in every game will be reported here.",
+        "help_host": "🎬 <b>For the host</b>\n<b>загадывает</b> [part of a nick] or /pick - choose a viewer who picks the word.",
     },
 }

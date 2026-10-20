@@ -40,15 +40,18 @@ TEXT = {
 }
 
 
+COMMANDS = ("загадывает", "pick")           # "/pick" is the same command in the host's menu
+
+
 def is_command(text):
-    return norm(text).startswith("загадывает")
+    return (norm(text).split(" ", 1) or [""])[0] in COMMANDS
 
 
 def host_command(chat, tg_id, text):
     game = (store.get("HOSTOF#" + tg_id) or {}).get("game")
     if not game:
         return [(chat, TEXT["not_host"])]
-    q = norm(text)[len("загадывает"):].strip().lstrip("@")
+    q = (norm(text).split(" ", 1) + [""])[1].strip().lstrip("@")
     users = (store.get("GAMEUSERS#" + game) or {}).get("users", {})
     found = [(tt, u) for tt, u in users.items()             # TikTok nick/name or messenger nick/name
              if not q or any(q in norm(x) for x in (tt, u.get("name"), u.get("tg_name"), u.get("tg_full")) if x)]

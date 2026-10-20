@@ -27,6 +27,9 @@ STREAM_TTL = 12 * 3600       # a stream the game forgot to stop expires by itsel
 
 
 KEY_PREFIX = "ключ-тг-"
+# the command menu: viewers see MENU_ALL; hosts and superadmins get MENU_HOST in their own chat
+MENU_ALL = [("start", "как связать аккаунт со стримом"), ("help", "помощь")]
+MENU_HOST = MENU_ALL + [("pick", "выбрать зрителя, который загадает слово")]
 
 
 def new_key():
@@ -69,6 +72,7 @@ def on_message(msg, now=None):
         store.delete("HOSTCODE#" + code)
         store.put("OWNER#" + h["game"], {"chat": chat, "tg": tg_id})
         store.put("HOSTOF#" + tg_id, {"game": h["game"]})
+        tg.set_commands(MENU_HOST, chat)
         print(f"host of {h['game']}: tg {tg_id}")
         who = " ".join(filter(None, [user.get("first_name"), user.get("last_name"),
                                      "@" + user["username"] if user.get("username") else ""]))
@@ -84,7 +88,10 @@ def on_message(msg, now=None):
         return riddle.viewer_word(ask, chat, tg_id, text)
     if text.startswith("/start") or text.startswith("/help"):
         store.delete("FLOW#" + tg_id)
-        return [(chat, texts.TEXT[lang_of(DEFAULT_LANG)]["start"])]
+        tx = texts.TEXT[lang_of(DEFAULT_LANG)]
+        host = text.startswith("/help") and (store.get("HOSTOF#" + tg_id)
+                                             or chat in (store.get("SUPERADMINS") or {}).get("chats", []))
+        return [(chat, tx["start"] + ("\n\n" + tx["help_host"] if host else ""))]
     if flow["step"] == "word":
         word, _, rest = text.partition(" ")                     # "маринад @nick" in one message works too
         stream = live_stream(norm(word), now)
@@ -249,8 +256,16 @@ def admin(event):
         admins = (store.get("SUPERADMINS") or {}).get("chats", [])
         if u["chat"] not in admins:
             store.put("SUPERADMINS", {"chats": admins + [u["chat"]]})
+        tg.set_commands(MENU_HOST, u["chat"])
         tg.send(u["chat"], texts.TEXT["ru"]["superadmin"])
         return {"ok": True, "tg": u["tg"]}
+    if action == "set_menus":                        # {"action":"set_menus","games":["mao"]}: menus for all + hosts
+        tg.set_commands(MENU_ALL)
+        chats = set((store.get("SUPERADMINS") or {}).get("chats", []))
+        chats |= {o["chat"] for o in (store.get("OWNER#" + g) for g in event.get("games", [])) if o}
+        for c in chats:
+            tg.set_commands(MENU_HOST, c)
+        return {"ok": True, "host_menus": len(chats)}
     if action == "set_webhook":                      # {"action":"set_webhook","url":"https://...lambda-url.../tg"}
         return tg.call("setWebhook", url=event["url"], secret_token=tg.webhook_secret(),
                        allowed_updates=["message", "callback_query"], drop_pending_updates=True)

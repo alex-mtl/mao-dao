@@ -51,6 +51,18 @@ def send(chat, text, markup=None):
         print(f"send error: {type(e).__name__}")
 
 
+def set_commands(commands, chat=None):
+    """the menu of commands: for everyone (chat=None) or for one chat"""
+    if sent is not None:
+        markups.append((chat, {"commands": [c for c, _ in commands]}))
+        return
+    try:
+        scope = {"type": "chat", "chat_id": chat} if chat else {"type": "default"}
+        call("setMyCommands", commands=[{"command": c, "description": d} for c, d in commands], scope=scope)
+    except Exception as e:
+        print(f"menu error: {type(e).__name__}")
+
+
 def answer(callback_id, text=""):
     """confirm a button press (the button stops spinning)"""
     if sent is not None:

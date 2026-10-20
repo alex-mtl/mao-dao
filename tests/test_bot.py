@@ -109,6 +109,7 @@ class BotTest(unittest.TestCase):
         self.assertIn("только для ведущего", tg.sent[-1][1])
         link = call("/game/host_code", {}, self.key)[1]["link"]
         call("/tg", msg("/start " + link.split("start=")[1], uid=5))   # tg 5 becomes the host
+        self.assertIn((5, {"commands": ["start", "help", "pick"]}), tg.markups)   # the host's menu
         tg.markups.clear()
         call("/tg", msg("Загадывает вороб", uid=5))
         chat, kb = tg.markups[-1]
@@ -116,6 +117,13 @@ class BotTest(unittest.TestCase):
         tg.markups.clear()
         call("/tg", msg("загадывает @Vasya", uid=5))                 # the viewer's messenger nick works too
         self.assertEqual(tg.markups[-1][1]["inline_keyboard"][0][0]["callback_data"], "pick:vorobey")
+        tg.markups.clear()
+        call("/tg", msg("/pick вороб", uid=5))                         # the menu's synonym
+        self.assertEqual(tg.markups[-1][1]["inline_keyboard"][0][0]["callback_data"], "pick:vorobey")
+        call("/tg", msg("/help", uid=5))
+        self.assertIn("/pick", tg.sent[-1][1])                         # the host's help
+        call("/tg", msg("/help", uid=8))
+        self.assertNotIn("/pick", tg.sent[-1][1])                      # a viewer's help
         call("/tg", msg("загадывает сокол", uid=5))
         self.assertIn("Не нашёл", tg.sent[-1][1])
         cb = lambda data: call("/tg", {"callback_query": {"id": "c", "from": {"id": 5}, "data": data,
