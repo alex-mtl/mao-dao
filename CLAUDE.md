@@ -11,9 +11,46 @@ a quiz app and the quiz is simply the *first game*.
 |---|---|---|
 | Quizzes (solo quizzes + Race Mode) — first game | `/quiz` | [`docs/games/quiz.md`](docs/games/quiz.md) |
 | Mafia (10-seat social deduction, voice/video) — second game | `/mafia` | [`docs/games/mafia.md`](docs/games/mafia.md) |
+| Guess the Word for TikTok LIVE streamers — third game (**planned**, not in the main menu yet) | `/guessword` | `docs/games/guessword.md` (to be added); plan: `../Stream Games — Requirements and Implementation Plan.md`, section 0 |
 
-More games will follow (prototypes such as `../flight-shooter` and
-`../election-game` live in their own folders until they are merged in).
+More games will follow (prototypes such as `../flight-shooter` live in their
+own folders until they are merged in; `../election-game` is frozen at tag
+`stable-local-docker-2026-10-20` and is being migrated here as Guess the Word).
+
+## Repository layout and code boundaries (decided 2026-10-20)
+
+**One repository for the whole platform** — no new repositories per game or
+service. Everything that serves the platform lives here:
+
+```
+app/ ...              Laravel: the platform core + the games
+media-sfu/            Node sidecar: voice/video for Mafia
+stream-engine/        Python sidecar: Guess the Word for TikTok LIVE (planned)
+services/
+  telegram-bot/       AWS Lambda: the Telegram bot (from the tiktok-tg-bot repo, planned)
+  word-ranker/        AWS Lambdas: dictionary ranking per language (from election-game/ranker, planned)
+```
+
+**A modular monolith, not full DDD** — four cheap rules that keep games
+separable later:
+
+1. **Each new game lives in its own folder from day one:**
+   `app/Games/<Game>/` (models, controllers, services, policies),
+   `routes/games/<game>.php`, `config/<game>.php`, `docs/games/<game>.md`,
+   tables prefixed `<game>_`, React pages under `resources/js/Pages/<Game>/`.
+   Quiz and Mafia still use the older flat layout (`app/Models/Mafia*`, …);
+   move each into `app/Games/` only when it is being worked on anyway — a
+   mechanical move, never a big-bang refactor.
+2. **Games depend on the platform, never on each other.** A game may use
+   users, auth, friends, groups, notifications, layouts; Mafia never imports
+   Quiz code, Guess the Word never imports Mafia code.
+3. **Shared capabilities are platform services.** Game currency, the planned
+   "streamer pack", access to a game's TikTok mode: one platform service
+   answers "may this user do X?", games only ask. (For the Guess the Word
+   pilot this is an allowlist; the streamer pack replaces it later without
+   touching the game.)
+4. **Sidecars and cloud services talk to Laravel only over HTTP** with a
+   shared secret (`/internal/*`), as `media-sfu` already does.
 
 **What belongs where.** This file holds everything that applies to *every*
 game: registration / login / email confirmation, roles, the social layer
