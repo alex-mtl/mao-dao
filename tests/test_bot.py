@@ -254,6 +254,17 @@ class BotTest(unittest.TestCase):
         self.cb("rej:" + wid)
         self.assertEqual([w["word"] for w in store.get("SAVED#vorobey")["words"]], ["огурец"])   # back again
 
+    def test_nickname_changes(self):
+        self.host_and_viewer()
+        call("/tg", msg("/zagadka"))
+        call("/tg", msg("огурец"))
+        r = self.poll({"names": {"Vorobey": "Соловей", "someone": "Кто-то"}})
+        self.assertEqual(store.get("GAMEUSERS#mao")["users"]["vorobey"]["name"], "Соловей")
+        self.assertEqual(store.get("TT#vorobey")["tiktok_name"], "Соловей")
+        self.assertEqual(store.get("TG#7")["tiktok_name"], "Соловей")
+        self.assertNotIn("someone", store.get("GAMEUSERS#mao")["users"])   # not linked: not stored
+        self.assertEqual(r["words"][0]["name"], "Соловей")              # the word on its way: new name
+
     def test_switch_game(self):
         self.host_and_viewer()
         other = self.start(self.key2)

@@ -294,6 +294,25 @@ def viewer_word(ask, chat, tg_id, text, now=None, from_saved=False):
     return [(chat, TEXT["checking"].format(w=e(word)))]
 
 
+def rename(gid, names, items):
+    """the game reports viewers' current nicknames; linked ones get them everywhere the bot keeps a name"""
+    gu = store.get("GAMEUSERS#" + gid) or {"users": {}}
+    hit = {tt: n for tt, n in names.items() if tt in gu["users"] and gu["users"][tt].get("name") != n}
+    for tt, n in hit.items():
+        gu["users"][tt]["name"] = n
+        for pk in ("TT#" + tt, "TG#" + gu["users"][tt]["tg"]):
+            link = store.get(pk)
+            if link and link.get("tiktok_name") != n:
+                link["tiktok_name"] = n
+                store.put(pk, link)
+        events.log(gid, "rename", tt=tt, name=n)
+    if hit:
+        store.put("GAMEUSERS#" + gid, {"users": gu["users"]})
+    for i in items.values():                              # words on their way show the new name too
+        if i["tt"] in names:
+            i["name"] = names[i["tt"]]
+
+
 def game_poll(game, body):
     """the game's results (dictionary checks, queue places, started rounds), then work for it"""
     gid = game["id"]
@@ -337,6 +356,9 @@ def game_poll(game, body):
         if link:
             tg.send(link["chat"], TEXT["unguessed"].format(w=e(u["word"].upper())))
         events.log(gid, "word_unguessed", tt=tt, word=u["word"])
+    if body.get("names"):                                 # nicknames change: keep linked viewers' current
+        rename(gid, {k.lower(): v for k, v in body["names"].items() if v}, items)
+        changed = True
     if body.get("credits"):                               # hint credits as they are now (only changes come)
         cur = (store.get("CREDITS#" + gid) or {}).get("credits", {})
         cur.update({k.lower(): int(v) for k, v in body["credits"].items()})
