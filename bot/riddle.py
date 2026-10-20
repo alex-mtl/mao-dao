@@ -347,6 +347,12 @@ def game_poll(game, body):
             changed = True
             tg.send(it["chat"], TEXT["played"].format(w=e(it["word"].upper()), round=it.get("round", "")))
             events.log(gid, "word_played", tt=it["tt"], word=it["word"], round=it.get("round"))
+    if "queue_ids" in body:                               # the game's real queue: what isn't there is done
+        real = set(body["queue_ids"])                     # (played or lost, e.g. a report lost in a restart)
+        for i in [i for i in items.values() if i["state"] == "queued" and i["id"] not in real]:
+            del items[i["id"]]
+            changed = True
+            events.log(gid, "word_dropped", tt=i["tt"], word=i["word"], round=i.get("round"))
     words = []
     if (body.get("v") or 1) >= POLL_VERSION:
         for i in items.values():

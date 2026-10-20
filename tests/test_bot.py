@@ -194,6 +194,9 @@ class BotTest(unittest.TestCase):
         call("/tg", msg("/queue", uid=5))
         self.assertIn("Раунд 7 — <b>ОГУРЕЦ</b> (воробей)", tg.temp[-1][1])
         self.assertEqual(tg.temp[-1][2], 60)
+        self.poll({"queue_ids": [wid]})                               # still in the game's queue: kept
+        call("/tg", msg("/queue", uid=5))
+        self.assertIn("ОГУРЕЦ", tg.temp[-1][1])
         call("/tg", msg("загадка"))                                    # the text synonym; a new word is fine now
         self.assertIn("Ведущий решит", tg.sent[-1][1])
         self.poll({"played": [wid]})
@@ -204,6 +207,19 @@ class BotTest(unittest.TestCase):
         self.assertEqual([x["type"] for x in log["events"]],
                          ["link", "host", "ask_self", "word_sent", "word_checked", "word_accepted", "word_queued",
                           "ask_self", "word_played"])
+
+    def test_queue_follows_the_game(self):
+        self.host_and_viewer()
+        call("/tg", msg("/zagadka"))
+        call("/tg", msg("огурец"))
+        wid = self.poll()["words"][0]["id"]
+        self.poll({"results": [{"id": wid, "stage": "check", "ok": True, "word": "огурец"}]})
+        self.cb("ok:" + wid)
+        self.poll()
+        self.poll({"results": [{"id": wid, "stage": "queue", "ok": True, "round": 8}]})
+        self.poll({"queue_ids": []})                                  # the "played" report was lost in a restart
+        call("/tg", msg("/queue", uid=5))
+        self.assertIn("пуста", tg.temp[-1][1])
 
     def test_unguessed_word_saved_and_hints(self):
         call("/tg", msg("/hints", uid=8))
