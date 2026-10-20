@@ -10,6 +10,8 @@
   viewer: is told the round (or "not in the dictionary" / "rejected")
 
 pk: HOSTOF#<tg id> -> game the user hosts; GAMEUSERS#<game> -> linked viewers; ASK#<tg id> -> open question;
+SAVED#<tiktok id> -> the viewer's words nobody found (offered again by /zagadka); CREDITS#<game> -> hint credits
+as the game last reported them (/hints works after the stream too);
 PEND#<game> -> words on their way, state:
   new -> sent (being checked) -> checked (waits for the host) -> approved -> queuing -> queued -> (played: gone)
   cancel: rejected after it reached the game's queue (old messages) -> the game drops it."""
@@ -56,11 +58,20 @@ TEXT = {
     "too_late": "Это слово уже не отменить.",
     "played": "🎯 Твоё слово «<b>{w}</b>» загадано прямо сейчас в раунде {round}!",
     "not_host": "Эта команда только для ведущего игры.",
+    "choose": "🎯 Выбери слово из сохранённых или пришли новое (существительное). Ведущий решит, брать ли его в игру. "
+              "Пока раунд с твоим словом идёт, твои догадки не принимаются.",
+    "new_word": "✏️ Новое слово",
+    "send_new": "Пришли новое слово (существительное, например <b>огурец</b>).",
+    "ask_expired": "Запрос истёк — напиши /zagadka ещё раз.",
+    "unguessed": "🎯 Твоё слово «<b>{w}</b>» никто не угадал! +1 подсказка на твой счёт, а слово сохранено — "
+                 "можешь загадать его снова через /zagadka.",
+    "hints": "💡 На твоём счету {n}. Потратить: напиши <b>подсказка</b> в чат стрима во время раунда.",
 }
 
 
 HOST_COMMANDS = ("загадывает", "pick")      # "/pick" is the same command in the host's menu
 QUEUE_COMMANDS = ("очередь", "queue")       # "/queue" in the host's menu
+HINTS_COMMANDS = ("подсказки", "hints", "мои подсказки")   # "/hints" in everyone's menu
 VIEWER_COMMANDS = ("загадка", "zagadka")    # "/zagadka" in everyone's menu
 
 
@@ -70,6 +81,46 @@ def first_word(text):
 
 def is_command(text):
     return first_word(text) in HOST_COMMANDS
+
+
+def is_hints_command(text):
+    return first_word(text) in HINTS_COMMANDS or norm(text) in HINTS_COMMANDS
+
+
+def plural_hints(n):
+    n10, n100 = n % 10, n % 100
+    word = "подсказка" if n10 == 1 and n100 != 11 else \
+        "подсказки" if 2 <= n10 <= 4 and not 12 <= n100 <= 14 else "подсказок"
+    return f"<b>{n}</b> {word}"
+
+
+def hints_command(chat, tg_id):
+    """the viewer's hint credits in their current game, as the game last reported them"""
+    link = store.get("TG#" + tg_id)
+    if not link:
+        return [(chat, TEXT["need_link"])]
+    n = int((store.get("CREDITS#" + link["game"]) or {}).get("credits", {}).get(link["tiktok_id"], 0))
+    return [(chat, TEXT["hints"].format(n=plural_hints(n)))]
+
+
+def saved_words(tt, game):
+    return [w for w in (store.get("SAVED#" + tt) or {}).get("words", []) if w.get("game") == game]
+
+
+def save_word(tt, word, game, lang=""):
+    item = store.get("SAVED#" + tt) or {"words": []}
+    if not any(w["word"] == word and w.get("game") == game for w in item["words"]):
+        item["words"].append({"word": word, "game": game, "lang": lang, "at": int(time.time())})
+        store.put("SAVED#" + tt, {"words": item["words"]})
+
+
+def unsave_word(tt, word, game):
+    item = store.get("SAVED#" + tt) or {"words": []}
+    left = [w for w in item["words"] if not (w["word"] == word and w.get("game") == game)]
+    if len(left) != len(item["words"]):
+        store.put("SAVED#" + tt, {"words": left})
+        return True
+    return False
 
 
 def is_queue_command(text):
@@ -134,6 +185,10 @@ def viewer_command(chat, tg_id, now=None):
     store.put("ASK#" + tg_id, {"game": game, "host": owner["chat"], "tt": link["tiktok_id"],
                                "name": link.get("tiktok_name", "")}, ttl=now + ASK_TTL)
     events.log(game, "ask_self", tt=link["tiktok_id"])
+    saved = saved_words(link["tiktok_id"], game)
+    if saved:                                             # their unguessed words, or a new one
+        rows = [[(w["word"].upper(), "use:" + w["word"])] for w in saved[:MAX_BUTTONS]]
+        return [(chat, TEXT["choose"], tg.buttons(rows + [[(TEXT["new_word"], "new")]]))]
     return [(chat, TEXT["ask_self"])]
 
 
@@ -153,6 +208,8 @@ def on_callback(cb, now=None):
     msg = cb.get("message") or {}
     chat, mid = (msg.get("chat") or {}).get("id"), msg.get("message_id")
     data = cb.get("data") or ""
+    if data.startswith("use:") or data == "new":          # a viewer chose a saved word / a new one
+        return viewer_choice(cb, tg_id, chat, mid, data)
     game = (store.get("HOSTOF#" + tg_id) or {}).get("game")
     if not game:
         tg.answer(cb.get("id"))
@@ -169,6 +226,23 @@ def on_callback(cb, now=None):
         events.log(game, "ask", tt=tt, host=tg_id)
         tg.send(u["chat"], TEXT["ask"])
         tg.edit(chat, mid, TEXT["asked"].format(name=e(u.get("name") or tt), tt=e(tt)))
+
+
+def viewer_choice(cb, tg_id, chat, mid, data):
+    tg.answer(cb.get("id"))
+    ask = store.get("ASK#" + tg_id)
+    if not ask:
+        tg.edit(chat, mid, TEXT["ask_expired"])
+        return
+    if data == "new":
+        tg.edit(chat, mid, TEXT["send_new"])
+        return
+    word = data[4:]
+    if not unsave_word(ask["tt"], word, ask["game"]):     # pressed twice / already used
+        tg.edit(chat, mid, TEXT["busy"])
+        return
+    out = viewer_word(ask, chat, tg_id, word, from_saved=True)
+    tg.edit(chat, mid, out[0][1])
 
 
 def decide(cb, game, chat, mid, data):
@@ -189,6 +263,8 @@ def decide(cb, game, chat, mid, data):
     elif it["state"] in ("checked", "approved"):          # never reached the game's queue
         pend["items"].remove(it)
         tg.send(it["chat"], TEXT["rejected"].format(w=e(it["word"])))
+        if it.get("saved"):                               # a saved word stays saved
+            save_word(it["tt"], it["word"], game)
     else:                                                 # already in the game's queue (old messages)
         it["state"] = "cancel"
         tg.send(it["chat"], TEXT["rejected"].format(w=e(it["word"])))
@@ -203,7 +279,7 @@ def _open_item(game, tg_id):
     return any(i["tg"] == tg_id and i["state"] in OPEN for i in pend["items"])
 
 
-def viewer_word(ask, chat, tg_id, text, now=None):
+def viewer_word(ask, chat, tg_id, text, now=None, from_saved=False):
     """the asked viewer sent their word -> waits for the game's dictionary check"""
     game = ask["game"]
     pend = store.get("PEND#" + game) or {"items": []}
@@ -211,7 +287,8 @@ def viewer_word(ask, chat, tg_id, text, now=None):
         return [(chat, TEXT["busy"])]
     word = text.strip().split()[0][:30]
     pend["items"].append({"id": base64.urlsafe_b64encode(os.urandom(6)).decode(), "word": word, "tt": ask["tt"],
-                          "name": ask["name"], "tg": tg_id, "chat": chat, "host": ask["host"], "state": "new"})
+                          "name": ask["name"], "tg": tg_id, "chat": chat, "host": ask["host"], "state": "new",
+                          "saved": from_saved})
     store.put("PEND#" + game, {"items": pend["items"]})
     events.log(game, "word_sent", tt=ask["tt"], word=word)
     return [(chat, TEXT["checking"].format(w=e(word)))]
@@ -251,6 +328,19 @@ def game_poll(game, body):
             tg.send(it["chat"], TEXT["missing"].format(w=e(it["word"])))
             tg.send(it["host"], TEXT["host_missing"].format(w=e(it["word"]), name=e(it["name"]), tt=e(it["tt"])))
             events.log(gid, "word_missing", tt=it["tt"], word=it["word"])
+    for u in body.get("unguessed") or []:                 # nobody found it: +1 hint (in the game), word saved
+        tt = (u.get("tiktok_id") or "").lower()
+        if not tt or not u.get("word"):
+            continue
+        save_word(tt, u["word"], gid, u.get("lang", ""))
+        link = store.get("TT#" + tt)
+        if link:
+            tg.send(link["chat"], TEXT["unguessed"].format(w=e(u["word"].upper())))
+        events.log(gid, "word_unguessed", tt=tt, word=u["word"])
+    if body.get("credits"):                               # hint credits as they are now (only changes come)
+        cur = (store.get("CREDITS#" + gid) or {}).get("credits", {})
+        cur.update({k.lower(): int(v) for k, v in body["credits"].items()})
+        store.put("CREDITS#" + gid, {"credits": {k: v for k, v in cur.items() if v}})
     for pid in body.get("played") or []:
         it = items.pop(pid, None)
         if it:

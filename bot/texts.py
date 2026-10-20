@@ -21,6 +21,7 @@ TEXT = {
         "help_host": "🎬 <b>Для ведущего</b>\n<b>загадывает</b> [часть ника] или /pick — выбрать зрителя, который загадает слово.\n"
                      "<b>очередь</b> или /queue — загаданные слова по раундам (ответ исчезнет через минуту)",
         "help_all": "/zagadka или <b>загадка</b> — загадать слово для игры (решает ведущий)\n"
+                    "/hints или <b>подсказки</b> — сколько подсказок у тебя на счету\n"
                     "/game или <b>игра</b> [слово стрима] — переключиться на другой стрим",
         "ask_game": "Пришли слово стрима — оно появляется на экране после команды <b>настроить связь</b> в чате стрима.",
         "game_ok": "✅ Теперь ты играешь на стриме <b>{word}</b>.",
@@ -45,6 +46,7 @@ TEXT = {
         "help_host": "🎬 <b>For the host</b>\n<b>загадывает</b> [part of a nick] or /pick - choose a viewer who picks the word.\n"
                      "/queue - the picked words by round (the answer disappears in a minute)",
         "help_all": "/zagadka - offer a word for the game (the host decides)\n"
+                    "/hints - how many hints you have on account\n"
                     "/game [stream word] - switch to another stream",
         "ask_game": "Send the stream word - it appears on screen after the <b>link up</b> command in the stream chat.",
         "game_ok": "✅ You now play on the stream <b>{word}</b>.",

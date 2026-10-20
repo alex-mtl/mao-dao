@@ -124,7 +124,7 @@ class BotTest(unittest.TestCase):
         call("/tg", msg("загадывает", uid=5))
         self.assertIn("только для ведущего", tg.sent[-1][1])
         self.host_and_viewer()
-        self.assertIn((5, {"commands": ["start", "help", "zagadka", "game", "pick", "queue"]}), tg.markups)
+        self.assertIn((5, {"commands": ["start", "help", "zagadka", "hints", "game", "pick", "queue"]}), tg.markups)
         for q in ("Загадывает вороб", "загадывает @Vasya", "/pick вороб"):   # nick, messenger nick, menu synonym
             tg.markups.clear()
             call("/tg", msg(q, uid=5))
@@ -204,6 +204,39 @@ class BotTest(unittest.TestCase):
         self.assertEqual([x["type"] for x in log["events"]],
                          ["link", "host", "ask_self", "word_sent", "word_checked", "word_accepted", "word_queued",
                           "ask_self", "word_played"])
+
+    def test_unguessed_word_saved_and_hints(self):
+        call("/tg", msg("/hints", uid=8))
+        self.assertIn("/start", tg.sent[-1][1])                        # not linked
+        self.host_and_viewer()
+        call("/tg", msg("мои подсказки"))
+        self.assertIn("<b>0</b> подсказок", tg.sent[-1][1])
+        self.poll({"credits": {"Vorobey": 1}, "unguessed": [{"id": "x", "tiktok_id": "vorobey", "word": "огурец",
+                                                             "lang": "ru"}]})
+        self.assertEqual(tg.sent[-1][0], 7)
+        self.assertIn("никто не угадал", tg.sent[-1][1])
+        call("/tg", msg("/hints"))
+        self.assertIn("<b>1</b> подсказка", tg.sent[-1][1])
+        self.poll({"credits": {"vorobey": 3}})
+        call("/tg", msg("подсказки"))
+        self.assertIn("<b>3</b> подсказки", tg.sent[-1][1])
+        tg.markups.clear()
+        call("/tg", msg("/zagadka"))                                   # the saved word is offered + "new"
+        kb = tg.markups[-1][1]["inline_keyboard"]
+        self.assertEqual([r[0]["callback_data"] for r in kb], ["use:огурец", "new"])
+        vcb = lambda data: call("/tg", {"callback_query": {"id": "v", "from": {"id": 7}, "data": data,
+                                                           "message": {"chat": {"id": 7}, "message_id": 9}}})
+        vcb("new")
+        self.assertIn("Пришли новое слово", tg.sent[-1][1])
+        vcb("use:огурец")
+        self.assertIn("Проверяю", tg.sent[-1][1])
+        self.assertEqual(store.get("SAVED#vorobey")["words"], [])     # taken from the saved ones
+        vcb("use:огурец")
+        self.assertIn("ждёт", tg.sent[-1][1])                          # pressed twice
+        wid = self.poll()["words"][0]["id"]
+        self.poll({"results": [{"id": wid, "stage": "check", "ok": True, "word": "огурец"}]})
+        self.cb("rej:" + wid)
+        self.assertEqual([w["word"] for w in store.get("SAVED#vorobey")["words"]], ["огурец"])   # back again
 
     def test_switch_game(self):
         self.host_and_viewer()

@@ -29,7 +29,8 @@ STREAM_TTL = 12 * 3600       # a stream the game forgot to stop expires by itsel
 KEY_PREFIX = "ключ-тг-"
 # the command menu: viewers see MENU_ALL; hosts and superadmins get MENU_HOST in their own chat
 MENU_ALL = [("start", "как связать аккаунт со стримом"), ("help", "помощь"),
-            ("zagadka", "загадать слово для игры"), ("game", "переключиться на другой стрим")]
+            ("zagadka", "загадать слово для игры"), ("hints", "мои подсказки"),
+            ("game", "переключиться на другой стрим")]
 MENU_HOST = MENU_ALL + [("pick", "выбрать зрителя, который загадает слово"),
                         ("queue", "очередь загаданных слов")]
 
@@ -86,6 +87,8 @@ def on_message(msg, now=None):
         return out
     if riddle.is_command(text):                                 # the host: "загадывает [nick]"
         return riddle.host_command(chat, tg_id, text)
+    if riddle.is_hints_command(text):                           # anyone linked: "/hints", "подсказки"
+        return riddle.hints_command(chat, tg_id)
     if riddle.is_queue_command(text):                           # the host: "/queue", "очередь"
         return riddle.queue_command(chat, tg_id)
     if riddle.is_viewer_command(text):                          # a viewer: "/zagadka", "загадка"
