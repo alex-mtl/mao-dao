@@ -21,6 +21,7 @@ class BotTest(unittest.TestCase):
         tg.markups.clear()
         tg.answers.clear()
         tg.deleted.clear()
+        tg.temp.clear()
         tg._params.update({"webhook-secret": "s", "bot_name": "test_bot", "token": "x"})
         self.key = handler.admin({"action": "add_game", "id": "mao"})["game_key"]
         self.key2 = handler.admin({"action": "add_game", "id": "other"})["game_key"]
@@ -123,7 +124,7 @@ class BotTest(unittest.TestCase):
         call("/tg", msg("загадывает", uid=5))
         self.assertIn("только для ведущего", tg.sent[-1][1])
         self.host_and_viewer()
-        self.assertIn((5, {"commands": ["start", "help", "zagadka", "game", "pick"]}), tg.markups)
+        self.assertIn((5, {"commands": ["start", "help", "zagadka", "game", "pick", "queue"]}), tg.markups)
         for q in ("Загадывает вороб", "загадывает @Vasya", "/pick вороб"):   # nick, messenger nick, menu synonym
             tg.markups.clear()
             call("/tg", msg(q, uid=5))
@@ -182,12 +183,23 @@ class BotTest(unittest.TestCase):
         self.assertEqual(tg.deleted[-1], (5, 2))
         r = self.poll()                                               # only now the game queues it
         self.assertEqual([(w["word"], w["action"]) for w in r["words"]], [("огурец", "queue")])
+        call("/tg", msg("/queue", uid=7))
+        self.assertIn("только для ведущего", tg.sent[-1][1])          # the host's command only
+        call("/tg", msg("очередь", uid=5))
+        self.assertEqual(tg.temp[-1][0], 5)
+        self.assertIn("Раунд … — <b>ОГУРЕЦ</b> (воробей)", tg.temp[-1][1])   # accepted, round not known yet
         self.poll({"results": [{"id": wid, "stage": "queue", "ok": True, "round": 7}]})
-        self.assertIn("раунде <b>7</b>", tg.sent[-1][1])
+        self.assertIn("раунде <b>7</b>", tg.sent[-2][1])               # the viewer
+        self.assertEqual(tg.temp[-1], (5, "✅ «<b>ОГУРЕЦ</b>» от <b>воробей</b> — раунд <b>7</b>", 60))  # the host
+        call("/tg", msg("/queue", uid=5))
+        self.assertIn("Раунд 7 — <b>ОГУРЕЦ</b> (воробей)", tg.temp[-1][1])
+        self.assertEqual(tg.temp[-1][2], 60)
         call("/tg", msg("загадка"))                                    # the text synonym; a new word is fine now
         self.assertIn("Ведущий решит", tg.sent[-1][1])
         self.poll({"played": [wid]})
         self.assertIn("загадано прямо сейчас", tg.sent[-1][1])
+        call("/tg", msg("/queue", uid=5))
+        self.assertIn("пуста", tg.temp[-1][1])
         log = store.get("EVLOG#mao#" + __import__("time").strftime("%Y-%m-%d", __import__("time").gmtime()))
         self.assertEqual([x["type"] for x in log["events"]],
                          ["link", "host", "ask_self", "word_sent", "word_checked", "word_accepted", "word_queued",

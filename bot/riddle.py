@@ -45,6 +45,12 @@ TEXT = {
     "missing": "Слова «{w}» нет в словаре игры. Пришли другое слово.",
     "host_missing": "📕 Слово «{w}» от <b>{name}</b> (@{tt}) не найдено в словаре.",
     "rejected": "Ведущий отклонил слово «{w}».",
+    "host_queued": "✅ «<b>{w}</b>» от <b>{name}</b> — раунд <b>{round}</b>",
+    "queue": "📋 <b>Очередь слов</b>",
+    "queue_row": "Раунд {round} — <b>{w}</b> ({name})",
+    "queue_wait": "⏳ <b>Ждут решения</b>",
+    "queue_wait_row": "<b>{w}</b> ({name})",
+    "queue_empty": "📋 Очередь слов пуста.",
     "pop_accepted": "✅ Принято: {w}",
     "pop_rejected": "❌ Отклонено: {w}",
     "too_late": "Это слово уже не отменить.",
@@ -54,6 +60,7 @@ TEXT = {
 
 
 HOST_COMMANDS = ("загадывает", "pick")      # "/pick" is the same command in the host's menu
+QUEUE_COMMANDS = ("очередь", "queue")       # "/queue" in the host's menu
 VIEWER_COMMANDS = ("загадка", "zagadka")    # "/zagadka" in everyone's menu
 
 
@@ -63,6 +70,34 @@ def first_word(text):
 
 def is_command(text):
     return first_word(text) in HOST_COMMANDS
+
+
+def is_queue_command(text):
+    return first_word(text) in QUEUE_COMMANDS
+
+
+def queue_command(chat, tg_id):
+    """the host's view of the words: queued with their rounds, then the ones waiting for a decision.
+    The answer deletes itself in 60 s."""
+    game = (store.get("HOSTOF#" + tg_id) or {}).get("game")
+    if not game:
+        return [(chat, TEXT["not_host"])]
+    items = (store.get("PEND#" + game) or {"items": []})["items"]
+    queued = sorted((i for i in items if i["state"] in ("approved", "queuing", "queued")),
+                    key=lambda i: int(i.get("round") or 10**6))
+    waiting = [i for i in items if i["state"] == "checked"]
+    if not queued and not waiting:
+        tg.send_temp(chat, TEXT["queue_empty"])
+        return []
+    lines = []
+    if queued:
+        lines += [TEXT["queue"]] + [TEXT["queue_row"].format(round=i.get("round") or "…", w=e(i["word"].upper()),
+                                                            name=e(i["name"])) for i in queued]
+    if waiting:
+        lines += ([""] if lines else []) + [TEXT["queue_wait"]] + \
+                 [TEXT["queue_wait_row"].format(w=e(i["word"].upper()), name=e(i["name"])) for i in waiting]
+    tg.send_temp(chat, "\n".join(lines))
+    return []
 
 
 def is_viewer_command(text):
@@ -198,6 +233,7 @@ def game_poll(game, body):
             if r.get("ok"):
                 it.update(state="queued", round=r.get("round"))
                 tg.send(it["chat"], TEXT["queued"].format(w=w, round=it["round"]))
+                tg.send_temp(it["host"], TEXT["host_queued"].format(w=w, name=e(it["name"]), round=it["round"]))
                 events.log(gid, "word_queued", tt=it["tt"], word=it["word"], round=it["round"])
             else:                                         # e.g. the game's language changed meanwhile
                 del items[it["id"]]

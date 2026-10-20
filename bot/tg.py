@@ -36,19 +36,41 @@ def buttons(rows):
     return {"inline_keyboard": [[{"text": t, "callback_data": d} for t, d in row] for row in rows]}
 
 
+temp = []                    # tests: (chat, text, seconds) of self-destructing messages
+
+
 def send(chat, text, markup=None):
+    """-> message id (None on error)"""
     if sent is not None:
         sent.append((chat, text))
         if markup:
             markups.append((chat, markup))
-        return
+        return len(sent)
     try:
         data = dict(chat_id=chat, text=text, parse_mode="HTML", disable_web_page_preview=True)
         if markup:
             data["reply_markup"] = markup
-        call("sendMessage", **data)
+        return call("sendMessage", **data)["result"]["message_id"]
     except Exception as e:
         print(f"send error: {type(e).__name__}")
+
+
+def send_temp(chat, text, seconds=60):
+    """a message that deletes itself: the bot invokes itself asynchronously to delete it later"""
+    mid = send(chat, text)
+    if sent is not None:
+        temp.append((chat, text, seconds))
+        return
+    if not mid:
+        return
+    try:
+        import boto3
+        import os
+        boto3.client("lambda").invoke(FunctionName=os.environ["AWS_LAMBDA_FUNCTION_NAME"], InvocationType="Event",
+                                      Payload=json.dumps({"action": "delete_later", "chat": chat, "mid": mid,
+                                                          "delay": seconds}).encode())
+    except Exception as e:
+        print(f"delete_later error: {type(e).__name__}")
 
 
 def set_commands(commands, chat=None):
