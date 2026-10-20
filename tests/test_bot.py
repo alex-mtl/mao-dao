@@ -19,6 +19,8 @@ class BotTest(unittest.TestCase):
         store.use(store.MemoryTable())
         tg.sent = []
         tg.markups.clear()
+        tg.answers.clear()
+        tg.deleted.clear()
         tg._params.update({"webhook-secret": "s", "bot_name": "test_bot", "token": "x"})
         self.key = handler.admin({"action": "add_game", "id": "mao"})["game_key"]
         self.key2 = handler.admin({"action": "add_game", "id": "other"})["game_key"]
@@ -147,12 +149,16 @@ class BotTest(unittest.TestCase):
         tg.markups.clear()
         call("/game/poll", {"results": [{"id": wid, "ok": True, "word": "огурец", "round": 12}]}, self.key)
         self.assertIn("раунде <b>12</b>", tg.sent[-2][1])
-        self.assertEqual(tg.markups[-1][1]["inline_keyboard"][0][0]["callback_data"], "rej:" + wid)
+        self.assertEqual(tg.markups[-1][1]["inline_keyboard"][0][1]["callback_data"], "rej:" + wid)
         call("/tg", msg("привет"))                                     # question closed: normal dialog again
         self.assertIn("Не нашёл стрим", tg.sent[-1][1])
+        self.assertEqual([b["callback_data"] for b in tg.markups[-1][1]["inline_keyboard"][0]], ["ok:" + wid, "rej:" + wid])
         cb("rej:" + wid)
-        self.assertIn("Отклонено", tg.sent[-2][1])
-        self.assertIn("отклонил", tg.sent[-1][1])
+        self.assertIn("отклонил", tg.sent[-1][1])                     # the viewer is told
+        self.assertIn("Отклонено", tg.answers[-1])                    # the host: a popup...
+        self.assertEqual(tg.deleted[-1], (5, 1))                      # ...and the message is gone
+        cb("rej:" + wid)
+        self.assertIn("не отменить", tg.answers[-1])
         self.assertEqual(call("/game/poll", {}, self.key)[1]["cancel"], [wid])
         self.assertEqual(call("/game/poll", {}, self.key)[1]["cancel"], [])
 
@@ -167,8 +173,16 @@ class BotTest(unittest.TestCase):
         call("/tg", msg("огурец"))
         wid = call("/game/poll", {}, self.key)[1]["words"][0]["id"]
         call("/game/poll", {"results": [{"id": wid, "ok": True, "word": "огурец", "round": 3}]}, self.key)
+        cb = {"callback_query": {"id": "c", "from": {"id": 5}, "data": "ok:" + wid,
+                                 "message": {"chat": {"id": 5}, "message_id": 2}}}
+        call("/tg", cb)
+        self.assertIn("Принято: ОГУРЕЦ", tg.answers[-1])
+        self.assertEqual(tg.deleted[-1], (5, 2))
         call("/game/poll", {"played": [wid]}, self.key)
         self.assertIn("загадано прямо сейчас", tg.sent[-1][1])
+        log = store.get("EVLOG#mao#" + __import__("time").strftime("%Y-%m-%d", __import__("time").gmtime()))
+        self.assertEqual([x["type"] for x in log["events"]],
+                         ["link", "host", "ask", "word_sent", "word_queued", "word_accepted", "word_played"])
 
     def test_auth(self):
         self.assertEqual(call("/game/stream/start", {}, "nope")[0], 401)

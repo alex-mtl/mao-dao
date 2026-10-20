@@ -14,7 +14,7 @@ import os
 import time
 from html import escape as e
 
-from . import store, tg
+from . import events, store, tg
 from .words import norm
 
 ASK_TTL = 10 * 60
@@ -33,7 +33,8 @@ TEXT = {
     "missing": "Слова «{w}» нет в словаре игры. Пришли другое слово.",
     "host_missing": "📕 Слово «{w}» от <b>{name}</b> (@{tt}) не найдено в словаре.",
     "rejected": "Ведущий отклонил слово «{w}».",
-    "host_rejected": "❌ Отклонено: «<b>{w}</b>» от <b>{name}</b>.",
+    "pop_accepted": "✅ Принято: {w}",
+    "pop_rejected": "❌ Отклонено: {w}",
     "too_late": "Это слово уже не отменить.",
     "played": "🎯 Твоё слово «<b>{w}</b>» загадано прямо сейчас в раунде {round}!",
     "not_host": "Эта команда только для ведущего игры.",
@@ -79,27 +80,42 @@ def on_callback(cb, now=None):
     chat, mid = (msg.get("chat") or {}).get("id"), msg.get("message_id")
     data = cb.get("data") or ""
     game = (store.get("HOSTOF#" + tg_id) or {}).get("game")
-    tg.answer(cb.get("id"))
     if not game:
+        tg.answer(cb.get("id"))
         return
+    if data.startswith("ok:") or data.startswith("rej:"):
+        return decide(cb, game, chat, mid, data)
+    tg.answer(cb.get("id"))
     if data.startswith("pick:"):
         tt = data[5:]
         u = (store.get("GAMEUSERS#" + game) or {}).get("users", {}).get(tt)
         if not u:
             return
         store.put("ASK#" + u["tg"], {"game": game, "host": chat, "tt": tt, "name": u.get("name", "")}, ttl=now + ASK_TTL)
+        events.log(game, "ask", tt=tt, host=tg_id)
         tg.send(u["chat"], TEXT["ask"])
         tg.edit(chat, mid, TEXT["asked"].format(name=e(u.get("name") or tt), tt=e(tt)))
-    elif data.startswith("rej:"):
-        pend = store.get("PEND#" + game) or {"items": []}
-        it = next((i for i in pend["items"] if i["id"] == data[4:]), None)
-        if not it or it["state"] == "cancel":
-            tg.edit(chat, mid, TEXT["too_late"])
-            return
+
+
+def decide(cb, game, chat, mid, data):
+    """the host's ✅/❌ on a picked word: popup, the message disappears, the decision goes to the journal"""
+    accept = data.startswith("ok:")
+    wid = data.split(":", 1)[1]
+    pend = store.get("PEND#" + game) or {"items": []}
+    it = next((i for i in pend["items"] if i["id"] == wid), None)
+    if not accept and (not it or it["state"] == "cancel"):     # already played or rejected
+        tg.answer(cb.get("id"), TEXT["too_late"])
+        tg.delete(chat, mid)
+        return
+    w = it["word"].upper() if it else ""
+    if not accept:
         it["state"] = "cancel"
         store.put("PEND#" + game, {"items": pend["items"]})
-        tg.edit(chat, mid, TEXT["host_rejected"].format(w=e(it["word"].upper()), name=e(it["name"])))
         tg.send(it["chat"], TEXT["rejected"].format(w=e(it["word"])))
+    tg.answer(cb.get("id"), TEXT["pop_accepted" if accept else "pop_rejected"].format(w=w))
+    tg.delete(chat, mid)
+    events.log(game, "word_accepted" if accept else "word_rejected", id=wid, word=it["word"] if it else "",
+               tt=it["tt"] if it else "")
 
 
 def viewer_word(ask, chat, tg_id, text, now=None):
@@ -112,6 +128,7 @@ def viewer_word(ask, chat, tg_id, text, now=None):
     pend["items"].append({"id": base64.urlsafe_b64encode(os.urandom(6)).decode(), "word": word, "tt": ask["tt"],
                           "name": ask["name"], "tg": tg_id, "chat": chat, "host": ask["host"], "state": "new"})
     store.put("PEND#" + game, {"items": pend["items"]})
+    events.log(game, "word_sent", tt=ask["tt"], word=word)
     return [(chat, TEXT["checking"].format(w=e(word)))]
 
 
@@ -132,16 +149,19 @@ def game_poll(game, body):
             w = e(it["word"].upper())
             tg.send(it["chat"], TEXT["queued"].format(w=w, round=it["round"]))
             tg.send(it["host"], TEXT["host_queued"].format(w=w, name=e(it["name"]), tt=e(it["tt"]), round=it["round"]),
-                    tg.buttons([[("❌ отклонить", "rej:" + it["id"])]]))
+                    tg.buttons([[("✅ принять", "ok:" + it["id"]), ("❌ отклонить", "rej:" + it["id"])]]))
+            events.log(gid, "word_queued", tt=it["tt"], word=it["word"], round=it["round"])
         else:
             del items[it["id"]]
             tg.send(it["chat"], TEXT["missing"].format(w=e(it["word"])))
             tg.send(it["host"], TEXT["host_missing"].format(w=e(it["word"]), name=e(it["name"]), tt=e(it["tt"])))
+            events.log(gid, "word_missing", tt=it["tt"], word=it["word"])
     for pid in body.get("played") or []:
         it = items.pop(pid, None)
         if it:
             changed = True
             tg.send(it["chat"], TEXT["played"].format(w=e(it["word"].upper()), round=it.get("round", "")))
+            events.log(gid, "word_played", tt=it["tt"], word=it["word"], round=it.get("round"))
     words = [{"id": i["id"], "word": i["word"], "tiktok_id": i["tt"], "name": i["name"]}
              for i in items.values() if i["state"] == "new"]
     cancel = [i["id"] for i in items.values() if i["state"] == "cancel"]

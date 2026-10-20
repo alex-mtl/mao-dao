@@ -5,7 +5,7 @@
      "Action": ["logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents"],
      "Resource": "arn:aws:logs:us-east-1:565905128720:log-group:/aws/lambda/tiktok-tg-bot*"},
     {"Sid": "Table", "Effect": "Allow",
-     "Action": ["dynamodb:GetItem", "dynamodb:PutItem", "dynamodb:DeleteItem"],
+     "Action": ["dynamodb:GetItem", "dynamodb:PutItem", "dynamodb:DeleteItem", "dynamodb:UpdateItem"],
      "Resource": "arn:aws:dynamodb:us-east-1:565905128720:table/tiktok-tg-bot"},
     {"Sid": "Params", "Effect": "Allow", "Action": "ssm:GetParameter",
      "Resource": "arn:aws:ssm:us-east-1:565905128720:parameter/tiktok-tg-bot/*"}

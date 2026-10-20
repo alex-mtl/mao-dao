@@ -41,6 +41,11 @@ def delete(pk):
     table().delete(pk)
 
 
+def append(pk, field, value):
+    """add value to the list field (created if missing), atomically"""
+    table().append(pk, field, value)
+
+
 def claim(pk, data, ttl, now):
     """put only if the item is absent or expired; True if claimed"""
     return table().put_if_free(dict(data, pk=pk, ttl=int(ttl)), int(now))
@@ -70,6 +75,11 @@ class DynamoTable:
     def delete(self, pk):
         self.t.delete_item(Key={"pk": pk})
 
+    def append(self, pk, field, value):
+        self.t.update_item(Key={"pk": pk}, UpdateExpression="SET #f = list_append(if_not_exists(#f, :e), :v)",
+                           ExpressionAttributeNames={"#f": field},
+                           ExpressionAttributeValues={":e": [], ":v": [value]})
+
     def put_if_free(self, item, now):
         try:
             self.t.put_item(Item=item, ConditionExpression="attribute_not_exists(pk) OR #t <= :now",
@@ -91,6 +101,9 @@ class MemoryTable:
 
     def delete(self, pk):
         self.items.pop(pk, None)
+
+    def append(self, pk, field, value):
+        self.items.setdefault(pk, {"pk": pk}).setdefault(field, []).append(value)
 
     def put_if_free(self, item, now):
         cur = self.items.get(item["pk"])

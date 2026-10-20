@@ -18,7 +18,7 @@ import os
 import time
 from html import escape as html_escape
 
-from . import riddle, store, texts, tg
+from . import events, riddle, store, texts, tg
 from .words import pick_word, norm
 
 KEY_TTL = 15 * 60
@@ -73,6 +73,7 @@ def on_message(msg, now=None):
         store.put("OWNER#" + h["game"], {"chat": chat, "tg": tg_id})
         store.put("HOSTOF#" + tg_id, {"game": h["game"]})
         tg.set_commands(MENU_HOST, chat)
+        events.log(h["game"], "host", tg=tg_id, tg_name=user.get("username") or "")
         print(f"host of {h['game']}: tg {tg_id}")
         who = " ".join(filter(None, [user.get("first_name"), user.get("last_name"),
                                      "@" + user["username"] if user.get("username") else ""]))
@@ -193,6 +194,7 @@ def game_key(game, body, now=None):
     store.put("TT#" + who, link)
     store.put("TG#" + p["tg"], link)
     riddle.add_game_user(game["id"], link)
+    events.log(game["id"], "link", tt=who, name=link["tiktok_name"], tg=p["tg"], tg_name=p["tg_name"], first=first)
     tg.send(p["chat"], t("done", tt=who))
     owner = store.get("OWNER#" + game["id"])                    # the streamer: links in their game
     admins = (store.get("SUPERADMINS") or {}).get("chats", [])  # the bot's owner: links in every game

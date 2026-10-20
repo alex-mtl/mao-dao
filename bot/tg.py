@@ -63,14 +63,29 @@ def set_commands(commands, chat=None):
         print(f"menu error: {type(e).__name__}")
 
 
+answers = []                 # tests: popup texts of button presses
+deleted = []                 # tests: (chat, message id) of deleted messages
+
+
 def answer(callback_id, text=""):
-    """confirm a button press (the button stops spinning)"""
+    """confirm a button press (the button stops spinning); text = a short popup, not kept in the chat"""
     if sent is not None:
+        answers.append(text)
         return
     try:
         call("answerCallbackQuery", callback_query_id=callback_id, text=text)
     except Exception as e:
         print(f"answer error: {type(e).__name__}")
+
+
+def delete(chat, message_id):
+    if sent is not None:
+        deleted.append((chat, message_id))
+        return
+    try:
+        call("deleteMessage", chat_id=chat, message_id=message_id)
+    except Exception as e:
+        print(f"delete error: {type(e).__name__}")
 
 
 def edit(chat, message_id, text):
