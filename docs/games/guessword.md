@@ -46,6 +46,17 @@ Browser / Studio addresses go through nginx: `GUESSWORD_ENGINE_PUBLIC_PATH` (def
 | `GUESSWORD_ENGINE_SECRET` | shared secret with the engine |
 | `GUESSWORD_ENGINE_PUBLIC_PATH` | where nginx publishes the engine, default `/guessword/engine` |
 | `GUESSWORD_STREAMERS` | pilot allowlist: e-mails, comma separated |
+| `GUESSWORD_BOT_URL` | the Telegram bot's Function URL |
+| `GUESSWORD_BOT_PLATFORM_SECRET` | = SSM `/tiktok-tg-bot/platform-secret` |
+
+The engine itself needs `TG_BOT_URL` and `RANKER_URLS` in its environment (see `stream-engine/README.md`).
+
+## Laravel ↔ bot
+
+On a room's first start `App\Games\Guessword\Services\BotClient` registers it in the bot
+(`POST /platform/games {id: gw<id>, lang}`, header `X-Platform-Secret`) and stores the returned key
+encrypted in `guessword_rooms.tg_key`; Laravel passes it to the engine with the room. The same key opens
+the word-ranker Lambdas. Registering the same id again rotates the key.
 
 ## Tests
 

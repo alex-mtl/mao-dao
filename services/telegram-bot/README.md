@@ -22,6 +22,7 @@ Telegram-бот, который связывает Telegram зрителя с е
 | `POST /game/stream/stop` | игра | освобождает слово (иначе само истекает через 12 ч) |
 | `POST /game/key` | игра | `{key, tiktok_id, tiktok_name}` → `{ok, linked, first}` |
 | `POST /game/push` | игра | `{tiktok_id, text}` — сообщение привязанному зрителю |
+| `POST /platform/games` | платформа mao-dao | `{id, lang}` → `{id, game_key}`; заголовок `X-Platform-Secret` = SSM `/tiktok-tg-bot/platform-secret`; повтор выдаёт новый ключ |
 
 Игра шлёт `Authorization: Bearer <game key>`. Админ-действия — только прямой `aws lambda invoke`:
 `{"action":"add_game","id":"mao","lang":"ru"}` (ключ показывается один раз), `{"action":"set_webhook","url":"…/tg"}`.

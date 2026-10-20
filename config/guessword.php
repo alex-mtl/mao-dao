@@ -22,5 +22,10 @@ return [
         explode(',', (string) env('GUESSWORD_STREAMERS', '')),
     ))),
 
+    // the Telegram bot (services/telegram-bot): rooms register there and get their key, which also
+    // opens the word-ranker Lambdas. Secret = SSM /tiktok-tg-bot/platform-secret.
+    'bot_url' => env('GUESSWORD_BOT_URL', env('APP_ENV') === 'testing' ? 'http://bot.test' : null),
+    'bot_platform_secret' => env('GUESSWORD_BOT_PLATFORM_SECRET'),
+
     'languages' => ['en', 'ru', 'fr', 'es'],
 ];

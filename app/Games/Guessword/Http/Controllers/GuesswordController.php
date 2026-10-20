@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Games\Guessword\Http\Controllers;
 
 use App\Games\Guessword\Models\GuesswordRoom;
+use App\Games\Guessword\Services\BotClient;
 use App\Games\Guessword\Services\EngineClient;
 use App\Http\Controllers\Controller;
 use App\Services\Capabilities;
@@ -21,7 +22,11 @@ use Throwable;
  */
 class GuesswordController extends Controller
 {
-    public function __construct(private EngineClient $engine, private Capabilities $capabilities) {}
+    public function __construct(
+        private EngineClient $engine,
+        private BotClient $bot,
+        private Capabilities $capabilities,
+    ) {}
 
     public function index(Request $request): Response
     {
@@ -102,6 +107,7 @@ class GuesswordController extends Controller
         }
 
         return $this->toEngine(function () use ($room) {
+            $this->bot->ensureKey($room);              // first start: the room becomes a game in the bot
             $this->engine->start($room);
             $room->forceFill(['last_started_at' => now()])->save();
         }, 'guessword.started');

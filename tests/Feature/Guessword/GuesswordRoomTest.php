@@ -11,6 +11,8 @@ beforeEach(function () {
         'guessword.engine_url' => 'http://engine.test',
         'guessword.engine_secret' => 's3cret',
         'guessword.streamers' => ['streamer@example.com'],
+        'guessword.bot_url' => 'http://bot.test',
+        'guessword.bot_platform_secret' => 'plat',
     ]);
 });
 
@@ -102,7 +104,10 @@ it('refuses a TikTok username another streamer already uses', function () {
 });
 
 it('starts and stops the room in the engine', function () {
-    Http::fake(['engine.test/*' => Http::response(['running' => true])]);
+    Http::fake([
+        'engine.test/*' => Http::response(['running' => true]),
+        'bot.test/platform/games' => Http::response(['id' => 'gw1', 'game_key' => 'key-1']),
+    ]);
     $streamer = User::factory()->create(['email' => 'streamer@example.com']);
 
     $this->actingAs($streamer)->post('/guessword/room/start')->assertSessionHasErrors('tiktok');   // no username yet
@@ -112,6 +117,12 @@ it('starts and stops the room in the engine', function () {
     $room = GuesswordRoom::firstWhere('user_id', $streamer->id);
     expect($room->last_started_at)->not->toBeNull();
     Http::assertSent(fn ($r) => $r->method() === 'POST' && str_ends_with($r->url(), '/internal/rooms/'.$room->engineId().'/start'));
+    expect($room->tg_key)->toBe('key-1');                                             // registered in the bot once
+    Http::assertSent(fn ($r) => $r->url() === 'http://bot.test/platform/games'
+        && $r->header('X-Platform-Secret')[0] === 'plat' && $r['id'] === $room->engineId());
+    Http::assertSent(fn ($r) => $r->method() === 'PUT' && ($r['tg_key'] ?? null) === 'key-1');   // and the engine got it
+    $this->actingAs($streamer)->post('/guessword/room/start');
+    expect(collect(Http::recorded())->filter(fn ($pair) => str_contains($pair[0]->url(), 'bot.test'))->count())->toBe(1);
 
     $this->actingAs($streamer)->post('/guessword/room/stop')->assertSessionHas('success');
     Http::assertSent(fn ($r) => str_ends_with($r->url(), '/internal/rooms/'.$room->engineId().'/stop'));
