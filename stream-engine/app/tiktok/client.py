@@ -133,14 +133,7 @@ class TikTokConnector:
         def join(event):
             hub.join(viewer_of(event.user))
 
-        streaks = {}                              # (user, gift) -> pending combo
-
-        def deliver(key):
-            st = streaks.pop(key, None)
-            if st:
-                to = st.get("to") or ""
-                print(f"[gift] {st['viewer'].name}: {st['name']} x{st['count']}" + (f" -> @{to}" if to else ""))
-                hub.gift(st["viewer"], st["name"], st["count"], to=to)
+        streaks = {}                              # (user, gift) -> combo in progress: how many already counted
 
         def gift(event):
             v = viewer_of(event.user)
@@ -152,22 +145,24 @@ class TikTokConnector:
             to = str(getattr(to_user, "unique_id", "") or "") if to_user else ""
             if config.LOG_CHAT:
                 print(f"[gift] event {v.name}: {name} x{count} streaking={streaking} to=@{to or '-'}")
+            # act on the first event at once (TikTok sends the combo's end 3-5 s later); later events of the
+            # same combo bring only the new gifts (repeat_count grows), marked as repeats: no second "thanks"
             key = (v.id, name)
-            if not streaking:                     # single gift or end of a combo
-                old = streaks.pop(key, None)
-                if old and old.get("timer"):
-                    old["timer"].cancel()
-                streaks[key] = {"viewer": v, "name": name, "count": count, "to": to}
-                deliver(key)
-                return
-            # combo in progress: wait for its end, but don't lose it if the end never arrives
             st = streaks.get(key)
-            if st is None:
-                st = streaks[key] = {"viewer": v, "name": name, "count": count, "to": to}
-            st["count"] = max(st["count"], count)
-            if st.get("timer"):
+            if st and st.get("timer"):
                 st["timer"].cancel()
-            st["timer"] = asyncio.get_running_loop().call_later(5, deliver, key)
+            first = st is None or count < st["sent"]          # a new combo (the old one's end never came)
+            if first:
+                st = streaks[key] = {"sent": 0}
+            part = count - st["sent"]
+            if part > 0:
+                st["sent"] = count
+                print(f"[gift] {v.name}: {name} x{part}" + (" (combo)" if not first else "") + (f" -> @{to}" if to else ""))
+                hub.gift(v, name, part, to=to, repeat=not first)
+            if streaking:                         # forget the combo if its end never arrives
+                st["timer"] = asyncio.get_running_loop().call_later(10, streaks.pop, key, None)
+            else:
+                streaks.pop(key, None)
 
         def follow(event):
             hub.follow(viewer_of(event.user))

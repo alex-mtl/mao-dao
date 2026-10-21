@@ -273,6 +273,16 @@ class GiftHintTest(unittest.TestCase):
         g.on_comment(eva, "подсказка")                                     # no credits left: a guess
         self.assertEqual(len(g.hints), 1)
 
+    def test_combo_parts_thanked_once(self):
+        g = GuessGame(JsonStore(tempfile.mkdtemp()))
+        g.tick(time.time()); g.tick(time.time() + 0.01)
+        eva = Viewer("eva", "Eva", "", 1)
+        g.on_gift(eva, "Rose", 1)                          # the combo's first event: hint at once
+        g.on_gift(eva, "Rose", 2, repeat=True)             # the combo goes on: 2 more, on the account
+        self.assertEqual(len(g.hints), 1)
+        self.assertEqual(g.credits["eva"], 2)
+        self.assertEqual(len([e for e in g.events if e["type"] == "gift"]), 1)
+
     def test_gift_combo_goes_on_account_with_cooldown(self):
         g = GuessGame(JsonStore(tempfile.mkdtemp()))
         g.tick(time.time()); g.tick(time.time() + 0.01)

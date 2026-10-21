@@ -500,11 +500,15 @@ class GuessGame(BaseGame):
                 self._accept(p, word, now)               # the hint word is their guess
         return h
 
-    def on_gift(self, viewer: Viewer, gift: str, count: int):
-        self.emit("gift", name=viewer.name, avatar=viewer.avatar, gift=gift, count=count)
-        print(f"[guess] gift {gift} x{count} from {viewer.name}")
+    def on_gift(self, viewer: Viewer, gift: str, count: int, repeat=False):
+        """repeat: more gifts of a combo whose start was already handled - thanked once, per combo"""
+        if not repeat:
+            self.emit("gift", name=viewer.name, avatar=viewer.avatar, gift=gift, count=count)
+        print(f"[guess] gift {gift} x{count} from {viewer.name}" + (" (combo)" if repeat else ""))
         g = gift.lower()
-        if g in config.GIFT_NEW_ROUND_NAMES and self.phase == PLAYING:
+        if g in config.GIFT_NEW_ROUND_NAMES:
+            if self.phase == PLAYING and not repeat:     # a combo skips one round, not several
+                self._finish(time.time(), "skip")
             self._finish(time.time(), "skip")
         elif g not in config.GIFT_NEW_ROUND_NAMES and g not in config.GIFT_HINT_EXCLUDE:   # any gift
             # one hint now (unless this viewer had one less than hint_cd s ago), every other gift

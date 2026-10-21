@@ -157,18 +157,19 @@ class Hub:
             self._feed(type="join", name=v.name, avatar=v.avatar)
         self.game.on_join(v)
 
-    def gift(self, v: Viewer, gift, count, to=""):
+    def gift(self, v: Viewer, gift, count, to="", repeat=False):
         """A gift on the stream. Only gifts to the host count in the game (hints); a gift to a guest
-        or co-host on the same live is just shown."""
+        or co-host on the same live is just shown. repeat: more gifts of a combo already announced."""
         if self.closed:                               # shutting down: nothing changes any more
             return
         self._seen(v)
-        self._feed(type="gift", name=v.name, avatar=v.avatar, gift=gift, count=count, to=to)
+        if not repeat:
+            self._feed(type="gift", name=v.name, avatar=v.avatar, gift=gift, count=count, to=to)
         self._journal_gift(v, gift, count, to)
         if to and to.lower() != self.username:
             print(f"[gift] {v.name}: {gift} went to @{to}, not to the host -> no game action")
             return
-        self.game.on_gift(v, gift, count)
+        self.game.on_gift(v, gift, count, repeat=repeat)
 
     def _journal_gift(self, v, gift, count, to):
         """Every gift, one JSON line in data/gifts.jsonl (kept across rebuilds: the data folder is mounted)."""
