@@ -501,6 +501,17 @@ class LikersTest(unittest.TestCase):
 
 
 class ChampionWordsTest(unittest.TestCase):
+    def test_anyone_sends_three_words_until_the_round_has_three_champions(self):
+        g = GuessGame(JsonStore(tempfile.mkdtemp()))
+        g.tick(time.time()); g.tick(time.time() + 0.01)
+        words = [w for w in ("water", "fire", "house", "tree", "stone", "river") if w != g.secret]
+        g.on_comment(Viewer("ann", "Ann", "", 1), words[0] + " " + words[1])   # empty round: anyone
+        self.assertEqual(g.players["ann"].guesses, 2)
+        g.on_comment(Viewer("bob", "Bob", "", 1), words[2])
+        g.on_comment(Viewer("cat", "Cat", "", 1), words[3])                    # three champions now
+        g.on_comment(Viewer("dan", "Dan", "", 1), words[4] + " " + words[5])   # not one of them: ignored
+        self.assertNotIn("dan", g.players)
+
     def test_champions_send_up_to_three_words(self):
         g = GuessGame(JsonStore(tempfile.mkdtemp()))
         g.tick(time.time()); g.tick(time.time() + 0.01)
@@ -515,6 +526,7 @@ class ChampionWordsTest(unittest.TestCase):
         self.assertFalse(any(e["type"] == "guess" and e["name"] == "Cat" for e in g.events))
         g.on_comment(Viewer("dan", "Dan", "", 1), "the " + words[3] + " " + words[0])   # 3rd place: article dropped
         self.assertEqual(g.players["dan"].guesses, 2)
+        g.on_comment(Viewer("fay", "Fay", "", 1), "stone")                       # 3 round champions now
         g.on_comment(Viewer("eve", "Eve", "", 1), words[0] + " " + words[1])    # not a champion: ignored
         self.assertNotIn("eve", g.players)
         g.on_comment(Viewer("ann", "Ann", "", 1), " ".join(words))              # 4 words: not a guess
@@ -535,6 +547,7 @@ class ChampionWordsTest(unittest.TestCase):
         self.assertEqual(g.players["first"].guesses, 3)
         # "first" now holds the table's top 3: the next author down the table is a champion too
         self.assertEqual(g._round_champion_ids(), {"first", "o"})
+        g.on_comment(Viewer("p", "P", "", 1), r(600))                # a third author: all 3 places taken
         g.players["copy"].last_t = 0
         g.on_comment(copycat, r(40) + " " + r(50))                   # not a champion: ignored
         self.assertEqual(g.players["copy"].guesses, 1)

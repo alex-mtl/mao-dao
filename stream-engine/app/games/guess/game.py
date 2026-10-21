@@ -321,9 +321,12 @@ class GuessGame(BaseGame):
             return
         # stream champions (1st-3rd place by wins, ties included) and round champions (whoever named
         # the 1st, 2nd and 3rd word of the table first) may send up to 3 words at once: each word
-        # counts as their own guess
-        if self.phase == PLAYING and self._batch is None and (viewer.id in self.stats.champion_ids()
-                                      or viewer.id in self._round_champion_ids()):
+        # counts as their own guess. At the start of a round, until three players hold the round
+        # champion places, anyone may.
+        round_champs = self._round_champion_ids() if self.phase == PLAYING else set()
+        if self.phase == PLAYING and self._batch is None and (len(round_champs) < 3
+                                      or viewer.id in round_champs
+                                      or viewer.id in self.stats.champion_ids()):
             several = self.sem.split_words(text)
             if several:
                 # the words go out as one "multi_guess" event: one row (all words + the nick), then
