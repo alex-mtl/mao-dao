@@ -61,6 +61,17 @@ def _plain(v):
     return v
 
 
+def _dynamo(v):
+    """DynamoDB takes no Python floats: Decimal instead (read back as float by _plain)"""
+    if isinstance(v, float):
+        return Decimal(str(v))
+    if isinstance(v, dict):
+        return {k: _dynamo(x) for k, x in v.items()}
+    if isinstance(v, list):
+        return [_dynamo(x) for x in v]
+    return v
+
+
 class DynamoTable:
     def __init__(self, t):
         self.t = t
@@ -70,7 +81,7 @@ class DynamoTable:
         return _plain(item) if item else None
 
     def put(self, item):
-        self.t.put_item(Item=item)
+        self.t.put_item(Item=_dynamo(item))
 
     def delete(self, pk):
         self.t.delete_item(Key={"pk": pk})
@@ -78,11 +89,11 @@ class DynamoTable:
     def append(self, pk, field, value):
         self.t.update_item(Key={"pk": pk}, UpdateExpression="SET #f = list_append(if_not_exists(#f, :e), :v)",
                            ExpressionAttributeNames={"#f": field},
-                           ExpressionAttributeValues={":e": [], ":v": [value]})
+                           ExpressionAttributeValues={":e": [], ":v": [_dynamo(value)]})
 
     def put_if_free(self, item, now):
         try:
-            self.t.put_item(Item=item, ConditionExpression="attribute_not_exists(pk) OR #t <= :now",
+            self.t.put_item(Item=_dynamo(item), ConditionExpression="attribute_not_exists(pk) OR #t <= :now",
                             ExpressionAttributeNames={"#t": "ttl"}, ExpressionAttributeValues={":now": now})
             return True
         except self.t.meta.client.exceptions.ConditionalCheckFailedException:

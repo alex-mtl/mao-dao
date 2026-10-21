@@ -297,6 +297,52 @@ class BotTest(unittest.TestCase):
         self.assertEqual(call("/game/stream/start", {}, k1)[0], 401)
         self.assertEqual(call("/game/stream/start", {}, k2)[0], 200)
 
+    def test_twin_games_on_one_live(self):
+        call("/tg", {"message": {"chat": {"id": 9}, "from": {"id": 9, "username": "Boss"}, "text": "привет"}})
+        handler.admin({"action": "set_superadmin", "username": "boss"})
+        tg.sent.clear()
+        call("/game/stream/start", {"tiktok": "@Mao.Montreal"}, self.key)
+        self.assertEqual(tg.sent, [])                                   # one game: fine
+        call("/game/stream/start", {"tiktok": "mao.montreal"}, self.key)
+        self.assertEqual(tg.sent, [])                                   # its own restart: fine
+        call("/game/stream/start", {"tiktok": "mao.montreal"}, self.key2)
+        self.assertEqual(tg.sent[-1][0], 9)
+        self.assertIn("подключён к двум играм", tg.sent[-1][1])
+        n = len(tg.sent)
+        call("/game/stream/start", {"tiktok": "mao.montreal"}, self.key)
+        self.assertEqual(len(tg.sent), n)                               # not again within half an hour
+
+    def test_same_game_running_twice(self):
+        call("/tg", {"message": {"chat": {"id": 9}, "from": {"id": 9, "username": "Boss"}, "text": "привет"}})
+        handler.admin({"action": "set_superadmin", "username": "boss"})
+        tg.sent.clear()
+        poll = lambda inst: call("/game/poll", {"v": 2, "instance": inst}, self.key)
+        poll("A"); poll("A")
+        poll("B")                                                       # a restart: A never polls again
+        poll("B")
+        self.assertEqual(tg.sent, [])
+        poll("A")                                                       # ...but A is still alive: a twin
+        self.assertIn("запущена дважды", tg.sent[-1][1])
+
+    def test_lone_game_writes_its_mark_rarely(self):
+        writes = []
+        real = store.table().put
+        store.table().put = lambda item: (writes.append(item["pk"]), real(item))
+        for _ in range(5):
+            call("/game/poll", {"v": 2, "instance": "A"}, self.key)
+        self.assertEqual(writes.count("INST#mao"), 1)                  # 5 polls, one write
+
+    def test_floats_go_to_dynamodb_as_decimals(self):
+        from decimal import Decimal
+        put = []
+
+        class T:
+            def put_item(self, Item, **kw): put.append(Item)
+        store.DynamoTable(T()).put({"pk": "x", "seen": {"a": {"at": 1.5, "first": 2}}, "l": [0.25]})
+        self.assertEqual(put[0]["seen"]["a"]["at"], Decimal("1.5"))
+        self.assertEqual(put[0]["l"], [Decimal("0.25")])
+        self.assertEqual(store._plain(put[0])["seen"]["a"]["at"], 1.5)
+
     def test_auth(self):
         self.assertEqual(call("/game/stream/start", {}, "nope")[0], 401)
         r = handler.lambda_handler({"rawPath": "/tg", "headers": {"x-telegram-bot-api-secret-token": "bad"},

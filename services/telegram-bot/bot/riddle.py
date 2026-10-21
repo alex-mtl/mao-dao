@@ -316,6 +316,8 @@ def rename(gid, names, items):
 def game_poll(game, body):
     """the game's results (dictionary checks, queue places, started rounds), then work for it"""
     gid = game["id"]
+    from .handler import check_instance_twin           # (circular import otherwise)
+    check_instance_twin(game, str(body.get("instance") or ""), time.time())
     pend = store.get("PEND#" + gid) or {"items": []}
     items = {i["id"]: i for i in pend["items"]}
     changed = False

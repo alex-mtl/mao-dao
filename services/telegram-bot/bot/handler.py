@@ -207,8 +207,55 @@ def stream_start(game, body, now=None):
     game["word"] = word
     if body.get("tiktok"):
         game["tiktok"] = body["tiktok"].lstrip("@").lower()
+        check_live_twin(game, game["tiktok"], now)
     store.put("GAME#" + game["pk_hash"], game)
     return 200, {"word": word, "bot": tg.bot_name()}
+
+
+TWIN_WARN_EVERY = 30 * 60          # one "two games" warning per game per half hour
+INST_WRITE_EVERY = 15              # a lone game refreshes its instance mark at most this often (seconds)
+
+
+def warn_twins(games, text, now):
+    """tell the hosts of these games and the superadmins (at most every TWIN_WARN_EVERY per game)"""
+    if all(store.get("TWINWARN#" + g) for g in games):
+        return
+    for g in games:
+        store.put("TWINWARN#" + g, {"at": int(now)}, ttl=now + TWIN_WARN_EVERY)
+    chats = [o["chat"] for o in (store.get("OWNER#" + g) for g in games) if o]
+    chats += (store.get("SUPERADMINS") or {}).get("chats", [])
+    for chat in dict.fromkeys(chats):
+        tg.send(chat, text)
+    print(f"twins: {text}")
+
+
+def check_live_twin(game, tiktok, now):
+    """another game already runs this TikTok LIVE (e.g. a home game and a platform room)"""
+    if not tiktok:
+        return
+    cur = store.get("LIVE#" + tiktok)
+    if cur and cur.get("game") != game["id"] and cur.get("ttl", 0) > now:
+        warn_twins([game["id"], cur["game"]], texts.TEXT["ru"]["twins_games"].format(
+            tt=html_escape(tiktok), a=html_escape(cur["game"]), b=html_escape(game["id"])), now)
+    store.put("LIVE#" + tiktok, {"game": game["id"]}, ttl=now + STREAM_TTL)
+
+
+def check_instance_twin(game, instance, now):
+    """the same game (same key) running twice: two instances poll with it. A restart is not a twin: the old
+    instance never polls again after the new one's first poll."""
+    if not instance:
+        return
+    gid = game["id"]
+    seen = (store.get("INST#" + gid) or {}).get("seen", {})
+    seen = {i: v for i, v in seen.items() if now - v["at"] < 120}
+    others = {i: v for i, v in seen.items() if i != instance}
+    if instance in seen and not others and now - seen[instance]["at"] < INST_WRITE_EVERY:
+        return                                      # alone and recently marked: no write (1 write/s table)
+    me = seen.setdefault(instance, {"first": now, "at": now})
+    me["at"] = now
+    if any(v["at"] > me["first"] and now - v["at"] < 30 for v in others.values()):
+        warn_twins([gid], texts.TEXT["ru"]["twins_instances"].format(game=html_escape(gid)), now)
+    store.put("INST#" + gid, {"seen": seen}, ttl=now + 3600)
 
 
 def stream_stop(game, body):
@@ -216,6 +263,9 @@ def stream_stop(game, body):
     cur = store.get("WORD#" + word) if word else None
     if cur and cur.get("game") == game["id"]:
         store.delete("WORD#" + word)
+    live = store.get("LIVE#" + game.get("tiktok", "")) if game.get("tiktok") else None
+    if live and live.get("game") == game["id"]:
+        store.delete("LIVE#" + game["tiktok"])
     return 200, {"ok": True}
 
 
