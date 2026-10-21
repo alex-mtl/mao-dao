@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Три слова — макет</title>
+<link href="https://fonts.googleapis.com/css2?family=Russo+One&display=swap" rel="stylesheet">
+<style>
+  :root { --t-perfect:#fff; --t-burning:#ff2d55; --t-veryhot:#ff6a00; --t-hot:#ffb800; --t-warm:#c6ff00;
+          --t-cold:#00e5ff; --t-freezing:#5b7cff; --font: 'Russo One', 'Segoe UI', sans-serif; }
+  body { margin: 0; background: #0b0614; color: #fff; font-family: system-ui, sans-serif; display: flex; gap: 24px;
+         padding: 20px; flex-wrap: wrap; }
+  .panel { width: 400px; background: #140a26; border: 1px solid #3b2a63; border-radius: 14px; padding: 10px; }
+  .row { display: grid; grid-template-columns: 64px 1fr auto; align-items: center; gap: 8px; height: 34px;
+         padding: 0 8px; margin: 4px 0; border-radius: 8px; background: rgba(255,255,255,.04); }
+  .rk { font: 18px var(--font); }
+  .wd { font: 20px var(--font); text-transform: uppercase; letter-spacing: .03em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .who { font-size: 13px; color: #cfc7e6; white-space: nowrap; }
+  .row.landed { animation: land 1.1s ease-out; }
+  @keyframes land { 0% { background: rgba(255,255,255,.35); } 100% { background: rgba(255,255,255,.04); } }
+  .multi { display: flex; align-items: center; gap: 6px; height: 40px; padding: 0 6px; margin: 4px 0 8px;
+           border-radius: 10px; background: rgba(255,255,255,.08); animation: in .35s ease-out; }
+  .multi .nick { font-size: 13px; color: #cfc7e6; margin-left: auto; white-space: nowrap; max-width: 90px; overflow: hidden; text-overflow: ellipsis; }
+  .multi .av { width: 26px; height: 26px; border-radius: 50%; background: #6b4bd6; display: grid; place-items: center; font-size: 13px; flex: none; }
+  .chip { display: inline-flex; align-items: baseline; gap: 5px; padding: 4px 8px; border-radius: 8px; color: #0b0614;
+          font: 15px var(--font); text-transform: uppercase; white-space: nowrap; }
+  .chip small { font-size: 12px; }
+  .multi.out { animation: out .35s ease-in forwards; }
+  @keyframes in { from { opacity: 0; transform: translateY(-8px); } }
+  @keyframes out { to { opacity: 0; height: 0; margin: 0; } }
+  .flyer { position: fixed; z-index: 10; pointer-events: none; transition: transform .8s cubic-bezier(.3,.9,.3,1), opacity .8s; }
+  .controls { display: flex; flex-direction: column; gap: 8px; }
+  button { padding: 10px 14px; border-radius: 8px; border: 1px solid #555; background: #222; color: #eee; font-size: 15px; cursor: pointer; text-align: left; }
+  .hint { color: #9a90b8; font-size: 13px; max-width: 320px; line-height: 1.5; }
+</style>
+</head>
+<body>
+<div class="panel"><div id="multiBox"></div><div id="table"></div></div>
+<div class="controls">
+  <button id="a">▶ Krestik пишет: «звук голос шум»</button>
+  <button id="b">▶ Нина пишет: «отрезок черта линия»</button>
+  <button id="c">▶ фог пишет: «дом торт альцгеймер» (одного нет в словаре)</button>
+  <button id="r">↺ Сбросить таблицу</button>
+  <p class="hint">Три слова одной строкой с ником, каждое цветом своего места. Через мгновение каждое слово
+    улетает на свою строку в таблице. Если место слишком далёкое для таблицы — слово уходит вниз и гаснет;
+    если слова нет в словаре — оно серое и просто гаснет.</p>
+</div>
+<script>
+const TEMPS = [[1,'perfect'],[10,'burning'],[50,'veryhot'],[200,'hot'],[1000,'warm'],[5000,'cold'],[1e9,'freezing']];
+const temp = r => r ? TEMPS.find(([b]) => r <= b)[1] : null;
+const START = [['метр', 2322, 'Сергей'], ['шкала', 64, 'Tati'], ['уровень', 12, 'ANESYA'], ['число', 10, 'Krestik'],
+               ['тон', 403, 'фог'], ['громкость', 7, 'Нина'], ['мера', 394, 'Valeria'], ['сила', 900, 'Maksim']];
+let rows = [];
+const reset = () => { rows = START.map(([w, r, n]) => ({ w, r, n })); draw(); };
+const MAX = 10;
+function draw(hidden = new Set()) {
+  const t = document.getElementById('table');
+  t.replaceChildren();
+  rows.sort((a, b) => a.r - b.r).slice(0, MAX).forEach(x => {
+    const d = document.createElement('div');
+    d.className = 'row'; d.dataset.w = x.w;
+    d.innerHTML = `<span class="rk" style="color:var(--t-${temp(x.r)})">${x.r.toLocaleString('ru')}</span><span class="wd">${x.w}</span><span class="who">${x.n}</span>`;
+    if (hidden.has(x.w)) d.style.visibility = 'hidden';
+    t.append(d);
+  });
+}
+function play(nick, words) {
+  const box = document.getElementById('multiBox');
+  const m = document.createElement('div');
+  m.className = 'multi';
+  words.forEach(([w, r]) => {
+    const c = document.createElement('span');
+    c.className = 'chip'; c.dataset.w = w;
+    c.style.background = r ? `var(--t-${temp(r)})` : '#55506a';
+    if (!r) c.style.color = '#ddd';
+    c.innerHTML = r ? `<small>${r.toLocaleString('ru')}</small>${w}` : `<small>?</small>${w}`;
+    m.append(c);
+  });
+  m.insertAdjacentHTML('beforeend', `<span class="nick">${nick}</span>`);   // nick on the right, as in the table
+  box.replaceChildren(m);
+  setTimeout(() => {                                     // each word flies to its place in the table
+    const valid = words.filter(([, r]) => r);
+    valid.forEach(([w, r]) => { rows = rows.filter(x => x.w !== w); rows.push({ w, r, n: nick }); });
+    const shown = new Set(rows.slice().sort((a, b) => a.r - b.r).slice(0, MAX).map(x => x.w));
+    draw(new Set(valid.map(([w]) => w)));
+    m.querySelectorAll('.chip').forEach(c => {
+      const from = c.getBoundingClientRect();
+      const fl = c.cloneNode(true); fl.classList.add('flyer');
+      Object.assign(fl.style, { left: from.left + 'px', top: from.top + 'px' });
+      document.body.append(fl); c.style.visibility = 'hidden';
+      const target = document.querySelector(`#table .row[data-w="${c.dataset.w}"]`);
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        if (target && shown.has(c.dataset.w)) {
+          const to = target.getBoundingClientRect();
+          fl.style.transform = `translate(${to.left + 70 - from.left}px, ${to.top + 4 - from.top}px)`;
+          setTimeout(() => { fl.remove(); target.style.visibility = ''; target.classList.add('landed'); }, 800);
+        } else {                                         // too far for the table / not in the dictionary
+          fl.style.transform = 'translate(0, 140px)'; fl.style.opacity = '0';
+          setTimeout(() => fl.remove(), 800);
+        }
+      }));
+    });
+    setTimeout(() => m.classList.add('out'), 500);
+  }, 1300);
+}
+document.getElementById('a').onclick = () => play('Krestik', [['звук', 3], ['голос', 41], ['шум', 26]]);
+document.getElementById('b').onclick = () => play('Нина', [['отрезок', 8], ['черта', 6], ['линия', 2120]]);
+document.getElementById('c').onclick = () => play('фог', [['дом', 80], ['торт', 24740], ['альцгеймер', 0]]);
+document.getElementById('r').onclick = reset;
+reset();
+</script>
+</body>
+</html>

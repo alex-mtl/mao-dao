@@ -409,3 +409,21 @@ html.chroma #recent > .title { display: none; }
 
 /* toasts: the player name is the neon headline, the event is plain text under it */
 .tcard .s { font: 700 calc(var(--u) * 5)/1.2 var(--font-text); color: #fff; margin-top: .3em; white-space: normal; }
+
+/* several words in one comment: one row of chips (each in its rank's color) + the player, then
+   each chip flies to its word's row in the table */
+.grow.multi .main.chips { gap: calc(var(--u) * 1.2); padding: 0; overflow: hidden; }
+.grow .chip { display: inline-flex; align-items: baseline; gap: .35em; flex: none;
+              padding: .2em .5em; border-radius: calc(var(--u) * 1.2); color: #000;
+              font: 800 calc(var(--u) * 3.6)/1 var(--font-display); white-space: nowrap;
+              box-shadow: 0 0 .6em rgba(255,255,255,.25); }
+.grow .chip small { font-size: .7em; font-weight: 900; }
+.grow .chip .cw { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.grow .chip.unknown { background: rgba(255,255,255,.25); color: var(--muted); text-decoration: line-through; }
+.chip.flyer { position: fixed; z-index: 50; pointer-events: none; display: inline-flex; align-items: baseline; gap: .35em;
+              padding: .2em .5em; border-radius: calc(var(--u) * 1.2); color: #000;
+              font: 800 calc(var(--u) * 3.6)/1 var(--font-display); white-space: nowrap;
+              transition: transform .8s cubic-bezier(.3,.9,.3,1), opacity .8s; }
+.chip.flyer small { font-size: .7em; font-weight: 900; }
+.grow.landed { animation: landed 1.1s ease-out; }
+@keyframes landed { 0% { filter: brightness(2.2); } 100% { filter: none; } }

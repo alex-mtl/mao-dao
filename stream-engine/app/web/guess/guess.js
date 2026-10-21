@@ -155,6 +155,12 @@
     const name = clean(e.name), NAME = name.toUpperCase();
     switch (e.type) {
       case 'guess': fx('guess', tKey(e.temp)); addFresh(e); break;
+      case 'multi_guess': {                 // several words in one comment: one row, then each flies to its place
+        const best = e.words.filter(w => !w.unknown).sort((a, b) => a.rank - b.rank)[0];
+        if (best) fx('guess', tKey(best.temp));
+        addMulti(e);
+        break;
+      }
       case 'new_leader':
         fx('leader');
         toast(NAME, t(e.comeback ? 'g.t.comeback' : 'g.t.leader'), 'var(--magenta)', { important: true });
@@ -303,6 +309,7 @@
   function guessRow(g, cls) {
     // one line: [ proximity bar behind (rank  WORD) ] [avatar name +N]
     const row = el('div', 'grow ' + (cls || ''));
+    row.dataset.word = g.word;
     row.dataset.badge = t(g.unknown ? 'g.badgeUnknown' : 'g.badgeNew');
     const main = el('div', 'main');
     const bar = el('i', 'bar t-' + g.tempKey);
@@ -329,14 +336,62 @@
   // Closest words sorted by rank: a good guess stays on top until someone beats it.
   // A brand-new guess is shown on top for FRESH_MS ("NEW"), then drops to its place by rank
   // (or leaves the list if it isn't among the best).
-  const FRESH_MS = 5000, MAX_FRESH = 2;
-  let fresh = [], lastBest = [];
+  const FRESH_MS = 5000, MAX_FRESH = 5, MULTI_MS = 1300;
+  let fresh = [], lastBest = [], multiSeq = 0;
   function addFresh(e, ttl) {
-    fresh = fresh.filter(f => f.word !== e.word);
+    fresh = fresh.filter(f => f.multi || f.word !== e.word);
     fresh.unshift({ word: e.word, rank: e.rank, temp: e.temp, tempKey: tKey(e.temp), count: e.count || 1,
                     name: e.name, avatar: e.avatar, at: Date.now(), ttl: ttl || FRESH_MS, unknown: !!e.unknown });
     fresh = fresh.slice(0, MAX_FRESH);
     renderGuesses(lastBest);
+  }
+  // several words at once: [chip chip chip] + the player on the right, each chip in its rank's color
+  function addMulti(e) {
+    fresh.unshift({ multi: true, key: 'm' + (++multiSeq), name: e.name, avatar: e.avatar, at: Date.now(), ttl: MULTI_MS,
+                    words: e.words.map(w => Object.assign({}, w, { tempKey: w.unknown ? '' : tKey(w.temp) })) });
+    fresh = fresh.slice(0, MAX_FRESH);
+    renderGuesses(lastBest);
+  }
+  function multiRow(m) {
+    const row = el('div', 'grow fresh multi' + (m.shown ? '' : ' new'));
+    row.dataset.key = m.key;
+    row.dataset.badge = t('g.badgeNew');
+    const main = el('div', 'main chips');
+    m.words.forEach(w => {
+      const c = el('span', 'chip' + (w.unknown ? ' unknown' : ''));
+      c.dataset.word = w.word;
+      if (!w.unknown) c.style.background = 'var(--t-' + w.tempKey + ')';
+      c.append(el('small', '', w.unknown ? '?' : fmt(w.rank)), el('span', 'cw', w.word));
+      main.append(c);
+    });
+    const who = el('div', 'who');
+    who.append(avatar(m.name, m.avatar), el('span', 'n', m.name));
+    row.append(main, who);
+    return row;
+  }
+  // the row's time is up: every chip flies to its word's row in the table (or falls and fades out
+  // when the word is not in the visible table / not in the dictionary)
+  function flyChips(rects) {
+    rects.forEach(({ chip, from, word }) => {
+      const fl = chip.cloneNode(true);
+      fl.classList.add('flyer');
+      Object.assign(fl.style, { left: from.left + 'px', top: from.top + 'px', width: from.width + 'px' });
+      document.body.append(fl);
+      const target = word && $('guessList').querySelector('.grow[data-word="' + CSS.escape(word) + '"]:not(.fresh)');
+      if (target) target.style.visibility = 'hidden';
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        if (target) {
+          const to = target.getBoundingClientRect();
+          fl.style.transform = `translate(${to.left - from.left}px, ${to.top + (to.height - from.height) / 2 - from.top}px)`;
+        } else {
+          fl.style.transform = `translate(0, ${from.height * 4}px)`; fl.style.opacity = '0';
+        }
+        setTimeout(() => {
+          fl.remove();
+          if (target) { target.style.visibility = ''; target.classList.add('landed'); }
+        }, 800);
+      }));
+    });
   }
   // stream champions (chroma / TT mode): one line per place - avatar + nick when alone, overlapping
   // avatars when tied (like TikTok's viewers), wins, medal
@@ -398,19 +453,36 @@
   function renderGuesses(best) {
     lastBest = best;
     const now = Date.now();
-    fresh = fresh.filter(f => now - f.at < f.ttl);
     const box = $('guessList');
+    const flying = [];                        // chips of the multi rows whose time is up, measured before redraw
+    fresh.filter(f => f.multi && now - f.at >= f.ttl).forEach(m => {
+      const row = box.querySelector('.grow.multi[data-key="' + m.key + '"]');
+      if (row) row.querySelectorAll('.chip').forEach(chip =>
+        flying.push({ chip, from: chip.getBoundingClientRect(), word: chip.classList.contains('unknown') ? '' : chip.dataset.word }));
+    });
+    fresh = fresh.filter(f => now - f.at < f.ttl);
     box.replaceChildren();
     if (!best.length && !fresh.length) { box.append(el('div', 'empty-hint', t('g.noGuesses'))); return; }
     const mark = g => {
       const before = prevWords.get(g.word);
       return before === undefined ? 'new' : g.count > before ? 'more' : '';
     };
-    fresh.forEach(f => { box.append(guessRow(f, 'fresh' + (f.shown ? '' : ' new'))); f.shown = true; });
-    const shown = new Set(fresh.map(f => f.word));
+    fresh.forEach(f => {
+      box.append(f.multi ? multiRow(f) : guessRow(f, 'fresh' + (f.shown ? '' : ' new'))); f.shown = true;
+    });
+    // words still in a multi row join the table only when they land
+    const shown = new Set(fresh.flatMap(f => f.multi ? f.words.map(w => w.word) : [f.word]));
     best.filter(g => !shown.has(g.word)).slice(0, 18 - fresh.length).forEach(g => box.append(guessRow(g, mark(g))));
     box.querySelectorAll('.wd').forEach(fitCell);                 // long words shrink to fit
+    box.querySelectorAll('.main.chips').forEach(m => {             // all chips of a multi row stay visible
+      let size = parseFloat(getComputedStyle(m.firstChild).fontSize);
+      while (m.clientWidth > 0 && m.scrollWidth > m.clientWidth && size > 8) {
+        size *= 0.92;
+        m.querySelectorAll('.chip').forEach(c => { c.style.fontSize = size + 'px'; });
+      }
+    });
     prevWords = new Map(best.map(g => [g.word, g.count]));
+    if (flying.length) flyChips(flying);
   }
   setInterval(() => {                       // let expired "NEW" rows drop into place
     if (fresh.some(f => Date.now() - f.at >= f.ttl)) renderGuesses(lastBest);

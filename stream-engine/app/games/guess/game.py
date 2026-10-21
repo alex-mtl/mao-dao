@@ -168,6 +168,7 @@ class GuessGame(BaseGame):
         self.auto_hint_done = False
         self.finished_at = 0.0
         self.unknown_t = 0.0
+        self._batch = None                               # collects the words of a several-words comment
         self.setter = None            # {"id", "name"} of the viewer who picked this round's word
         self.word_hidden = False      # a viewer's word nobody found: never shown
         self.setter_t = 0.0
@@ -310,12 +311,28 @@ class GuessGame(BaseGame):
         # stream champions (1st-3rd place by wins, ties included) and round champions (whoever named
         # the 1st, 2nd and 3rd word of the table first) may send up to 3 words at once: each word
         # counts as their own guess
-        if self.phase == PLAYING and (viewer.id in self.stats.champion_ids()
+        if self.phase == PLAYING and self._batch is None and (viewer.id in self.stats.champion_ids()
                                       or viewer.id in self._round_champion_ids()):
             several = self.sem.split_words(text)
             if several:
-                for w in several:
-                    self.on_comment(viewer, w, ts)
+                # the words go out as one "multi_guess" event: one row (all words + the nick), then
+                # each word flies to its place in the table
+                self._batch = []
+                try:
+                    for w in several:
+                        self.on_comment(viewer, w, ts)
+                    batch = self._batch
+                finally:
+                    self._batch = None
+                if len(batch) > 1:
+                    self.emit("multi_guess", name=viewer.name, avatar=viewer.avatar, words=batch)
+                elif batch:
+                    b = batch[0]
+                    if b["unknown"]:
+                        self.emit("unknown", word=b["word"], name=viewer.name, avatar=viewer.avatar)
+                    else:
+                        self.emit("guess", word=b["word"], rank=b["rank"], temp=b["temp"], name=viewer.name,
+                                  avatar=viewer.avatar, count=b["count"])
                 return
         word, raw = self.sem.normalize(text)
         if raw is not None and ts and self.phase == PLAYING and ts < self.started_at - 3:
@@ -334,6 +351,10 @@ class GuessGame(BaseGame):
                 self.dirty = True
             return
         if word is None:
+            if self._batch is not None:                  # part of several words: shown greyed in their row
+                self._batch.append({"word": raw.upper(), "unknown": True})
+                print(f"[guess] rejected (unknown) {viewer.name}: {raw}")
+                return
             if now - self.unknown_t > 1.0:               # throttle the toast
                 self.unknown_t = now
                 self.emit("unknown", word=raw.upper(), name=viewer.name, avatar=viewer.avatar)
@@ -383,8 +404,12 @@ class GuessGame(BaseGame):
                 self.recent.remove(word)
             self.recent.appendleft(word)
         temp = temperature(r)
-        self.emit("guess", word=word.upper(), rank=r, temp=temp, name=p.name,
-                  avatar=p.avatar, count=g["count"] if g else 1)
+        if self._batch is not None:
+            self._batch.append({"word": word.upper(), "rank": r, "temp": temp, "count": g["count"] if g else 1,
+                                "unknown": False})
+        else:
+            self.emit("guess", word=word.upper(), rank=r, temp=temp, name=p.name,
+                      avatar=p.avatar, count=g["count"] if g else 1)
         print(f"[guess] {p.name}: {word} #{r} {temp}")
 
         if not p.best or r < p.best:

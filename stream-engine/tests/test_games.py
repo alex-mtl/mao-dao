@@ -490,6 +490,10 @@ class ChampionWordsTest(unittest.TestCase):
         words = [w for w in ("water", "fire", "house", "tree") if w != g.secret]
         g.on_comment(Viewer("cat", "Cat", "", 1), " ".join(words[:3]))         # 2nd place (tie): 3 words
         self.assertEqual(g.players["cat"].guesses, 3)
+        multi = [e for e in g.events if e["type"] == "multi_guess"]          # one row for all three words
+        self.assertEqual([w["word"] for w in multi[-1]["words"]], [w.upper() for w in words[:3]])
+        self.assertEqual(multi[-1]["name"], "Cat")
+        self.assertFalse(any(e["type"] == "guess" and e["name"] == "Cat" for e in g.events))
         g.on_comment(Viewer("dan", "Dan", "", 1), "the " + words[3] + " " + words[0])   # 3rd place: article dropped
         self.assertEqual(g.players["dan"].guesses, 2)
         g.on_comment(Viewer("eve", "Eve", "", 1), words[0] + " " + words[1])    # not a champion: ignored
