@@ -49,7 +49,7 @@ PLANE_BOMBER_LIKES = 10000      # every 10 000, 20 000, ... likes the plane drop
 # ---- guess the word ----
 ROUND_DURATION = _i("ROUND_DURATION", 210)
 SPEED_ROUND_DURATION = _i("SPEED_ROUND_DURATION", 75)
-SPEED_ROUND_EVERY = _i("SPEED_ROUND_EVERY", 4)          # every Nth round is SPEED (0 = never)
+SPEED_ROUND_EVERY = _i("SPEED_ROUND_EVERY", 0)          # every Nth round is SPEED (0 = never; the owner plays without them)
 COUNTDOWN_SEC = _i("COUNTDOWN_SEC", 4)                  # 3, 2, 1, GO
 WINNER_SEC = _i("WINNER_SEC", 5)                        # winner card
 REVEAL_SEC = _i("REVEAL_SEC", 115)                      # break between rounds: results, then promo/lobby
