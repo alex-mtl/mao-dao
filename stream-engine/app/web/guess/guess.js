@@ -354,7 +354,7 @@
   // Closest words sorted by rank: a good guess stays on top until someone beats it.
   // A brand-new guess is shown on top for FRESH_MS ("NEW"), then drops to its place by rank
   // (or leaves the list if it isn't among the best).
-  const FRESH_MS = 5000, MAX_FRESH = 5, MULTI_MS = 800;
+  const FRESH_MS = 5000, MAX_FRESH = 5, MULTI_MS = 800, CHIP_MIN_FONT = 0.8;
   let fresh = [], lastBest = [], multiSeq = 0;
   function addFresh(e, ttl) {
     fresh = fresh.filter(f => f.multi || f.word !== e.word);
@@ -492,12 +492,17 @@
     const shown = new Set(fresh.flatMap(f => f.multi ? f.words.map(w => w.word) : [f.word]));
     best.filter(g => !shown.has(g.word)).slice(0, 18 - fresh.length).forEach(g => box.append(guessRow(g, mark(g))));
     box.querySelectorAll('.wd').forEach(fitCell);                 // long words shrink to fit
-    box.querySelectorAll('.main.chips').forEach(m => {             // all chips of a multi row stay visible
-      let size = parseFloat(getComputedStyle(m.firstChild).fontSize);
-      while (m.clientWidth > 0 && m.scrollWidth > m.clientWidth && size > 8) {
+    // all chips of a multi row stay visible: the font shrinks down to CHIP_MIN_FONT of its size (smaller
+    // letters can't be read on the stream anyway), then long words are cut with "…" - the rank and its
+    // color always stay whole
+    box.querySelectorAll('.main.chips').forEach(m => {
+      const base = parseFloat(getComputedStyle(m.firstChild).fontSize);
+      let size = base;
+      while (m.clientWidth > 0 && m.scrollWidth > m.clientWidth && size * 0.92 >= base * CHIP_MIN_FONT) {
         size *= 0.92;
         m.querySelectorAll('.chip').forEach(c => { c.style.fontSize = size + 'px'; });
       }
+      if (m.scrollWidth > m.clientWidth) m.classList.add('squeeze');
     });
     prevWords = new Map(best.map(g => [g.word, g.count]));
     if (flying.length) flyChips(flying);

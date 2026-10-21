@@ -419,11 +419,15 @@ html.chroma #recent > .title { display: none; }
               box-shadow: 0 0 .6em rgba(255,255,255,.25); }
 .grow .chip small { font-size: .7em; font-weight: 900; }
 .grow .chip .cw { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.grow .main.chips.squeeze .chip { flex: 0 1 auto; min-width: 0; }      /* too long even at the smallest font: words get "…" */
+.grow .chip small { flex: none; }
 .grow .chip.unknown { background: rgba(255,255,255,.25); color: var(--muted); text-decoration: line-through; }
 .chip.flyer { position: fixed; z-index: 50; pointer-events: none; display: inline-flex; align-items: baseline; gap: .35em;
               padding: .2em .5em; border-radius: calc(var(--u) * 1.2); color: #000;
               font: 800 calc(var(--u) * 3.6)/1 var(--font-display); white-space: nowrap;
               transition: transform .45s cubic-bezier(.3,.9,.3,1), opacity .45s; }
 .chip.flyer small { font-size: .7em; font-weight: 900; }
+.chip.flyer small { flex: none; }
+.chip.flyer .cw { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .grow.landed { animation: landed .6s ease-out; }
 @keyframes landed { 0% { filter: brightness(2.2); } 100% { filter: none; } }
