@@ -16,7 +16,6 @@ from app.games.guess import game as guess_mod
 from app.games.guess.game import GuessGame
 from app.storage import JsonStore
 
-config.GUESS_COOLDOWN_SECONDS = 3
 config.COUNTDOWN_SEC = 0
 
 
@@ -60,15 +59,14 @@ class GuessTest(unittest.TestCase):
         self.assertEqual(n("qwzxv")[0], None)                   # unknown word
         self.assertEqual(n("abc123"), (None, None))
 
-    def test_cooldown_and_duplicates(self):
+    def test_no_pause_but_no_duplicates(self):
         g = self.make()
         a = v("Alex")
         g.on_comment(a, "water")
-        g.on_comment(a, "fire")                                 # within 3 s -> ignored
-        self.assertEqual(g.players["alex"].guesses, 1)
-        g.players["alex"].last_t -= 5
-        g.on_comment(a, "water")                                # duplicate word -> ignored
-        self.assertEqual(g.players["alex"].guesses, 1)
+        g.on_comment(a, "fire")                                 # right away: counts too (no pause)
+        self.assertEqual(g.players["alex"].guesses, 2)
+        g.on_comment(a, "water")                                # the same word again -> ignored
+        self.assertEqual(g.players["alex"].guesses, 2)
         g.on_comment(v("Mike"), "fire")                         # others not blocked
         self.assertEqual(g.players["mike"].guesses, 1)
 

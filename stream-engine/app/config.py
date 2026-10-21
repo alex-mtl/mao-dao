@@ -69,7 +69,6 @@ PROMO_LINES_BY_LANG = {
     "es": ["SÍGUEME para no perderte ninguna ronda", "SÍGUEME y juega con nosotros",
            "Invita a tus amigos — ¡cuantos más, mejor!"],
 }
-GUESS_COOLDOWN_SECONDS = _f("GUESS_COOLDOWN_SECONDS", 3)
 # rank upper bounds: PERFECT, BURNING, VERY HOT, HOT, WARM, COLD (rest = FREEZING)
 TEMPERATURE_BOUNDS = [int(x) for x in _list("TEMPERATURE_BOUNDS", "1,10,50,200,1000,5000")]
 DYNAMIC_DIFFICULTY = _b("DYNAMIC_DIFFICULTY", "1")

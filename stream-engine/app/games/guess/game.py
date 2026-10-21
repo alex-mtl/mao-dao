@@ -309,15 +309,12 @@ class GuessGame(BaseGame):
             return
         # stream champions (1st-3rd place by wins, ties included) and round champions (whoever named
         # the 1st, 2nd and 3rd word of the table first) may send up to 3 words at once: each word
-        # counts as their own guess (the per-player pause doesn't split them)
+        # counts as their own guess
         if self.phase == PLAYING and (viewer.id in self.stats.champion_ids()
                                       or viewer.id in self._round_champion_ids()):
             several = self.sem.split_words(text)
             if several:
-                for i, w in enumerate(several):
-                    p = self.players.get(viewer.id)
-                    if i and p:
-                        p.last_t = 0
+                for w in several:
                     self.on_comment(viewer, w, ts)
                 return
         word, raw = self.sem.normalize(text)
@@ -361,10 +358,7 @@ class GuessGame(BaseGame):
         elif viewer.follows > 0 and (p.pending_until or p.dq):
             self._confirm(p, now)                        # their newer comments show them following
         if word in p.words:
-            return                                       # same word again: ignore
-        if now - p.last_t < config.GUESS_COOLDOWN_SECONDS:
-            print(f"[guess] rejected (cooldown) {viewer.name}: {word}")
-            return
+            return                                       # same word again: ignore (no pause between words)
         self._accept(p, word, now)
 
     def _accept(self, p, word, now):
@@ -727,16 +721,12 @@ class GuessGame(BaseGame):
         elif action == "force_winner":
             if self.phase == PLAYING:
                 p = self.players.setdefault(v.id, RoundPlayer(v.id, v.name))
-                p.last_t = 0
                 self._accept(p, self.secret, now)
         elif action == "follow":
             self.on_follow(v)
         elif action == "send_guess":
             if str(params.get("follows", "")).strip() in ("0", "false", "no"):
                 v.follows = 0
-            p = self.players.get(v.id)
-            if p:
-                p.last_t = 0
             self.on_comment(v, params.get("word", ""))
         elif action == "send_gift":
             self.on_gift(v, params.get("gift") or "Rose", 1)
