@@ -36,7 +36,8 @@ window.Live = (() => {
       }
     }
     if (opts.game && msg.active && msg.active !== opts.game) {
-      location.href = msg.active + '/' + location.search;
+      // inside the streamer's frame (an iframe) the whole page follows the active game, not just the frame
+      (window.parent !== window ? window.parent : window).location.href = new URL(msg.active + '/' + location.search, document.baseURI).href;
       return;
     }
     if (msg.game !== opts.game) return;
