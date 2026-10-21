@@ -313,6 +313,17 @@ def rename(gid, names, items):
             i["name"] = names[i["tt"]]
 
 
+MISSING_MSG_SEC = 30                 # the host's "not in the dictionary" note disappears after this
+
+
+def save_missing(gid, it):
+    """words players offered that the game's dictionary doesn't know: kept per game and month for the
+    superadmin (MISSING#<game>#<YYYY-MM>, list "words") - to extend the dictionaries later"""
+    month = time.strftime("%Y-%m", time.gmtime())
+    store.append(f"MISSING#{gid}#{month}", "words",
+                 {"word": it["word"], "tt": it["tt"], "name": it.get("name", ""), "t": time.time()})
+
+
 def game_poll(game, body):
     """the game's results (dictionary checks, queue places, started rounds), then work for it"""
     gid = game["id"]
@@ -347,7 +358,9 @@ def game_poll(game, body):
         else:
             del items[it["id"]]
             tg.send(it["chat"], TEXT["missing"].format(w=e(it["word"])))
-            tg.send(it["host"], TEXT["host_missing"].format(w=e(it["word"]), name=e(it["name"]), tt=e(it["tt"])))
+            tg.send_temp(it["host"], TEXT["host_missing"].format(w=e(it["word"]), name=e(it["name"]), tt=e(it["tt"])),
+                         MISSING_MSG_SEC)
+            save_missing(gid, it)
             events.log(gid, "word_missing", tt=it["tt"], word=it["word"])
     for u in body.get("unguessed") or []:                 # nobody found it: +1 hint (in the game), word saved
         tt = (u.get("tiktok_id") or "").lower()

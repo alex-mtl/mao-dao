@@ -149,8 +149,12 @@ class BotTest(unittest.TestCase):
         wid = r["words"][0]["id"]
         self.assertEqual(self.poll(), {"words": [], "cancel": []})     # given once
         self.poll({"results": [{"id": wid, "stage": "check", "ok": False}]})
-        self.assertIn("нет в словаре", tg.sent[-2][1])
+        self.assertIn("нет в словаре", tg.sent[-2][1])                 # the player: stays
         self.assertIn("не найдено", tg.sent[-1][1])
+        self.assertEqual((tg.temp[-1][0], tg.temp[-1][2]), (5, 30))    # the host: gone after 30 s
+        month = __import__("time").strftime("%Y-%m", __import__("time").gmtime())
+        missing = store.get(f"MISSING#mao#{month}")["words"]
+        self.assertEqual((missing[-1]["word"], missing[-1]["tt"]), ("Огурцы", "vorobey"))
         call("/tg", msg("огурец"))                                     # the question is still open
         wid = self.poll()["words"][0]["id"]
         tg.markups.clear()
