@@ -114,17 +114,29 @@
   }
 
   // ------------------------------------------------------------ big toasts (queued, 1-3 s)
-  const queue = []; let showing = false;
+  // a busy chat: a toast that waited too long is old news - skipped (except "keep": hints, words to
+  // pick...); the one on screen gives way to the next one after TOAST_MIN_MS (unless it is "keep")
+  const queue = []; let showing = null, toastTimer = 0;
+  const TOAST_STALE_MS = 2500, TOAST_MIN_MS = 800;
   function toast(head, sub, color, opts) {
     opts = opts || {};
     if (queue.length >= 3) queue.splice(queue.findIndex(q => !q.important), 1);   // drop the least important
-    queue.push({ head, sub, color, huge: opts.huge, important: opts.important, hold: opts.hold || 1.6 });
+    queue.push({ head, sub, color, huge: opts.huge, important: opts.important, keep: opts.keep,
+                 hold: opts.hold || 1.2, at: Date.now() });
     if (!showing) nextToast();
+    else if (!showing.keep) {
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(nextToast, Math.max(0, showing.shownAt + TOAST_MIN_MS - Date.now()));
+    }
   }
   function nextToast() {
-    const item = queue.shift();
-    if (!item) { showing = false; return; }
-    showing = true;
+    clearTimeout(toastTimer);
+    $('toast').replaceChildren();
+    let item;
+    while ((item = queue.shift()) && !item.keep && Date.now() - item.at > TOAST_STALE_MS) {}
+    showing = item || null;
+    if (!item) return;
+    item.shownAt = Date.now();
     const c = el('div', 'tcard' + (item.huge ? ' huge' : ''));
     c.style.setProperty('--c', item.color);
     c.style.setProperty('--hold', item.hold + 's');
@@ -132,7 +144,7 @@
     if (item.sub) c.append(el('div', 's', item.sub));
     $('toast').replaceChildren(c);
     c.querySelectorAll('.h').forEach(n => fitText(n, n.textContent));   // the name fits one line; the event text wraps
-    setTimeout(() => { $('toast').replaceChildren(); nextToast(); }, (item.hold + 0.4) * 1000);
+    toastTimer = setTimeout(nextToast, (queue.length && !item.keep ? TOAST_MIN_MS : (item.hold + 0.4) * 1000));
   }
   function mini(text, cls) {
     const m = el('div', 'mini ' + (cls || ''), text);
@@ -202,11 +214,11 @@
         queueTicker(t('g.tk.credits', { name: esc(e.name), hints: I18N.n(e.n || 0, 'hint') }));
         break;
       case 'tg_info':                            // "настроить связь": the bot and the stream word
-        toast('📲 ' + (e.bot ? '@' + e.bot : ''), t('g.t.tgWord', { w: clean(e.word) }), '#2aabee', { important: true, hold: 6 });
+        toast('📲 ' + (e.bot ? '@' + e.bot : ''), t('g.t.tgWord', { w: clean(e.word) }), '#2aabee', { important: true, keep: true, hold: 6 });
         queueTicker(t('g.tk.tg', { bot: esc(e.bot ? '@' + e.bot : ''), w: esc(e.word) }));
         break;
       case 'custom_word':                        // a viewer picked this round's word (via the bot)
-        toast('🎯 ' + clean(e.name), t('g.t.customWord'), 'var(--orange)', { important: true, hold: 5 });
+        toast('🎯 ' + clean(e.name), t('g.t.customWord'), 'var(--orange)', { important: true, keep: true, hold: 5 });
         queueTicker(t('g.tk.custom', { name: esc(clean(e.name)) }));
         break;
       case 'custom_ticker':
@@ -235,7 +247,7 @@
         break;
       case 'found_pending':
         fx('close', 'so_close');
-        toast(NAME, t('g.t.foundPending') + ' ' + t('g.t.foundPendingSub', { n: e.seconds }), 'var(--magenta)', { huge: true, important: true, hold: 2.6 });
+        toast(NAME, t('g.t.foundPending') + ' ' + t('g.t.foundPendingSub', { n: e.seconds }), 'var(--magenta)', { huge: true, important: true, keep: true, hold: 2.6 });
         voice(t('g.v.foundPending', { name }), 'high', 1);
         break;
       case 'follow_ok':
@@ -245,7 +257,7 @@
         break;
       case 'dq':
         fx('timeout');
-        toast(NAME, t('g.t.sorry') + ' ' + t('g.t.sorrySub'), 'var(--pink)', { important: true, hold: 2.4 });
+        toast(NAME, t('g.t.sorry') + ' ' + t('g.t.sorrySub'), 'var(--pink)', { important: true, keep: true, hold: 2.4 });
         voice(t('g.v.sorry', { name }), 'high', 1);
         break;
       case 'unknown':                     // shown in the list (grey) so the player sees it was read
@@ -254,13 +266,13 @@
       case 'hint': {
         fx('hint');
         const h = hintText(e);
-        toast(t('g.hint'), (h.text + ' ' + h.word).trim(), 'var(--yellow)', { important: true, hold: 2.4 });
+        toast(t('g.hint'), (h.text + ' ' + h.word).trim(), 'var(--yellow)', { important: true, keep: true, hold: 2.4 });
         voice(t('g.v.hint', { text: h.text, word: h.word.toLowerCase() }), 'high');
         break;
       }
       case 'timeout':
         fx('timeout');
-        toast(t(e.reason === 'skip' ? 'g.t.skipped' : 'g.t.timeUp'), '', 'var(--orange)', { huge: true, important: true, hold: 1.4 });
+        toast(t(e.reason === 'skip' ? 'g.t.skipped' : 'g.t.timeUp'), '', 'var(--orange)', { huge: true, important: true, keep: true, hold: 1.4 });
         voice(t(e.reason === 'skip' ? 'g.v.skipped' : 'g.v.timeUp'), 'urgent');
         break;
       case 'winner': {
@@ -336,7 +348,7 @@
   // Closest words sorted by rank: a good guess stays on top until someone beats it.
   // A brand-new guess is shown on top for FRESH_MS ("NEW"), then drops to its place by rank
   // (or leaves the list if it isn't among the best).
-  const FRESH_MS = 5000, MAX_FRESH = 5, MULTI_MS = 1300;
+  const FRESH_MS = 5000, MAX_FRESH = 5, MULTI_MS = 800;
   let fresh = [], lastBest = [], multiSeq = 0;
   function addFresh(e, ttl) {
     fresh = fresh.filter(f => f.multi || f.word !== e.word);
@@ -389,7 +401,7 @@
         setTimeout(() => {
           fl.remove();
           if (target) { target.style.visibility = ''; target.classList.add('landed'); }
-        }, 800);
+        }, 450);
       }));
     });
   }

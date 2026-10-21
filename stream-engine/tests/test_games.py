@@ -273,6 +273,15 @@ class GiftHintTest(unittest.TestCase):
         g.on_comment(eva, "подсказка")                                     # no credits left: a guess
         self.assertEqual(len(g.hints), 1)
 
+    def test_credit_spent_by_mixed_case_id(self):
+        g = GuessGame(JsonStore(tempfile.mkdtemp()))
+        g.tick(time.time()); g.tick(time.time() + 0.01)
+        hora = Viewer("Horadrim1108", "Horadrim1108", "", 1)     # TikTok sends the id with a capital
+        g.add_credits("horadrim1108", 3)
+        g.on_comment(hora, "Подсказка")
+        self.assertEqual(len(g.hints), 1)
+        self.assertEqual(g.credits["horadrim1108"], 2)
+
     def test_combo_parts_thanked_once(self):
         g = GuessGame(JsonStore(tempfile.mkdtemp()))
         g.tick(time.time()); g.tick(time.time() + 0.01)

@@ -79,6 +79,11 @@ def temperature(rank):
     return TEMPS[-1]
 
 
+def account_id(viewer_id):
+    """Hint accounts are keyed by the TikTok id in lower case (TikTok may send "Horadrim1108")."""
+    return (viewer_id or "").strip().lstrip("@").lower()
+
+
 def temp_key(label):
     return label.lower().replace(" ", "")
 
@@ -137,10 +142,14 @@ class GuessGame(BaseGame):
             used = {"en": used}
         self.used = {k: set(v) for k, v in used.items()}
         self.history = store.load(self.ROUNDS, [])
-        self.credits = {k: int(v) for k, v in (store.load(self.CREDITS, {}) or {}).items() if int(v) > 0}
+        self.credits = {}
+        for k, v in (store.load(self.CREDITS, {}) or {}).items():
+            if int(v) > 0:
+                self.credits[account_id(k)] = self.credits.get(account_id(k), 0) + int(v)
         ever = store.load(self.CREDITS_EVER, None)
         # first start: everyone with hints now, plus those known to have had (and spent) them
-        self.credits_ever = set(ever) if ever is not None else set(self.credits) | {"soniapyu", "jelenalena71"}
+        self.credits_ever = {account_id(k) for k in ever} if ever is not None \
+            else set(self.credits) | {"soniapyu", "jelenalena71"}
         self.round_id = 0
         self.difficulty = []          # (solved, seconds, best rank) of recent rounds
         self.tier = "easy"
@@ -291,8 +300,8 @@ class GuessGame(BaseGame):
     def on_comment(self, viewer: Viewer, text: str, ts=None):
         cmd = " ".join(re.sub(r"[^\w\s]", " ", (text or "").lower().replace("ё", "е")).split())
         if cmd in MY_HINTS_WORDS:                        # "мои подсказки": never a guess
-            if viewer.id in self.credits_ever:
-                n = self.credits.get(viewer.id, 0)
+            if account_id(viewer.id) in self.credits_ever:
+                n = self.credits.get(account_id(viewer.id), 0)
                 self.emit("credits_info", name=viewer.name, avatar=viewer.avatar, n=n)
                 print(f"[guess] {viewer.name} asked for their hints: {n}")
             return
@@ -305,7 +314,7 @@ class GuessGame(BaseGame):
             return
         now = time.time()
         # "подсказка" / "hint" (any language, any case) from a viewer with hints on account
-        if self.phase == PLAYING and self.credits.get(viewer.id, 0) > 0                 and (text or "").strip(" !.?").lower().replace("ё", "е") in HINT_WORDS                 and not (ts and ts < self.started_at - 3):
+        if self.phase == PLAYING and self.credits.get(account_id(viewer.id), 0) > 0                 and (text or "").strip(" !.?").lower().replace("ё", "е") in HINT_WORDS                 and not (ts and ts < self.started_at - 3):
             self.use_credit(viewer, now)
             return
         # stream champions (1st-3rd place by wins, ties included) and round champions (whoever named
@@ -524,7 +533,7 @@ class GuessGame(BaseGame):
     # ------------------------------------------------------------------ hint credits
     def add_credits(self, viewer_id, n=1):
         """Put hints on a viewer's account (gift-free hints they spend with "подсказка")."""
-        viewer_id = (viewer_id or "").strip().lstrip("@").lower()
+        viewer_id = account_id(viewer_id)
         if not viewer_id:
             return 0
         left = max(0, self.credits.get(viewer_id, 0) + int(n))
@@ -540,6 +549,7 @@ class GuessGame(BaseGame):
 
     def _mark_credit_account(self, viewer_id):
         """Remember that this viewer has a hint account ("мои подсказки" answers them, even with 0)."""
+        viewer_id = account_id(viewer_id)
         if viewer_id and viewer_id not in self.credits_ever:
             self.credits_ever.add(viewer_id)
             self.store.save(self.CREDITS_EVER, sorted(self.credits_ever))
