@@ -925,6 +925,28 @@ class NoEmbeddingsTest(unittest.TestCase):
         g2.on_comment(Viewer("c", "C", "", 1), word)
         self.assertEqual(g2.winner["name"], "C")
 
+    def test_active_game_never_stays_paused(self):
+        store = JsonStore(tempfile.mkdtemp())
+        g = GuessGame(store)
+        g.set_lang("ru")
+        g.tick(time.time())
+        self.lambda_table(g)
+        g.tick(time.time()); g.tick(time.time() + 0.01)
+        g.save()
+        g2 = GuessGame(store)                                       # restored round, its table never comes
+        g2.on_activate()
+        now = time.time()
+        g2.tick(now)
+        g2.tick(now + guess_mod.STUCK_PAUSE_SEC - 1)
+        self.assertTrue(g2.snapshot()["paused"])                    # waiting a while is fine
+        g2.tick(now + guess_mod.STUCK_PAUSE_SEC + 1)
+        self.assertFalse(g2.snapshot()["paused"])                   # then the safety net drops the round
+        self.assertFalse(g2.restore_wait)
+        self.assertEqual(g2.phase, guess_mod.IDLE)
+        self.lambda_table(g2)
+        g2.tick(time.time()); g2.tick(time.time() + 0.01)
+        self.assertIn(g2.phase, (guess_mod.COUNTDOWN, guess_mod.PLAYING))
+
     def test_new_live_drops_a_restored_round_waiting_for_its_table(self):
         store = JsonStore(tempfile.mkdtemp())
         g = GuessGame(store)

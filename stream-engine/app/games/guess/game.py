@@ -38,6 +38,7 @@ MY_HINTS_WORDS = {"мои подсказки", "мои подскази", "ка�
 MAO_CALL_WORDS = {"мао внимание", "mao внимание", "mao attention"}
 MAO_CALL_SEC = 30
 SETTER_TICKER_SEC = 120                          # "this word was picked by ..." on the ticker every 2 minutes
+STUCK_PAUSE_SEC = 120                          # the active game paused this long = a bug: drop the round, start anew
 MAX_WORDS = 5000              # cap of aggregated words per round (memory guard)
 SIM_NAMES = ["Alex", "Mike", "Sarah", "John", "Emma", "Liam", "Olivia", "Noah", "Mia", "Leo"]
 
@@ -135,6 +136,7 @@ class GuessGame(BaseGame):
         self.rank_source = ""                        # "lambda" | "local": where this round's table came from
         self.restore_wait = False                    # restored round waits for its table (timers stopped)
         self.resume_on_table = False                 # ... and resumes when it comes, if the game is active
+        self.stuck_since = 0.0                       # active but paused since (see tick: STUCK_PAUSE_SEC)
         self.waiting_since = 0.0                     # next round waits for its table since
         self.stats = SessionStats(store)
         used = store.load(self.USED, {})
@@ -671,7 +673,24 @@ class GuessGame(BaseGame):
         print(f"[guess] language -> {lang}")
 
     def tick(self, now):
-        if not self.sem or self.paused_at:
+        if self.paused_at:
+            # only the active game ticks, and the active game is never meant to stay paused: a safety net
+            # for bugs like a restored round waiting for a table that never comes - after STUCK_PAUSE_SEC
+            # the round is dropped and a new one starts
+            if not self.stuck_since:
+                self.stuck_since = now
+            elif now - self.stuck_since > STUCK_PAUSE_SEC:
+                print(f"[guess] WARNING: paused {now - self.stuck_since:.0f}s while active "
+                      f"(restore_wait={self.restore_wait}, phase={self.phase}) -> the round is dropped, a new one starts")
+                self._clear_round()
+                self.phase = IDLE
+                self.restore_wait = self.resume_on_table = False
+                self.paused_at = None
+                self.stuck_since = 0.0
+                self.dirty = True
+            return
+        self.stuck_since = 0.0
+        if not self.sem:
             return
         if self.phase in (IDLE, FINISHED):
             if not self._table_ready():                  # no embeddings here: wait for the ranker Lambda
