@@ -65,6 +65,7 @@ class GuesswordController extends Controller
                 'controlUrl' => $room->controlUrl(),
                 'running' => (bool) ($status['running'] ?? false),
                 'tiktokStatus' => $status['tiktok'] ?? null,
+                'stopReason' => $status['stop_reason'] ?? null,     // "no_live": stopped itself, no TikTok LIVE
                 'engineOnline' => $statuses !== null,
             ],
             'languages' => config('guessword.languages'),

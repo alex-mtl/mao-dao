@@ -43,6 +43,9 @@ export default function Room({ room, languages, notice, problem }) {
 
                 {notice && <p className="mt-4 rounded-lg bg-primary-50 px-4 py-2 text-sm text-primary-800">{notice}</p>}
                 {problem && <p className="mt-4 rounded-lg bg-danger-50 px-4 py-2 text-sm text-danger-700">{problem}</p>}
+                {!room.running && room.stopReason === 'no_live' && (
+                    <p className="mt-4 rounded-lg bg-warm-50 px-4 py-2 text-sm text-ink-700">{t('guessword.no_live_stopped', { nick: room.tiktok || '' })}</p>
+                )}
                 {!room.engineOnline && <p className="mt-4 rounded-lg bg-danger-50 px-4 py-2 text-sm text-danger-700">{t('guessword.engine_offline')}</p>}
 
                 <section className={card}>

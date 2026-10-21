@@ -42,4 +42,5 @@ return [
     'engine_unavailable' => 'Le serveur de jeu n\'a pas répondu. Réessayez dans une minute.',
     'tiktok_taken' => 'Ce pseudo TikTok est déjà lié à un autre compte.',
     'tiktok_required' => 'Indiquez d\'abord votre pseudo TikTok.',
+    'no_live_stopped' => 'Aucun live TikTok de @:nick pendant 5 minutes — le jeu s\'est arrêté. Lancez le live sur TikTok et appuyez sur Démarrer.',
 ];

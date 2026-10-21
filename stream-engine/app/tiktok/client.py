@@ -42,6 +42,8 @@ class TikTokConnector:
         self.username = username
         self.sign_api_key = sign_api_key          # the room's own Euler key (None: anonymous signing)
         self.stopping = False                     # set by the room's stop: never reconnect after it
+        self.offline_since = time.time()          # no LIVE since (None while connected)
+        self.on_give_up = None                    # called when there's no LIVE for LIVE_WAIT_SEC
         self.seen = deque(maxlen=5000)            # msg ids: drop duplicates
         self.seen_set = set()
         # Chat history TikTok replays on (re)connect: anything sent before the app started is
@@ -79,6 +81,7 @@ class TikTokConnector:
                 await self._run_once()
                 print("[tiktok] disconnected")
                 was_live = True
+                self.offline_since = time.time()      # the LIVE ended (or dropped): waiting again
             except UserOfflineError:
                 print(f"[tiktok] @{self.username} is not live yet, retry in {config.RECONNECT_SEC:.0f}s")
             except Exception as e:
@@ -87,6 +90,11 @@ class TikTokConnector:
                 print(f"[tiktok] error: {type(e).__name__}: {e}")
                 was_live = self.hub.tiktok_status == "connected"
             self.hub.tiktok_status = "offline"
+            if self.offline_since and time.time() - self.offline_since >= config.LIVE_WAIT_SEC:
+                print(f"[tiktok] no LIVE of @{self.username} for {config.LIVE_WAIT_SEC / 60:.0f} min: the room stops")
+                if self.on_give_up:
+                    self.on_give_up()
+                break
             await asyncio.sleep(2 if was_live else config.RECONNECT_SEC)   # dropped mid-stream: come back fast
 
     async def _run_once(self):
@@ -110,6 +118,7 @@ class TikTokConnector:
         @client.on(ConnectEvent)
         async def on_connect(event):
             hub.tiktok_status = "connected"
+            self.offline_since = None
             print(f"[tiktok] connected to @{self.username} LIVE")
             hub.new_live(str(getattr(client, "room_id", None) or ""))
 

@@ -42,4 +42,5 @@ return [
     'engine_unavailable' => 'The game server didn\'t answer. Try again in a minute.',
     'tiktok_taken' => 'This TikTok username is already linked to another account.',
     'tiktok_required' => 'Enter your TikTok username first.',
+    'no_live_stopped' => 'No TikTok LIVE of @:nick for 5 minutes — the game stopped itself. Go live on TikTok and press Start.',
 ];

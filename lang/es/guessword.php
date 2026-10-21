@@ -42,4 +42,5 @@ return [
     'engine_unavailable' => 'El servidor del juego no respondió. Inténtalo de nuevo en un minuto.',
     'tiktok_taken' => 'Este usuario de TikTok ya está vinculado a otra cuenta.',
     'tiktok_required' => 'Primero indica tu usuario de TikTok.',
+    'no_live_stopped' => 'No hubo directo de TikTok de @:nick en 5 minutos: el juego se detuvo solo. Empieza el directo en TikTok y pulsa Empezar.',
 ];

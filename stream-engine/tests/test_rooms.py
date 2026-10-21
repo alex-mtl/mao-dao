@@ -109,6 +109,35 @@ class RoomsTest(unittest.TestCase):
         asyncio.run(asyncio.wait_for(c.run_forever(), 2))
         self.assertEqual(calls, [1])
 
+    def test_room_stops_itself_without_a_live(self):
+        from app.tiktok.client import TikTokConnector
+        from TikTokLive.client.errors import UserOfflineError
+
+        async def run():
+            saved = config.LIVE_WAIT_SEC, config.RECONNECT_SEC
+            config.LIVE_WAIT_SEC, config.RECONNECT_SEC = 0.3, 0.05
+            try:
+                m = RoomManager(self.dir)
+                m.upsert("a", {"username": "nobody"})
+
+                async def offline(self_):
+                    raise UserOfflineError("not live")
+                real = TikTokConnector._run_once
+                TikTokConnector._run_once = offline
+                try:
+                    await m.start("a")
+                    for _ in range(40):
+                        await asyncio.sleep(0.05)
+                        if not m.rooms["a"].running:
+                            break
+                finally:
+                    TikTokConnector._run_once = real
+                return m.rooms["a"].running, m.rooms["a"].status()["stop_reason"], m._load()["a"]["running"]
+            finally:
+                config.LIVE_WAIT_SEC, config.RECONNECT_SEC = saved
+
+        self.assertEqual(asyncio.run(run()), (False, "no_live", False))
+
     def test_euler_key_per_room(self):
         from app.tiktok.client import TikTokConnector
         self.assertEqual(TikTokConnector(None, "x", "k1").sign_api_key, "k1")

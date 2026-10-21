@@ -51,9 +51,11 @@ class Room:
                 current_room.reset(token)
         return self.hub
 
-    def start(self):
+    def start(self, on_give_up=None):
+        """on_give_up: called when the TikTok LIVE doesn't come for LIVE_WAIT_SEC (the manager stops the room)"""
         if self.running:
             return
+        self.cfg.pop("stop_reason", None)
         token = current_room.set(self.id)                 # the tasks below inherit the room for the log
         try:
             hub = self.ensure_hub()
@@ -64,6 +66,7 @@ class Room:
             else:
                 from .tiktok.client import TikTokConnector
                 self.connector = TikTokConnector(hub, self.cfg["username"], self.cfg.get("euler_key") or None)
+                self.connector.on_give_up = on_give_up
                 jobs.append(self.connector.run_forever())
             key = self.cfg.get("tg_key") or ""
             if config.TG_BOT_URL and key:
@@ -108,7 +111,8 @@ class Room:
                 "simulate": bool(self.cfg.get("simulate")), "started_at": self.started_at if self.running else None,
                 "tiktok": hub.tiktok_status if hub else "offline", "active": hub.active if hub else None,
                 "lang": hub.lang if hub else self.cfg.get("lang"), "euler_key": bool(self.cfg.get("euler_key")),
-                "clients": len(hub.clients) if hub else 0}
+                "clients": len(hub.clients) if hub else 0,
+                "stop_reason": self.cfg.get("stop_reason")}       # "no_live": stopped itself, no TikTok LIVE
 
 
 class RoomManager:
@@ -175,8 +179,18 @@ class RoomManager:
         return None, None
 
     async def start(self, rid):
-        self.rooms[rid].start()
+        self.rooms[rid].start(self._give_up_for(rid))
         self.save()
+
+    def _give_up_for(self, rid):
+        """the room's connector found no LIVE for LIVE_WAIT_SEC: stop the room (in its own task - the
+        connector that calls this is one of the tasks being stopped)"""
+        def give_up():
+            async def stop():
+                self.rooms[rid].cfg["stop_reason"] = "no_live"
+                await self.stop(rid)
+            asyncio.get_running_loop().create_task(stop())
+        return give_up
 
     async def stop(self, rid):
         await self.rooms[rid].stop()
@@ -186,7 +200,7 @@ class RoomManager:
         """after a restart: the rooms that were running start again"""
         for rid, cfg in self._load().items():
             if cfg.get("running") and rid in self.rooms:
-                self.rooms[rid].start()
+                self.rooms[rid].start(self._give_up_for(rid))
 
     async def stop_all(self):
         """process shutdown: stop everything but remember what ran, to start it again after the restart"""

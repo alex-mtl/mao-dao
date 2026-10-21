@@ -147,3 +147,15 @@ it('tells the streamer when the engine does not answer', function () {
 
     $this->actingAs($streamer)->post('/guessword/room', ['tiktok' => 'mao', 'lang' => 'ru'])->assertSessionHas('error');
 });
+
+it('tells the streamer the room stopped itself without a LIVE', function () {
+    $streamer = User::factory()->create(['email' => 'streamer@example.com']);
+    $this->actingAs($streamer)->get('/guessword/room');
+    $room = GuesswordRoom::firstWhere('user_id', $streamer->id);
+    Http::fake(['engine.test/*' => Http::response(engineRooms([
+        ['id' => $room->engineId(), 'running' => false, 'stop_reason' => 'no_live'],
+    ]))]);
+
+    $this->actingAs($streamer)->get('/guessword/room')->assertInertia(fn ($p) => $p
+        ->where('room.running', false)->where('room.stopReason', 'no_live'));
+});
