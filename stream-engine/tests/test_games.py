@@ -925,6 +925,25 @@ class NoEmbeddingsTest(unittest.TestCase):
         g2.on_comment(Viewer("c", "C", "", 1), word)
         self.assertEqual(g2.winner["name"], "C")
 
+    def test_new_live_drops_a_restored_round_waiting_for_its_table(self):
+        store = JsonStore(tempfile.mkdtemp())
+        g = GuessGame(store)
+        g.set_lang("ru")
+        g.tick(time.time())
+        self.lambda_table(g)
+        g.tick(time.time()); g.tick(time.time() + 0.01)
+        g.save()
+        g2 = GuessGame(store)                                       # the room starts again ...
+        g2.on_activate()
+        self.assertTrue(g2.restore_wait)
+        g2.new_session()                                            # ... on a new LIVE: everything reset
+        self.assertFalse(g2.restore_wait)
+        self.assertFalse(g2.snapshot()["paused"])                   # not stuck waiting for the old round
+        g2.tick(time.time())
+        self.lambda_table(g2)
+        g2.tick(time.time()); g2.tick(time.time() + 0.01)
+        self.assertIn(g2.phase, (guess_mod.COUNTDOWN, guess_mod.PLAYING))
+
 
 class TelegramPollTest(unittest.TestCase):
     def test_poll_sends_credit_changes_and_unguessed_words(self):

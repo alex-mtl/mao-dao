@@ -610,6 +610,9 @@ class GuessGame(BaseGame):
         self.tier = "easy"
         self._clear_round()
         self.phase = IDLE
+        # a round restored at start and waiting for its table is gone: don't stay paused waiting for it
+        self.restore_wait = self.resume_on_table = False
+        self.paused_at = None
         self.dirty = True
 
     def set_option(self, key, value):
