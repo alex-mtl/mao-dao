@@ -92,6 +92,23 @@ class RoomsTest(unittest.TestCase):
         asyncio.run(first())
         self.assertEqual(asyncio.run(second()), {"a"})
 
+    def test_stopped_connector_does_not_reconnect(self):
+        """TikTokLive turns a cancel into its own RuntimeError; after the room's stop that must end the loop"""
+        from app.tiktok.client import TikTokConnector
+
+        class Hub:
+            tiktok_status = "connected"
+        c = TikTokConnector(Hub(), "x")
+        calls = []
+
+        async def run_once():
+            calls.append(1)
+            c.stopping = True                         # the room is being stopped meanwhile
+            raise RuntimeError("This event loop is already running")
+        c._run_once = run_once
+        asyncio.run(asyncio.wait_for(c.run_forever(), 2))
+        self.assertEqual(calls, [1])
+
     def test_euler_key_per_room(self):
         from app.tiktok.client import TikTokConnector
         self.assertEqual(TikTokConnector(None, "x", "k1").sign_api_key, "k1")

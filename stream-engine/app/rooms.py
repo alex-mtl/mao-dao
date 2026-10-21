@@ -86,6 +86,8 @@ class Room:
         try:
             hub = self.hub
             hub.closed = True                             # no events after this point (a late chat line)
+            if self.connector:
+                self.connector.stopping = True            # it must not reconnect when its task is cancelled
             for t in self.tasks:
                 t.cancel()
             await asyncio.gather(*self.tasks, return_exceptions=True)

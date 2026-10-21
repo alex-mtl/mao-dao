@@ -41,6 +41,7 @@ class TikTokConnector:
         self.hub = hub
         self.username = username
         self.sign_api_key = sign_api_key          # the room's own Euler key (None: anonymous signing)
+        self.stopping = False                     # set by the room's stop: never reconnect after it
         self.seen = deque(maxlen=5000)            # msg ids: drop duplicates
         self.seen_set = set()
         # Chat history TikTok replays on (re)connect: anything sent before the app started is
@@ -72,7 +73,7 @@ class TikTokConnector:
 
     async def run_forever(self):
         from TikTokLive.client.errors import UserOfflineError
-        while True:
+        while not self.stopping:
             was_live = False
             try:
                 await self._run_once()
@@ -81,6 +82,8 @@ class TikTokConnector:
             except UserOfflineError:
                 print(f"[tiktok] @{self.username} is not live yet, retry in {config.RECONNECT_SEC:.0f}s")
             except Exception as e:
+                if self.stopping:                     # TikTokLive turns the cancel into its own error
+                    break
                 print(f"[tiktok] error: {type(e).__name__}: {e}")
                 was_live = self.hub.tiktok_status == "connected"
             self.hub.tiktok_status = "offline"
