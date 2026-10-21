@@ -171,6 +171,7 @@
   // ------------------------------------------------------------ events from the server
   function onEvent(e) {
     const name = clean(e.name), NAME = name.toUpperCase();
+    const sname = AudioKit.spokenName(e.name);          // for the voice: "_катрин_" -> "катрин"
     switch (e.type) {
       case 'guess': fx('guess', tKey(e.temp)); addFresh(e); break;
       case 'multi_guess': {                 // several words in one comment: one row, then each flies to its place
@@ -182,23 +183,23 @@
       case 'new_leader':
         fx('leader');
         toast(NAME, t(e.comeback ? 'g.t.comeback' : 'g.t.leader'), 'var(--magenta)', { important: true });
-        voice(t(e.comeback ? 'g.v.comeback' : 'g.v.leader', { name }));
+        voice(t(e.comeback ? 'g.v.comeback' : 'g.v.leader', { name: sname }));
         break;
       case 'jump':
         fx('jump', e.kind);
         if (e.kind === 'massive') {
           toast(NAME, t('g.t.massive'), 'var(--lime)', { huge: true, important: true, hold: 2 });
-          voice(t('g.v.massive', { name }));
+          voice(t('g.v.massive', { name: sname }));
         } else toast(NAME, t('g.t.big'), 'var(--lime)');
         break;
       case 'close':
         fx('close', e.level);
         if (e.level === 'so_close') {
           toast(NAME, t('g.t.soClose'), 'var(--pink)', { huge: true, important: true, hold: 2.2 });
-          voice(t('g.v.soClose', { name }), 'high');
+          voice(t('g.v.soClose', { name: sname }), 'high');
         } else if (e.level === 'top3') {
           toast(NAME, t('g.t.top3'), 'var(--orange)', { important: true });
-          voice(t('g.v.top3', { name }));
+          voice(t('g.v.top3', { name: sname }));
         } else if (e.level === 'top10') {
           toast(NAME, t('g.t.top10'), 'var(--orange)');
         } else {
@@ -208,7 +209,7 @@
       case 'streak':
         fx('streak', e.n);
         toast(NAME, t('g.t.streak', streakP(e.n)), 'var(--orange)', { huge: e.n >= 3, important: true, hold: e.n >= 5 ? 2.8 : 2 });
-        voice(t('g.v.streak', Object.assign(streakP(e.n), { name })), 'high');
+        voice(t('g.v.streak', Object.assign(streakP(e.n), { name: sname })), 'high');
         break;
       case 'mao_call': {                          // a leader calls the host: red ticker + 3x high voice
         const line = t('g.tk.mao', { name: clean(e.name) });
@@ -248,23 +249,23 @@
         if (e.dq) mini(t('g.t.followToPlay', { name }), 'follow');
         else {
           mini(t('g.t.followNeeded', { name, n: e.seconds }), 'follow');
-          voice(t('g.v.followNeeded', { name }), 'high', 1);
+          voice(t('g.v.followNeeded', { name: sname }), 'high', 1);
         }
         break;
       case 'found_pending':
         fx('close', 'so_close');
         toast(NAME, t('g.t.foundPending') + ' ' + t('g.t.foundPendingSub', { n: e.seconds }), 'var(--magenta)', { huge: true, important: true, keep: true, hold: 2.6 });
-        voice(t('g.v.foundPending', { name }), 'high', 1);
+        voice(t('g.v.foundPending', { name: sname }), 'high', 1);
         break;
       case 'follow_ok':
         fx('follow');
         toast(NAME, t('g.t.thanks') + ' ' + t('g.t.thanksSub'), 'var(--violet)', { important: true });
-        voice(t('g.v.thanks', { name }), 'high', 1);
+        voice(t('g.v.thanks', { name: sname }), 'high', 1);
         break;
       case 'dq':
         fx('timeout');
         toast(NAME, t('g.t.sorry') + ' ' + t('g.t.sorrySub'), 'var(--pink)', { important: true, keep: true, hold: 2.4 });
-        voice(t('g.v.sorry', { name }), 'high', 1);
+        voice(t('g.v.sorry', { name: sname }), 'high', 1);
         break;
       case 'unknown':                     // shown in the list (grey) so the player sees it was read
         addFresh(Object.assign({}, e, { unknown: true }), 2500);
@@ -285,8 +286,8 @@
         fx('winner');
         if (!e.word) break;                       // a viewer's word nobody found: not said aloud
         const word = e.word.toLowerCase();
-        if (e.reason === 'exact') voice(t('g.v.winner', { name, word }), 'urgent', 1);
-        else if (e.name) voice(t('g.v.closest', { name, word }), 'high', 1);
+        if (e.reason === 'exact') voice(t('g.v.winner', { name: sname, word }), 'urgent', 1);
+        else if (e.name) voice(t('g.v.closest', { name: sname, word }), 'high', 1);
         else voice(t('g.v.nobody', { word }), 'high', 1);
         break;
       }

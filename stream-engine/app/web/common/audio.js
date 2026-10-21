@@ -191,6 +191,13 @@ window.AudioKit = (() => {
     u.onerror = ev => { if (window.clientLog) clientLog('speech error: ' + (ev.error || '?')); if (o.onend) o.onend(); };
     synth.speak(u);
   }
+  // a nick as the voice should say it: "_катрин_" -> "катрин", "ivan.petrov+1" -> "ivan petrov 1".
+  // Everything but letters and digits becomes a space (voices read "_", ".", "+" aloud), emoji go;
+  // fancy letters become plain ones ("𝐓𝐀𝐇𝐌𝐈𝐍𝐀" -> "TAHMINA", NFKC).
+  function spokenName(name) {
+    const s = (name || '').normalize('NFKC').replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+    return s || T('voice.someone');
+  }
   function nextVoice() {
     const list = femaleVoices();
     if (!list.length) return;
@@ -249,7 +256,7 @@ window.AudioKit = (() => {
   }
 
   return {
-    tone, noise, loop, party, say, mount, enable, setLang, setRate,
+    tone, noise, loop, party, say, spokenName, mount, enable, setLang, setRate,
     get ready() { return !!ctx && !muted; },
     get speaking() { return !!synth && (synth.speaking || synth.pending); },
     get running() { return !!ctx && ctx.state === 'running'; },      // browser actually allows sound

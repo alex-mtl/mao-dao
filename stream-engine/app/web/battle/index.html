@@ -129,7 +129,6 @@ function fx(kind, color){
 }
 
 // ---------------- voice ----------------
-const cleanName = n => (n || '').replace(/[^\p{L}\p{N} ._-]/gu, '').trim() || 'Someone';
 const teamName = c => t(c === 'red' ? 'b.team.red' : 'b.team.yellow');
 let pending = [], leads = {};
 function say(text, urgent, excited){
@@ -139,13 +138,13 @@ function say(text, urgent, excited){
 // "Yellow team scores, thanks to <who typed / who joined>!"
 // + for joins: "But the point goes to <last R/Y commenter>!"
 function announce(e){
-  say(t('b.v.scores', {team: teamName(e.color), name: cleanName(e.name)}));
-  if (e.type === 'join') say(t('b.v.pointTo', {name: cleanName(e.by)}), false, true);
+  say(t('b.v.scores', {team: teamName(e.color), name: A.spokenName(e.name)}));
+  if (e.type === 'join') say(t('b.v.pointTo', {name: A.spokenName(e.by)}), false, true);
 }
 // leader change inside a team, sports-commentary style
 function announceLead(e){
-  say(t('b.v.lead', {name: cleanName(e.name), team: teamName(e.color)}), false, true);
-  say(t('b.v.second', {name: cleanName(e.prev)}));
+  say(t('b.v.lead', {name: A.spokenName(e.name), team: teamName(e.color)}), false, true);
+  say(t('b.v.second', {name: A.spokenName(e.prev)}));
 }
 // taps/joins pile up while speaking -> next phrase summarizes them;
 // leader changes are never merged (only the latest per team is kept)
@@ -168,7 +167,7 @@ function handleEvent(e){
   else if (e.type === 'lead') { fx('lead', e.color); leads[e.color] = e; flush(); }
   else if (e.type === 'win') {
     fx('win');
-    say(t('b.v.win', {team: teamName(e.color)}) + (e.name ? t('b.v.mvp', {name: cleanName(e.name)}) : ''), true);
+    say(t('b.v.win', {team: teamName(e.color)}) + (e.name ? t('b.v.mvp', {name: A.spokenName(e.name)}) : ''), true);
   } else if (e.type === 'round') { fx('round'); say(t('b.v.round', {n: e.round}), true); }
 }
 

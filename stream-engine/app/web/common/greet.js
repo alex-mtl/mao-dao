@@ -43,8 +43,8 @@ window.Greeter = (() => {
   }
 
   // "Alex" | "Alex and Mike" | "Alex, Mike and Sarah" | "Alex, Mike and 4 more"
-  function who(batch) {
-    const n = batch.map(e => clean(e.name));
+  function who(batch, nameOf) {
+    const n = batch.map(e => (nameOf || clean)(e.name));
     if (n.length === 1) return n[0];
     if (n.length <= 3) return n.slice(0, -1).join(', ') + t('greet.and') + n[n.length - 1];
     return t('greet.more', { names: n.slice(0, 2).join(', '), n: n.length - 2 });
@@ -62,7 +62,7 @@ window.Greeter = (() => {
     document.body.appendChild(pill);
     setTimeout(() => pill.remove(), SHOW_MS + 100);
     // voice only when nothing else is being said (game announcements have priority)
-    if (window.AudioKit && AudioKit.ready && !AudioKit.speaking) AudioKit.say(t('greet.voice', { who: who(batch) }));
+    if (window.AudioKit && AudioKit.ready && !AudioKit.speaking) AudioKit.say(t('greet.voice', { who: who(batch, AudioKit.spokenName) }));
   }
 
   setInterval(() => {

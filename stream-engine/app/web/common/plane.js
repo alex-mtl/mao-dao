@@ -172,7 +172,7 @@ window.Plane = (() => {
     flight.style.visibility = '';
     if (o && o.sound && window.AudioKit && AudioKit.ready) {
       engine(dur, dir);
-      setTimeout(() => AudioKit.say(t('plane.v', { name: clean(e.name), likes: I18N.n(e.total, 'like') })), 800);
+      setTimeout(() => AudioKit.say(t('plane.v', { name: AudioKit.spokenName(e.name), likes: I18N.n(e.total, 'like') })), 800);
     }
     const bombs = [];
     if (e.bomber) {
