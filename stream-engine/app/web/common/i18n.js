@@ -139,7 +139,7 @@ window.I18N = (() => {
       'greet.and': ' и ', 'greet.more': '{names} и ещё {n}',
       'menu.streamer.d': 'Прозрачный слой поверх твоего видео: зрители надувают лайками шарики-сердечки, и те взлетают с их аватаром!',
       'menu.streamer.chat': '❤ 100 ЛАЙКОВ = 🎈 ШАРИК',
-      's.v.balloon': 'Спасибо, {name}, за {n} лайков!',
+      's.v.balloon': 'Спасибо, {name}, за шарик!',
       'plane.banner': '{likes} за стрим',
       'plane.v': '{name}: {likes} за стрим! Спасибо!',
       'b.red': 'Красные', 'b.yellow': 'Жёлтые', 'b.typeR': 'Пиши К', 'b.typeY': 'Пиши Ж', 'b.round': 'Раунд {n}',

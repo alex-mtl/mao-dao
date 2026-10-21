@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Проверка ударений</title>
+<style>
+  body { font: 16px system-ui, sans-serif; margin: 24px; background: #14121c; color: #eee; }
+  button { display: block; width: 100%; max-width: 560px; margin: 8px 0; padding: 12px 14px; font-size: 16px;
+           text-align: left; border-radius: 8px; border: 1px solid #555; background: #222; color: #eee; cursor: pointer; }
+  button:hover { background: #333; }
+  select { font-size: 15px; padding: 6px; margin: 4px 0 16px; max-width: 560px; width: 100%; }
+  .n { color: #8ad; font-size: 13px; }
+</style>
+</head>
+<body>
+<h2>Как голос произносит «лайков»</h2>
+<p class="n">Нужно ЛА́йков. Нажимайте по очереди и слушайте.</p>
+<label>Голос: <select id="voice"></select></label>
+<div id="list"></div>
+<script>
+  const variants = [
+    ['A. новый вариант', 'Спасибо, Лисёнок, за шарик!'],
+    ['B. новый вариант, короче', 'Спасибо за шарик, Лисёнок!'],
+    ['1. как сейчас', 'Спасибо, Лисёнок, за 100 лайков!'],
+    ['2. знак ударения после «а» (U+0301)', 'Спасибо, Лисёнок, за 100 ла́йков!'],
+    ['3. знак ударения + «а» отдельной буквой á', 'Спасибо, Лисёнок, за 100 лáйков!'],
+    ['4. заглавная ударная', 'Спасибо, Лисёнок, за 100 лАйков!'],
+    ['5. дефис-подсказка', 'Спасибо, Лисёнок, за 100 лай-ков!'],
+    ['6. «лайк» и число', 'Спасибо, Лисёнок! Сто лайк — и шарик полетел!'],
+    ['7. другое слово: «сердечек»', 'Спасибо, Лисёнок, за 100 сердечек!'],
+  ];
+  const sel = document.getElementById('voice');
+  function fill() {
+    const vs = speechSynthesis.getVoices();
+    sel.innerHTML = '';
+    vs.forEach((v, i) => { const o = document.createElement('option'); o.value = i; o.textContent = v.name + ' (' + v.lang + ')'; sel.appendChild(o); });
+    const ru = vs.findIndex(v => v.lang && v.lang.startsWith('ru'));
+    if (ru >= 0) sel.value = ru;
+  }
+  fill(); speechSynthesis.onvoiceschanged = fill;
+  const list = document.getElementById('list');
+  variants.forEach(([label, text]) => {
+    const b = document.createElement('button');
+    b.textContent = label + ':  ' + text;
+    b.onclick = () => {
+      speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(text);
+      const v = speechSynthesis.getVoices()[sel.value];
+      if (v) { u.voice = v; u.lang = v.lang; } else u.lang = 'ru-RU';
+      u.rate = 1.2;
+      speechSynthesis.speak(u);
+    };
+    list.appendChild(b);
+  });
+</script>
+</body>
+</html>
