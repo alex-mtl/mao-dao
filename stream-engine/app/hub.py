@@ -125,6 +125,16 @@ class Hub:
             self.save_session()
             print(f"[hub] new LIVE (room {room_id}) -> all games reset")
 
+    def _save_if_needed(self):
+        """An important event (round start, winner, gift, hint...) was just handled: to disk now."""
+        g = self.game
+        if getattr(g, "save_now", False):
+            g.save_now = False
+            try:
+                g.save()
+            except Exception as e:
+                print(f"[hub] save error ({g.name}):", e)
+
     def _feed(self, **e):
         self.feed_seq += 1
         e.update(seq=self.feed_seq, t=time.time())
@@ -144,6 +154,7 @@ class Hub:
         if self.tg and self.tg.on_comment(v, text):  # "настроить связь" / a Telegram key: not a guess
             return
         self.game.on_comment(v, text, ts)
+        self._save_if_needed()
 
     def join(self, v: Viewer):
         if self.closed:                               # shutting down: nothing changes any more
@@ -170,6 +181,7 @@ class Hub:
             print(f"[gift] {v.name}: {gift} went to @{to}, not to the host -> no game action")
             return
         self.game.on_gift(v, gift, count, repeat=repeat)
+        self._save_if_needed()
 
     def _journal_gift(self, v, gift, count, to):
         """Every gift, one JSON line in data/gifts.jsonl (kept across rebuilds: the data folder is mounted)."""
@@ -219,6 +231,7 @@ class Hub:
         while True:
             try:
                 self.game.tick(time.time())
+                self._save_if_needed()
                 self.balloons.tick(time.time())
             except Exception as e:
                 print("[hub] tick error:", type(e).__name__, e)

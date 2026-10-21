@@ -6,6 +6,7 @@ DEV_ROOMS=N creates N simulated rooms with fixed tokens for local testing (dev1 
 
 import asyncio
 import os
+import signal
 import sys
 
 import uvicorn
@@ -29,6 +30,12 @@ async def run():
     server = uvicorn.Server(uvicorn.Config(create_app(manager), host=config.HOST, port=config.PORT,
                                            log_level="warning", ws_ping_interval=20))
     print(f"[engine] {len(manager.rooms)} rooms, listening on {config.HOST}:{config.PORT}")
+    # uvicorn catches SIGTERM / Ctrl+C and, when serve() returns, raises the signal again with the
+    # handler that was there before it: with the default one the process dies before the final save
+    # below (a restart lost the last second - a round that had just started). A no-op handler here
+    # lets the shutdown go on to stop_all().
+    for sig in (signal.SIGINT, signal.SIGTERM):
+        signal.signal(sig, lambda *_: None)
     try:
         await server.serve()                       # returns on SIGTERM / Ctrl+C
     finally:

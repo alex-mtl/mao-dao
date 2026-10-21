@@ -25,13 +25,20 @@ class BaseGame:
         self.events = deque(maxlen=200)
         self.seq = 0
         self.dirty = True            # state changed -> broadcast
+        self.save_now = False        # an important event: the hub saves right after the handler
 
     # ---- events for the overlay (sounds, animations, voice) ----
+    # events after which the state goes to disk at once (the hub saves when the handler returns),
+    # not with the next once-a-second save: a crash must not lose a round start, a winner, a gift
+    SAVE_NOW_EVENTS = {"countdown", "round_start", "winner", "timeout", "reveal", "hint", "gift", "found_pending"}
+
     def emit(self, type, **data):
         self.seq += 1
         data.update(type=type, seq=self.seq, t=time.time())
         self.events.append(data)
         self.dirty = True
+        if type in self.SAVE_NOW_EVENTS:
+            self.save_now = True
 
     def events_since(self, seq):
         return [e for e in self.events if e["seq"] > seq]
