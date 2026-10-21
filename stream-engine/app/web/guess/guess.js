@@ -121,8 +121,14 @@
   function toast(head, sub, color, opts) {
     opts = opts || {};
     if (queue.length >= 3) queue.splice(queue.findIndex(q => !q.important), 1);   // drop the least important
-    queue.push({ head, sub, color, huge: opts.huge, important: opts.important, keep: opts.keep,
-                 hold: opts.hold || 1.2, at: Date.now() });
+    const item = { head, sub, color, huge: opts.huge, important: opts.important, keep: opts.keep,
+                   hold: opts.hold || 1.2, at: Date.now() };
+    if (opts.now) {                         // priority (a hint): first in line, replaces what is on screen
+      queue.unshift(item);
+      nextToast();
+      return;
+    }
+    queue.push(item);
     if (!showing) nextToast();
     else if (!showing.keep) {
       clearTimeout(toastTimer);
@@ -266,7 +272,7 @@
       case 'hint': {
         fx('hint');
         const h = hintText(e);
-        toast(t('g.hint'), (h.text + ' ' + h.word).trim(), 'var(--yellow)', { important: true, keep: true, hold: 2.4 });
+        toast(t('g.hint'), (h.text + ' ' + h.word).trim(), 'var(--yellow)', { important: true, keep: true, now: true, hold: 2.4 });
         voice(t('g.v.hint', { text: h.text, word: h.word.toLowerCase() }), 'high');
         break;
       }
