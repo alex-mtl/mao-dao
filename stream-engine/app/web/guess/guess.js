@@ -380,7 +380,7 @@
       const c = el('span', 'chip' + (w.unknown ? ' unknown' : ''));
       c.dataset.word = w.word;
       if (!w.unknown) c.style.background = 'var(--t-' + w.tempKey + ')';
-      c.append(el('small', '', w.unknown ? '?' : fmt(w.rank)), el('span', 'cw', w.word));
+      c.append(el('span', 'cw', w.word));      // no rank number here: the color says it, the table row shows it
       main.append(c);
     });
     const who = el('div', 'who');
