@@ -51,7 +51,7 @@ export default function Room({ room, languages, notice, problem }) {
 
     const applyBtn = (cls = '') => (
         <PrimaryButton type="button" className={'justify-center ' + cls} onClick={apply} disabled={s.busy || !s.changes}>
-            {t('guessword.apply')}
+            <span className="truncate">{t('guessword.apply')}</span>
         </PrimaryButton>
     );
 
@@ -70,16 +70,16 @@ export default function Room({ room, languages, notice, problem }) {
                 <div className="grid items-start gap-5 lg:grid-cols-[340px_1fr]">
                     {/* left: buttons + the live preview */}
                     <div className="mx-auto w-full max-w-sm rounded-2xl border-2 border-warm-200 bg-surface p-3.5 shadow-soft lg:sticky lg:top-20 lg:max-w-none">
-                        <div className="mb-3 grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+                        <div className="mb-3 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2">
                             <div className="relative" ref={menuRef}>
                                 {room.running ? (
-                                    <SecondaryButton type="button" className="w-full justify-center gap-2" onClick={() => setMenu(!menu)}>
+                                    <SecondaryButton type="button" className="w-full min-w-0 justify-center gap-2 px-2" onClick={() => setMenu(!menu)}>
                                         <span className="h-2.5 w-2.5 rounded-full bg-success-500 ring-4 ring-success-100" />
                                         <span className="truncate">{t('guessword.mode_' + (active || mode))}</span> ▾
                                     </SecondaryButton>
                                 ) : (
-                                    <PrimaryButton type="button" className="w-full justify-center" onClick={() => setMenu(!menu)} disabled={!room.tiktok}>
-                                        {t('guessword.start_menu')} ▾
+                                    <PrimaryButton type="button" className="w-full min-w-0 justify-center px-2" onClick={() => setMenu(!menu)} disabled={!room.tiktok}>
+                                        <span className="truncate">{t('guessword.start_menu')} ▾</span>
                                     </PrimaryButton>
                                 )}
                                 {menu && (
@@ -104,7 +104,7 @@ export default function Room({ room, languages, notice, problem }) {
                                     className="flex h-10 w-10 items-center justify-center rounded-xl border border-warm-200 bg-surface text-ink-700 hover:bg-warm-50">
                                 <Cog6ToothIcon className="h-5 w-5" />
                             </button>
-                            {applyBtn('w-full')}
+                            {applyBtn('w-full min-w-0 px-2')}
                         </div>
 
                         {/* the stream's own dark (not a theme token: TikTok shows the game on a dark picture in every scheme) */}
