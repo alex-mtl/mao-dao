@@ -32,6 +32,7 @@ window.Live = (() => {
     }
     if (msg.voiceRate && window.AudioKit) AudioKit.setRate(msg.voiceRate);
     if (msg.toasts) Toasts.cfg = msg.toasts;
+    if (window.AudioKit && AudioKit.setVolumes) AudioKit.setVolumes(msg.voiceVolume ?? 100, msg.fxVolume ?? 100);
     if (msg.lang && window.I18N) {                 // language picked in the menu
       if (I18N.lang && I18N.lang !== msg.lang) { location.reload(); return; }
       I18N.set(msg.lang);

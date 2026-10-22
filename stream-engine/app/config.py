@@ -59,6 +59,8 @@ RESULTS_SEC = _i("RESULTS_SEC", 25)                     # first part of the brea
 LANGUAGES = ["en", "ru", "fr", "es"]
 GREET_JOINS = _b("GREET_JOINS", "1")                    # welcome viewers who join the LIVE (once per stream)
 VOICE_RATE = _f("VOICE_RATE", 1.5)                      # speech speed multiplier (1 = normal browser speed)
+VOICE_VOLUME = _i("VOICE_VOLUME", 100)                  # the narrator's volume, % (room page setting)
+FX_VOLUME = _i("FX_VOLUME", 100)                        # sound effects volume, % (room page setting)
 LANGUAGE = os.getenv("LANGUAGE", "en")                   # default language: en | ru | fr | es (menu can switch)
 PROMO_LINES_RU = [x.strip() for x in os.getenv("PROMO_LINES_RU", "ПОДПИШИСЬ, чтобы не пропустить раунд|ПОДПИШИСЬ и играй с нами|Зови друзей — чем больше игроков, тем веселее").split("|") if x.strip()]
 PROMO_LINES = [x.strip() for x in os.getenv("PROMO_LINES", "FOLLOW so you never miss a round|SUBSCRIBE to join the game|Invite friends - more players, more fun").split("|") if x.strip()]

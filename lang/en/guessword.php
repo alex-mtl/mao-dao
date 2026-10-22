@@ -104,6 +104,8 @@ return [
     'col_show' => 'Show',
     'col_voice' => 'Voice',
     'all_voices' => 'All voice lines on / off',
+    'vol_voice' => 'Narrator’s voice volume',
+    'vol_fx' => 'Sound effects volume',
     'col_action' => 'Action',
     'col_gift' => 'For which gift',
     'gift_none' => 'No gift',

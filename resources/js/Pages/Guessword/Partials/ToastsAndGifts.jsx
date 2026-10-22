@@ -30,6 +30,19 @@ export function ToastsTab({ s, mode }) {
     const allOn = withVoice.every(voiced);
 
     return (
+        <>
+        <div className="grid gap-4 border-b border-warm-100 py-3 sm:grid-cols-2">
+            {[["voice_volume", "vol_voice"], ["fx_volume", "vol_fx"]].map(([key, label]) => {
+                const v = s.draft.global?.[key] ?? 100;
+                return (
+                    <label key={key} className="flex flex-col gap-1.5 text-sm font-medium text-ink-800">
+                        <span className="flex justify-between">{t('guessword.' + label)}<span className="text-ink-500">{v}%</span></span>
+                        <input type="range" min="0" max="100" step="10" value={v} className="accent-primary-500"
+                               onChange={(e) => s.set('global', key, Number(e.target.value))} />
+                    </label>
+                );
+            })}
+        </div>
         <table className="w-full border-collapse">
             <thead>
                 <tr className="text-left text-[11px] font-semibold uppercase tracking-wide text-ink-500">
@@ -91,6 +104,7 @@ export function ToastsTab({ s, mode }) {
                 })}
             </tbody>
         </table>
+        </>
     );
 }
 

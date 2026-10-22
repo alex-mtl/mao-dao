@@ -13,6 +13,8 @@ class GlobalSettings:
         "plane_auto": ("PLANE_AUTO_LIKES", [0, 500, 1000, 2000, 5000, 10000, 20000, 50000, 100000]),
         "bomber": ("PLANE_BOMBER_LIKES", [0, 1000, 5000, 10000, 20000, 50000, 100000, 500000]),
         "voice_rate": ("VOICE_RATE", [1, 1.25, 1.5, 1.75, 2]),
+        "voice_volume": ("VOICE_VOLUME", list(range(0, 101, 10))),
+        "fx_volume": ("FX_VOLUME", list(range(0, 101, 10))),
         "greet": ("GREET_JOINS", [1, 0]),
     }
 

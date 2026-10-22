@@ -256,6 +256,7 @@ class Hub:
                 "version": getattr(self, "web_version", ""),
                 "lang": self.lang, "voiceRate": self.global_settings.get("VOICE_RATE"),
                 "toasts": self.toasts.values(),
+                "voiceVolume": self.global_settings.get("VOICE_VOLUME"), "fxVolume": self.global_settings.get("FX_VOLUME"),
                 "events": g.events_since(since) if since is not None else [],
                 "balloons": self.balloons.snapshot(),
                 "state": g.snapshot()}

@@ -104,6 +104,8 @@ return [
     'col_show' => 'Afficher',
     'col_voice' => 'Voix',
     'all_voices' => 'Toute la voix on / off',
+    'vol_voice' => 'Volume de la voix',
+    'vol_fx' => 'Volume des effets sonores',
     'col_action' => 'Action',
     'col_gift' => 'Pour quel cadeau',
     'gift_none' => 'Aucun cadeau',

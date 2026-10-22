@@ -6,7 +6,17 @@
 window.AudioKit = (() => {
   const qs = new URLSearchParams(location.search);
   const synth = window.speechSynthesis;
-  let ctx = null, muted = false, voice = null, lang = 'en', rateMul = 1;   // rateMul: VOICE_RATE from .env
+  let ctx = null, muted = false, voice = null, lang = 'en', rateMul = 1;
+  // volumes set on the room page (0..1): the voice, and every sound effect through one bus
+  let voiceVol = 1, fxVol = 1, fx = null;
+  function fxBus() {
+    if (!fx) { fx = ctx.createGain(); fx.gain.value = fxVol; fx.connect(ctx.destination); }
+    return fx;
+  }
+  function setVolumes(voicePct, fxPct) {
+    if (voicePct >= 0) voiceVol = voicePct / 100;
+    if (fxPct >= 0) { fxVol = fxPct / 100; if (fx) fx.gain.value = fxVol; }
+  }   // rateMul: VOICE_RATE from .env
   const T = (k, p) => (window.I18N ? I18N.t(k, p) : k);
   try { muted = localStorage.getItem('muted') === '1'; } catch (e) {}
   if (qs.get('sound') === '0') muted = true;
@@ -25,7 +35,7 @@ window.AudioKit = (() => {
     g.gain.setValueAtTime(0.0001, t0);
     g.gain.exponentialRampToValueAtTime(vol || 0.2, t0 + 0.01);
     g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-    o.connect(g).connect(ctx.destination); o.start(t0); o.stop(t0 + dur + 0.02);
+    o.connect(g).connect(fxBus()); o.start(t0); o.stop(t0 + dur + 0.02);
   }
   // a recorded loop (e.g. the plane engine) played for `dur` seconds: loud at once, fading out by
   // the end; optional stereo pan from one side to the other and a playback-rate tweak
@@ -51,7 +61,7 @@ window.AudioKit = (() => {
       p.pan.setValueAtTime(o.panFrom, t0); p.pan.linearRampToValueAtTime(o.panTo || 0, end);
       node = node.connect(p);
     }
-    node.connect(ctx.destination);
+    node.connect(fxBus());
     s.start(t0, Math.random() * buf.duration);                                   // a different bit each time
     s.stop(end + 0.05);
   }
@@ -68,7 +78,7 @@ window.AudioKit = (() => {
     }
     const conv = ctx.createConvolver(), wet = ctx.createGain();
     conv.buffer = ir; wet.gain.value = 0.35;
-    conv.connect(wet).connect(ctx.destination);
+    conv.connect(wet).connect(fxBus());
     reverb = conv;
     return reverb;
   }
@@ -76,8 +86,8 @@ window.AudioKit = (() => {
     if (!ctx || muted) return;
     const t0 = ctx.currentTime + 0.01, out = ctx.createGain(), p = ctx.createStereoPanner ? ctx.createStereoPanner() : null;
     out.gain.value = vol;
-    if (p) { p.pan.value = Math.max(-0.8, Math.min(0.8, pan)); out.connect(p).connect(ctx.destination); }
-    else out.connect(ctx.destination);
+    if (p) { p.pan.value = Math.max(-0.8, Math.min(0.8, pan)); out.connect(p).connect(fxBus()); }
+    else out.connect(fxBus());
     out.connect(room());
     const burst = (dur, type, freq, q, v, at = 0) => {         // filtered noise burst
       const b = ctx.createBuffer(1, Math.ceil(ctx.sampleRate * dur), ctx.sampleRate), d = b.getChannelData(0);
@@ -116,7 +126,7 @@ window.AudioKit = (() => {
     for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length);
     const s = ctx.createBufferSource(), g = ctx.createGain(), f = ctx.createBiquadFilter();
     f.type = 'highpass'; f.frequency.value = hp || 1500; g.gain.value = vol || 0.2;
-    s.buffer = b; s.connect(f).connect(g).connect(ctx.destination); s.start(t0);
+    s.buffer = b; s.connect(f).connect(g).connect(fxBus()); s.start(t0);
   }
 
   // ---------- voice: female, Chinese-speaker accent preferred ----------
@@ -188,7 +198,7 @@ window.AudioKit = (() => {
     if (o.urgent) synth.cancel();
     const u = new SpeechSynthesisUtterance(text);
     if (voice) u.voice = voice;
-    u.lang = voice ? voice.lang : ({ ru: 'ru-RU', fr: 'fr-FR', es: 'es-ES' }[lang] || 'en-US'); u.volume = 1;
+    u.lang = voice ? voice.lang : ({ ru: 'ru-RU', fr: 'fr-FR', es: 'es-ES' }[lang] || 'en-US'); u.volume = voiceVol;
     // one speed for all lines (excited ones differ only by pitch); o.rate = exact speed, e.g. 1 for key phrases
     u.rate = o.rate || Math.min(10, 1.05 * rateMul); u.pitch = o.pitch || (o.excited ? 1.35 : 1.05);
     if (o.onend) u.onend = o.onend;
@@ -262,7 +272,7 @@ window.AudioKit = (() => {
   }
 
   return {
-    tone, noise, loop, party, say, spokenName, mount, enable, setLang, setRate,
+    tone, noise, loop, party, say, spokenName, setVolumes, mount, enable, setLang, setRate,
     get ready() { return !!ctx && !muted; },
     get speaking() { return !!synth && (synth.speaking || synth.pending); },
     get running() { return !!ctx && ctx.state === 'running'; },      // browser actually allows sound

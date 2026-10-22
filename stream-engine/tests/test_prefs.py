@@ -138,3 +138,14 @@ class HostReportsTest(unittest.TestCase):
         self.assertEqual(h[0]["winner"], "Tati")
         self.assertEqual([w[1] for w in h[0]["winner_words"]], [1, 201])        # her words, closest first
         self.assertEqual(h[0]["top"][0][:2], [g.secret.upper(), 1])
+
+
+class VolumesTest(unittest.TestCase):
+    def test_voice_and_effects_volume(self):
+        h = Hub(JsonStore(tempfile.mkdtemp()), username="host")
+        msg = h.message("guess")
+        self.assertEqual((msg["voiceVolume"], msg["fxVolume"]), (100, 100))      # full volume by default
+        h.set_options("global", {"voice_volume": 60, "fx_volume": 30})
+        h.set_options("global", {"fx_volume": 35})                                 # steps of 10 only
+        msg = h.message("guess")
+        self.assertEqual((msg["voiceVolume"], msg["fxVolume"]), (60, 30))
