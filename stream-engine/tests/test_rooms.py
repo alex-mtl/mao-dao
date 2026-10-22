@@ -146,3 +146,27 @@ class RoomsTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class RoomPrefsApiTest(unittest.TestCase):
+    """The room page applies toast and gift settings through the room's settings API."""
+
+    def setUp(self):
+        self.saved = config.INTERNAL_SECRET, config.BASE_PATH
+        config.INTERNAL_SECRET, config.BASE_PATH = "s3cret", "/guessword/engine"
+        self.manager = RoomManager(tempfile.mkdtemp())
+
+    def tearDown(self):
+        config.INTERNAL_SECRET, config.BASE_PATH = self.saved
+
+    def test_toasts_and_gifts_through_the_api(self):
+        with TestClient(create_app(self.manager)) as c:
+            a = c.put("/internal/rooms/a", headers=SECRET, json={"simulate": True}).json()
+            ctl, ov = a["control_token"], a["overlay_token"]
+            c.post(f"/r/{ctl}/api/settings", json={"game": "toasts", "options": {"hint": {"voice": 0}}})
+            c.post(f"/r/{ctl}/api/settings", json={"game": "gifts", "options": {"plane": "gift:Rose"}})
+            info = c.get(f"/r/{ctl}/api/games").json()
+            self.assertEqual(info["toasts"]["values"], {"hint": {"voice": 0}})
+            self.assertEqual(info["gifts"]["values"]["plane"], "gift:Rose")
+            self.assertTrue(any(g["name"] == "Rose" for g in info["gifts"]["catalog"]))
+            self.assertEqual(c.get(f"/r/{ov}/api/state").json()["toasts"], {"hint": {"voice": 0}})   # pages get them

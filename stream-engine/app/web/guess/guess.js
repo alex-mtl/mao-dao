@@ -107,8 +107,9 @@
   }
   // voice: important moments only; low-priority lines are skipped while speaking
   // key phrases (round start, winner and the word) at normal speed (rate 1), the rest at VOICE_RATE
-  function voice(text, prio, rate) {
-    if (!A.ready) return;
+  function voice(id, text, prio, rate) {
+    if (!A.ready || !Toasts.voice(id)) return;
+    rate = Toasts.rate(id, rate);
     if (prio === 'urgent') A.say(text, { urgent: true, excited: true, rate });
     else if (prio === 'high' || !A.speaking) A.say(text, { excited: true, rate });
   }
@@ -120,6 +121,7 @@
   const TOAST_STALE_MS = 2500, TOAST_MIN_MS = 800;
   function toast(head, sub, color, opts) {
     opts = opts || {};
+    if (opts.id && !Toasts.show(opts.id)) return;
     if (queue.length >= 3) queue.splice(queue.findIndex(q => !q.important), 1);   // drop the least important
     const item = { head, sub, color, huge: opts.huge, important: opts.important, keep: opts.keep,
                    hold: opts.hold || 1.2, at: Date.now() };
@@ -152,7 +154,8 @@
     c.querySelectorAll('.h').forEach(n => fitText(n, n.textContent));   // the name fits one line; the event text wraps
     toastTimer = setTimeout(nextToast, (queue.length && !item.keep ? TOAST_MIN_MS : (item.hold + 0.4) * 1000));
   }
-  function mini(text, cls) {
+  function mini(text, cls, id) {
+    if (id && !Toasts.show(id)) return;
     const m = el('div', 'mini ' + (cls || ''), text);
     const box = $('miniToasts');
     box.appendChild(m);
@@ -182,34 +185,34 @@
       }
       case 'new_leader':
         fx('leader');
-        toast(NAME, t(e.comeback ? 'g.t.comeback' : 'g.t.leader'), 'var(--magenta)', { important: true });
-        voice(t(e.comeback ? 'g.v.comeback' : 'g.v.leader', { name: sname }));
+        toast(NAME, t(e.comeback ? 'g.t.comeback' : 'g.t.leader'), 'var(--magenta)', { important: true, id: 'leader' });
+        voice('leader', t(e.comeback ? 'g.v.comeback' : 'g.v.leader', { name: sname }));
         break;
       case 'jump':
         fx('jump', e.kind);
         if (e.kind === 'massive') {
-          toast(NAME, t('g.t.massive'), 'var(--lime)', { huge: true, important: true, hold: 2 });
-          voice(t('g.v.massive', { name: sname }));
-        } else toast(NAME, t('g.t.big'), 'var(--lime)');
+          toast(NAME, t('g.t.massive'), 'var(--lime)', { huge: true, important: true, hold: 2, id: 'jump' });
+          voice('jump', t('g.v.massive', { name: sname }));
+        } else toast(NAME, t('g.t.big'), 'var(--lime)', { id: 'jump' });
         break;
       case 'close':
         fx('close', e.level);
         if (e.level === 'so_close') {
-          toast(NAME, t('g.t.soClose'), 'var(--pink)', { huge: true, important: true, hold: 2.2 });
-          voice(t('g.v.soClose', { name: sname }), 'high');
+          toast(NAME, t('g.t.soClose'), 'var(--pink)', { huge: true, important: true, hold: 2.2, id: 'so_close' });
+          voice('so_close', t('g.v.soClose', { name: sname }), 'high');
         } else if (e.level === 'top3') {
-          toast(NAME, t('g.t.top3'), 'var(--orange)', { important: true });
-          voice(t('g.v.top3', { name: sname }));
+          toast(NAME, t('g.t.top3'), 'var(--orange)', { important: true, id: 'top' });
+          voice('top', t('g.v.top3', { name: sname }));
         } else if (e.level === 'top10') {
-          toast(NAME, t('g.t.top10'), 'var(--orange)');
+          toast(NAME, t('g.t.top10'), 'var(--orange)', { id: 'top' });
         } else {
-          mini(t('g.t.reached', { name, n: e.level === 'top50' ? 50 : 100 }), 'small');
+          mini(t('g.t.reached', { name, n: e.level === 'top50' ? 50 : 100 }), 'small', 'top');
         }
         break;
       case 'streak':
         fx('streak', e.n);
-        toast(NAME, t('g.t.streak', streakP(e.n)), 'var(--orange)', { huge: e.n >= 3, important: true, hold: e.n >= 5 ? 2.8 : 2 });
-        voice(t('g.v.streak', Object.assign(streakP(e.n), { name: sname })), 'high');
+        toast(NAME, t('g.t.streak', streakP(e.n)), 'var(--orange)', { huge: e.n >= 3, important: true, hold: e.n >= 5 ? 2.8 : 2, id: 'streak' });
+        voice('streak', t('g.v.streak', Object.assign(streakP(e.n), { name: sname })), 'high');
         break;
       case 'mao_call': {                          // a leader calls the host: red ticker + 3x high voice
         const line = t('g.tk.mao', { name: clean(e.name) });
@@ -221,51 +224,51 @@
         queueTicker(t('g.tk.credits', { name: esc(e.name), hints: I18N.n(e.n || 0, 'hint') }));
         break;
       case 'tg_info':                            // "настроить связь": the bot and the stream word
-        toast('📲 ' + (e.bot ? '@' + e.bot : ''), t('g.t.tgWord', { w: clean(e.word) }), '#2aabee', { important: true, keep: true, hold: 6 });
+        toast('📲 ' + (e.bot ? '@' + e.bot : ''), t('g.t.tgWord', { w: clean(e.word) }), '#2aabee', { important: true, keep: true, hold: 6, id: 'tg_word' });
         queueTicker(t('g.tk.tg', { bot: esc(e.bot ? '@' + e.bot : ''), w: esc(e.word) }));
         break;
       case 'custom_word':                        // a viewer picked this round's word (via the bot)
-        toast('🎯 ' + clean(e.name), t('g.t.customWord'), 'var(--orange)', { important: true, keep: true, hold: 5 });
+        toast('🎯 ' + clean(e.name), t('g.t.customWord'), 'var(--orange)', { important: true, keep: true, hold: 5, id: 'custom_word' });
         queueTicker(t('g.tk.custom', { name: esc(clean(e.name)) }));
         break;
       case 'custom_ticker':
         queueTicker(t('g.tk.custom', { name: esc(clean(e.name)) }));
         break;
       case 'tg_linked':
-        mini(t('g.t.tgLinked', { name }), 'follow');
+        mini(t('g.t.tgLinked', { name }), 'follow', 'tg_linked');
         break;
       case 'hint_wait':
-        mini(t('g.t.hintWait', { name, s: e.seconds }), 'gift');
+        mini(t('g.t.hintWait', { name, s: e.seconds }), 'gift', 'hint_wait');
         break;
       case 'gift':
         fx('gift');
-        mini(t('g.t.gift', { name, gift: clean(e.gift) }) + (e.count > 1 ? ' ×' + e.count : ''), 'gift');
+        mini(t('g.t.gift', { name, gift: clean(e.gift) }) + (e.count > 1 ? ' ×' + e.count : ''), 'gift', 'gift');
         break;
       case 'follow':
         fx('follow');
-        mini(t('g.t.followed', { name }), 'follow');
+        mini(t('g.t.followed', { name }), 'follow', 'thanks');
         break;
       case 'follow_needed':
-        if (e.dq) mini(t('g.t.followToPlay', { name }), 'follow');
+        if (e.dq) mini(t('g.t.followToPlay', { name }), 'follow', 'follow_needed');
         else {
-          mini(t('g.t.followNeeded', { name, n: e.seconds }), 'follow');
-          voice(t('g.v.followNeeded', { name: sname }), 'high', 1);
+          mini(t('g.t.followNeeded', { name, n: e.seconds }), 'follow', 'follow_needed');
+          voice('follow_needed', t('g.v.followNeeded', { name: sname }), 'high', 1);
         }
         break;
       case 'found_pending':
         fx('close', 'so_close');
-        toast(NAME, t('g.t.foundPending') + ' ' + t('g.t.foundPendingSub', { n: e.seconds }), 'var(--magenta)', { huge: true, important: true, keep: true, hold: 2.6 });
-        voice(t('g.v.foundPending', { name: sname }), 'high', 1);
+        toast(NAME, t('g.t.foundPending') + ' ' + t('g.t.foundPendingSub', { n: e.seconds }), 'var(--magenta)', { huge: true, important: true, keep: true, hold: 2.6, id: 'found_pending' });
+        voice('found_pending', t('g.v.foundPending', { name: sname }), 'high', 1);
         break;
       case 'follow_ok':
         fx('follow');
-        toast(NAME, t('g.t.thanks') + ' ' + t('g.t.thanksSub'), 'var(--violet)', { important: true });
-        voice(t('g.v.thanks', { name: sname }), 'high', 1);
+        toast(NAME, t('g.t.thanks') + ' ' + t('g.t.thanksSub'), 'var(--violet)', { important: true, id: 'thanks' });
+        voice('thanks', t('g.v.thanks', { name: sname }), 'high', 1);
         break;
       case 'dq':
         fx('timeout');
-        toast(NAME, t('g.t.sorry') + ' ' + t('g.t.sorrySub'), 'var(--pink)', { important: true, keep: true, hold: 2.4 });
-        voice(t('g.v.sorry', { name: sname }), 'high', 1);
+        toast(NAME, t('g.t.sorry') + ' ' + t('g.t.sorrySub'), 'var(--pink)', { important: true, keep: true, hold: 2.4, id: 'dq' });
+        voice('dq', t('g.v.sorry', { name: sname }), 'high', 1);
         break;
       case 'unknown':                     // shown in the list (grey) so the player sees it was read
         addFresh(Object.assign({}, e, { unknown: true }), 2500);
@@ -273,26 +276,26 @@
       case 'hint': {
         fx('hint');
         const h = hintText(e);
-        toast(t('g.hint'), (h.text + ' ' + h.word).trim(), 'var(--yellow)', { important: true, keep: true, now: true, hold: 2.4 });
-        voice(t('g.v.hint', { text: h.text, word: h.word.toLowerCase() }), 'high');
+        toast(t('g.hint'), (h.text + ' ' + h.word).trim(), 'var(--yellow)', { important: true, keep: true, now: true, hold: 2.4, id: 'hint' });
+        voice('hint', t('g.v.hint', { text: h.text, word: h.word.toLowerCase() }), 'high');
         break;
       }
       case 'timeout':
         fx('timeout');
-        toast(t(e.reason === 'skip' ? 'g.t.skipped' : 'g.t.timeUp'), '', 'var(--orange)', { huge: true, important: true, keep: true, hold: 1.4 });
-        voice(t(e.reason === 'skip' ? 'g.v.skipped' : 'g.v.timeUp'), 'urgent');
+        toast(t(e.reason === 'skip' ? 'g.t.skipped' : 'g.t.timeUp'), '', 'var(--orange)', { huge: true, important: true, keep: true, hold: 1.4, id: 'time_up' });
+        voice('time_up', t(e.reason === 'skip' ? 'g.v.skipped' : 'g.v.timeUp'), 'urgent');
         break;
       case 'winner': {
         fx('winner');
         if (!e.word) break;                       // a viewer's word nobody found: not said aloud
         const word = e.word.toLowerCase();
-        if (e.reason === 'exact') voice(t('g.v.winner', { name: sname, word }), 'urgent', 1);
-        else if (e.name) voice(t('g.v.closest', { name: sname, word }), 'high', 1);
-        else voice(t('g.v.nobody', { word }), 'high', 1);
+        if (e.reason === 'exact') voice('winner', t('g.v.winner', { name: sname, word }), 'urgent', 1);
+        else if (e.name) voice('winner', t('g.v.closest', { name: sname, word }), 'high', 1);
+        else voice('winner', t('g.v.nobody', { word }), 'high', 1);
         break;
       }
       case 'round_start':
-        voice(e.roundType === 'speed' ? t('g.v.speed') : t('g.v.round', { n: e.round }), 'urgent', 1);
+        voice('round', e.roundType === 'speed' ? t('g.v.speed') : t('g.v.round', { n: e.round }), 'urgent', 1);
         break;
     }
   }
@@ -792,11 +795,11 @@
         if (lobby && !v.start && left > 35) {
           v.start = true;
           const mins = Math.round(left / 60);
-          voice(t('g.v.break', { t: mins >= 1 ? I18N.n(mins, 'minute') : t('g.seconds', { n: left }) }), 'high', 1);
+          voice('break', t('g.v.break', { t: mins >= 1 ? I18N.n(mins, 'minute') : t('g.seconds', { n: left }) }), 'high', 1);
         }
         if (!v.soon && left <= 30 && left > 25) {
           v.soon = true;
-          voice(t('g.v.soon'), 'high');
+          voice('break', t('g.v.soon'), 'high');
         }
       }
       if (lastBig !== 'GO!' || S.phase !== 'playing') bigNum('');

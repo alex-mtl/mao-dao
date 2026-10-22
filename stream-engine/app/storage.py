@@ -3,6 +3,7 @@ for SQLite/PostgreSQL later without touching the games."""
 
 import json
 import os
+import tempfile
 
 
 class JsonStore:
@@ -31,7 +32,9 @@ class JsonStore:
             return
         p = self.path(name)
         os.makedirs(os.path.dirname(p), exist_ok=True)
-        with open(p + ".tmp", "w", encoding="utf-8") as f:
+        # a temp file of its own: two requests opening a room at once (the page and its preview) both save
+        fd, tmp = tempfile.mkstemp(prefix=os.path.basename(p) + ".", suffix=".tmp", dir=os.path.dirname(p))
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
             f.write(text)
-        os.replace(p + ".tmp", p)
+        os.replace(tmp, p)
         self._last[name] = text

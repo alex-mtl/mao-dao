@@ -1,14 +1,16 @@
 import { useLaravelReactI18n } from 'laravel-react-i18n';
 import { useState } from 'react';
+import { GiftsTab, ToastsTab } from './ToastsAndGifts';
 
 // the panel's modes (engine game names) and the sections of each mode
 export const MODES = ['battle', 'guess', 'streamer'];
 const SECTIONS = {
-    battle: ['likes'],
-    guess: ['game', 'frame', 'likes'],
-    streamer: ['frame', 'likes'],
+    battle: ['gifts', 'toasts', 'likes'],
+    guess: ['game', 'frame', 'gifts', 'toasts', 'likes'],
+    streamer: ['frame', 'gifts', 'toasts', 'likes'],
 };
-const TAB_KEY = { game: 'guessword.tab_game', frame: 'guessword.tab_frame', likes: 'guessword.tab_likes' };
+const TAB_KEY = { game: 'guessword.tab_game', frame: 'guessword.tab_frame', gifts: 'guessword.tab_gifts',
+                  toasts: 'guessword.tab_toasts', likes: 'guessword.tab_likes' };
 // like thresholds the streamer picks from (every N likes of one viewer); 0 = off
 const BALLOON_STEPS = [100, 500, 1000, 2000, 5000, 10000];
 const PLANE_STEPS = [1000, 5000, 10000, 20000, 50000, 100000];
@@ -81,7 +83,7 @@ function LikesRow({ title, sub, value, steps, onChange }) {
 
 export default function SettingsPanel({ s, mode, setMode, footer }) {
     const { t } = useLaravelReactI18n();
-    const [tab, setTab] = useState({ battle: 'likes', guess: 'game', streamer: 'frame' });
+    const [tab, setTab] = useState({ battle: 'gifts', guess: 'game', streamer: 'frame' });
     const section = tab[mode];
     const g = s.draft.guess || {};
     const gl = s.draft.global || {};
@@ -206,6 +208,9 @@ export default function SettingsPanel({ s, mode, setMode, footer }) {
 
                 {!s.failed && s.info && mode === 'streamer' && section === 'frame' && <div className="py-3">{frameSeg('streamer')}</div>}
 
+                {!s.failed && s.info && section === 'toasts' && <ToastsTab s={s} mode={mode} />}
+                {!s.failed && s.info && section === 'gifts' && <GiftsTab s={s} mode={mode} />}
+
                 {!s.failed && s.info && section === 'likes' && (
                     <>
                         <table className="w-full border-collapse">
@@ -225,13 +230,6 @@ export default function SettingsPanel({ s, mode, setMode, footer }) {
                                           value={gl.bomber} onChange={(v) => s.set('global', 'bomber', v)} />
                             </tbody>
                         </table>
-                        <div className="mt-2 border-t border-warm-100 py-3">
-                            <h3 className="mb-2 font-heading text-base font-bold text-ink-900">{t('guessword.group_greet')}</h3>
-                            <div className="flex items-center justify-between gap-3">
-                                <span className="text-sm font-medium text-ink-900">{t('guessword.greet')}</span>
-                                <Switch on={!!gl.greet} onChange={(v) => s.set('global', 'greet', v ? 1 : 0)} />
-                            </div>
-                        </div>
                     </>
                 )}
             </div>

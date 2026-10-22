@@ -12,6 +12,7 @@ from . import config
 from .games import GAMES
 from .games.base import Viewer
 from .reactions.balloons import LikeBalloons
+from .room_prefs import GiftRules, Toasts, catalog
 from .settings import GlobalSettings
 
 
@@ -34,6 +35,8 @@ class Hub:
         saved = s.get("options", {})
         for k, v in (saved.pop("global", None) or {}).items():
             self.global_settings.set(k, v)
+        self.toasts = Toasts(saved.pop("toasts", None))           # each toast: show / voice / its speed
+        self.gift_rules = GiftRules(saved.pop("gifts", None))     # which gift triggers which action
         if "break" in saved:                          # old single on/off switch for guess
             saved = {"guess": {"break": saved.pop("break")}, **saved}
         for name, opts in saved.items():
@@ -94,9 +97,17 @@ class Hub:
     def options(self):
         out = {n: g.get_options() for n, g in self.games.items() if g.OPTIONS}
         out["global"] = self.global_settings.values()
+        out["toasts"] = self.toasts.values()
+        out["gifts"] = self.gift_rules.values()
         return out
 
     def set_options(self, name, opts):
+        if name in ("toasts", "gifts"):
+            (self.toasts if name == "toasts" else self.gift_rules).set(opts)
+            self.save_session()
+            self.game.dirty = True                    # pages get the new toast settings
+            print(f"[hub] {name} -> {(self.toasts if name == 'toasts' else self.gift_rules).values()}")
+            return
         if name == "global":
             for k, v in (opts or {}).items():
                 self.global_settings.set(k, v)
@@ -168,20 +179,42 @@ class Hub:
             self._feed(type="join", name=v.name, avatar=v.avatar)
         self.game.on_join(v)
 
-    def gift(self, v: Viewer, gift, count, to="", repeat=False):
+    def gift(self, v: Viewer, gift, count, to="", repeat=False, coins=0):
         """A gift on the stream. Only gifts to the host count in the game (hints); a gift to a guest
-        or co-host on the same live is just shown. repeat: more gifts of a combo already announced."""
+        or co-host on the same live is just shown. repeat: more gifts of a combo already announced;
+        coins: the gift's price (TikTok's diamond count) for the "from N coins" rules."""
         if self.closed:                               # shutting down: nothing changes any more
             return
         self._seen(v)
+        catalog().record(gift, coins)
         if not repeat:
             self._feed(type="gift", name=v.name, avatar=v.avatar, gift=gift, count=count, to=to)
         self._journal_gift(v, gift, count, to)
         if to and to.lower() != self.username:
             print(f"[gift] {v.name}: {gift} went to @{to}, not to the host -> no game action")
             return
-        self.game.on_gift(v, gift, count, repeat=repeat)
+        actions = self.gift_rules.actions_for(gift, coins)
+        self._gift_animations(v, gift, actions, count)
+        self.game.on_gift(v, gift, count, repeat=repeat, actions=actions)
         self._save_if_needed()
+
+    GIFT_ANIMATIONS_MAX = 50                          # one batch of a combo: a sane upper bound (the feed keeps 100)
+
+    def _gift_animations(self, v, gift, actions, count):
+        """Balloon / plane / butterfly plane for a gift bound to them (the streamer's gift rules), on every
+        page: one per gift, no pause - 10 gifts = 10 planes (combo parts included)."""
+        anim = actions & {"balloon", "plane", "bomber"}
+        if not anim:
+            return
+        n = max(1, min(int(count or 1), self.GIFT_ANIMATIONS_MAX))
+        total = self.balloons.total_of(v.id)
+        for _ in range(n):
+            if "balloon" in anim:
+                self._feed(type="balloon", id=v.id, name=v.name, avatar=v.avatar, n=0, total=total, per=0, gift=gift)
+            if "plane" in anim or "bomber" in anim:
+                self._feed(type="plane", id=v.id, name=v.name, avatar=v.avatar, total=total, auto=True,
+                           bomber="bomber" in anim, gift=gift)
+        print(f"[gift] {v.name}: {gift} x{n} -> {sorted(anim)}")
 
     def _journal_gift(self, v, gift, count, to):
         """Every gift, one JSON line in data/gifts.jsonl (kept across rebuilds: the data folder is mounted)."""
@@ -222,6 +255,7 @@ class Hub:
                 "tiktok": self.tiktok_status, "tgBot": self.tg.bot if self.tg and self.tg.word else "",
                 "version": getattr(self, "web_version", ""),
                 "lang": self.lang, "voiceRate": self.global_settings.get("VOICE_RATE"),
+                "toasts": self.toasts.values(),
                 "events": g.events_since(since) if since is not None else [],
                 "balloons": self.balloons.snapshot(),
                 "state": g.snapshot()}

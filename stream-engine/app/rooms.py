@@ -10,6 +10,7 @@ import asyncio
 import json
 import os
 import secrets
+import threading
 import time
 
 from . import config
@@ -31,6 +32,7 @@ class Room:
         self.cfg = cfg
         self.dir = os.path.join(data_root, "rooms", rid)
         self.hub = None
+        self.hub_lock = threading.Lock()              # the page and its preview may open a room at once
         self.tasks = []
         self.connector = None
         self.started_at = 0.0
@@ -42,13 +44,16 @@ class Room:
     def ensure_hub(self):
         """the room's games and state (loaded on first use, kept while the process lives)"""
         if self.hub is None:
-            token = current_room.set(self.id)
-            try:
-                self.hub = Hub(JsonStore(self.dir), username=self.cfg.get("username") or "")
-                if self.cfg.get("lang"):
-                    self.hub.set_lang(self.cfg["lang"])
-            finally:
-                current_room.reset(token)
+            with self.hub_lock:
+                if self.hub is None:
+                    token = current_room.set(self.id)
+                    try:
+                        hub = Hub(JsonStore(self.dir), username=self.cfg.get("username") or "")
+                        if self.cfg.get("lang"):
+                            hub.set_lang(self.cfg["lang"])
+                        self.hub = hub
+                    finally:
+                        current_room.reset(token)
         return self.hub
 
     def start(self, on_give_up=None):

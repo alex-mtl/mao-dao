@@ -27,6 +27,7 @@ from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Redirect
 from . import config
 from .context import current_room
 from .games.base import Viewer
+from .room_prefs import GIFT_ACTIONS, GIFT_MIN_COINS, catalog
 
 WEB = os.path.join(os.path.dirname(__file__), "web")
 CONTROL_ONLY = ("", "index.html", "debug", "demo")   # the menu and debug pages need the control token
@@ -100,7 +101,7 @@ def create_app(manager):
                     control_url=room_base(room.cfg["control_token"]))
 
     def apply_settings(hub, body):
-        if body.get("game") in hub.games or body.get("game") == "global":
+        if body.get("game") in hub.games or body.get("game") in ("global", "toasts", "gifts"):
             hub.set_options(body["game"], body.get("options") or {})
         if "lang" in body:
             if body["lang"] not in config.LANGUAGES:
@@ -116,6 +117,9 @@ def create_app(manager):
         return {"active": hub.active, "games": hub.menu(), "lang": hub.lang,
                 "languages": config.LANGUAGES, "options": hub.options(),
                 "global": {"options": hub.global_settings.schema(), "values": hub.global_settings.values()},
+                "toasts": {"schema": hub.toasts.schema(), "values": hub.toasts.values()},
+                "gifts": {"actions": GIFT_ACTIONS, "min": GIFT_MIN_COINS, "values": hub.gift_rules.values(),
+                          "catalog": catalog().list()},
                 "overlay": room_base(room.cfg["overlay_token"]), "running": room.running}
 
     # ------------------------------------------------------------------ process

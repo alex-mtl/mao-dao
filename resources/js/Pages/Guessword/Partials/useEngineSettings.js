@@ -28,7 +28,8 @@ export default function useEngineSettings(controlUrl, enabled) {
         if (!enabled) return;
         call('games')
             .then((d) => {
-                const values = { global: { ...d.global.values } };
+                // sections: each game's options, global (likes...), toasts {id: {show, voice, rate}}, gifts {action: rule}
+                const values = { global: { ...d.global.values }, toasts: { ...(d.toasts?.values || {}) }, gifts: { ...(d.gifts?.values || {}) } };
                 d.games.forEach((g) => { values[g.name] = { ...g.values }; });
                 setInfo(d);
                 setSaved(values);
@@ -47,7 +48,7 @@ export default function useEngineSettings(controlUrl, enabled) {
         const out = {};
         Object.entries(draft).forEach(([section, values]) => {
             Object.entries(values || {}).forEach(([k, v]) => {
-                if (saved[section]?.[k] !== v) (out[section] ||= {})[k] = v;
+                if (JSON.stringify(saved[section]?.[k]) !== JSON.stringify(v)) (out[section] ||= {})[k] = v;
             });
         });
         return out;

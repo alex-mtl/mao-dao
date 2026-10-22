@@ -6,7 +6,9 @@ window.Plane = (() => {
   const clean = n => (n || '').replace(/[^\p{L}\p{N} ._'-]/gu, '').trim() || '?';
   let ready = false, sky = null;
   const queue = [];
-  let flying = false;
+  // several planes may fly at once (10 gifts = 10 planes): up to MAX_AIR, GAP_MS apart, the rest wait
+  const MAX_AIR = 5, GAP_MS = 1200, MAX_QUEUE = 50;
+  let inAir = 0, lastStart = 0;
 
   const CSS = `
   .pl-sky { position: fixed; inset: 0; pointer-events: none; overflow: hidden; z-index: 1000; }   /* above everything: dialogs, greetings, overlays */
@@ -124,7 +126,8 @@ window.Plane = (() => {
   }
 
   function launch(e, o) {
-    flying = true;
+    inAir++;
+    lastStart = Date.now();
     const W = window.innerWidth, H = window.innerHeight;
     const ph = Math.min(W * 0.22, H * 0.13);           // plane size: fits phones and wide windows
     const flight = document.createElement('div');
@@ -172,7 +175,9 @@ window.Plane = (() => {
     flight.style.visibility = '';
     if (o && o.sound && window.AudioKit && AudioKit.ready) {
       engine(dur, dir);
-      setTimeout(() => AudioKit.say(t('plane.v', { name: AudioKit.spokenName(e.name), likes: I18N.n(e.total, 'like') })), 800);
+      if ((!window.Toasts || Toasts.voice('plane')) && !AudioKit.speaking)   // a flock: said once, not 10 times
+        setTimeout(() => AudioKit.say(t('plane.v', { name: AudioKit.spokenName(e.name), likes: I18N.n(e.total, 'like') }),
+                                      { rate: window.Toasts && Toasts.rate('plane') }), 800);
     }
     const bombs = [];
     if (e.bomber) {
@@ -189,7 +194,7 @@ window.Plane = (() => {
         bombs.push(setTimeout(() => drop(flight, e, o), (tIn + (tOut - tIn) * (k + 0.5) / BOMBS) * 1000));
       }
     }
-    setTimeout(() => { bombs.forEach(clearTimeout); flight.remove(); flying = false; next(); }, dur * 1000 + 200);
+    setTimeout(() => { bombs.forEach(clearTimeout); flight.remove(); inAir--; next(); }, dur * 1000 + 200);
   }
   const BOMBS = 10;                          // per bomber flight (it marks the 10th plane)
   const BOMB = `<svg viewBox="0 0 40 46"><path d="M24 8 C 28 2, 34 2, 36 6" stroke="#b07a3a" stroke-width="2.5" fill="none"/>
@@ -283,15 +288,21 @@ window.Plane = (() => {
     return true;
   }
 
+  let nextTimer = 0;
   function next() {
-    if (!flying && queue.length) { const [e, o] = queue.shift(); launch(e, o); }
+    if (!queue.length || inAir >= MAX_AIR) return;
+    const wait = lastStart + GAP_MS - Date.now();
+    if (wait > 0) { clearTimeout(nextTimer); nextTimer = setTimeout(next, wait); return; }
+    const [e, o] = queue.shift();
+    launch(e, o);
+    if (queue.length) { clearTimeout(nextTimer); nextTimer = setTimeout(next, GAP_MS); }
   }
 
   return {
-    fly(e, o) {                                // one plane at a time, the rest wait their turn
+    fly(e, o) {                                // several at once, GAP_MS apart; the rest wait their turn
       setup();
       queue.push([e, o]);
-      if (queue.length > 3) queue.shift();
+      if (queue.length > MAX_QUEUE) queue.shift();
       next();
     },
   };

@@ -57,7 +57,7 @@ class BaseGame:
     def on_join(self, viewer: Viewer):
         pass
 
-    def on_gift(self, viewer: Viewer, gift: str, count: int, repeat=False):
+    def on_gift(self, viewer: Viewer, gift: str, count: int, repeat=False, actions=None):
         pass
 
     def on_follow(self, viewer: Viewer):

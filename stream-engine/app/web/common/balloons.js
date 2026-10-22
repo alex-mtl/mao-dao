@@ -189,7 +189,8 @@ window.Balloons = (() => {
     if (opts.sound && window.AudioKit && AudioKit.ready) {
       AudioKit.tone(400, 0, 0.6, 'sine', 0.12, 1200);
       [880, 1175, 1568].forEach((f, i) => AudioKit.tone(f, 0.15 + i * 0.08, 0.3, 'sine', 0.1));
-      AudioKit.say(I18N.t('s.v.balloon', { name: AudioKit.spokenName(e.name), n: per }));
+      if (!window.Toasts || Toasts.voice('balloon'))
+        AudioKit.say(I18N.t('s.v.balloon', { name: AudioKit.spokenName(e.name), n: per }), { rate: window.Toasts && Toasts.rate('balloon') });
     }
   }
 

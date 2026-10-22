@@ -11,6 +11,15 @@ window.Chroma = {
   hue(h) { return this.on && h >= 65 && h <= 175 ? (h + 110) % 360 : h; },   // green -> cyan / blue / violet
 };
 
+// The room's toast settings (the platform's room page): each toast / voice line by its id can be
+// hidden (show 0), silenced (voice 0) or said at its own speed (rate). Unknown id = shown and said.
+window.Toasts = {
+  cfg: {},
+  show(id) { const c = this.cfg[id]; return !c || c.show !== 0; },
+  voice(id) { const c = this.cfg[id]; return !c || (c.show !== 0 && c.voice !== 0); },
+  rate(id, def) { const c = this.cfg[id]; return (c && c.rate) || def; },
+};
+
 window.Live = (() => {
   let opts, lastSeq = null, feedSeq = null, offset = 0, ws = null, pollTimer = null, wsRetry = null, version = null;
 
@@ -22,6 +31,7 @@ window.Live = (() => {
       version = msg.version;
     }
     if (msg.voiceRate && window.AudioKit) AudioKit.setRate(msg.voiceRate);
+    if (msg.toasts) Toasts.cfg = msg.toasts;
     if (msg.lang && window.I18N) {                 // language picked in the menu
       if (I18N.lang && I18N.lang !== msg.lang) { location.reload(); return; }
       I18N.set(msg.lang);

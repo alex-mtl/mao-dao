@@ -51,6 +51,7 @@ window.Greeter = (() => {
   }
 
   function show(batch) {
+    if (window.Toasts && !Toasts.show('greet')) return;
     if (!box) { css(); box = true; }
     const pill = document.createElement('div');
     pill.className = 'greet';
@@ -62,7 +63,8 @@ window.Greeter = (() => {
     document.body.appendChild(pill);
     setTimeout(() => pill.remove(), SHOW_MS + 100);
     // voice only when nothing else is being said (game announcements have priority)
-    if (window.AudioKit && AudioKit.ready && !AudioKit.speaking) AudioKit.say(t('greet.voice', { who: who(batch, AudioKit.spokenName) }));
+    if (window.AudioKit && AudioKit.ready && !AudioKit.speaking && (!window.Toasts || Toasts.voice('greet')))
+      AudioKit.say(t('greet.voice', { who: who(batch, AudioKit.spokenName) }), { rate: window.Toasts && Toasts.rate('greet') });
   }
 
   setInterval(() => {

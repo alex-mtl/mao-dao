@@ -138,13 +138,14 @@ class TikTokConnector:
         def gift(event):
             v = viewer_of(event.user)
             name = getattr(event.gift, "name", "") or "Gift"
+            coins = int(getattr(event.gift, "diamond_count", 0) or 0)       # price in coins (TikTok: "diamonds")
             count = int(getattr(event, "repeat_count", 1) or 1)
             streaking = bool(event.streaking)
             # the receiver: the host, or someone else on the stream (a guest / co-host in a multi-guest live)
             to_user = getattr(event, "to_user", None)
             to = str(getattr(to_user, "unique_id", "") or "") if to_user else ""
             if config.LOG_CHAT:
-                print(f"[gift] event {v.name}: {name} x{count} streaking={streaking} to=@{to or '-'}")
+                print(f"[gift] event {v.name}: {name} x{count} ({coins} coins) streaking={streaking} to=@{to or '-'}")
             # act on the first event at once (TikTok sends the combo's end 3-5 s later); later events of the
             # same combo bring only the new gifts (repeat_count grows), marked as repeats: no second "thanks"
             key = (v.id, name)
@@ -158,7 +159,7 @@ class TikTokConnector:
             if part > 0:
                 st["sent"] = count
                 print(f"[gift] {v.name}: {name} x{part}" + (" (combo)" if not first else "") + (f" -> @{to}" if to else ""))
-                hub.gift(v, name, part, to=to, repeat=not first)
+                hub.gift(v, name, part, to=to, repeat=not first, coins=coins)
             if streaking:                         # forget the combo if its end never arrives
                 st["timer"] = asyncio.get_running_loop().call_later(10, streaks.pop, key, None)
             else:

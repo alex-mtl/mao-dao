@@ -79,9 +79,6 @@ HINT_COOLDOWN_SEC = _f("HINT_COOLDOWN_SEC", 20)
 # otherwise is removed ("follow to win"). The host is never checked.
 FOLLOW_REQUIRED = _b("FOLLOW_REQUIRED", "1")
 FOLLOW_GRACE_SEC = _f("FOLLOW_GRACE_SEC", 30)
-# any gift gives a hint, except the gifts reserved for other actions (lower-case names)
-GIFT_HINT_EXCLUDE = []
-GIFT_NEW_ROUND_NAMES = [g.lower() for g in _list("GIFT_NEW_ROUND_NAMES", "")]
 SUBSCRIBERS_ONLY = _b("SUBSCRIBERS_ONLY")
 GOAL_LABEL = os.getenv("GOAL_LABEL", "FOLLOW GOAL")
 # ---- telegram bot (project tiktok-tg-bot on AWS); empty = off ----

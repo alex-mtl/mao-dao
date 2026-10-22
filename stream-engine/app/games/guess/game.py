@@ -182,6 +182,7 @@ class GuessGame(BaseGame):
         self.finished_at = 0.0
         self.unknown_t = 0.0
         self._batch = None                               # collects the words of a several-words comment
+        self.multi_ids = set()                           # viewers whose gift lets them send 3 words this round
         self.setter = None            # {"id", "name"} of the viewer who picked this round's word
         self.word_hidden = False      # a viewer's word nobody found: never shown
         self.setter_t = 0.0
@@ -326,7 +327,7 @@ class GuessGame(BaseGame):
         # counts as their own guess. At the start of a round, until three players hold the round
         # champion places, anyone may.
         round_champs = self._round_champion_ids() if self.phase == PLAYING else set()
-        if self.phase == PLAYING and self._batch is None and (len(round_champs) < 3
+        if self.phase == PLAYING and self._batch is None and (len(round_champs) < 3 or viewer.id in self.multi_ids
                                       or viewer.id in round_champs
                                       or viewer.id in self.stats.champion_ids()):
             several = self.sem.split_words(text)
@@ -516,17 +517,20 @@ class GuessGame(BaseGame):
                 self._accept(p, word, now)               # the hint word is their guess
         return h
 
-    def on_gift(self, viewer: Viewer, gift: str, count: int, repeat=False):
-        """repeat: more gifts of a combo whose start was already handled - thanked once, per combo"""
+    def on_gift(self, viewer: Viewer, gift: str, count: int, repeat=False, actions=None):
+        """repeat: more gifts of a combo whose start was already handled - thanked once, per combo.
+        actions: what this gift triggers by the streamer's gift rules ("hint", "multi", ...);
+        None (no rules given) = the old behaviour: any gift gives a hint."""
         if not repeat:
             self.emit("gift", name=viewer.name, avatar=viewer.avatar, gift=gift, count=count)
-        print(f"[guess] gift {gift} x{count} from {viewer.name}" + (" (combo)" if repeat else ""))
-        g = gift.lower()
-        if g in config.GIFT_NEW_ROUND_NAMES:
-            if self.phase == PLAYING and not repeat:     # a combo skips one round, not several
-                self._finish(time.time(), "skip")
-            self._finish(time.time(), "skip")
-        elif g not in config.GIFT_NEW_ROUND_NAMES and g not in config.GIFT_HINT_EXCLUDE:   # any gift
+        print(f"[guess] gift {gift} x{count} from {viewer.name}" + (" (combo)" if repeat else "")
+              + (f" -> {sorted(actions)}" if actions else ""))
+        if actions is None:
+            actions = {"hint"}
+        if "multi" in actions and self.phase == PLAYING and viewer.id not in self.multi_ids:
+            self.multi_ids.add(viewer.id)                # 3 words in one comment until the round ends
+            print(f"[guess] {viewer.name} may send 3 words this round (gift)")
+        if "hint" in actions:
             # one hint now (unless this viewer had one less than hint_cd s ago), every other gift
             # of the combo goes on their account: spent later with "подсказка", one at a time
             n, now = max(1, int(count or 1)), time.time()
