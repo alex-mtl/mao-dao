@@ -80,6 +80,8 @@ return [
     'opt_frame' => 'Format',
     'opt_chroma' => 'Incrustation (haut vert pour la caméra)',
     'opt_chroma_top' => ':n% du cadre',
+    'opt_chat_zone' => 'Zone libre pour le chat en bas',
+    'opt_chat_zone_off' => 'aucune',
     'sec' => ':n s',
     'min' => ':n min',
     'col_anim' => 'Animation',

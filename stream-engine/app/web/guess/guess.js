@@ -493,6 +493,9 @@
     const shown = new Set(fresh.flatMap(f => f.multi ? f.words.map(w => w.word) : [f.word]));
     best.filter(g => !shown.has(g.word)).slice(0, 18 - fresh.length).forEach(g => box.append(guessRow(g, mark(g))));
     box.querySelectorAll('.wd').forEach(fitCell);                 // long words shrink to fit
+    // only whole rows: the table ends above the chat zone, a row that doesn't fit is not shown at all
+    const limit = $('recent').getBoundingClientRect().bottom - parseFloat(getComputedStyle($('recent')).paddingBottom);
+    [...box.children].forEach(r => { if (r.getBoundingClientRect().bottom > limit + 1) r.remove(); });
     // all chips of a multi row stay visible: the font shrinks down to CHIP_MIN_FONT of its size (smaller
     // letters can't be read on the stream anyway), then long words are cut with "…" - the rank and its
     // color always stay whole
@@ -644,6 +647,9 @@
   function render(s) {
     S = s;
     applyChroma(TT ? (s.chroma || s.chromaTop || 33) : (s.chroma || 0), s.frame || 16);
+    // TT mode: the bottom chatZone % of the frame stays free for TikTok's chat (a setting), the table ends above it
+    document.documentElement.style.setProperty('--chat-zone', TT && s.chatZone
+      ? `calc(var(--u) * ${(100 * (s.frame || 16) / 9 * s.chatZone / 100).toFixed(2)})` : '0px');
     vocab = s.vocabSize || vocab;
     $('error').hidden = !s.error;
     if (s.error) { $('errText').textContent = t('g.err') + s.error; return; }

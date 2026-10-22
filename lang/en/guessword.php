@@ -80,6 +80,8 @@ return [
     'opt_frame' => 'Format',
     'opt_chroma' => 'Chroma key (green top for the camera)',
     'opt_chroma_top' => ':n% of the frame',
+    'opt_chat_zone' => 'Free zone for the chat at the bottom',
+    'opt_chat_zone_off' => 'none',
     'sec' => ':n s',
     'min' => ':n min',
     'col_anim' => 'Animation',

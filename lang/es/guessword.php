@@ -80,6 +80,8 @@ return [
     'opt_frame' => 'Formato',
     'opt_chroma' => 'Croma (parte superior verde para la cámara)',
     'opt_chroma_top' => ':n% del encuadre',
+    'opt_chat_zone' => 'Zona libre para el chat abajo',
+    'opt_chat_zone_off' => 'ninguna',
     'sec' => ':n s',
     'min' => ':n min',
     'col_anim' => 'Animación',

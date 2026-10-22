@@ -80,6 +80,8 @@ return [
     'opt_frame' => 'Формат',
     'opt_chroma' => 'Хромакей (зелёный верх под камеру)',
     'opt_chroma_top' => ':n% кадра',
+    'opt_chat_zone' => 'Свободная зона под чат внизу',
+    'opt_chat_zone_off' => 'нет',
     'sec' => ':n с',
     'min' => ':n мин',
     'col_anim' => 'Анимация',

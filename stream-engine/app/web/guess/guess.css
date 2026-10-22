@@ -431,3 +431,6 @@ html.chroma #recent > .title { display: none; }
 .chip.flyer .cw { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .grow.landed { animation: landed .6s ease-out; }
 @keyframes landed { 0% { filter: brightness(2.2); } 100% { filter: none; } }
+
+/* TT mode: the bottom --chat-zone of the frame (a setting) stays free for TikTok's chat; the call to action sits in it */
+#bottom { min-height: var(--chat-zone, 0px); display: flex; flex-direction: column; justify-content: flex-end; }

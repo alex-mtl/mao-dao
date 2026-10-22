@@ -181,6 +181,11 @@ export default function SettingsPanel({ s, mode, setMode, footer }) {
                 {!s.failed && s.info && mode === 'guess' && section === 'frame' && (
                     <div className="grid gap-4 py-3 sm:grid-cols-2">
                         {frameSeg('guess')}
+                        <Field label={t('guessword.opt_chat_zone')}>
+                            <Seg value={g.chat_zone} options={s.choices('guess', 'chat_zone')}
+                                 label={(n) => (n ? n + '%' : t('guessword.opt_chat_zone_off'))}
+                                 onChange={(v) => s.set('guess', 'chat_zone', v)} />
+                        </Field>
                         <Field label={t('guessword.opt_chroma')}>
                             <span className="flex items-center gap-3">
                                 <Switch on={!!g.chroma} onChange={(v) => s.set('guess', 'chroma', v ? 1 : 0)} />
