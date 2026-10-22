@@ -114,6 +114,36 @@
     else if (prio === 'high' || !A.speaking) A.say(text, { excited: true, rate });
   }
 
+  // ------------------------------------------------------------ the chat's pace
+  // words guessed in the last PACE_WINDOW_MS -> heat 0 (calm, under PACE_CALM words/s) .. 1 (busy, PACE_BUSY+),
+  // smoothed so timings change gradually. Every animation setting is the fastest it gets at heat 1;
+  // calm, it's smooth (CALM_ANIM s).
+  const PACE_WINDOW_MS = 10000, PACE_CALM = 1, PACE_BUSY = 4, CALM_ANIM = 0.5;
+  let paceTimes = [], heat = 0;
+  const lerp = (a, b, k) => a + (b - a) * k;
+  function countWords(n) { const now = Date.now(); for (let i = 0; i < n; i++) paceTimes.push(now); }
+  setInterval(() => {
+    const now = Date.now();
+    paceTimes = paceTimes.filter(t => now - t < PACE_WINDOW_MS);
+    const wps = paceTimes.length / (PACE_WINDOW_MS / 1000);
+    heat += (Math.min(1, Math.max(0, (wps - PACE_CALM) / (PACE_BUSY - PACE_CALM))) - heat) * 0.3;
+    applyTable();
+  }, 500);
+  // a toast's in/out animation (s): its setting is the floor ("auto" = 0.1), calm it's CALM_ANIM; none = the CSS default
+  function toastAnim(id) {
+    const a = id && Toasts.cfg[id] && Toasts.cfg[id].anim;
+    const floor = a === 'auto' ? 0.1 : a;
+    return typeof floor === 'number' ? lerp(Math.max(CALM_ANIM, floor), floor, heat) : null;
+  }
+  // the table: a new row slides in (its setting = the floor at the busiest, calm CALM_ANIM) and stays on top
+  // freshMs() (calm 1 s, busy FRESH_MS)
+  const freshMs = () => lerp(1000, FRESH_MS, heat);
+  function applyTable() {
+    if (!S) return;
+    const floor = S.rowAnim ?? 0.2;
+    document.documentElement.style.setProperty('--row-anim', lerp(Math.max(CALM_ANIM, floor), floor, heat).toFixed(2) + 's');
+  }
+
   // ------------------------------------------------------------ big toasts (queued, 1-3 s)
   // a busy chat: a toast that waited too long is old news - skipped (except "keep": hints, words to
   // pick...); the one on screen gives way to the next one after TOAST_MIN_MS (unless it is "keep")
@@ -123,7 +153,7 @@
     opts = opts || {};
     if (opts.id && !Toasts.show(opts.id)) return;
     if (queue.length >= 3) queue.splice(queue.findIndex(q => !q.important), 1);   // drop the least important
-    const item = { head, sub, color, huge: opts.huge, important: opts.important, keep: opts.keep,
+    const item = { head, sub, color, id: opts.id, huge: opts.huge, important: opts.important, keep: opts.keep,
                    hold: opts.hold || 1.2, at: Date.now() };
     if (opts.now) {                         // priority (a hint): first in line, replaces what is on screen
       queue.unshift(item);
@@ -148,6 +178,8 @@
     const c = el('div', 'tcard' + (item.huge ? ' huge' : ''));
     c.style.setProperty('--c', item.color);
     c.style.setProperty('--hold', item.hold + 's');
+    const anim = toastAnim(item.id);
+    if (anim !== null) { c.style.setProperty('--t-in', anim + 's'); c.style.setProperty('--t-out', Math.min(anim, 0.3) + 's'); }
     c.append(el('div', 'h', item.head));
     if (item.sub) c.append(el('div', 's', item.sub));
     $('toast').replaceChildren(c);
@@ -157,6 +189,8 @@
   function mini(text, cls, id) {
     if (id && !Toasts.show(id)) return;
     const m = el('div', 'mini ' + (cls || ''), text);
+    const anim = toastAnim(id);
+    if (anim !== null) m.style.setProperty('--m-in', anim + 's');
     const box = $('miniToasts');
     box.appendChild(m);
     while (box.children.length > 2) box.firstChild.remove();
@@ -176,10 +210,11 @@
     const name = clean(e.name), NAME = name.toUpperCase();
     const sname = AudioKit.spokenName(e.name);          // for the voice: "_катрин_" -> "катрин"
     switch (e.type) {
-      case 'guess': fx('guess', tKey(e.temp)); addFresh(e); break;
+      case 'guess': countWords(1); fx('guess', tKey(e.temp)); addFresh(e); break;
       case 'multi_guess': {                 // several words in one comment: one row, then each flies to its place
         const best = e.words.filter(w => !w.unknown).sort((a, b) => a.rank - b.rank)[0];
         if (best) fx('guess', tKey(best.temp));
+        countWords(e.words.length);
         addMulti(e);
         break;
       }
@@ -271,6 +306,7 @@
         voice('dq', t('g.v.sorry', { name: sname }), 'high', 1);
         break;
       case 'unknown':                     // grey, under the table for a moment: the player sees it was read
+        countWords(1);
         showUnknown(e);
         break;
       case 'hint': {
@@ -363,7 +399,7 @@
   function addFresh(e, ttl) {
     fresh = fresh.filter(f => f.multi || f.word !== e.word);
     fresh.unshift({ word: e.word, rank: e.rank, temp: e.temp, tempKey: tKey(e.temp), count: e.count || 1,
-                    name: e.name, avatar: e.avatar, at: Date.now(), ttl: ttl || FRESH_MS, unknown: !!e.unknown });
+                    name: e.name, avatar: e.avatar, at: Date.now(), ttl: ttl || freshMs(), unknown: !!e.unknown });
     fresh = fresh.slice(0, MAX_FRESH);
     renderGuesses(lastBest);
   }
@@ -665,7 +701,7 @@
   function render(s) {
     S = s;
     applyChroma(TT ? (s.chroma || s.chromaTop || 33) : (s.chroma || 0), s.frame || 16);
-    document.documentElement.style.setProperty('--row-anim', (s.rowAnim ?? 0.2) + 's');   // a new row slides in (a setting; 0 = at once)
+    applyTable();                                          // a new row slides in (a setting, maybe following the pace)
     // TT mode: the bottom chatZone % of the frame stays free for TikTok's chat (a setting), the table ends above it
     document.documentElement.style.setProperty('--chat-zone', TT && s.chatZone
       ? `calc(var(--u) * ${(100 * (s.frame || 16) / 9 * s.chatZone / 100).toFixed(2)})` : '0px');

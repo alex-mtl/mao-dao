@@ -86,6 +86,10 @@ class ToastsTest(unittest.TestCase):
         self.assertEqual(t.values(), {"leader": {"show": 0}, "hint": {"voice": 0, "rate": 1.25}})
         t.set({"hint": {"rate": None}})                         # back to the default speed
         self.assertEqual(t.values()["hint"], {"voice": 0})
+        t.set({"leader": {"anim": "auto"}, "jump": {"anim": 0.2}, "top": {"anim": 0.3}})
+        self.assertEqual(t.values()["leader"], {"show": 0, "anim": "auto"})
+        self.assertEqual(t.values()["jump"], {"anim": 0.2})
+        self.assertNotIn("top", t.values())                      # 0.3 is not a step
 
     def test_pages_get_them_and_they_survive_a_restart(self):
         store = JsonStore(tempfile.mkdtemp())

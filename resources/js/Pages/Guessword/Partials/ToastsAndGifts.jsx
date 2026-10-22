@@ -35,6 +35,7 @@ export function ToastsTab({ s, mode }) {
                 <tr className="text-left text-[11px] font-semibold uppercase tracking-wide text-ink-500">
                     <th className="py-2">{t('guessword.col_toast')}</th>
                     <th className="py-2">{t('guessword.col_show')}</th>
+                    <th className="py-2">{t('guessword.col_anim')}</th>
                     <th className="py-2">
                         <span className="flex items-center gap-2">
                             {t('guessword.col_voice')}
@@ -55,6 +56,20 @@ export function ToastsTab({ s, mode }) {
                             <td className="py-2 pr-3">
                                 {VOICE_ONLY.includes(id) ? <span className="text-ink-400">—</span>
                                     : <Switch on={shown(id)} onChange={(on) => update(id, { show: on ? 1 : 0 })} />}
+                            </td>
+                            <td className={'py-2 pr-3 ' + (showOff ? 'pointer-events-none opacity-40' : '')}>
+                                {VOICE_ONLY.includes(id) ? <span className="text-ink-400">—</span> : (
+                                    <select
+                                        className="h-8 w-24 rounded-lg border-warm-300 bg-surface py-0 text-sm text-ink-900"
+                                        value={cfg(id).anim ?? ''}
+                                        onChange={(e) => update(id, { anim: e.target.value === '' ? null
+                                            : e.target.value === 'auto' ? 'auto' : Number(e.target.value) })}
+                                    >
+                                        <option value="">{t('guessword.anim_default')}</option>
+                                        <option value="auto">{t('guessword.anim_auto')}</option>
+                                        {(schema.anims || []).filter((a) => a !== 'auto').map((a) => <option key={a} value={a}>{a} s</option>)}
+                                    </select>
+                                )}
                             </td>
                             <td className={'py-2 ' + (showOff ? 'pointer-events-none opacity-40' : '')}>
                                 {SHOW_ONLY.includes(id) ? <span className="text-ink-400">—</span> : (

@@ -22,10 +22,13 @@ TOASTS = {
     "b_score": None, "b_lead": None, "b_win": 1, "b_round": 1, "b_sum": None,
 }
 RATES = [0.75, 1, 1.25, 1.5, 1.75, 2]
+# a toast's in / out animation: the fastest it gets when the chat is busy (s; calm - smooth 0.5 s);
+# "auto" = down to 0.1 s
+ANIMS = [0, 0.1, 0.2, 0.35, 0.5, "auto"]
 
 
 class Toasts:
-    """Only what differs from the defaults is kept: {id: {"show": 0/1, "voice": 0/1, "rate": x}}."""
+    """Only what differs from the defaults is kept: {id: {"show": 0/1, "voice": 0/1, "rate": x, "anim": s|"auto"}}."""
 
     def __init__(self, values=None):
         self._v = {}
@@ -39,6 +42,11 @@ class Toasts:
             for k in ("show", "voice"):
                 if k in v:
                     cur[k] = 1 if v[k] else 0
+            if "anim" in v:
+                if v["anim"] in ANIMS:
+                    cur["anim"] = v["anim"]
+                elif v["anim"] is None:
+                    cur.pop("anim", None)
             if "rate" in v:
                 if v["rate"] in RATES:
                     cur["rate"] = v["rate"]
@@ -50,7 +58,7 @@ class Toasts:
         return {tid: dict(v) for tid, v in self._v.items() if v}
 
     def schema(self):
-        return {"ids": TOASTS, "rates": RATES}
+        return {"ids": TOASTS, "rates": RATES, "anims": ANIMS}
 
 
 # actions a gift can trigger; the hub runs the animations, the game the game actions

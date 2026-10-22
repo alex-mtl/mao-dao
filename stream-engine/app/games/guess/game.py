@@ -102,7 +102,7 @@ class GuessGame(BaseGame):
                "chroma_top": [25, 30, 32, 33, 35, 40, 45, 50],   # height of that green zone, % of the frame
                "frame": [16, 19.5, 20],            # frame 9:16 / 9:19.5 (phones) / 9:20
                "chat_zone": [0, 10, 15, 20, 25, 30, 35],  # % of the frame kept free at the bottom: the stream chat stays readable
-               "row_anim": [0, 0.1, 0.2, 0.5]}           # seconds a new row of the table slides in (0 = at once)
+               "row_anim": [0, 0.1, 0.2, 0.5]}           # a new table row slides in this fast when the chat is busy (s)
     STATE = "guess/state.json"
     USED = "guess/used_words.json"
     ROUNDS = "guess/rounds.json"
@@ -128,7 +128,7 @@ class GuessGame(BaseGame):
         self.hint_cd = 20                            # a viewer's next hint (gift or credit) after this many s
         self.chroma, self.chroma_top = False, 33     # green zone on top (keyed out in TikTok LIVE Studio)
         self.chat_zone = 20                           # % of the frame at the bottom left to the stream chat
-        self.row_anim = 0.2                           # seconds a new row slides in
+        self.row_anim = 0.2                           # a new row slides in this fast at the busiest (calm: smoother)
         self.frame = 16                              # frame format 9:frame
         self.hint_t = {}                             # viewer id -> time of their last hint
         self.mao_call_t = 0.0                        # last "мао внимание"
@@ -1003,7 +1003,7 @@ class GuessGame(BaseGame):
             "chromaTop": self.chroma_top,                                 # TT mode (?tt=1) always uses it
             "frame": self.frame,                                          # 9:frame
             "chatZone": self.chat_zone,                                   # % of the frame at the bottom: the chat
-            "rowAnim": self.row_anim,                                     # s a new row of the table slides in
+            "rowAnim": self.row_anim,                                     # s a new row slides in at the busiest
             "streak": self.stats.top_streak(),
             "vocabSize": self.sem.size if self.sem else 0,
             "temps": dict(zip(TEMPS, config.TEMPERATURE_BOUNDS + [None])),
