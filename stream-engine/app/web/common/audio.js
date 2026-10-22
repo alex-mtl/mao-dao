@@ -10,6 +10,10 @@ window.AudioKit = (() => {
   const T = (k, p) => (window.I18N ? I18N.t(k, p) : k);
   try { muted = localStorage.getItem('muted') === '1'; } catch (e) {}
   if (qs.get('sound') === '0') muted = true;
+  // ?preview=1: the platform's room page shows the game in a small frame - silent, no buttons, and it
+  // never touches the remembered mute of the real overlay
+  const PREVIEW = qs.get('preview') === '1';
+  if (PREVIEW) muted = true;
 
   // ---------- synth primitives ----------
   function tone(freq, delay, dur, type, vol, freqEnd) {
@@ -209,6 +213,7 @@ window.AudioKit = (() => {
   // ---------- controls ----------
   let muteBtn = null;
   function setMuted(m) {
+    if (PREVIEW) return;
     muted = m;
     if (muteBtn) muteBtn.textContent = m ? '🔇' : '🔊';
     try { localStorage.setItem('muted', m ? '1' : '0'); } catch (e) {}
@@ -226,6 +231,7 @@ window.AudioKit = (() => {
   }
   function mount(o) {
     o = o || {};
+    if (PREVIEW) return;                                 // a silent picture: no buttons, no "enable sound"
     const bar = document.createElement('div'); bar.className = 'ctl-bar';
     bar.appendChild(btn('☰', 'ctl.menu', () => { location.href = './'; }));   // the room's menu
     if (o.rules) bar.appendChild(btn('?', 'ctl.rules', o.rules));
@@ -262,6 +268,6 @@ window.AudioKit = (() => {
     get running() { return !!ctx && ctx.state === 'running'; },      // browser actually allows sound
     resetSpeech() { if (synth) synth.cancel(); },
     suspend() { if (ctx) ctx.suspend(); if (synth) synth.cancel(); },   // silence now, incl. already scheduled tones
-    ignoreMute() { muted = false; },          // menu alerts: independent of the games' 🔇 button
+    ignoreMute() { if (!PREVIEW) muted = false; },   // menu alerts: independent of the games' 🔇 button
   };
 })();

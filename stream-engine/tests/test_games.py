@@ -430,6 +430,17 @@ class BalloonsTest(unittest.TestCase):
         self.assertEqual(bl.snapshot()["inflating"][0]["progress"], 5)
         self.assertEqual(len(bl.on_like(mao, 250)), 2)       # big batch -> two more balloons
 
+    def test_balloons_switched_off(self):
+        from app.reactions.balloons import LikeBalloons
+        from app.settings import GlobalSettings
+        s = GlobalSettings()
+        self.assertTrue(s.set("balloon_likes", 0))
+        bl = LikeBalloons(JsonStore(tempfile.mkdtemp()), s)
+        mao = Viewer("mao", "Mao", "")
+        self.assertEqual(bl.on_like(mao, 5000), [])                 # no balloon, nothing inflates
+        self.assertEqual(bl.snapshot()["inflating"], [])
+        self.assertEqual(bl.total_of("mao"), 5000)                   # likes still count (planes)
+
     def test_hub_sends_balloons_on_any_game(self):
         from app.hub import Hub
         config.LIKES_PER_BALLOON = 100
@@ -717,6 +728,34 @@ class BomberTest(unittest.TestCase):
             self.assertEqual([i + 1 for i, p in enumerate(planes) if p["bomber"]], [10, 20])   # 10 000, 20 000
         finally:
             config.PLANE_BOMBER_LIKES, config.PLANE_AUTO_LIKES = saved
+
+    def test_butterflies_on_their_own_steps(self):
+        from app.reactions.balloons import LikeBalloons
+        from app.settings import GlobalSettings
+
+        def flights(plane, bombs):
+            s = GlobalSettings()
+            s.set("plane_auto", plane)
+            s.set("bomber", bombs)
+            lb = LikeBalloons(JsonStore(tempfile.mkdtemp()), s)
+            m, out = Viewer("mik", "Mik", "", 1), []
+            for _ in range(120):                        # 120 x 100 likes = 12 000
+                before = lb.total_of(m.id)
+                lb.on_like(m, 100)
+                p = lb.auto_plane(m, before)
+                if p:
+                    out.append((p["total"], p["bomber"]))
+            return out
+
+        # planes off, butterflies every 1000: they fly on their own
+        self.assertEqual(flights(0, 1000), [(n * 1000, True) for n in range(1, 13)])
+        # plane every 5000, butterflies every 1000 (not a multiple): every 1000 a flight, all with butterflies
+        self.assertEqual(len(flights(5000, 1000)), 12)
+        # plane every 1000, butterflies every 5000: 12 planes, butterflies on the 5th and 10th
+        f = flights(1000, 5000)
+        self.assertEqual([t for t, b in f if b], [5000, 10000])
+        self.assertEqual(len(f), 12)
+        self.assertEqual(flights(0, 0), [])
 
 
 class BattleKeysTest(unittest.TestCase):

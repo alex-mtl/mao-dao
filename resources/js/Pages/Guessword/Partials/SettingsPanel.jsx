@@ -1,0 +1,237 @@
+import { useLaravelReactI18n } from 'laravel-react-i18n';
+import { useState } from 'react';
+
+// the panel's modes (engine game names) and the sections of each mode
+export const MODES = ['battle', 'guess', 'streamer'];
+const SECTIONS = {
+    battle: ['likes'],
+    guess: ['game', 'frame', 'likes'],
+    streamer: ['frame', 'likes'],
+};
+const TAB_KEY = { game: 'guessword.tab_game', frame: 'guessword.tab_frame', likes: 'guessword.tab_likes' };
+// like thresholds the streamer picks from (every N likes of one viewer); 0 = off
+const BALLOON_STEPS = [100, 500, 1000, 2000, 5000, 10000];
+const PLANE_STEPS = [1000, 5000, 10000, 20000, 50000, 100000];
+const BOMBER_STEPS = [20000, 50000, 100000, 500000];
+const kilo = (n) => (n >= 1000 ? n / 1000 + 'K' : String(n));
+
+export function Seg({ value, options, onChange, label = String }) {
+    return (
+        <span className="inline-flex max-w-full flex-wrap gap-0.5 rounded-lg bg-warm-100 p-0.5">
+            {options.map((o) => (
+                <button
+                    key={o}
+                    type="button"
+                    onClick={() => onChange(o)}
+                    className={
+                        'rounded-md px-2.5 py-1 text-sm font-semibold transition ' +
+                        (o === value ? 'bg-surface text-ink-900 shadow-sm' : 'text-ink-500 hover:text-ink-800')
+                    }
+                >
+                    {label(o)}
+                </button>
+            ))}
+        </span>
+    );
+}
+
+export function Switch({ on, onChange, title }) {
+    return (
+        <button
+            type="button"
+            title={title}
+            onClick={() => onChange(!on)}
+            className={'relative h-6 w-10 flex-none rounded-full transition ' + (on ? 'bg-primary-500' : 'bg-warm-300')}
+        >
+            <span className={'absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all ' + (on ? 'left-[18px]' : 'left-0.5')} />
+        </button>
+    );
+}
+
+function Field({ label, children }) {
+    return (
+        <label className="flex flex-col gap-1.5 text-sm font-medium text-ink-800">
+            {label}
+            <span>{children}</span>
+        </label>
+    );
+}
+
+/** One row "thing — on/off — every N likes": off = 0, on brings back the last threshold (or the first step). */
+function LikesRow({ title, sub, value, steps, onChange }) {
+    const [last, setLast] = useState(value || steps[0]);
+    const on = !!value;
+    // a value saved before these steps existed (e.g. butterflies at 10K) stays visible and selected
+    if (value && !steps.includes(value)) steps = [...steps, value].sort((a, b) => a - b);
+    return (
+        <tr className="border-t border-warm-100 first:border-t-0">
+            <td className="w-[40%] py-2.5 pr-3">
+                <div className="text-sm font-medium text-ink-900">{title}</div>
+                <div className="text-xs text-ink-500">{sub}</div>
+            </td>
+            <td className="py-2.5 pr-3">
+                <Switch on={on} onChange={(v) => onChange(v ? last : 0)} />
+            </td>
+            <td className={'py-2.5 ' + (on ? '' : 'pointer-events-none opacity-40')}>
+                <Seg value={value} options={steps} label={kilo} onChange={(v) => { setLast(v); onChange(v); }} />
+            </td>
+        </tr>
+    );
+}
+
+export default function SettingsPanel({ s, mode, setMode, footer }) {
+    const { t } = useLaravelReactI18n();
+    const [tab, setTab] = useState({ battle: 'likes', guess: 'game', streamer: 'frame' });
+    const section = tab[mode];
+    const g = s.draft.guess || {};
+    const gl = s.draft.global || {};
+    const sec = (n) => t('guessword.sec', { n });
+
+    const frameSeg = (game) => (
+        <Field label={t('guessword.opt_frame')}>
+            <Seg value={s.draft[game]?.frame} options={s.choices(game, 'frame')} label={(v) => '9:' + v}
+                 onChange={(v) => s.set(game, 'frame', v)} />
+        </Field>
+    );
+
+    return (
+        <div className="rounded-2xl border-2 border-warm-200 bg-surface shadow-soft">
+            <div className="sticky top-14 z-10 rounded-t-2xl border-b border-warm-200 bg-surface">
+                <div className="flex flex-wrap items-center gap-2 px-3 pb-2 pt-3">
+                    <div className="flex gap-1 rounded-xl bg-warm-100 p-1">
+                        {MODES.map((m) => (
+                            <button
+                                key={m}
+                                type="button"
+                                onClick={() => setMode(m)}
+                                className={
+                                    'h-9 whitespace-nowrap rounded-lg px-3.5 text-sm font-semibold transition ' +
+                                    (m === mode ? 'bg-surface text-ink-900 shadow-sm' : 'text-ink-500 hover:text-ink-800')
+                                }
+                            >
+                                {t('guessword.mode_' + m)}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+                <div className="flex items-center gap-1 overflow-x-auto px-3">
+                    {SECTIONS[mode].map((k) => (
+                        <button
+                            key={k}
+                            type="button"
+                            onClick={() => setTab({ ...tab, [mode]: k })}
+                            className={
+                                'h-10 whitespace-nowrap border-b-2 px-3 text-sm font-semibold ' +
+                                (k === section ? 'border-primary-500 text-ink-900' : 'border-transparent text-ink-500 hover:text-ink-800')
+                            }
+                        >
+                            {t(TAB_KEY[k])}
+                        </button>
+                    ))}
+                    <span className="flex-1" />
+                    <span className="whitespace-nowrap text-xs text-ink-500">
+                        {s.changes ? t('guessword.changes', { n: s.changes }) : t('guessword.no_changes')}
+                    </span>
+                </div>
+            </div>
+
+            <div className="px-5 py-2">
+                {s.failed && <p className="py-4 text-sm text-danger-700">{t('guessword.settings_offline')}</p>}
+
+                {!s.failed && s.info && mode === 'guess' && section === 'game' && (
+                    <>
+                        <div className="border-b border-warm-100 py-3">
+                            <h3 className="mb-3 font-heading text-base font-bold text-ink-900">{t('guessword.group_rounds')}</h3>
+                            <div className="grid gap-4 sm:grid-cols-2">
+                                <Field label={t('guessword.opt_round_min')}>
+                                    <Seg value={g.round_min} options={s.choices('guess', 'round_min')} label={(n) => t('guessword.min', { n })}
+                                         onChange={(v) => s.set('guess', 'round_min', v)} />
+                                </Field>
+                                <Field label={t('guessword.opt_pause')}>
+                                    <Seg value={g.pause} options={s.choices('guess', 'pause')}
+                                         label={(n) => (n >= 60 ? t('guessword.min', { n: n / 60 }) : n ? sec(n) : '0')}
+                                         onChange={(v) => s.set('guess', 'pause', v)} />
+                                </Field>
+                                <Field label={t('guessword.opt_level')}>
+                                    <Seg value={g.level} options={s.choices('guess', 'level')} label={(n) => t('guessword.opt_level_' + n)}
+                                         onChange={(v) => s.set('guess', 'level', v)} />
+                                </Field>
+                                <Field label={t('guessword.opt_hint_cd')}>
+                                    <Seg value={g.hint_cd} options={s.choices('guess', 'hint_cd')} label={sec}
+                                         onChange={(v) => s.set('guess', 'hint_cd', v)} />
+                                </Field>
+                            </div>
+                        </div>
+                        <div className="py-3">
+                            <h3 className="mb-3 font-heading text-base font-bold text-ink-900">{t('guessword.group_players')}</h3>
+                            <div className="grid gap-4 sm:grid-cols-2">
+                                <Field label={t('guessword.opt_follow')}>
+                                    <Seg value={g.follow} options={s.choices('guess', 'follow')} label={(n) => t('guessword.opt_follow_' + n)}
+                                         onChange={(v) => s.set('guess', 'follow', v)} />
+                                </Field>
+                                <Field label={t('guessword.opt_grace')}>
+                                    <Seg value={g.grace} options={s.choices('guess', 'grace')} label={sec}
+                                         onChange={(v) => s.set('guess', 'grace', v)} />
+                                </Field>
+                            </div>
+                        </div>
+                    </>
+                )}
+
+                {!s.failed && s.info && mode === 'guess' && section === 'frame' && (
+                    <div className="grid gap-4 py-3 sm:grid-cols-2">
+                        {frameSeg('guess')}
+                        <Field label={t('guessword.opt_chroma')}>
+                            <span className="flex items-center gap-3">
+                                <Switch on={!!g.chroma} onChange={(v) => s.set('guess', 'chroma', v ? 1 : 0)} />
+                                <select
+                                    className={'h-9 rounded-lg border-warm-300 bg-surface py-0 text-sm text-ink-900 ' + (g.chroma ? '' : 'opacity-40')}
+                                    value={g.chroma_top}
+                                    disabled={!g.chroma}
+                                    onChange={(e) => s.set('guess', 'chroma_top', Number(e.target.value))}
+                                >
+                                    {s.choices('guess', 'chroma_top').map((n) => (
+                                        <option key={n} value={n}>{t('guessword.opt_chroma_top', { n })}</option>
+                                    ))}
+                                </select>
+                            </span>
+                        </Field>
+                    </div>
+                )}
+
+                {!s.failed && s.info && mode === 'streamer' && section === 'frame' && <div className="py-3">{frameSeg('streamer')}</div>}
+
+                {!s.failed && s.info && section === 'likes' && (
+                    <>
+                        <table className="w-full border-collapse">
+                            <thead>
+                                <tr className="text-left text-[11px] font-semibold uppercase tracking-wide text-ink-500">
+                                    <th className="py-2">{t('guessword.col_anim')}</th>
+                                    <th className="py-2">{t('guessword.col_on')}</th>
+                                    <th className="py-2">{t('guessword.col_likes')}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <LikesRow title={t('guessword.balloon')} sub={t('guessword.balloon_d')} steps={BALLOON_STEPS}
+                                          value={gl.balloon_likes} onChange={(v) => s.set('global', 'balloon_likes', v)} />
+                                <LikesRow title={t('guessword.plane')} sub={t('guessword.plane_d')} steps={PLANE_STEPS}
+                                          value={gl.plane_auto} onChange={(v) => s.set('global', 'plane_auto', v)} />
+                                <LikesRow title={t('guessword.bomber')} sub={t('guessword.plane_d')} steps={BOMBER_STEPS}
+                                          value={gl.bomber} onChange={(v) => s.set('global', 'bomber', v)} />
+                            </tbody>
+                        </table>
+                        <div className="mt-2 border-t border-warm-100 py-3">
+                            <h3 className="mb-2 font-heading text-base font-bold text-ink-900">{t('guessword.group_greet')}</h3>
+                            <div className="flex items-center justify-between gap-3">
+                                <span className="text-sm font-medium text-ink-900">{t('guessword.greet')}</span>
+                                <Switch on={!!gl.greet} onChange={(v) => s.set('global', 'greet', v ? 1 : 0)} />
+                            </div>
+                        </div>
+                    </>
+                )}
+            </div>
+
+            {footer}
+        </div>
+    );
+}

@@ -9,9 +9,9 @@ class GlobalSettings:
     name = "global"
     # key -> (config attribute = default, choices); 1/0 = on/off
     OPTIONS = {
-        "balloon_likes": ("LIKES_PER_BALLOON", [50, 100, 200, 500]),
-        "plane_auto": ("PLANE_AUTO_LIKES", [0, 500, 1000, 2000, 5000]),
-        "bomber": ("PLANE_BOMBER_LIKES", [0, 5000, 10000, 20000]),
+        "balloon_likes": ("LIKES_PER_BALLOON", [0, 50, 100, 200, 500, 1000, 2000, 5000, 10000]),   # 0 = off
+        "plane_auto": ("PLANE_AUTO_LIKES", [0, 500, 1000, 2000, 5000, 10000, 20000, 50000, 100000]),
+        "bomber": ("PLANE_BOMBER_LIKES", [0, 1000, 5000, 10000, 20000, 50000, 100000, 500000]),
         "voice_rate": ("VOICE_RATE", [1, 1.25, 1.5, 1.75, 2]),
         "greet": ("GREET_JOINS", [1, 0]),
     }

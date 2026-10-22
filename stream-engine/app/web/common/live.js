@@ -36,8 +36,11 @@ window.Live = (() => {
       }
     }
     if (opts.game && msg.active && msg.active !== opts.game) {
-      // inside the streamer's frame (an iframe) the whole page follows the active game, not just the frame
-      (window.parent !== window ? window.parent : window).location.href = new URL(msg.active + '/' + location.search, document.baseURI).href;
+      // inside the streamer's frame (streamer/frame.html in our own wrapper page) the wrapper follows the
+      // active game, not just the frame; any other page - also one framed by the platform's room page -
+      // only moves itself
+      const inStreamerFrame = window.parent !== window && /\/streamer\/frame\.html$/.test(location.pathname);
+      (inStreamerFrame ? window.parent : window).location.href = new URL(msg.active + '/' + location.search, document.baseURI).href;
       return;
     }
     if (msg.game !== opts.game) return;

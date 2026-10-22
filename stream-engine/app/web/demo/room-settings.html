@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Мой TikTok-эфир — макет</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root { --bg:#f3f5f9; --card:#fbfcfe; --line:#e3e8f0; --ink:#1d2433; --muted:#5b6b86; --primary:#3cc4f2; --soft:#eef3f9; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.45 Inter, system-ui, sans-serif; }
+  h3 { font-family: Manrope, Inter, sans-serif; margin:0; }
+  .top { position:sticky; top:0; z-index:5; height:56px; display:flex; align-items:center; gap:12px; padding:0 20px;
+         background:#fff; border-bottom:1px solid var(--line); }
+  .top .brand { font:800 18px Manrope; } .top .sec { color:var(--muted); }
+  .wrap { max-width:1240px; margin:0 auto; padding:20px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:18px; box-shadow:0 1px 2px rgba(20,30,60,.04); }
+  .btn { display:inline-flex; align-items:center; gap:8px; height:40px; padding:0 16px; border-radius:12px; border:1px solid var(--line);
+         background:#fff; color:var(--ink); font:600 14px Inter; cursor:pointer; white-space:nowrap; }
+  .btn.primary { background:var(--primary); color:#fff; border-color:transparent; }
+  .btn.icon { width:40px; padding:0; justify-content:center; font-size:18px; }
+  .btn.sm { height:34px; padding:0 12px; font-size:13px; border-radius:10px; }
+  .pill { display:inline-flex; align-items:center; gap:6px; padding:3px 10px; border-radius:999px; font-size:13px; font-weight:600;
+          background:var(--soft); color:var(--muted); }
+  .pill.live { background:#e7f8ef; color:#14945a; } .pill .dot { width:8px; height:8px; border-radius:50%; background:currentColor; }
+
+  /* one workspace: preview 9:20 on the left, one settings panel on the right */
+  .main { display:grid; grid-template-columns: 340px 1fr; gap:20px; align-items:start; }
+  .preview { position:sticky; top:76px; padding:14px; }
+  .preview .cap { display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:8px; margin-bottom:10px; }
+  .preview .cap > .menu > .btn, .preview .cap > .btn.primary { width:100%; justify-content:center; }
+  .live-dot { width:9px; height:9px; border-radius:50%; background:#1fbf75; box-shadow:0 0 0 3px #d6f5e5; }
+  .preview .menu .drop { left:0; right:auto; }
+  .preview .cap a { color:var(--primary); font-weight:600; text-decoration:none; font-size:13px; }
+  .phone { aspect-ratio: 9 / 20; width:100%; border-radius:16px; overflow:hidden; background:#140a26; position:relative; color:#fff;
+           font-family: Manrope, sans-serif; }
+  .phone .bar { display:flex; justify-content:space-between; align-items:center; padding:10px; font-weight:800; font-size:12px; }
+  .phone .timer { color:#ff3d8b; font-size:22px; letter-spacing:.05em; text-shadow:0 0 10px #ff3d8b; }
+  .phone .cam { margin:0 10px; height:30%; border:1.5px dashed rgba(255,255,255,.25); border-radius:10px; display:grid; place-items:center;
+                color:rgba(255,255,255,.4); font-size:12px; }
+  .phone .rows { padding:8px 10px; display:flex; flex-direction:column; gap:5px; }
+  .phone .row { display:flex; align-items:center; gap:6px; font-size:12px; font-weight:800; }
+  .phone .row .p { height:18px; border-radius:6px; display:flex; align-items:center; padding:0 6px; color:#000; }
+  .phone .row .n { margin-left:auto; color:#cfc7e6; font-weight:600; font-family:Inter; font-size:11px; }
+  .phone .multi { display:flex; gap:4px; align-items:center; padding:4px; border:1px solid rgba(0,240,255,.5); border-radius:8px; background:rgba(0,240,255,.08); }
+  .phone .multi span { padding:2px 6px; border-radius:5px; color:#000; font-size:11px; font-weight:800; }
+  .phone .applied { position:absolute; left:50%; bottom:14px; transform:translateX(-50%); background:#1fbf75; color:#fff; font:600 12px Inter;
+                    padding:5px 10px; border-radius:999px; opacity:0; transition:opacity .3s; }
+  .phone .applied.on { opacity:1; }
+  .preview .note { margin-top:10px; color:var(--muted); font-size:13px; }
+
+  /* the panel's head: modes + actions, then the sections of the mode */
+  .phead { position:sticky; top:56px; z-index:3; background:var(--card); border-radius:18px 18px 0 0; border-bottom:1px solid var(--line); }
+  .row1 { display:flex; align-items:center; gap:8px; padding:10px 12px 8px; flex-wrap:wrap; }
+  .modes { display:flex; gap:4px; background:var(--soft); padding:4px; border-radius:14px; }
+  .mode { display:flex; align-items:center; gap:6px; height:36px; padding:0 14px; border-radius:10px; border:0; background:none;
+          font:600 14px Inter; color:var(--muted); cursor:pointer; white-space:nowrap; }
+  .mode.on { background:#fff; color:var(--ink); box-shadow:0 1px 2px rgba(0,0,0,.08); }
+  .row1 .spacer { flex:1; }
+  .menu { position:relative; }
+  .menu .drop { position:absolute; right:0; top:46px; width:290px; padding:6px; z-index:6; display:none; }
+  .menu.open .drop { display:block; }
+  .drop button { display:flex; gap:12px; width:100%; padding:10px 12px; border:0; background:none; border-radius:10px; text-align:left; cursor:pointer; font:inherit; color:inherit; }
+  .drop button:hover { background:var(--soft); }
+  .drop .ic { font-size:22px; } .drop b { display:block; } .drop small { color:var(--muted); }
+  .row2 { display:flex; align-items:center; gap:4px; padding:0 12px; overflow-x:auto; }
+  .sub { height:42px; padding:0 12px; border:0; background:none; border-bottom:2px solid transparent; font:600 14px Inter; color:var(--muted);
+         cursor:pointer; white-space:nowrap; }
+  .sub.on { color:var(--ink); border-bottom-color:var(--primary); }
+  .row2 .spacer { flex:1; }
+  .row2 .changed { font-size:12px; color:var(--muted); white-space:nowrap; margin-right:6px; }
+
+  .pane { display:none; padding:4px 22px 6px; } .pane.on { display:block; }
+  .sec { padding:12px 0; border-bottom:1px solid var(--line); }
+  .sec:last-child { border-bottom:0; }
+  .sec h3 { font-size:16px; margin-bottom:4px; display:flex; align-items:center; gap:8px; }
+  .sec .hint { color:var(--muted); font-size:13px; margin-bottom:12px; }
+  .shared { font:600 11px Inter; color:#8a5a00; background:#fff3dc; padding:2px 8px; border-radius:999px; }
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:14px 18px; }
+  label.f { display:flex; flex-direction:column; gap:6px; font-size:14px; font-weight:500; }
+  select, input[type=text] { height:38px; border:1px solid var(--line); border-radius:10px; padding:0 10px; font:inherit; background:#fff; color:var(--ink); max-width:100%; }
+  .seg { display:inline-flex; background:var(--soft); border-radius:10px; padding:3px; gap:2px; flex-wrap:wrap; max-width:100%; }
+  .seg button { border:0; background:none; padding:6px 10px; border-radius:8px; font:600 13px Inter; color:var(--muted); cursor:pointer; }
+  .seg button.on { background:#fff; color:var(--ink); box-shadow:0 1px 2px rgba(0,0,0,.08); }
+  table.set { width:100%; border-collapse:collapse; }
+  table.set td { padding:9px 8px 9px 0; border-top:1px solid #edf1f6; vertical-align:middle; }
+  table.set tr:nth-child(2) td { border-top:0; }
+  table.set td.w { width:44%; } table.set td.w small { display:block; color:var(--muted); font-size:12px; }
+  table.set th { text-align:left; font:600 11px Inter; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; padding-bottom:6px; }
+  .sw { position:relative; width:40px; height:24px; border-radius:999px; background:#cfd8e5; cursor:pointer; border:0; flex:none; transition:.15s; }
+  .sw::after { content:''; position:absolute; left:3px; top:3px; width:18px; height:18px; border-radius:50%; background:#fff; transition:.15s; }
+  .sw.on { background:var(--primary); } .sw.on::after { left:19px; }
+  .cell { display:flex; align-items:center; gap:10px; }
+  select.rate { height:32px; width:78px; padding:0 6px; font-size:13px; }
+  .off-dim { opacity:.4; pointer-events:none; }
+
+  .pfoot { position:sticky; bottom:0; display:flex; align-items:center; gap:10px; padding:12px 22px; background:rgba(251,252,254,.96);
+           border-top:1px solid var(--line); border-radius:0 0 18px 18px; backdrop-filter:blur(6px); }
+  .pfoot .spacer { flex:1; } .pfoot .changed { color:var(--muted); font-size:13px; }
+
+  .modal { position:fixed; inset:0; background:rgba(20,28,45,.45); display:none; place-items:center; z-index:10; }
+  .modal.on { display:grid; }
+  .modal .card { width:min(640px, 94vw); padding:22px; }
+  .modal h3 { font-size:20px; margin-bottom:4px; }
+  .modal .from { font-size:13px; color:var(--muted); margin-bottom:16px; } .modal .from a { color:var(--primary); }
+  .linkrow { display:flex; gap:8px; flex-wrap:wrap; } .linkrow code { flex:1; min-width:200px; background:var(--soft); border-radius:10px; padding:10px; font-size:13px; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+  .mt { margin-top:14px; }
+  @media (max-width: 900px) {
+    .wrap { padding:10px; } .main { grid-template-columns:1fr; } .preview { position:static; max-width:300px; margin:0 auto; }
+    .grid2 { grid-template-columns:1fr; } .pane { padding:4px 14px 6px; } .phead { top:56px; }
+    table.set td.w { width:50%; }
+  }
+</style>
+</head>
+<body>
+<div class="top"><span class="brand">Mao Dao</span><span class="sec">/ Угадай слово</span></div>
+
+<div class="wrap">
+  <div class="main">
+    <!-- left: live preview 9:20 -->
+    <div class="card preview">
+      <div class="cap">
+        <div class="menu" id="startMenu">
+          <button class="btn primary" id="startBtn">▶ Начать ▾</button>
+          <div class="drop card">
+            <button data-start="battle"><span class="ic">⚔️</span><span><b>Батл</b><small>Две команды, очки за лайки и подарки</small></span></button>
+            <button data-start="guess"><span class="ic">🔤</span><span><b>Угадай слово</b><small>Зрители угадывают слово в чате</small></span></button>
+            <button data-start="anim"><span class="ic">🎈</span><span><b>Анимация</b><small>Только шарики, самолётики, приветствия</small></span></button>
+          </div>
+        </div>
+        <button class="btn icon" id="openAccount" title="Аккаунт и ссылка для Studio">⚙</button>
+        <button class="btn primary" data-apply>Применить</button>
+      </div>
+      <div class="phone">
+        <div class="bar"><span>РАУНД 10</span><span class="timer">7:42</span><span>👥 14</span></div>
+        <div class="cam">зона камеры</div>
+        <div class="rows">
+          <div class="multi"><span style="background:#ff6a00">ЗВУК</span><span style="background:#ffb800">ГОЛОС</span><span style="background:#c6ff00">ШУМ</span><span style="margin-left:auto;color:#cfc7e6;font:600 11px Inter;background:none">Krestik</span></div>
+          <div class="row"><span class="p" style="background:#ff2d55">2 ГРОМКОСТЬ</span><span class="n">Нина</span></div>
+          <div class="row"><span class="p" style="background:#ff2d55;width:88%">7 ЗВУЧАНИЕ</span><span class="n">лисёнок</span></div>
+          <div class="row"><span class="p" style="background:#ff6a00;width:76%">31 ТЕМБР</span><span class="n">фог</span></div>
+          <div class="row"><span class="p" style="background:#ffb800;width:62%">140 ТОН</span><span class="n">Tati</span></div>
+          <div class="row"><span class="p" style="background:#c6ff00;width:48%">640 МЕЛОДИЯ</span><span class="n">Maksim</span></div>
+          <div class="row"><span class="p" style="background:#00e5ff;width:34%">2 322 МЕТР</span><span class="n">Сергей</span></div>
+        </div>
+        <div class="applied" id="applied">✓ применено</div>
+      </div>
+      <div class="note">Так игра выглядит в TikTok LIVE Studio. Меняете настройки → «Применить» → картинка обновляется здесь и в эфире.
+        <a href="#" style="color:var(--primary);font-weight:600;text-decoration:none">Открыть отдельно ↗</a></div>
+    </div>
+
+    <!-- right: one panel - modes and actions on top, sections of the mode below -->
+    <div class="card" id="panel">
+      <div class="phead">
+        <div class="row1">
+          <div class="modes">
+            <button class="mode" data-mode="battle">⚔️ Батл</button>
+            <button class="mode on" data-mode="guess">🔤 Угадай слово</button>
+            <button class="mode" data-mode="anim">🎈 Анимация</button>
+          </div>
+        </div>
+        <div class="row2" id="subs"></div>
+      </div>
+
+      <!-- ===== GUESS ===== -->
+      <div class="pane" data-pane="guess:game">
+        <div class="sec">
+          <h3>Раунды</h3>
+          <div class="grid2">
+            <label class="f">Длина раунда<span class="seg" data-seg><button>10 мин</button><button class="on">20 мин</button><button>30 мин</button></span></label>
+            <label class="f">Пауза между раундами<span class="seg" data-seg><button>0</button><button class="on">10 с</button><button>30 с</button><button>1 мин</button><button>2 мин</button></span></label>
+            <label class="f">Словарь<span class="seg" data-seg><button>Лёгкий (любые слова)</button><button class="on">Обычный (сущ.)</button></span></label>
+            <label class="f">Пауза между подсказками зрителя<span class="seg" data-seg><button>5 с</button><button>10 с</button><button>15 с</button><button class="on">20 с</button></span></label>
+          </div>
+        </div>
+        <div class="sec">
+          <h3>Кто играет</h3>
+          <div class="grid2">
+            <label class="f">Играть могут<span class="seg" data-seg><button class="on">Только подписчики</button><button>Все</button></span></label>
+            <label class="f">Время подписаться<span class="seg" data-seg><button>15 с</button><button class="on">30 с</button><button>60 с</button></span></label>
+          </div>
+        </div>
+      </div>
+      <div class="pane" data-pane="guess:frame">
+        <div class="sec">
+          
+          <div class="grid2">
+            <label class="f">Формат<span class="seg" data-seg><button>9:16</button><button>9:19.5</button><button class="on">9:20</button></span></label>
+            <label class="f">Хромакей (зелёный верх под камеру)<span class="cell"><button class="sw"></button><select><option>33% кадра</option><option>25%</option><option>40%</option><option>50%</option></select></span></label>
+          </div>
+        </div>
+      </div>
+      <div class="pane" data-pane="guess:gifts">
+        <div class="sec">
+          
+          <table class="set" id="giftGuess"></table>
+        </div>
+      </div>
+      <div class="pane" data-pane="guess:toasts">
+        <div class="sec">
+          
+          <table class="set" id="toastsGuess"></table>
+        </div>
+      </div>
+      <div class="pane" data-pane="guess:likes" data-shared-likes></div>
+
+      <!-- ===== BATTLE ===== -->
+      <div class="pane" data-pane="battle:game">
+        <div class="sec">
+          <div class="grid2">
+            <label class="f">Кадр<span class="seg" data-seg><button>9:16</button><button>9:19.5</button><button class="on">9:20</button></span></label>
+            <label class="f">Длина раунда<span class="seg" data-seg><button>3 мин</button><button class="on">5 мин</button><button>10 мин</button></span></label>
+          </div>
+        </div>
+      </div>
+      <div class="pane" data-pane="battle:gifts">
+        <div class="sec"><table class="set" id="giftBattle"></table></div>
+      </div>
+      <div class="pane" data-pane="battle:toasts">
+        <div class="sec"><table class="set" id="toastsBattle"></table></div>
+      </div>
+      <div class="pane" data-pane="battle:likes" data-shared-likes></div>
+
+      <!-- ===== ANIMATION ===== -->
+      <div class="pane" data-pane="anim:frame">
+        <div class="sec">
+          
+          <span class="seg" data-seg><button class="on">9:16</button><button>9:19.5</button><button>9:20</button></span>
+        </div>
+      </div>
+      <div class="pane" data-pane="anim:likes" data-shared-likes></div>
+      <div class="pane" data-pane="anim:toasts">
+        <div class="sec"><table class="set" id="toastsAnim"></table></div>
+      </div>
+
+      <div class="pfoot">
+        <span class="changed" data-changed>Нет изменений</span>
+        <span class="spacer"></span>
+        <button class="btn sm">Сбросить</button>
+        <button class="btn primary" data-apply>Применить</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- popup: account & link (lives in the profile, "Стример-пак") -->
+<div class="modal" id="account">
+  <div class="card">
+    <h3>Аккаунт и ссылка</h3>
+    <div class="from">Эти настройки живут в профиле: <a href="#">Профиль → Стример-пак</a>. Здесь — быстрый доступ.</div>
+    <label class="f">Ссылка для TikTok LIVE Studio
+      <span class="linkrow"><code>https://mao-dao.com/guessword/engine/r/••••••••••••••/guess/?tt=1</code><button class="btn sm">Копировать</button><button class="btn sm">Новая ссылка</button></span>
+    </label>
+    <div style="color:var(--muted);font-size:13px;margin-top:6px">В Studio добавьте источник «Ссылка» с этим адресом. Никому не показывайте его.</div>
+    <div class="grid2 mt">
+      <label class="f">Ник в TikTok<input type="text" value="mao.montreal"></label>
+      <label class="f">Язык игры<select><option>RU</option><option>EN</option><option>FR</option><option>ES</option></select></label>
+    </div>
+    <label class="f mt">Ключ Euler Stream (необязательно)<input type="text" placeholder="не задан"></label>
+    <div style="display:flex;gap:8px;justify-content:flex-end" class="mt">
+      <button class="btn" id="closeAccount">Отмена</button><button class="btn primary" id="saveAccount">Сохранить</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// sections of each mode (the second row of tabs)
+const SUBS = {
+  guess:  [['game', 'Игра'], ['frame', 'Кадр'], ['gifts', 'Подарки'], ['toasts', 'Всплывашки и диктор'], ['likes', 'Лайки и шарики']],
+  battle: [['game', 'Игра'], ['gifts', 'Подарки'], ['toasts', 'Всплывашки и диктор'], ['likes', 'Лайки и шарики']],
+  anim:   [['frame', 'Кадр'], ['likes', 'Лайки и шарики'], ['toasts', 'Всплывашки и диктор']],
+};
+// gifts the selectors offer: "no gift", "any", "any from N coins", then known gifts (later collected automatically)
+const GIFTS = ['Rose', 'TikTok', 'GG', 'Heart Me', 'Ice Cream Cone', 'Finger Heart', 'Cake Slice', 'Chilli pepper', 'Mirwas Beat',
+               'Popular Vote', 'Doughnut', 'Perfume', 'Eye for an Eye', 'Encore Ticket', 'Journey Pass', 'Freestyle', 'Hand Hearts',
+               'Confetti', 'Corgi', 'Galaxy', 'Lion', 'Universe'];
+function giftSelect(value) {
+  const opts = ['Без подарка', 'Любой подарок', 'Любой от 5 монет', 'Любой от 10 монет', 'Любой от 30 монет', 'Любой от 100 монет', '—', ...GIFTS];
+  return '<select>' + opts.map(o => o === '—' ? '<option disabled>──────────</option>'
+    : `<option${o === (value || 'Без подарка') ? ' selected' : ''}>${o}</option>`).join('') + '</select>';
+}
+function giftRows(id, rows) {
+  document.getElementById(id).innerHTML = '<tr><th>Действие</th><th>За какой подарок</th></tr>' + rows.map(([what, sub, val]) =>
+    `<tr><td class="w">${what}${sub ? `<small>${sub}</small>` : ''}</td><td>${giftSelect(val)}</td></tr>`).join('');
+}
+giftRows('giftGuess', [
+  ['💡 Подсказка', 'сейчас — за любой подарок', 'Любой подарок'],
+  ['✍️ Писать 3 слова в сообщении', 'до конца раунда'],
+  ['🎯 Загадать своё слово', 'через Telegram-бота'],
+  ['⏭ Пропустить раунд'],
+  ['🎈 Запустить шарик'], ['✈️ Запустить самолётик'], ['🦋 Самолётик с бабочками'], ['💥 Сбить самолётик'],
+]);
+giftRows('giftBattle', [
+  ['⭐ Очки команде', 'очки = монеты подарка', 'Любой подарок'],
+  ['🎈 Запустить шарик'], ['✈️ Запустить самолётик'], ['🦋 Самолётик с бабочками'], ['💥 Сбить самолётик'],
+]);
+// toasts & voice lines found in the game: show on/off + voice on/off + its own voice speed
+// (rate: the speed it is said at now - key phrases 1x, the rest 1.5x; null = no voice for it)
+const RATES = ['0.75×', '1×', '1.25×', '1.5×', '1.75×', '2×'];
+const voiceCell = rate => rate === null ? '<span style="color:var(--muted)">—</span>'
+  : `<span class="cell"><button class="sw on"></button><select class="rate">${RATES.map(r => `<option${r === rate + '×' ? ' selected' : ''}>${r}</option>`).join('')}</select></span>`;
+function toastRows(id, rows) {
+  document.getElementById(id).innerHTML = '<tr><th>Всплывашка</th><th>Показ</th><th><span class="cell">Голос <button class="sw on" data-all-voice title="Вся озвучка вкл/выкл"></button></span></th></tr>' + rows.map(([what, sub, rate]) =>
+    `<tr><td class="w">${what}${sub ? `<small>${sub}</small>` : ''}</td><td><button class="sw on" data-toggle></button></td>
+     <td>${voiceCell(rate)}</td></tr>`).join('');
+}
+toastRows('toastsGuess', [
+  ['🔥 Новый лидер', '«вышел в лидеры», «вернул лидерство»', 1.5],
+  ['🚀 Рывок', '«огромный рывок», «большой рывок»', 1.5],
+  ['😱 Так близко!', 'слово в шаге от ответа', 1.5],
+  ['⚡ В ТОП-3 / ТОП-10', '', 1.5],
+  ['🔥 Серия побед', '«3 победы подряд»', 1.5],
+  ['💡 Подсказка', 'карточка + голос', 1.5],
+  ['🎁 Подарок', 'плашка «… отправил Rose»', null],
+  ['⏳ Ждите подсказку', '«следующая через N с»', null],
+  ['💜 Спасибо за подписку', '', 1],
+  ['❤ Подпишитесь, чтобы играть', 'напоминание неподписанным', 1],
+  ['😱 Нашёл слово — подпишись!', 'угадал, но не подписан', 1],
+  ['😢 Выбыл', 'не подписался вовремя', 1],
+  ['🏆 Победитель и слово', 'конец раунда', 1],
+  ['⏰ Время вышло / раунд пропущен', '', 1.5],
+  ['🔤 Новый раунд', 'голос «Раунд 10. Поехали!»', 1],
+  ['☕ Перерыв / скоро начнём', '', 1],
+  ['🎯 Слово загадал зритель', 'бегущая строка и всплывашка', null],
+  ['📲 Слово для Telegram-бота', '', null],
+  ['📲 Привязал Telegram', '', null],
+]);
+toastRows('toastsBattle', [
+  ['⭐ Очко команде', '«… приносит очко красным»', 1.5], ['🔥 Новый лидер команды', '', 1.5],
+  ['🏆 Победа команды + MVP', '', 1], ['🔤 Новый раунд', '', 1],
+]);
+toastRows('toastsAnim', [
+  ['🎈 Спасибо за шарик', '«Спасибо, {ник}, за шарик!»', 1.5], ['✈️ Самолётик', '«… лайков — самолётик полетел!»', 1.5],
+]);
+// shared section: likes -> balloons / planes, greeting, voice speed (the same in every mode)
+const seg = (vals, on) => `<span class="seg" data-seg>${vals.map(v => `<button${v === on ? ' class="on"' : ''}>${v}</button>`).join('')}</span>`;
+document.querySelectorAll('[data-shared-likes]').forEach(s => s.innerHTML = `
+  <div class="sec">
+    <table class="set">
+      <tr><th>Анимация</th><th>Вкл</th><th>Сколько лайков</th></tr>
+      <tr><td class="w">🎈 Шарик зрителя<small>за лайки одного зрителя</small></td><td><button class="sw on" data-toggle></button></td>
+          <td>${seg(['100', '500', '1000', '2000', '5000', '10000'], '100')}</td></tr>
+      <tr><td class="w">✈️ Самолётик<small>за лайки всего эфира</small></td><td><button class="sw on" data-toggle></button></td>
+          <td>${seg(['1K', '5K', '10K', '20K', '50K', '100K'], '1K')}</td></tr>
+      <tr><td class="w">🦋 Самолётик с бабочками<small>за лайки всего эфира</small></td><td><button class="sw on" data-toggle></button></td>
+          <td>${seg(['1K', '5K', '10K', '20K', '50K', '100K'], '10K')}</td></tr>
+    </table>
+  </div>
+  <div class="sec">
+    <h3>За подарок</h3>
+    <table class="set">
+      <tr><th>Анимация</th><th>За какой подарок</th></tr>
+      <tr><td class="w">🎈 Шарик</td><td>${giftSelect()}</td></tr>
+      <tr><td class="w">✈️ Самолётик</td><td>${giftSelect()}</td></tr>
+    </table>
+  </div>
+  <div class="sec">
+    <h3>Приветствие</h3>
+    <table class="set">
+      <tr><th>Всплывашка</th><th>Показ</th><th>Голос и скорость</th></tr>
+      <tr><td class="w">👋 Приветствие входящих<small>плашка «Привет, …!» внизу</small></td><td><button class="sw on" data-toggle></button></td>
+          <td>${voiceCell(1.5)}</td></tr>
+    </table>
+  </div>`);
+
+// ---- behaviour of the mockup
+const $ = s => document.querySelector(s);
+let mode = 'guess', sub = {guess: 'game', battle: 'game', anim: 'frame'};
+function show() {
+  document.querySelectorAll('.mode').forEach(m => m.classList.toggle('on', m.dataset.mode === mode));
+  $('#subs').innerHTML = SUBS[mode].map(([k, name]) => `<button class="sub${k === sub[mode] ? ' on' : ''}" data-sub="${k}">${name}</button>`).join('')
+    + '<span class="spacer"></span><span class="changed" data-changed></span>';
+  document.querySelectorAll('.pane').forEach(p => p.classList.toggle('on', p.dataset.pane === mode + ':' + sub[mode]));
+  paintChanged();
+}
+let changes = 0;
+function paintChanged() {
+  document.querySelectorAll('[data-changed]').forEach(e => e.textContent = changes ? `Изменено: ${changes}` : 'Нет изменений');
+}
+document.addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  if (b.dataset.mode) { mode = b.dataset.mode; show(); return; }
+  if (b.dataset.sub) { sub[mode] = b.dataset.sub; show(); return; }
+  if (b.hasAttribute('data-apply')) {
+    changes = 0; paintChanged(); $('#applied').classList.add('on'); setTimeout(() => $('#applied').classList.remove('on'), 1500); return;
+  }
+  if (b.parentElement && b.parentElement.hasAttribute('data-seg')) {
+    b.parentElement.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b)); changes++; paintChanged();
+  } else if (b.hasAttribute('data-all-voice')) {
+    b.classList.toggle('on'); changes++; paintChanged();
+    b.closest('table').querySelectorAll('td:last-child .sw').forEach(x => x.classList.toggle('on', b.classList.contains('on')));
+  } else if (b.classList.contains('sw')) {
+    b.classList.toggle('on'); changes++; paintChanged();
+    if (b.hasAttribute('data-toggle')) b.closest('tr').querySelectorAll('td:last-child').forEach(td => td.classList.toggle('off-dim', !b.classList.contains('on')));
+  }
+});
+document.addEventListener('change', e => { if (e.target.matches('select')) { changes++; paintChanged(); } });
+$('#startBtn').onclick = e => { e.stopPropagation(); $('#startMenu').classList.toggle('open'); };
+document.addEventListener('click', e => { if (!e.target.closest('#startMenu')) $('#startMenu').classList.remove('open'); });
+document.querySelectorAll('[data-start]').forEach(b => b.onclick = () => {
+  $('#startMenu').classList.remove('open');
+  $('#startBtn').title = 'Идёт: ' + b.querySelector('b').textContent;
+  $('#startBtn').innerHTML = '<span class="live-dot"></span>■ Остановить'; $('#startBtn').classList.remove('primary');
+  mode = b.dataset.start; show();
+});
+$('#openAccount').onclick = () => $('#account').classList.add('on');
+$('#closeAccount').onclick = $('#saveAccount').onclick = () => $('#account').classList.remove('on');
+show();
+</script>
+</body>
+</html>

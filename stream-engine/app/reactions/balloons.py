@@ -10,9 +10,8 @@ INFLATE_VISIBLE_SEC = 25   # a balloon stays there this long after the viewer's 
 
 
 
-def bomber(total, before, step):
-    """The plane that marks every new PLANE_BOMBER_LIKES likes this stream (10 000, 20 000, ...)
-    drops bombs that turn into butterflies with the viewer's avatar."""
+def crossed(total, before, step):
+    """A viewer's likes this stream went past a new multiple of step (1000, 2000, ...); step 0 = off."""
     return bool(step) and total // step > before // step
 
 class LikeBalloons:
@@ -31,9 +30,13 @@ class LikeBalloons:
                                               "progress": 0, "total": 0, "launched": 0, "last": 0})
         u["name"], u["avatar"] = viewer.name, viewer.avatar or u["avatar"]
         u["total"] += count
-        u["progress"] += count
         u["last"] = time.time()
-        per = max(1, self._s("LIKES_PER_BALLOON"))
+        self.dirty = True
+        if not self._s("LIKES_PER_BALLOON"):               # balloons switched off: likes still count for planes
+            u["progress"] = 0
+            return []
+        u["progress"] += count
+        per = self._s("LIKES_PER_BALLOON")
         launches = []
         while u["progress"] >= per:
             u["progress"] -= per
@@ -49,13 +52,18 @@ class LikeBalloons:
         return u["total"] if u else 0
 
     def auto_plane(self, viewer, before):
-        """Plane without a command when the viewer crosses 1000, 2000, ... likes this stream."""
-        step = self._s("PLANE_AUTO_LIKES")
+        """Plane without a command when the viewer crosses 1000, 2000, ... likes this stream
+        (PLANE_AUTO_LIKES), and the butterfly plane on its own steps (PLANE_BOMBER_LIKES) - independent
+        of each other: either can be off, the steps needn't be multiples. Both at once = one flight."""
         u = self.likes.get(viewer.id)
-        if not step or not u or u["total"] // step <= before // step:
+        if not u:
+            return None
+        plane = crossed(u["total"], before, self._s("PLANE_AUTO_LIKES"))
+        bombs = crossed(u["total"], before, self._s("PLANE_BOMBER_LIKES"))
+        if not (plane or bombs):
             return None
         return {"id": viewer.id, "name": u["name"], "avatar": u["avatar"], "total": u["total"], "auto": True,
-                "bomber": bomber(u["total"], before, self._s("PLANE_BOMBER_LIKES"))}
+                "bomber": bombs}
 
     def _s(self, attr):
         return self.settings.get(attr) if self.settings else getattr(config, attr)
