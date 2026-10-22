@@ -3,6 +3,7 @@
 
 import json
 import os
+import time
 import urllib.request
 
 PREFIX = os.getenv("SSM_PREFIX", "/tiktok-tg-bot/")
@@ -39,20 +40,63 @@ def buttons(rows):
 temp = []                    # tests: (chat, text, seconds) of self-destructing messages
 
 
-def send(chat, text, markup=None):
-    """-> message id (None on error)"""
+def send(chat, text, markup=None, transient=False):
+    """-> message id (None on error). transient: a step of a dialog (a prompt, "checking..."): it is deleted
+    SUPERSEDE_SEC after the next message in this chat appears - by then it's not needed any more."""
     if sent is not None:
         sent.append((chat, text))
         if markup:
             markups.append((chat, markup))
-        return len(sent)
+        mid = len(sent)
+    else:
+        try:
+            data = dict(chat_id=chat, text=text, parse_mode="HTML", disable_web_page_preview=True)
+            if markup:
+                data["reply_markup"] = markup
+            mid = call("sendMessage", **data)["result"]["message_id"]
+        except Exception as e:
+            print(f"send error: {type(e).__name__}")
+            return None
+    supersede(chat, mid if transient else None)
+    return mid
+
+
+SUPERSEDE_SEC = 20
+later = []                   # tests: (chat, [mids], seconds) scheduled for deletion
+
+
+def supersede(chat, new_transient=None):
+    """a new message appeared in the chat: the transient ones before it go in SUPERSEDE_SEC; a transient new one
+    (the bot's, or the viewer's own word - see mark_transient) is remembered for the next time"""
+    from . import store
+    item = store.get("TRANS#" + str(chat))
+    old = (item or {}).get("mids", [])
+    if old:
+        delete_later(chat, old, SUPERSEDE_SEC)
+    if new_transient:
+        store.put("TRANS#" + str(chat), {"mids": [new_transient]}, ttl=time.time() + 47 * 3600)
+    elif old:
+        store.delete("TRANS#" + str(chat))
+
+
+def mark_transient(chat, mid):
+    """the viewer's own message (e.g. the word they offer) is a transient step too"""
+    if mid:
+        supersede(chat, mid)
+
+
+def delete_later(chat, mids, seconds):
+    if sent is not None:
+        later.append((chat, list(mids), seconds))
+        return
     try:
-        data = dict(chat_id=chat, text=text, parse_mode="HTML", disable_web_page_preview=True)
-        if markup:
-            data["reply_markup"] = markup
-        return call("sendMessage", **data)["result"]["message_id"]
+        import boto3
+        import os
+        boto3.client("lambda").invoke(FunctionName=os.environ["AWS_LAMBDA_FUNCTION_NAME"], InvocationType="Event",
+                                      Payload=json.dumps({"action": "delete_later", "chat": chat, "mids": list(mids),
+                                                          "delay": seconds}).encode())
     except Exception as e:
-        print(f"send error: {type(e).__name__}")
+        print(f"delete_later error: {type(e).__name__}")
 
 
 def send_temp(chat, text, seconds=60):

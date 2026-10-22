@@ -22,6 +22,7 @@ class BotTest(unittest.TestCase):
         tg.answers.clear()
         tg.deleted.clear()
         tg.temp.clear()
+        tg.later.clear()
         tg._params.update({"webhook-secret": "s", "bot_name": "test_bot", "token": "x"})
         self.key = handler.admin({"action": "add_game", "id": "mao"})["game_key"]
         self.key2 = handler.admin({"action": "add_game", "id": "other"})["game_key"]
@@ -404,6 +405,28 @@ class ReportsTest:
         call("/tg", msg("/round", uid=5))
         self.assertIn("не на связи", tg.sent[-1][1])
 
+
+    def test_dialog_steps_go_after_the_next_message(self):
+        self.host_and_viewer()
+        call("/tg", msg("/zagadka"))                                  # the prompt: transient
+        prompt = len(tg.sent)
+        self.assertEqual(tg.later, [])
+        m = msg("огурец"); m["message"]["message_id"] = 501       # the viewer's word: transient too
+        call("/tg", m)
+        self.assertIn("Проверяю", tg.sent[-1][1])
+        checking = len(tg.sent)
+        # the word replaced the prompt, then "checking" replaced the word: both go in 20 s
+        self.assertEqual(tg.later, [(7, [prompt], 20), (7, [501], 20)])
+        wid = self.poll()["words"][0]["id"]
+        self.poll({"results": [{"id": wid, "stage": "check", "ok": True, "word": "огурец"}]})
+        self.assertIn("есть в словаре", [t for c, t in tg.sent if c == 7][-1])
+        self.assertEqual(tg.later[-1], (7, [checking], 20))
+        checked = max(i + 1 for i, (c, t) in enumerate(tg.sent) if c == 7)
+        self.cb("ok:" + wid)
+        self.poll()
+        self.poll({"results": [{"id": wid, "stage": "queue", "ok": True, "round": 8}]})
+        self.assertIn("принял", [t for c, t in tg.sent if c == 7][-1])  # stays
+        self.assertEqual(tg.later[-1], (7, [checked], 20))             # "in the dictionary" goes
 
 for _name, _test in list(vars(ReportsTest).items()):     # the reports' tests run in BotTest (its setUp and helpers)
     if _name.startswith("test_"):

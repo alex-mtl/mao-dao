@@ -103,6 +103,7 @@ def on_message(msg, now=None):
         return switch_game(chat, tg_id, text, False, now)
     ask = store.get("ASK#" + tg_id)
     if ask and not text.startswith("/"):                       # the viewer answers the host's question
+        tg.mark_transient(chat, msg.get("message_id"))           # the viewer's word: gone after the next message
         return riddle.viewer_word(ask, chat, tg_id, text)
     if text.startswith("/start") or text.startswith("/help"):
         store.delete("FLOW#" + tg_id)
@@ -385,7 +386,8 @@ def admin(event):
         return {"ok": True, "tg": u["tg"]}
     if action == "delete_later":                     # from tg.send_temp: an async invoke of this function
         time.sleep(min(int(event.get("delay", 60)), 600))
-        tg.delete(event["chat"], event["mid"])
+        for mid in event.get("mids") or [event["mid"]]:
+            tg.delete(event["chat"], mid)
         return {"ok": True}
     if action == "set_menus":                        # {"action":"set_menus","games":["mao"]}: menus for all + hosts
         tg.set_commands(MENU_ALL)

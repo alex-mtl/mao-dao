@@ -188,8 +188,8 @@ def viewer_command(chat, tg_id, now=None):
     saved = saved_words(link["tiktok_id"], game)
     if saved:                                             # their unguessed words, or a new one
         rows = [[(w["word"].upper(), "use:" + w["word"])] for w in saved[:MAX_BUTTONS]]
-        return [(chat, TEXT["choose"], tg.buttons(rows + [[(TEXT["new_word"], "new")]]))]
-    return [(chat, TEXT["ask_self"])]
+        return [(chat, TEXT["choose"], tg.buttons(rows + [[(TEXT["new_word"], "new")]]), True)]   # transient
+    return [(chat, TEXT["ask_self"], None, True)]
 
 
 def add_game_user(game, link):
@@ -291,7 +291,7 @@ def viewer_word(ask, chat, tg_id, text, now=None, from_saved=False):
                           "saved": from_saved})
     store.put("PEND#" + game, {"items": pend["items"]})
     events.log(game, "word_sent", tt=ask["tt"], word=word)
-    return [(chat, TEXT["checking"].format(w=e(word)))]
+    return [(chat, TEXT["checking"].format(w=e(word)), None, True)]   # transient: gone after the next one
 
 
 def rename(gid, names, items):
@@ -351,7 +351,7 @@ def game_poll(game, body):
         elif r.get("ok"):                                 # in the dictionary: the host decides
             it.update(state="checked", word=r.get("word") or it["word"])
             store.delete("ASK#" + it["tg"])
-            tg.send(it["chat"], TEXT["checked"].format(w=w))
+            tg.send(it["chat"], TEXT["checked"].format(w=w), transient=True)
             tg.send(it["host"], TEXT["host_word"].format(w=w, name=e(it["name"]), tt=e(it["tt"])),
                     tg.buttons([[("✅ принять", "ok:" + it["id"]), ("❌ отклонить", "rej:" + it["id"])]]))
             events.log(gid, "word_checked", tt=it["tt"], word=it["word"])
