@@ -82,6 +82,7 @@ return [
     'opt_chroma_top' => ':n% del encuadre',
     'opt_chat_zone' => 'Zona libre para el chat abajo',
     'opt_chat_zone_off' => 'ninguna',
+    'opt_row_anim' => 'Aparición de una fila nueva',
     'sec' => ':n s',
     'min' => ':n min',
     'col_anim' => 'Animación',

@@ -82,6 +82,7 @@ return [
     'opt_chroma_top' => ':n% кадра',
     'opt_chat_zone' => 'Свободная зона под чат внизу',
     'opt_chat_zone_off' => 'нет',
+    'opt_row_anim' => 'Появление новой строки',
     'sec' => ':n с',
     'min' => ':n мин',
     'col_anim' => 'Анимация',

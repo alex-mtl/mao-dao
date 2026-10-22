@@ -82,6 +82,7 @@ return [
     'opt_chroma_top' => ':n% of the frame',
     'opt_chat_zone' => 'Free zone for the chat at the bottom',
     'opt_chat_zone_off' => 'none',
+    'opt_row_anim' => 'New row slides in',
     'sec' => ':n s',
     'min' => ':n min',
     'col_anim' => 'Animation',

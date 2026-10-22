@@ -665,6 +665,7 @@
   function render(s) {
     S = s;
     applyChroma(TT ? (s.chroma || s.chromaTop || 33) : (s.chroma || 0), s.frame || 16);
+    document.documentElement.style.setProperty('--row-anim', (s.rowAnim ?? 0.2) + 's');   // a new row slides in (a setting; 0 = at once)
     // TT mode: the bottom chatZone % of the frame stays free for TikTok's chat (a setting), the table ends above it
     document.documentElement.style.setProperty('--chat-zone', TT && s.chatZone
       ? `calc(var(--u) * ${(100 * (s.frame || 16) / 9 * s.chatZone / 100).toFixed(2)})` : '0px');

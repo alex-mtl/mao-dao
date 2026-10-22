@@ -158,6 +158,10 @@ export default function SettingsPanel({ s, mode, setMode, footer }) {
                                     <Seg value={g.level} options={s.choices('guess', 'level')} label={(n) => t('guessword.opt_level_' + n)}
                                          onChange={(v) => s.set('guess', 'level', v)} />
                                 </Field>
+                                <Field label={t('guessword.opt_row_anim')}>
+                                    <Seg value={g.row_anim} options={s.choices('guess', 'row_anim')} label={sec}
+                                         onChange={(v) => s.set('guess', 'row_anim', v)} />
+                                </Field>
                                 <Field label={t('guessword.opt_hint_cd')}>
                                     <Seg value={g.hint_cd} options={s.choices('guess', 'hint_cd')} label={sec}
                                          onChange={(v) => s.set('guess', 'hint_cd', v)} />
