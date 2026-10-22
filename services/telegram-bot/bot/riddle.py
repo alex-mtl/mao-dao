@@ -362,6 +362,8 @@ def game_poll(game, body):
                          MISSING_MSG_SEC)
             save_missing(gid, it)
             events.log(gid, "word_missing", tt=it["tt"], word=it["word"])
+    from .reports import answer, pending
+    answer(gid, body.get("answers"))                   # the host's /round, /history: the game's data
     for u in body.get("unguessed") or []:                 # nobody found it: +1 hint (in the game), word saved
         tt = (u.get("tiktok_id") or "").lower()
         if not tt or not u.get("word"):
@@ -402,4 +404,4 @@ def game_poll(game, body):
         del items[cid]                                    # the game drops it now
     if changed or words or cancel:
         store.put("PEND#" + gid, {"items": list(items.values())})
-    return 200, {"words": words, "cancel": cancel}
+    return 200, {"words": words, "cancel": cancel, "requests": pending(gid)}

@@ -285,7 +285,9 @@ class GuessGame(BaseGame):
             "seconds": round(now - self.started_at), "players": len(self.players),
             "guesses": sum(p.guesses for p in self.players.values()), "at": int(now),
             "podium": [p["name"] for p in self.podium],
-            "setter": self.setter["name"] if self.setter else None, "hidden": self.word_hidden}])[-300:]
+            "setter": self.setter["name"] if self.setter else None, "hidden": self.word_hidden,
+            "top": self._top_guesses(20),                 # for the host's /history in the bot
+            "winner_words": self._words_of(player, 20) if player else []}])[-300:]
         self.store.save(self.ROUNDS, self.history)
         used = self.used.get(self.lang, set())        # the next word, picked now: its table comes in the break
         self.next_pick = (self.lang, self.level) + tuple(self.sem_for(self.lang, self.level)
@@ -943,6 +945,33 @@ class GuessGame(BaseGame):
                 self.store.save(self.CUSTOM, self.custom)
                 return c
         return None
+
+    # ------------------------------------------------------------------ reports for the host (the bot)
+    def _top_guesses(self, n):
+        """[[WORD, rank, who named it first]] closest first."""
+        rows = sorted(self.guesses.values(), key=lambda g: g["rank"])[:n]
+        return [[g["word"].upper(), g["rank"], g["name"]] for g in rows]
+
+    def _words_of(self, player, n):
+        """[[WORD, rank]] a player's words this round, closest first."""
+        rows = [(w, self.guesses[w]["rank"]) for w in player.words if w in self.guesses]
+        return [[w.upper(), r] for w, r in sorted(rows, key=lambda x: x[1])[:n]]
+
+    def round_report(self):
+        """The current round for the host's /round: the word and who picked it, players (20), guesses, top 20."""
+        players = sorted(self.players.values(), key=lambda p: (not p.best, p.best or 0, p.best_t))
+        return {"round": self.round_id, "phase": self.phase, "word": (self.secret or "").upper(),
+                "setter": self.setter["name"] if self.setter else None,
+                "seconds": round(time.time() - self.started_at) if self.started_at else 0,
+                "players": len(self.players), "guesses": sum(p.guesses for p in self.players.values()),
+                "who": [[p.name, p.best, p.guesses] for p in players[:20]], "top": self._top_guesses(20)}
+
+    def history_report(self, n):
+        """The last n finished rounds (newest first) for the host's /history."""
+        n = max(1, min(int(n or 1), 10))
+        return [{k: r.get(k) for k in ("round", "word", "setter", "winner", "reason", "players", "guesses",
+                                       "seconds", "at", "winner_words", "top")}
+                for r in reversed(self.history[-n:])]
 
     def _round_champion_ids(self):
         """Three different players: whoever named the table's best words first, going down the table

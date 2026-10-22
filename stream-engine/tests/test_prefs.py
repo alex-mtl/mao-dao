@@ -116,3 +116,25 @@ class GiftCatalogTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class HostReportsTest(unittest.TestCase):
+    """The data behind the host's /round and /history in the bot."""
+
+    def test_round_and_history(self):
+        from app.games.guess.game import GuessGame
+        g = GuessGame(JsonStore(tempfile.mkdtemp()))
+        g.tick(time.time()); g.tick(time.time() + 0.01)
+        r = lambda k: g.sem.words[int(g.order[k])]
+        nina, tati = Viewer("nina", "Нина", "", 1), Viewer("tati", "Tati", "", 1)
+        g.on_comment(nina, r(30)); g.on_comment(nina, r(5)); g.on_comment(tati, r(200))
+        rep = g.round_report()
+        self.assertEqual((rep["word"], rep["players"], rep["guesses"]), (g.secret.upper(), 2, 3))
+        self.assertEqual([w[0] for w in rep["who"]], ["Нина", "Tati"])           # closest first
+        self.assertEqual([t[1] for t in rep["top"]], [6, 31, 201])
+        g.on_comment(tati, g.secret)                                             # Tati wins
+        h = g.history_report(3)
+        self.assertEqual(len(h), 1)
+        self.assertEqual(h[0]["winner"], "Tati")
+        self.assertEqual([w[1] for w in h[0]["winner_words"]], [1, 201])        # her words, closest first
+        self.assertEqual(h[0]["top"][0][:2], [g.secret.upper(), 1])

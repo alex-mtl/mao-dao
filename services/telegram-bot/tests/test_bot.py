@@ -124,7 +124,8 @@ class BotTest(unittest.TestCase):
         call("/tg", msg("загадывает", uid=5))
         self.assertIn("только для ведущего", tg.sent[-1][1])
         self.host_and_viewer()
-        self.assertIn((5, {"commands": ["start", "help", "zagadka", "hints", "game", "pick", "queue"]}), tg.markups)
+        self.assertIn((5, {"commands": ["start", "help", "zagadka", "hints", "game", "pick", "queue", "round", "history"]}),
+                      tg.markups)
         for q in ("Загадывает вороб", "загадывает @Vasya", "/pick вороб"):   # nick, messenger nick, menu synonym
             tg.markups.clear()
             call("/tg", msg(q, uid=5))
@@ -147,7 +148,7 @@ class BotTest(unittest.TestCase):
         r = self.poll()
         self.assertEqual([(w["word"], w["action"]) for w in r["words"]], [("Огурцы", "check")])
         wid = r["words"][0]["id"]
-        self.assertEqual(self.poll(), {"words": [], "cancel": []})     # given once
+        self.assertEqual(self.poll(), {"words": [], "cancel": [], "requests": []})     # given once
         self.poll({"results": [{"id": wid, "stage": "check", "ok": False}]})
         self.assertIn("нет в словаре", tg.sent[-2][1])                 # the player: stays
         self.assertIn("не найдено", tg.sent[-1][1])
@@ -169,7 +170,7 @@ class BotTest(unittest.TestCase):
         self.assertIn("отклонил", tg.sent[-1][1])                     # the viewer is told
         self.assertIn("Отклонено", tg.answers[-1])                    # the host: a popup...
         self.assertEqual(tg.deleted[-1], (5, 1))                      # ...and the message is gone
-        self.assertEqual(self.poll(), {"words": [], "cancel": []})     # never reached the game
+        self.assertEqual(self.poll(), {"words": [], "cancel": [], "requests": []})     # never reached the game
         self.cb("rej:" + wid)
         self.assertIn("не отменить", tg.answers[-1])
 
@@ -356,3 +357,54 @@ class BotTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ReportsTest:
+    """The host's /round and /history: the bot leaves a request, the game answers on its next poll."""
+
+    def test_round_report(self):
+        call("/tg", msg("/round", uid=5))
+        self.assertIn("только для ведущего", tg.sent[-1][1])
+        self.host_and_viewer()
+        self.poll({"instance": "i1"})                                # the game is on air (it polls)
+        call("/tg", msg("раунд", uid=5))
+        self.assertIn("Спрашиваю игру", tg.temp[-1][1])
+        reqs = self.poll()["requests"]
+        self.assertEqual([(r["type"], r["n"]) for r in reqs], [("round", 1)])
+        data = {"round": 7, "phase": "playing", "word": "КОЛЕСО", "setter": "ANESYA", "seconds": 125,
+                "players": 2, "guesses": 9, "who": [["Нина", 3, 5], ["Tati", 0, 4]],
+                "top": [["РУЛЬ", 3, "Нина"], ["ДОРОГА", 40, "Tati"]]}
+        self.poll({"answers": [{"id": reqs[0]["id"], "type": "round", "data": data}]})
+        text = tg.sent[-1][1]
+        self.assertEqual(tg.sent[-1][0], 5)
+        for part in ("Раунд 7", "КОЛЕСО", "ANESYA", "2:05", "Нина — #3 · 5", "Tati — — · 4", "<b>РУЛЬ</b> #3 — Нина"):
+            self.assertIn(part, text)
+        self.assertEqual(self.poll()["requests"], [])                 # answered: not asked again
+
+    def test_history_report(self):
+        self.host_and_viewer()
+        self.poll({"instance": "i1"})
+        call("/tg", msg("/history 3", uid=5))
+        req = self.poll()["requests"][0]
+        self.assertEqual((req["type"], req["n"]), ("history", 3))
+        rounds = [{"round": 6, "word": "дорога", "setter": None, "winner": "Krestik", "players": 5, "guesses": 40,
+                   "seconds": 300, "winner_words": [["ПУТЬ", 12], ["ДОРОГА", 1]], "top": [["ДОРОГА", 1, "Krestik"]]},
+                  {"round": 5, "word": "фрустрация", "setter": "ANESYA", "winner": None, "players": 8, "guesses": 90,
+                   "seconds": 1200, "winner_words": [], "top": None}]
+        n = len(tg.sent)
+        self.poll({"answers": [{"id": req["id"], "type": "history", "data": rounds}]})
+        self.assertEqual(len(tg.sent) - n, 2)                         # one message per round
+        self.assertIn("Krestik", tg.sent[-2][1])
+        self.assertIn("ПУТЬ #12", tg.sent[-2][1])
+        self.assertIn("никто не угадал", tg.sent[-1][1])
+        self.assertIn("не сохранён", tg.sent[-1][1])
+
+    def test_offline_game(self):
+        self.host_and_viewer()                                        # host linked, but the game never polled
+        call("/tg", msg("/round", uid=5))
+        self.assertIn("не на связи", tg.sent[-1][1])
+
+
+for _name, _test in list(vars(ReportsTest).items()):     # the reports' tests run in BotTest (its setUp and helpers)
+    if _name.startswith("test_"):
+        setattr(BotTest, _name, _test)

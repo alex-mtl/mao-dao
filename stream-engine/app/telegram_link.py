@@ -119,8 +119,15 @@ class TelegramLink:
             else:                                                # new: only the dictionary check
                 ok, word = g.check_custom(w)
                 self.results.append({"id": w["id"], "stage": "check", "ok": ok, "word": word})
-        if self.results:                                         # answer right away, not in 10 s
-            r = await self.api("/game/poll", instance=self.instance, results=self.results, queue_ids=[c["id"] for c in g.custom])
+        answers = []                                             # the host asked in the bot: /round, /history N
+        for q in r.get("requests") or []:
+            if q.get("type") == "round":
+                answers.append({"id": q.get("id"), "type": "round", "data": g.round_report()})
+            elif q.get("type") == "history":
+                answers.append({"id": q.get("id"), "type": "history", "data": g.history_report(q.get("n"))})
+        if self.results or answers:                              # answer right away, not in 10 s
+            r = await self.api("/game/poll", instance=self.instance, results=self.results, answers=answers,
+                               queue_ids=[c["id"] for c in g.custom])
             if "error" not in r:
                 self.results = []
                 for cid in r.get("cancel") or []:

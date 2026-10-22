@@ -394,7 +394,7 @@
   // Closest words sorted by rank: a good guess stays on top until someone beats it.
   // A brand-new guess is shown on top for FRESH_MS ("NEW"), then drops to its place by rank
   // (or leaves the list if it isn't among the best).
-  const FRESH_MS = 200, MAX_FRESH = 5, MULTI_MS = 800, CHIP_MIN_FONT = 0.8;
+  const FRESH_MS = 50, MAX_FRESH = 5, MULTI_MS = 800, CHIP_MIN_FONT = 0.8;
   let fresh = [], lastBest = [], multiSeq = 0;
   function addFresh(e, ttl) {
     fresh = fresh.filter(f => f.multi || f.word !== e.word);
@@ -567,7 +567,7 @@
   }
   setInterval(() => {                       // let expired "NEW" rows drop into place
     if (fresh.some(f => Date.now() - f.at >= f.ttl)) renderGuesses(lastBest);
-  }, 50);                                   // often: a NEW row lives only FRESH_MS
+  }, 25);                                   // often: a NEW row lives only FRESH_MS (at the busiest)
 
   let taglineI = 0, taglineT = 0;
   function tagline(s) {

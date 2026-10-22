@@ -19,7 +19,9 @@ TEXT = {
         "owner_bad": "Ссылка ведущего не подошла или истекла (действует 10 минут). Возьми новую в меню игры.",
         "superadmin": "🛡 Ты суперадмин бота: буду присылать сюда каждую привязку во всех играх.",
         "help_host": "🎬 <b>Для ведущего</b>\n<b>загадывает</b> [часть ника] или /pick — выбрать зрителя, который загадает слово.\n"
-                     "<b>очередь</b> или /queue — загаданные слова по раундам (ответ исчезнет через минуту)",
+                     "<b>очередь</b> или /queue — загаданные слова по раундам (ответ исчезнет через минуту)\n"
+                     "<b>раунд</b> или /round — текущий раунд: слово, кто загадал, участники, догадки, топ-20\n"
+                     "<b>история</b> [N] или /history [N] — N прошлых раундов (по умолчанию 1, до 10)",
         "twins_games": "⚠️ Эфир <b>@{tt}</b> подключён к двум играм: <b>{a}</b> и <b>{b}</b>. Выключите лишнюю — "
                        "иначе слова, подсказки и очередь разойдутся по двум играм.",
         "twins_instances": "⚠️ Игра <b>{game}</b> запущена дважды (например, дома в Docker и на платформе). "
@@ -48,7 +50,9 @@ TEXT = {
         "owner_bad": "The host link is wrong or expired (valid 10 minutes). Get a new one in the game menu.",
         "superadmin": "🛡 You are the bot's superadmin: every link in every game will be reported here.",
         "help_host": "🎬 <b>For the host</b>\n<b>загадывает</b> [part of a nick] or /pick - choose a viewer who picks the word.\n"
-                     "/queue - the picked words by round (the answer disappears in a minute)",
+                     "/queue - the picked words by round (the answer disappears in a minute)\n"
+                     "/round - the current round: the word, who picked it, players, guesses, top 20\n"
+                     "/history [N] - the last N rounds (1 by default, up to 10)",
         "help_all": "/zagadka - offer a word for the game (the host decides)\n"
                     "/hints - how many hints you have on account\n"
                     "/game [stream word] - switch to another stream",

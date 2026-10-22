@@ -19,7 +19,7 @@ import os
 import time
 from html import escape as html_escape
 
-from . import events, riddle, store, texts, tg
+from . import events, reports, riddle, store, texts, tg
 from .words import pick_word, norm
 
 KEY_TTL = 15 * 60
@@ -33,7 +33,9 @@ MENU_ALL = [("start", "как связать аккаунт со стримом"
             ("zagadka", "загадать слово для игры"), ("hints", "мои подсказки"),
             ("game", "переключиться на другой стрим")]
 MENU_HOST = MENU_ALL + [("pick", "выбрать зрителя, который загадает слово"),
-                        ("queue", "очередь загаданных слов")]
+                        ("queue", "очередь загаданных слов"),
+                        ("round", "текущий раунд: слово, участники, топ-20"),
+                        ("history", "прошлые раунды: /history 3")]
 
 
 def new_key():
@@ -90,6 +92,8 @@ def on_message(msg, now=None):
         return riddle.host_command(chat, tg_id, text)
     if riddle.is_hints_command(text):                           # anyone linked: "/hints", "подсказки"
         return riddle.hints_command(chat, tg_id)
+    if reports.is_round_command(text) or reports.is_history_command(text):   # the host: "/round", "/history 3"
+        return reports.request(chat, tg_id, text, now)
     if riddle.is_queue_command(text):                           # the host: "/queue", "очередь"
         return riddle.queue_command(chat, tg_id)
     if riddle.is_viewer_command(text):                          # a viewer: "/zagadka", "загадка"
