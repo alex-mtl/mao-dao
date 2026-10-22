@@ -434,3 +434,5 @@ html.chroma #recent > .title { display: none; }
 
 /* TT mode: the bottom --chat-zone of the frame (a setting) stays free for TikTok's chat; the call to action sits in it */
 #bottom { min-height: var(--chat-zone, 0px); display: flex; flex-direction: column; justify-content: flex-end; }
+/* a word not in the dictionary: a moment under the table, over the chat zone */
+.grow.unknown-line { position: fixed; z-index: 31; padding: calc(var(--u) * .6) 0; }

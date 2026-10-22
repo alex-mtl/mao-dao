@@ -270,8 +270,8 @@
         toast(NAME, t('g.t.sorry') + ' ' + t('g.t.sorrySub'), 'var(--pink)', { important: true, keep: true, hold: 2.4, id: 'dq' });
         voice('dq', t('g.v.sorry', { name: sname }), 'high', 1);
         break;
-      case 'unknown':                     // shown in the list (grey) so the player sees it was read
-        addFresh(Object.assign({}, e, { unknown: true }), 2500);
+      case 'unknown':                     // grey, under the table for a moment: the player sees it was read
+        showUnknown(e);
         break;
       case 'hint': {
         fx('hint');
@@ -366,6 +366,21 @@
                     name: e.name, avatar: e.avatar, at: Date.now(), ttl: ttl || FRESH_MS, unknown: !!e.unknown });
     fresh = fresh.slice(0, MAX_FRESH);
     renderGuesses(lastBest);
+  }
+  // a word not in the dictionary: one extra grey row right under the table (over the chat zone) for
+  // UNKNOWN_MS - the table itself doesn't move
+  const UNKNOWN_MS = 200;
+  let unknownRow = null, unknownTimer = 0;
+  function showUnknown(e) {
+    if (unknownRow) unknownRow.remove();
+    clearTimeout(unknownTimer);
+    const panel = $('recent').getBoundingClientRect();
+    const pad = parseFloat(getComputedStyle($('recent')).paddingLeft);
+    unknownRow = guessRow({ word: e.word, unknown: true, name: e.name, avatar: e.avatar }, 'unknown-line');
+    Object.assign(unknownRow.style, { left: panel.left + pad + 'px', width: panel.width - 2 * pad + 'px', top: panel.bottom + 'px' });
+    document.body.append(unknownRow);
+    unknownRow.querySelectorAll('.wd').forEach(fitCell);
+    unknownTimer = setTimeout(() => { unknownRow && unknownRow.remove(); unknownRow = null; }, UNKNOWN_MS);
   }
   // several words at once: [chip chip chip] + the player on the right, each chip in its rank's color
   function addMulti(e) {
