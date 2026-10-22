@@ -61,11 +61,9 @@ export function ToastsTab({ s, mode }) {
                                 {VOICE_ONLY.includes(id) ? <span className="text-ink-400">—</span> : (
                                     <select
                                         className="h-8 w-24 rounded-lg border-warm-300 bg-surface py-0 text-sm text-ink-900"
-                                        value={cfg(id).anim ?? ''}
-                                        onChange={(e) => update(id, { anim: e.target.value === '' ? null
-                                            : e.target.value === 'auto' ? 'auto' : Number(e.target.value) })}
+                                        value={cfg(id).anim ?? 'auto'}
+                                        onChange={(e) => update(id, { anim: e.target.value === 'auto' ? 'auto' : Number(e.target.value) })}
                                     >
-                                        <option value="">{t('guessword.anim_default')}</option>
                                         <option value="auto">{t('guessword.anim_auto')}</option>
                                         {(schema.anims || []).filter((a) => a !== 'auto').map((a) => <option key={a} value={a}>{a} s</option>)}
                                     </select>

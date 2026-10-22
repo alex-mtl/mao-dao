@@ -129,11 +129,11 @@
     heat += (Math.min(1, Math.max(0, (wps - PACE_CALM) / (PACE_BUSY - PACE_CALM))) - heat) * 0.3;
     applyTable();
   }, 500);
-  // a toast's in/out animation (s): its setting is the floor ("auto" = 0.1), calm it's CALM_ANIM; none = the CSS default
+  // a toast's in/out animation (s): its setting is the floor ("auto" or none = 0.1), calm it's CALM_ANIM
   function toastAnim(id) {
     const a = id && Toasts.cfg[id] && Toasts.cfg[id].anim;
-    const floor = a === 'auto' ? 0.1 : a;
-    return typeof floor === 'number' ? lerp(Math.max(CALM_ANIM, floor), floor, heat) : null;
+    const floor = typeof a === 'number' ? a : 0.1;
+    return lerp(Math.max(CALM_ANIM, floor), floor, heat);
   }
   // the table: a new row slides in (its setting = the floor at the busiest, calm CALM_ANIM) and stays on top
   // freshMs() (calm 1 s, busy FRESH_MS)
@@ -179,7 +179,8 @@
     c.style.setProperty('--c', item.color);
     c.style.setProperty('--hold', item.hold + 's');
     const anim = toastAnim(item.id);
-    if (anim !== null) { c.style.setProperty('--t-in', anim + 's'); c.style.setProperty('--t-out', Math.min(anim, 0.3) + 's'); }
+    c.style.setProperty('--t-in', anim + 's');
+    c.style.setProperty('--t-out', Math.min(anim, 0.3) + 's');
     c.append(el('div', 'h', item.head));
     if (item.sub) c.append(el('div', 's', item.sub));
     $('toast').replaceChildren(c);
@@ -189,8 +190,7 @@
   function mini(text, cls, id) {
     if (id && !Toasts.show(id)) return;
     const m = el('div', 'mini ' + (cls || ''), text);
-    const anim = toastAnim(id);
-    if (anim !== null) m.style.setProperty('--m-in', anim + 's');
+    m.style.setProperty('--m-in', toastAnim(id) + 's');
     const box = $('miniToasts');
     box.appendChild(m);
     while (box.children.length > 2) box.firstChild.remove();
