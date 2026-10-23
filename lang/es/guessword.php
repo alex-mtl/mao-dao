@@ -308,4 +308,7 @@ return [
     'host_bot_note' => 'Ábrelo en tu teléfono en Telegram. Enlace único, válido 10 minutos. ¡No lo muestres en el directo!',
     'host_bot_not_running' => 'Primero inicia el juego (Start) y vuelve a pulsar.',
     'host_bot_error' => 'Bot no disponible, inténtalo más tarde.',
+    'opt_follow_2' => 'Solo el equipo',
+    'opt_fan_min' => 'Equipo desde el nivel',
+    'opt_fan_min_v' => ':n+',
 ];

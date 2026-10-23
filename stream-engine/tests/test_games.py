@@ -407,7 +407,7 @@ class NonStopTest(unittest.TestCase):
         g.set_option("round_min", 20)
         g.set_option("follow", 0)
         g.set_option("grace", 60)
-        self.assertEqual(g.get_options(), {"pause": 30, "round_min": 20, "follow": 0, "grace": 60, "level": 2,
+        self.assertEqual(g.get_options(), {"pause": 30, "round_min": 20, "follow": 0, "grace": 60, "fan_min": 1, "level": 2,
                                            "hint_cd": 20, "chroma": 0, "chroma_top": 33,
                                            "frame": 16, "chat_zone": 20, "row_anim": 0.2})
         self.assertFalse(g.follow_required)

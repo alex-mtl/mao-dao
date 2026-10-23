@@ -291,6 +291,9 @@
         fx('follow');
         mini(t('g.t.followed', { name }), 'follow', 'thanks');
         break;
+      case 'fans_only':
+        queueTicker(t('g.tk.fans', { name: esc(clean(e.name)), n: e.n }));
+        break;
       case 'follow_needed':
         if (e.dq) mini(t('g.t.followToPlay', { name }), 'follow', 'follow_needed');
         else {

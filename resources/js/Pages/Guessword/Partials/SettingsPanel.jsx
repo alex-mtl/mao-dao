@@ -195,6 +195,12 @@ export default function SettingsPanel({ s, mode, setMode, footer }) {
                                     <Seg value={g.grace} options={s.choices('guess', 'grace')} label={sec}
                                          onChange={(v) => s.set('guess', 'grace', v)} />
                                 </Field>
+                                {g.follow === 2 && (
+                                    <Field label={t('guessword.opt_fan_min')}>
+                                        <Seg value={g.fan_min} options={s.choices('guess', 'fan_min')} label={(n) => t('guessword.opt_fan_min_v', { n })}
+                                             onChange={(v) => s.set('guess', 'fan_min', v)} />
+                                    </Field>
+                                )}
                             </div>
                         </div>
                     </>

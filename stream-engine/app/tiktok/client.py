@@ -26,7 +26,12 @@ def viewer_of(user):
             follows = int(getattr(fi, "follow_status", 0) or 0)
     except Exception:
         pass
-    return Viewer(uid, name, avatar, follows)
+    fan = 0
+    try:
+        fan = int(getattr(user, "member_level", None) or 0)   # the team (fan club) badge's level
+    except Exception:
+        pass
+    return Viewer(uid, name, avatar, follows, fan)
 
 
 def sent_at(event):
@@ -136,7 +141,7 @@ class TikTokConnector:
             ts = sent_at(event)
             if config.LOG_CHAT:
                 lag = f" +{time.time() - ts:.0f}s" if ts else ""
-                print(f"[chat] {v.name} (@{v.id}) follow={v.follows}{lag}: {text!r}")
+                print(f"[chat] {v.name} (@{v.id}) follow={v.follows} fan={v.fan}{lag}: {text!r}")
             hub.comment(v, text, ts)
 
         def join(event):

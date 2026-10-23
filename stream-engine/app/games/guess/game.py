@@ -41,6 +41,8 @@ SETTER_TICKER_SEC = 120                          # "this word was picked by ..."
 LOG_EVENTS = {"round_start", "gift", "hint", "boost", "steal", "new_leader", "winner", "timeout", "mao_call"}
 LOG_KEYS = ("name", "gift", "count", "word", "by", "rank", "kind", "reason", "cmd", "n")
 STUCK_PAUSE_SEC = 120                          # the active game paused this long = a bug: drop the round, start anew
+LAST_NAMER_SEC = 20           # a row shows who named its word last this long, then the first namer again
+FANS_NOTE_SEC = 30            # "only the team plays" reminder for one viewer at most this often
 MAX_WORDS = 5000              # cap of aggregated words per round (memory guard)
 SIM_NAMES = ["Alex", "Mike", "Sarah", "John", "Emma", "Liam", "Olivia", "Noah", "Mia", "Leo"]
 
@@ -96,7 +98,8 @@ class GuessGame(BaseGame):
     title = "Guess the Word"
     OPTIONS = {"pause": [0, 10, 30, 60, 120],      # break between rounds, seconds (incl. the winner card)
                "round_min": [10, 20, 30],          # round length, minutes
-               "follow": [1, 0],                   # only followers can play / win
+               "follow": [2, 1, 0],                # who plays: the host's team (fans) only / followers only / all
+               "fan_min": [1, 5, 10, 15, 20, 25, 30, 40],   # fans only: from this team level
                "grace": [15, 30, 60],              # seconds a non-follower gets to follow
                "level": [1, 2, 3],                 # dictionary: 1 easy (any word), 2 normal (nouns), 3 hard (ru only)
                "hint_cd": [5, 10, 15, 20],         # seconds between two hints of the same viewer
@@ -126,6 +129,8 @@ class GuessGame(BaseGame):
         self.pause_sec = (config.WINNER_SEC + config.REVEAL_SEC) if config.ROUND_BREAK else 0
         self.round_sec = config.ROUND_DURATION
         self.follow_required = config.FOLLOW_REQUIRED    # only followers can play (menu setting)
+        self.fans_only, self.fan_min = False, 1          # only the host's team, from this level (menu setting)
+        self.fans_note_t = {}                            # viewer id -> last "only the team plays" reminder
         self.follow_grace = int(config.FOLLOW_GRACE_SEC)
         self.level = self.round_level = 2            # dictionary level, from the next round
         self.hint_cd = 20                            # a viewer's next hint (gift or credit) after this many s
@@ -185,6 +190,7 @@ class GuessGame(BaseGame):
         self.started_at = self.ends_at = self.phase_until = 0.0
         self.guesses = {}             # word -> aggregated guess
         self.recent = deque(maxlen=10)
+        self.flips = deque()          # times a row goes back from its last namer to its first one (a re-render)
         self.players = {}             # id -> RoundPlayer
         self.leader_id = None
         self.past_leaders = set()
@@ -412,6 +418,13 @@ class GuessGame(BaseGame):
                 self.emit("unknown", word=raw.upper(), name=viewer.name, avatar=viewer.avatar)
             print(f"[guess] rejected (unknown) {viewer.name}: {raw}")
             return
+        if self.fans_only and viewer.fan < self.fan_min \
+                and viewer.id.lower() != getattr(self, "host_id", config.TIKTOK_USERNAME.lower()):
+            if now - self.fans_note_t.get(viewer.id, 0) > FANS_NOTE_SEC:
+                self.fans_note_t[viewer.id] = now
+                self.emit("fans_only", name=viewer.name, n=self.fan_min)
+            print(f"[guess] rejected (not in the team from level {self.fan_min}, has {viewer.fan}) {viewer.name}: {word}")
+            return
         p = self.players.get(viewer.id)
         if p is None:
             p = self.players[viewer.id] = RoundPlayer(viewer.id, viewer.name, viewer.avatar)
@@ -449,6 +462,8 @@ class GuessGame(BaseGame):
         if g is not None:
             g["count"] += 1
             g["last"], g["last_avatar"], g["last_id"] = p.name, p.avatar, p.id
+            if p.name != g["name"]:
+                self.flips.append(now + LAST_NAMER_SEC + 0.2)
             ids = g.setdefault("ids", [])
             if p.id not in ids and len(ids) < 50:
                 ids.append(p.id)
@@ -724,8 +739,11 @@ class GuessGame(BaseGame):
                 self.phase_until = self.finished_at + self.pause_sec
         elif key == "round_min":
             self.round_sec = max(60, int(value) * 60)    # from the next round
-        elif key == "follow":
-            self.follow_required = bool(value)
+        elif key == "follow":                            # 2 the team only, 1 followers only, 0 all
+            self.fans_only = int(value) == 2
+            self.follow_required = int(value) >= 1
+        elif key == "fan_min":
+            self.fan_min = int(value)
         elif key == "grace":
             self.follow_grace = int(value)
         elif key == "hint_cd":
@@ -746,7 +764,8 @@ class GuessGame(BaseGame):
 
     def get_options(self):
         return {"pause": self.pause_sec, "round_min": self.round_sec // 60,
-                "follow": int(self.follow_required), "grace": int(self.follow_grace),
+                "follow": 2 if self.fans_only else int(self.follow_required), "grace": int(self.follow_grace),
+                "fan_min": self.fan_min,
                 "level": self.level, "hint_cd": self.hint_cd,
                 "chroma": int(self.chroma), "chroma_top": self.chroma_top, "frame": self.frame, "chat_zone": self.chat_zone,
                 "row_anim": self.row_anim}
@@ -811,6 +830,9 @@ class GuessGame(BaseGame):
         elif self.phase == COUNTDOWN and now >= self.phase_until:
             self._start_playing(now)
         elif self.phase == PLAYING:
+            while self.flips and now >= self.flips[0]:   # a row goes back to its first namer: re-render
+                self.flips.popleft()
+                self.dirty = True
             for p in list(self.players.values()):
                 if p.pending_until and now >= p.pending_until:
                     p.pending_until, p.dq = 0.0, True
@@ -919,10 +941,12 @@ class GuessGame(BaseGame):
     # ------------------------------------------------------------------ public state
     def _row(self, g):
         temp = temperature(g["rank"])
-        p = self.players.get(g.get("last_id"))
+        # who named it last shows for LAST_NAMER_SEC, then the one who named it first again
+        last = bool(g.get("last")) and g["last"] != g["name"] and time.time() - g.get("t", 0) < LAST_NAMER_SEC
+        p = self.players.get(g.get("last_id") if last else (g.get("ids") or [None])[0])
         return {"word": g["word"].upper(), "rank": g["rank"], "temp": temp, "tempKey": temp_key(temp),
-                "count": g["count"], "name": g.get("last") or g["name"], "first": g["name"],
-                "avatar": g.get("last_avatar", g["avatar"]),
+                "count": g["count"], "name": g["last"] if last else g["name"], "first": g["name"],
+                "avatar": g.get("last_avatar", g["avatar"]) if last else g["avatar"],
                 "pendingUntil": p.pending_until if p and p.pending_until else 0}
 
     def call_host(self, viewer, now=None):

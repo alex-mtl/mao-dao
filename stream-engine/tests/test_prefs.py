@@ -355,3 +355,38 @@ class NoRepeatsTest(unittest.TestCase):
         self.assertEqual(len(g.used[g.lang]), 1)
         h2 = Hub(h.store, username="host")                                    # a restart keeps the list
         self.assertIn(g.secret, h2.games["guess"].used[g.lang])
+
+
+class FansAndRowsTest(unittest.TestCase):
+    def game(self):
+        h = Hub(JsonStore(tempfile.mkdtemp()), username="host")
+        h.set_active("guess")
+        g = h.game
+        g.tick(time.time()); g.tick(time.time() + 60)
+        return h, g
+
+    def test_fans_only_from_a_level(self):
+        h, g = self.game()
+        h.set_options("guess", {"follow": 2, "fan_min": 10})
+        self.assertEqual((g.get_options()["follow"], g.get_options()["fan_min"]), (2, 10))
+        w = lambda k: g.sem.words[int(g.order[k])]
+        g.on_comment(Viewer("a", "A", "", 1, 0), w(5))                        # not in the team
+        g.on_comment(Viewer("b", "B", "", 1, 7), w(6))                        # in the team, level too low
+        g.on_comment(Viewer("c", "C", "", 1, 12), w(7))                       # level 12: plays
+        g.on_comment(Viewer("host", "Host", "", 0, 0), w(8))                  # the host always plays
+        self.assertEqual(sorted(g.players), ["c", "host"])
+        self.assertTrue(any(e["type"] == "fans_only" for e in g.events))
+
+    def test_a_row_shows_its_last_namer_for_a_while(self):
+        from app.games.guess import game as gm
+        h, g = self.game()
+        word = g.sem.words[int(g.order[30])]
+        g.on_comment(Viewer("a", "Ann", "", 1), word)
+        g.on_comment(Viewer("b", "Bob", "", 1), word)
+        row = lambda: next(r for r in g.snapshot()["bestGuesses"] if r["word"] == word.upper())
+        self.assertEqual(row()["name"], "Bob")                                 # the last one, for a while
+        g.guesses[word]["t"] -= gm.LAST_NAMER_SEC + 1
+        self.assertEqual(row()["name"], "Ann")                                 # then the first one again
+        g.dirty = False
+        g.tick(time.time() + gm.LAST_NAMER_SEC + 1)
+        self.assertTrue(g.dirty)                                              # pages get it re-rendered

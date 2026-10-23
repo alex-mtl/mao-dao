@@ -308,4 +308,7 @@ return [
     'host_bot_note' => 'Open it on your phone in Telegram. One-time link, valid 10 minutes. Don’t show it on stream!',
     'host_bot_not_running' => 'Start the game first (Start), then press again.',
     'host_bot_error' => 'The bot is unavailable, try later.',
+    'opt_follow_2' => 'Team only',
+    'opt_fan_min' => 'Team from level',
+    'opt_fan_min_v' => ':n+',
 ];
