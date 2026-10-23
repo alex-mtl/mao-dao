@@ -484,9 +484,11 @@
   let promos = [];
   const promoEl = el('div', 'giftpromo');
   function promoSeries() {
-    const start = Date.now(), items = Toasts.show('promo') ? promos.slice() : [];
-    items.forEach((p, i) => setTimeout(() => showPromo(p), i * (PROMO_SHOW + PROMO_GAP)));
-    const end = start + items.length * (PROMO_SHOW + PROMO_GAP);
+    const start = Date.now(), n = Toasts.show('promo') ? promos.length : 0;
+    for (let i = 0; i < n; i++) {                       // each step takes the list as it is now: a change on the
+      setTimeout(() => { if (promos[i] && Toasts.show('promo')) showPromo(promos[i]); }, i * (PROMO_SHOW + PROMO_GAP));
+    }                                                    // room page shows up even in the middle of a series
+    const end = start + n * (PROMO_SHOW + PROMO_GAP);
     setTimeout(promoSeries, Math.max(start + PROMO_EVERY, end + 10000) - Date.now());   // a long series: never overlaps
   }
   function showPromo(p) {
