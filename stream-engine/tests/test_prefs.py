@@ -314,3 +314,16 @@ class MonitorTest(unittest.TestCase):
         self.assertEqual(g.round_id, 2)
         self.assertIsNone(g.setter)                                          # the host's word: nobody to name
         self.assertEqual(g.secret, g.sem.words[200])
+
+    def test_a_viewers_word_added_by_the_host(self):
+        h, g = self.game()
+        g.control("finish", {})
+        word = g.sem.words[300]
+        self.assertTrue(g.control("queue_add", {"word": word, "tiktok_id": "Innusya", "name": "Иннуся"}))
+        q = g.monitor()["plan"]["queue"][0]
+        self.assertEqual((q["name"], q["host"], q["manual"]), ("Иннуся", False, True))
+        g.phase = "finished"; g.tick(time.time())
+        self.assertEqual((g.secret, g.setter["name"], g.setter["id"]), (word, "Иннуся", "innusya"))
+        g.tick(time.time() + 60)
+        g.on_comment(Viewer("innusya", "Иннуся", "", 1), word)               # her own word: she can't guess it
+        self.assertEqual(g.phase, "playing")

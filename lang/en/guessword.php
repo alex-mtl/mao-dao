@@ -288,7 +288,7 @@ return [
     'mon_add_last' => 'at the end',
     'mon_add_first' => 'next',
     'mon_add' => 'Add',
-    'mon_queue_note' => 'Viewers’ words come from the bot. Your word is the game’s own — everybody can guess it.',
+    'mon_queue_note' => 'Viewers’ words come from the bot. Your word is the game’s own — everybody can guess it. If a player sent you the word (e.g. in a DM), pick them as its author: the word counts as theirs and they can’t guess it.',
     'mon_next_round' => 'Next round',
     'mon_lang' => 'Language',
     'mon_break' => 'Break (the game pauses)',
@@ -298,4 +298,6 @@ return [
     'mon_pending' => 'Pending',
     'mon_credits' => 'Hints on account',
     'mon_boosts' => 'Boost till the stream ends',
+    'mon_q_viewer_host' => 'from :name (added by you)',
+    'mon_add_who' => 'whose word — optional',
 ];

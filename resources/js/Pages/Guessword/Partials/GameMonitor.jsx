@@ -1,6 +1,6 @@
 import { useLaravelReactI18n } from 'laravel-react-i18n';
 import { useCallback, useEffect, useState } from 'react';
-import { Avatar } from './ViewerPicker';
+import ViewerPicker, { Avatar } from './ViewerPicker';
 
 const clock = (s) => Math.floor(Math.max(0, s) / 60) + ':' + String(Math.round(Math.max(0, s)) % 60).padStart(2, '0');
 const hhmm = (t) => (t ? new Date(t * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '');
@@ -118,7 +118,7 @@ export default function GameMonitor({ s }) {
             <div className="p-4">
                 {tab === 'now' && <Now c={c} left={left} run={run} control={control} t={t} />}
                 {tab === 'past' && <Past past={past} t={t} />}
-                {tab === 'plan' && <Plan plan={plan} round={c.round} control={control} t={t} />}
+                {tab === 'plan' && <Plan plan={plan} round={c.round} control={control} call={s.call} t={t} />}
             </div>
 
             {msg && (
@@ -287,10 +287,16 @@ function Past({ past, t }) {
     );
 }
 
-function Plan({ plan, round, control, t }) {
+function Plan({ plan, round, control, call, t }) {
     const [word, setWord] = useState('');
     const [first, setFirst] = useState(false);
-    const add = () => { if (word.trim()) control('queue_add', { word: word.trim(), first }).then((ok) => ok && setWord('')); };
+    const [who, setWho] = useState(null);            // optional: a viewer who sent the word to the host directly
+    const [viewers, setViewers] = useState([]);
+    useEffect(() => { call('viewers').then((d) => setViewers(d.viewers || [])).catch(() => {}); }, [call]);
+    const add = () => {
+        if (word.trim()) control('queue_add', { word: word.trim(), first, ...(who ? { tiktok_id: who.id, name: who.name } : {}) })
+            .then((ok) => ok && (setWord(''), setWho(null)));
+    };
     const item = 'mb-2 flex items-center gap-2.5 rounded-xl border bg-surface px-3 py-2';
     const breaks = [[0, t('guessword.mon_break_none')], [round, t('guessword.mon_break_this')], [round + 1, t('guessword.mon_break_n', { n: 2 })], [round + 2, t('guessword.mon_break_n', { n: 3 })]];
     return (
@@ -302,7 +308,7 @@ function Plan({ plan, round, control, t }) {
                         <span className="min-w-0 flex-1">
                             <b className="mr-2"><Secret word={q.word} /></b>
                             <span className={'rounded-full px-2 py-0.5 text-[11px] font-semibold ' + (q.host ? 'bg-primary-100 text-primary-800' : 'bg-warning-100 text-warning-800')}>
-                                {q.host ? t('guessword.mon_q_host') : t('guessword.mon_q_viewer', { name: q.name })}</span>
+                                {q.host ? t('guessword.mon_q_host') : t(q.manual ? 'guessword.mon_q_viewer_host' : 'guessword.mon_q_viewer', { name: q.name })}</span>
                         </span>
                         <button type="button" className={btn + ' !h-8 !px-2'} disabled={i === 0} onClick={() => control('queue_move', { id: q.id, to: i - 1 })}>↑</button>
                         <button type="button" className={btn + ' !h-8 !px-2'} disabled={i === plan.queue.length - 1} onClick={() => control('queue_move', { id: q.id, to: i + 1 })}>↓</button>
@@ -320,7 +326,10 @@ function Plan({ plan, round, control, t }) {
                 </div>
                 <div className="mt-1 flex flex-wrap gap-2">
                     <input value={word} onChange={(e) => setWord(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && add()}
-                           placeholder={t('guessword.mon_add_ph')} className="h-9 min-w-0 flex-1 rounded-lg border-warm-300 bg-surface text-sm text-ink-900" />
+                           placeholder={t('guessword.mon_add_ph')} className="h-9 min-w-0 flex-1 basis-40 rounded-lg border-warm-300 bg-surface text-sm text-ink-900" />
+                    <div className="min-w-0 flex-1 basis-44">
+                        <ViewerPicker value={who} onChange={setWho} viewers={viewers} placeholder={t('guessword.mon_add_who')} clearable />
+                    </div>
                     <select value={first ? 1 : 0} onChange={(e) => setFirst(e.target.value === '1')} className="h-9 rounded-lg border-warm-300 bg-surface py-0 text-sm text-ink-900">
                         <option value={0}>{t('guessword.mon_add_last')}</option>
                         <option value={1}>{t('guessword.mon_add_first')}</option>

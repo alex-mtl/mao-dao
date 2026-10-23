@@ -11,7 +11,7 @@ export const Avatar = ({ v, size = 'h-6 w-6' }) =>
  * Picks a viewer of the stream (the latest active first, searchable by nickname) - the streamer then does a
  * gift's action for them. viewers: [{id, name, avatar}]
  */
-export default function ViewerPicker({ value, onChange, viewers }) {
+export default function ViewerPicker({ value, onChange, viewers, placeholder, clearable }) {
     const { t } = useLaravelReactI18n();
     const [open, setOpen] = useState(false);
     const [q, setQ] = useState('');
@@ -34,7 +34,7 @@ export default function ViewerPicker({ value, onChange, viewers }) {
             <button type="button" onClick={() => setOpen(!open)}
                     className="flex h-10 w-full min-w-0 items-center gap-2 rounded-lg border border-warm-300 bg-surface px-2.5 text-left text-sm text-ink-900">
                 {value ? <><Avatar v={value} /><span className="truncate">{value.name}</span></>
-                    : <span className="truncate text-ink-500">{t('guessword.viewer_pick')}</span>}
+                    : <span className="truncate text-ink-500">{placeholder || t('guessword.viewer_pick')}</span>}
                 <span className="ml-auto text-ink-400">▾</span>
             </button>
             {open && (
@@ -42,6 +42,11 @@ export default function ViewerPicker({ value, onChange, viewers }) {
                     <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('guessword.viewer_search')}
                            className="mb-1.5 h-9 w-full rounded-lg border-warm-300 bg-surface text-sm text-ink-900" />
                     <div className="max-h-64 overflow-y-auto">
+                        {clearable && value && (
+                            <button type="button" className={row + ' text-ink-500'} onClick={() => { onChange(null); setOpen(false); setQ(''); }}>
+                                {placeholder || t('guessword.viewer_pick')}
+                            </button>
+                        )}
                         {found.map((v) => (
                             <button key={v.id} type="button" className={row} onClick={() => { onChange(v); setOpen(false); setQ(''); }}>
                                 <Avatar v={v} /><span className="truncate">{v.name}</span>

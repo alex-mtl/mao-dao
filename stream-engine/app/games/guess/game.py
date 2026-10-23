@@ -1092,14 +1092,15 @@ class GuessGame(BaseGame):
                 self.custom.remove(item)
                 self.custom.insert(max(0, min(int(params.get("to") or 0), len(self.custom))), item)
                 self.store.save(self.CUSTOM, self.custom)
-        elif cmd == "queue_add":                         # the host's own word: {word, first}
+        elif cmd == "queue_add":                         # the host's own word: {word, first, tiktok_id?, name?}
             ok, word = self.check_custom({"word": params.get("word", ""), "tiktok_id": "host"})
             if not ok:
                 return {"ok": False, "error": "not_in_dictionary"}
             if any(c["word"] == word and c["lang"] == self.lang for c in self.custom):
                 return {"ok": False, "error": "already_queued"}
-            item = {"id": "host-%x" % int(now * 1000), "word": word, "lang": self.lang, "name": "", "tiktok_id": "",
-                    "host": True}
+            who = account_id(params.get("tiktok_id"))   # a viewer's word sent to the host directly: theirs
+            item = {"id": "host-%x" % int(now * 1000), "word": word, "lang": self.lang,
+                    "name": (params.get("name") or who)[:60] if who else "", "tiktok_id": who, "host": not who, "manual": True}
             self.custom.insert(0, item) if params.get("first") else self.custom.append(item)
             self.store.save(self.CUSTOM, self.custom)
         elif cmd == "reroll":                            # another random word for the next round
@@ -1158,7 +1159,8 @@ class GuessGame(BaseGame):
         past = [{k: r.get(k) for k in ("round", "word", "setter", "winner", "reason", "stolen", "hidden", "players",
                                          "guesses", "seconds", "at", "top", "winner_words")}
                 for r in self._stream_rounds()]
-        queue = [{"id": c["id"], "word": c["word"].upper(), "name": c.get("name") or "", "host": bool(c.get("host"))}
+        queue = [{"id": c["id"], "word": c["word"].upper(), "name": c.get("name") or "", "host": bool(c.get("host")),
+                  "manual": bool(c.get("manual"))}
                  for c in self.custom if c["lang"] == self.lang]
         nxt = self.next_pick if self.next_pick and self.next_pick[:2] == (self.lang, self.level) else None
         plan = {

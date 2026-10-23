@@ -288,7 +288,7 @@ return [
     'mon_add_last' => 'al final',
     'mon_add_first' => 'la siguiente',
     'mon_add' => 'Añadir',
-    'mon_queue_note' => 'Las palabras de los espectadores llegan del bot. Tu palabra es del juego: todos pueden adivinarla.',
+    'mon_queue_note' => 'Las palabras de los espectadores llegan del bot. Tu palabra es del juego: todos pueden adivinarla. Si un jugador te mandó la palabra (p. ej. por privado), elígelo como autor: la palabra cuenta como suya y no podrá adivinarla.',
     'mon_next_round' => 'Siguiente ronda',
     'mon_lang' => 'Idioma',
     'mon_break' => 'Descanso (el juego se pausa)',
@@ -298,4 +298,6 @@ return [
     'mon_pending' => 'Pendiente',
     'mon_credits' => 'Pistas en reserva',
     'mon_boosts' => 'Impulso hasta el fin del directo',
+    'mon_q_viewer_host' => 'de :name (añadida por ti)',
+    'mon_add_who' => 'de quién es — opcional',
 ];

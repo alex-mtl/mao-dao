@@ -288,7 +288,7 @@ return [
     'mon_add_last' => 'en fin de file',
     'mon_add_first' => 'au suivant',
     'mon_add' => 'Ajouter',
-    'mon_queue_note' => 'Les mots des spectateurs viennent du bot. Ton mot est celui du jeu — tout le monde peut le deviner.',
+    'mon_queue_note' => 'Les mots des spectateurs viennent du bot. Ton mot est celui du jeu — tout le monde peut le deviner. Si un joueur t’a envoyé le mot (ex. en message privé), choisis-le comme auteur : le mot compte comme le sien et il ne peut pas le deviner.',
     'mon_next_round' => 'Manche suivante',
     'mon_lang' => 'Langue',
     'mon_break' => 'Pause (le jeu s’arrête)',
@@ -298,4 +298,6 @@ return [
     'mon_pending' => 'En attente',
     'mon_credits' => 'Indices en réserve',
     'mon_boosts' => 'Boost jusqu’à la fin du live',
+    'mon_q_viewer_host' => 'de :name (ajouté par toi)',
+    'mon_add_who' => 'mot de qui — facultatif',
 ];
