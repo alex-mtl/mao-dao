@@ -1,4 +1,5 @@
 import { useLaravelReactI18n } from 'laravel-react-i18n';
+import GiftPicker from './GiftPicker';
 import { Switch } from './SettingsPanel';
 
 // toast / voice line ids of each mode (the engine's room_prefs.TOASTS); greet / balloon / plane are on every page
@@ -128,21 +129,8 @@ export function GiftsTab({ s, mode }) {
                         <tr key={a} className="border-t border-warm-100">
                             <td className="w-[46%] py-2.5 pr-3 text-sm font-medium text-ink-900">{t('guessword.act_' + a)}</td>
                             <td className="py-2.5">
-                                <select
-                                    className="h-9 w-full max-w-xs rounded-lg border-warm-300 bg-surface py-0 text-sm text-ink-900"
-                                    value={rule(a)}
-                                    onChange={(e) => s.set('gifts', a, e.target.value)}
-                                >
-                                    <option value="">{t('guessword.gift_none')}</option>
-                                    <option value="any">{t('guessword.gift_any')}</option>
-                                    {gifts.min.map((n) => <option key={n} value={'min:' + n}>{t('guessword.gift_min', { n })}</option>)}
-                                    <option disabled>──────────</option>
-                                    {gifts.catalog.map((g) => (
-                                        <option key={g.name} value={'gift:' + g.name}>
-                                            {g.name}{g.coins ? ' · ' + t('guessword.gift_coins', { n: g.coins }) : ''}
-                                        </option>
-                                    ))}
-                                </select>
+                                <GiftPicker value={rule(a)} onChange={(v) => s.set('gifts', a, v)}
+                                            catalog={gifts.catalog} tiers={gifts.min} />
                             </td>
                         </tr>
                     ))}

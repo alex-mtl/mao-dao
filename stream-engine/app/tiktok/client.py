@@ -7,6 +7,7 @@ from collections import deque
 
 from .. import config
 from ..games.base import Viewer
+from ..room_prefs import catalog
 
 
 def viewer_of(user):
@@ -121,6 +122,14 @@ class TikTokConnector:
             self.offline_since = None
             print(f"[tiktok] connected to @{self.username} LIVE")
             hub.new_live(str(getattr(client, "room_id", None) or ""))
+            if catalog().needs_refresh():                 # every gift's price and image, once a day (all rooms)
+                asyncio.get_running_loop().create_task(refresh_gifts())
+
+        async def refresh_gifts():
+            try:
+                catalog().refresh_from_tiktok((await client.web.fetch_gift_list()).get("gifts"))
+            except Exception as e:
+                print(f"[gifts] TikTok gift list failed: {type(e).__name__}")
 
         def comment(event):
             v, text = viewer_of(event.user), (getattr(event, "comment", "") or "")[:200]
@@ -139,6 +148,8 @@ class TikTokConnector:
             v = viewer_of(event.user)
             name = getattr(event.gift, "name", "") or "Gift"
             coins = int(getattr(event.gift, "diamond_count", 0) or 0)       # price in coins (TikTok: "diamonds")
+            img = getattr(event.gift, "image", None)
+            image = next(iter(getattr(img, "m_urls", None) or getattr(img, "url_list", None) or []), "")
             count = int(getattr(event, "repeat_count", 1) or 1)
             streaking = bool(event.streaking)
             # the receiver: the host, or someone else on the stream (a guest / co-host in a multi-guest live)
@@ -159,7 +170,7 @@ class TikTokConnector:
             if part > 0:
                 st["sent"] = count
                 print(f"[gift] {v.name}: {name} x{part}" + (" (combo)" if not first else "") + (f" -> @{to}" if to else ""))
-                hub.gift(v, name, part, to=to, repeat=not first, coins=coins)
+                hub.gift(v, name, part, to=to, repeat=not first, coins=coins, image=image)
             if streaking:                         # forget the combo if its end never arrives
                 st["timer"] = asyncio.get_running_loop().call_later(10, streaks.pop, key, None)
             else:

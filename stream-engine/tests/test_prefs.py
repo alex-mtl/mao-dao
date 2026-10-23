@@ -103,19 +103,27 @@ class ToastsTest(unittest.TestCase):
 
 
 class GiftCatalogTest(unittest.TestCase):
-    def test_new_gifts_and_prices_are_kept(self):
+    def test_tiktok_list_and_popularity(self):
+        import json
         path = tempfile.mkdtemp() + "/gifts.json"
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump({"Rose": 1, "Eye for an Eye": 0}, f)                  # an old file: {name: coins}
         c = GiftCatalog(path)
-        c.record("Space Dog", 999)
-        c.record("Galaxy", 1000)
+        self.assertTrue(c.needs_refresh())
+        c.refresh_from_tiktok([{"name": "Rose", "diamond_count": 1, "image": {"url_list": ["https://x/rose.png"]}},
+                               {"name": "Panther", "diamond_count": 10, "image": {"url_list": ["https://x/p.png"]}},
+                               {"name": "Lion", "diamond_count": 29999, "image": {}}])
+        self.assertFalse(c.needs_refresh())
+        c.record("Panther", 10); c.record("Panther", 10); c.record("Rose", 1)
+        c.save()                                                              # (the hub's saver: once a minute)
         c2 = GiftCatalog(path)
-        names = {g["name"]: g["coins"] for g in c2.list()}
-        self.assertEqual((names["Space Dog"], names["Galaxy"], names["Rose"]), (999, 1000, 1))
-        self.assertEqual(c2.list()[0]["coins"], 0)              # unknown prices first, then cheapest
-
-
-if __name__ == "__main__":
-    unittest.main()
+        names = [g["name"] for g in c2.list()]
+        self.assertEqual(names[:2], ["Panther", "Rose"])                       # sent most often first
+        self.assertEqual({g["name"]: g["image"] for g in c2.list()}["Panther"], "https://x/p.png")
+        self.assertEqual(names[-1], "Lion")                                        # never sent: by price
+        self.assertIn("Eye for an Eye", names)                                     # the old file's gifts stay
+        rose = next(g for g in c2.list() if g["name"] == "Rose")
+        self.assertEqual((rose["ru"], rose["theme"]), ("Роза", "flower"))       # Russian names and themes
 
 
 class HostReportsTest(unittest.TestCase):

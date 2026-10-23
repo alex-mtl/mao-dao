@@ -179,14 +179,14 @@ class Hub:
             self._feed(type="join", name=v.name, avatar=v.avatar)
         self.game.on_join(v)
 
-    def gift(self, v: Viewer, gift, count, to="", repeat=False, coins=0):
+    def gift(self, v: Viewer, gift, count, to="", repeat=False, coins=0, image=""):
         """A gift on the stream. Only gifts to the host count in the game (hints); a gift to a guest
         or co-host on the same live is just shown. repeat: more gifts of a combo already announced;
         coins: the gift's price (TikTok's diamond count) for the "from N coins" rules."""
         if self.closed:                               # shutting down: nothing changes any more
             return
         self._seen(v)
-        catalog().record(gift, coins)
+        catalog().record(gift, coins, image)
         if not repeat:
             self._feed(type="gift", name=v.name, avatar=v.avatar, gift=gift, count=count, to=to)
         self._journal_gift(v, gift, count, to)
@@ -282,6 +282,7 @@ class Hub:
                     print(f"[hub] save error ({g.name}):", e)
             self.balloons.save()
             self.save_session()
+            catalog().flush()
 
     async def broadcaster(self):
         """Push the active game's state + new events to websocket clients (<=10/s)."""

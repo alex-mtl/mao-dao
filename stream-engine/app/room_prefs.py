@@ -98,44 +98,107 @@ class GiftRules:
         return {action for action, rule in self._v.items() if rule == "any"}
 
 
+def _load_ru():
+    """data/gifts_ru.tsv: English name -> (Russian name, theme) - TikTok gives neither (hand-made list)"""
+    out = {}
+    try:
+        with open(os.path.join(os.path.dirname(__file__), "data", "gifts_ru.tsv"), encoding="utf-8") as f:
+            for line in f:
+                parts = line.rstrip("\n").split("\t")
+                if len(parts) == 3 and parts[0].strip():
+                    out[parts[0].strip()] = (parts[1], parts[2])
+    except OSError:
+        pass
+    return out
+
+
+RU = _load_ru()
+
+
 class GiftCatalog:
-    """Gifts seen on the platform's streams, shared by all rooms: {name: coins}. Starts from the gifts
-    known before (0 = price not seen yet: TikTok sends it with the first such gift); a gift is saved again
-    only when it's new or its price changed."""
-    KNOWN = {"Rose": 1, "TikTok": 1, "GG": 1, "Heart Me": 1, "Ice Cream Cone": 1, "Finger Heart": 5,
-             "Doughnut": 30, "Cake Slice": 0, "Chilli pepper": 0, "Mirwas Beat": 0, "Popular Vote": 0,
-             "Perfume": 0, "Eye for an Eye": 0, "Encore Ticket": 0, "Journey Pass": 0, "Freestyle": 0,
-             "Hand Hearts": 0, "Confetti": 0, "Corgi": 0, "Galaxy": 0, "Lion": 0, "Universe": 0}
+    """Every TikTok gift, shared by all rooms: {name: {"coins", "image", "seen", "audio", "combo"}} - the full list comes from
+    TikTok once a day (refresh_from_tiktok), "seen" counts the gifts sent on the platform's streams (the most
+    popular go first in the room page's selectors). Saved when something new comes, the counts at most once a
+    minute."""
+    REFRESH_SEC = 24 * 3600
+    SAVE_EVERY = 60
 
     def __init__(self, path=None):
         self.path = path or os.path.join(config.DATA_DIR, "gifts_seen.json")
-        self.gifts = dict(self.KNOWN)
+        self.gifts = {}
+        self.refreshed_at = 0.0
         try:
             with open(self.path, encoding="utf-8") as f:
-                self.gifts.update(json.load(f))
+                d = json.load(f)
+            self.refreshed_at = float(d.pop("_refreshed_at", 0) or 0) if isinstance(d, dict) else 0.0
+            for name, v in (d or {}).items():                # old files: {name: coins}
+                self.gifts[name] = v if isinstance(v, dict) else {"coins": int(v or 0), "image": "", "seen": 0}
         except (OSError, ValueError):
             pass
         self.saved_at = 0.0
+        self.dirty = False
 
-    def record(self, name, coins):
+    def _entry(self, name):
+        return self.gifts.setdefault(name, {"coins": 0, "image": "", "seen": 0})
+
+    def record(self, name, coins, image=""):
+        """a gift sent on a stream"""
         if not name:
             return
-        coins = int(coins or 0)
-        if name in self.gifts and (not coins or self.gifts[name] == coins):
-            return
-        self.gifts[name] = coins or self.gifts.get(name, 0)
+        g = self._entry(name)
+        new = not g["seen"] and not g["coins"]
+        g["seen"] = g.get("seen", 0) + 1
+        if coins and g["coins"] != int(coins):
+            g["coins"], new = int(coins), True
+        if image and not g.get("image"):
+            g["image"], new = image, True
+        self.dirty = True
+        if new or time.time() - self.saved_at > self.SAVE_EVERY:
+            self.save()
+
+    def flush(self):
+        """the counts of gifts sent, at most once a minute (the hub's saver calls it)"""
+        if self.dirty and time.time() - self.saved_at > self.SAVE_EVERY:
+            self.save()
+
+    def needs_refresh(self):
+        return time.time() - self.refreshed_at > self.REFRESH_SEC
+
+    def refresh_from_tiktok(self, gifts):
+        """TikTok's gift list ([{name, diamond_count, image: {url_list}}]): prices and images of every gift"""
+        n = 0
+        for t in gifts or []:
+            name = (t.get("name") or "").strip()
+            if not name:
+                continue
+            g = self._entry(name)
+            g["coins"] = int(t.get("diamond_count") or g["coins"] or 0)
+            urls = (t.get("image") or {}).get("url_list") or []
+            if urls:
+                g["image"] = urls[0]
+            g["audio"] = (t.get("tracker_params") or {}).get("gift_property") == "audio_gift"   # plays a sound
+            g["combo"] = bool(t.get("combo"))                                                    # sent in series
+            n += 1
+        self.refreshed_at = time.time()
+        self.save()
+        print(f"[gifts] catalog from TikTok: {n} gifts")
+
+    def save(self):
         try:
             tmp = self.path + ".tmp"
             with open(tmp, "w", encoding="utf-8") as f:
-                json.dump(self.gifts, f, ensure_ascii=False, sort_keys=True)
+                json.dump(dict(self.gifts, _refreshed_at=self.refreshed_at), f, ensure_ascii=False, sort_keys=True)
             os.replace(tmp, self.path)
-            self.saved_at = time.time()
+            self.saved_at, self.dirty = time.time(), False
         except OSError as e:
             print(f"[gifts] catalog not saved: {e}")
 
     def list(self):
-        """[{name, coins}] cheapest first."""
-        return [{"name": n, "coins": c} for n, c in sorted(self.gifts.items(), key=lambda kv: (kv[1], kv[0].lower()))]
+        """[{name, coins, image, seen}]: sent on our streams (most often first), then the rest by price"""
+        rows = sorted(self.gifts.items(), key=lambda kv: (-kv[1].get("seen", 0), kv[1]["coins"], kv[0].lower()))
+        return [{"name": n, "coins": g["coins"], "image": g.get("image", ""), "seen": g.get("seen", 0),
+                 "ru": RU.get(n.strip(), ("", ""))[0], "theme": RU.get(n.strip(), ("", "other"))[1] or "other",
+                 "audio": bool(g.get("audio")), "combo": bool(g.get("combo"))} for n, g in rows]
 
 
 CATALOG = None

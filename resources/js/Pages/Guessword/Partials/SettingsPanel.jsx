@@ -1,16 +1,17 @@
 import { useLaravelReactI18n } from 'laravel-react-i18n';
 import { useState } from 'react';
+import GiftCatalog from './GiftCatalog';
 import { GiftsTab, ToastsTab } from './ToastsAndGifts';
 
 // the panel's modes (engine game names) and the sections of each mode
 export const MODES = ['battle', 'guess', 'streamer'];
 const SECTIONS = {
-    battle: ['gifts', 'toasts', 'likes'],
-    guess: ['game', 'frame', 'gifts', 'toasts', 'likes'],
-    streamer: ['frame', 'gifts', 'toasts', 'likes'],
+    battle: ['gifts', 'toasts', 'likes', 'catalog'],
+    guess: ['game', 'frame', 'gifts', 'toasts', 'likes', 'catalog'],
+    streamer: ['frame', 'gifts', 'toasts', 'likes', 'catalog'],
 };
 const TAB_KEY = { game: 'guessword.tab_game', frame: 'guessword.tab_frame', gifts: 'guessword.tab_gifts',
-                  toasts: 'guessword.tab_toasts', likes: 'guessword.tab_likes' };
+                  toasts: 'guessword.tab_toasts', likes: 'guessword.tab_likes', catalog: 'guessword.tab_catalog' };
 // like thresholds the streamer picks from (every N likes of one viewer); 0 = off
 const BALLOON_STEPS = [100, 500, 1000, 2000, 5000, 10000];
 const PLANE_STEPS = [1000, 5000, 10000, 20000, 50000, 100000];
@@ -214,6 +215,7 @@ export default function SettingsPanel({ s, mode, setMode, footer }) {
 
                 {!s.failed && s.info && section === 'toasts' && <ToastsTab s={s} mode={mode} />}
                 {!s.failed && s.info && section === 'gifts' && <GiftsTab s={s} mode={mode} />}
+                {!s.failed && s.info && section === 'catalog' && <GiftCatalog catalog={s.info.gifts?.catalog || []} />}
 
                 {!s.failed && s.info && section === 'likes' && (
                     <>
