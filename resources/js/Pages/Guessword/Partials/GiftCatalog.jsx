@@ -1,7 +1,7 @@
 import { useLaravelReactI18n } from 'laravel-react-i18n';
 import { useMemo, useState } from 'react';
 
-// themes of the hand-made list (stream-engine/app/data/gifts_ru.tsv), in the order of the chips
+// themes of the hand-made list (stream-engine/app/gifts_ru.tsv), in the order of the chips
 export const THEMES = ['love', 'flower', 'animal', 'food', 'music', 'party', 'halloween', 'magic', 'space', 'sport',
                        'sea', 'transport', 'wear', 'treasure', 'tiktok', 'other'];
 const PRICES = [[0, Infinity], [1, 1], [2, 9], [10, 99], [100, 999], [1000, 9999], [10000, Infinity]];

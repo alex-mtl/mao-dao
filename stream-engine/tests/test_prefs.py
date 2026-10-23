@@ -157,3 +157,21 @@ class VolumesTest(unittest.TestCase):
         h.set_options("global", {"fx_volume": 35})                                 # steps of 10 only
         msg = h.message("guess")
         self.assertEqual((msg["voiceVolume"], msg["fxVolume"]), (60, 30))
+
+
+class GiftBackfillTest(unittest.TestCase):
+    def test_sent_counts_from_the_journals(self):
+        import json
+        import os
+        root = tempfile.mkdtemp()
+        os.makedirs(root + "/rooms/gw1")
+        with open(root + "/rooms/gw1/gifts.jsonl", "w", encoding="utf-8") as f:
+            for g, n, to in (("Eye for an Eye", 2, None), ("Eye for an Eye", 1, None), ("Rose", 5, "someguest")):
+                f.write(json.dumps({"gift": g, "count": n, "to": to}) + "\n")
+        c = GiftCatalog(root + "/gifts_seen.json")
+        seen = {g["name"]: g["seen"] for g in c.list()}
+        self.assertEqual(seen.get("Eye for an Eye"), 3)
+        self.assertNotIn("Rose", seen)                                   # a gift to a guest doesn't count
+        c.record("Eye for an Eye", 1)
+        c.save()
+        self.assertEqual({g["name"]: g["seen"] for g in GiftCatalog(root + "/gifts_seen.json").list()}["Eye for an Eye"], 4)   # once

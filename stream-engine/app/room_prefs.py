@@ -99,10 +99,10 @@ class GiftRules:
 
 
 def _load_ru():
-    """data/gifts_ru.tsv: English name -> (Russian name, theme) - TikTok gives neither (hand-made list)"""
+    """gifts_ru.tsv: English name -> (Russian name, theme) - TikTok gives neither (hand-made list)"""
     out = {}
     try:
-        with open(os.path.join(os.path.dirname(__file__), "data", "gifts_ru.tsv"), encoding="utf-8") as f:
+        with open(os.path.join(os.path.dirname(__file__), "gifts_ru.tsv"), encoding="utf-8") as f:
             for line in f:
                 parts = line.rstrip("\n").split("\t")
                 if len(parts) == 3 and parts[0].strip():
@@ -127,16 +127,43 @@ class GiftCatalog:
         self.path = path or os.path.join(config.DATA_DIR, "gifts_seen.json")
         self.gifts = {}
         self.refreshed_at = 0.0
+        self.backfilled = False
         try:
             with open(self.path, encoding="utf-8") as f:
                 d = json.load(f)
             self.refreshed_at = float(d.pop("_refreshed_at", 0) or 0) if isinstance(d, dict) else 0.0
+            self.backfilled = bool(d.pop("_backfilled", False))
             for name, v in (d or {}).items():                # old files: {name: coins}
                 self.gifts[name] = v if isinstance(v, dict) else {"coins": int(v or 0), "image": "", "seen": 0}
         except (OSError, ValueError):
             pass
         self.saved_at = 0.0
         self.dirty = False
+        if not getattr(self, "backfilled", False):
+            self.backfill(os.path.join(os.path.dirname(self.path), "rooms"))
+
+    def backfill(self, rooms_dir):
+        """once: "seen" from every room's gift journal (rooms/*/gifts*.jsonl), the gifts sent before the counter"""
+        import glob
+        counts = {}
+        for path in glob.glob(os.path.join(rooms_dir, "*", "gifts*.jsonl")):
+            try:
+                with open(path, encoding="utf-8") as f:
+                    for line in f:
+                        try:
+                            g = json.loads(line)
+                        except ValueError:
+                            continue
+                        if g.get("gift") and not g.get("to"):
+                            counts[g["gift"]] = counts.get(g["gift"], 0) + int(g.get("count") or 1)
+            except OSError:
+                continue
+        for name, n in counts.items():
+            e = self._entry(name)
+            e["seen"] = max(e.get("seen", 0), n)
+        self.backfilled = True
+        self.save()
+        print(f"[gifts] catalog: sent counts from the journals ({len(counts)} gifts)")
 
     def _entry(self, name):
         return self.gifts.setdefault(name, {"coins": 0, "image": "", "seen": 0})
@@ -187,7 +214,8 @@ class GiftCatalog:
         try:
             tmp = self.path + ".tmp"
             with open(tmp, "w", encoding="utf-8") as f:
-                json.dump(dict(self.gifts, _refreshed_at=self.refreshed_at), f, ensure_ascii=False, sort_keys=True)
+                json.dump(dict(self.gifts, _refreshed_at=self.refreshed_at, _backfilled=getattr(self, "backfilled", False)),
+                          f, ensure_ascii=False, sort_keys=True)
             os.replace(tmp, self.path)
             self.saved_at, self.dirty = time.time(), False
         except OSError as e:
