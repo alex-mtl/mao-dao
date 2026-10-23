@@ -19,7 +19,7 @@ for lang in ("en", "ru", "fr", "es"):
         for f in glob.glob("build/numpy-pkg/**", recursive=True):
             if os.path.isfile(f) and "__pycache__" not in f:
                 z.write(f, os.path.relpath(f, "build/numpy-pkg"))
-        for d in (lang, lang + "-easy"):
+        for d in (lang, lang + "-easy", lang + "-hard"):
             for name in ("vocab.txt", "embeddings.npy"):
                 p = f"build/assets/{d}/{name}"
                 if os.path.exists(p):

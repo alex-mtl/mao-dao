@@ -72,6 +72,7 @@ return [
     'opt_level' => 'Dictionnaire',
     'opt_level_1' => 'Facile (tous les mots)',
     'opt_level_2' => 'Normal (noms)',
+    'opt_level_3' => 'Difficile (russe seulement)',
     'opt_hint_cd' => 'Pause entre les indices d’un spectateur',
     'opt_follow' => 'Qui peut jouer',
     'opt_follow_1' => 'Abonnés seulement',

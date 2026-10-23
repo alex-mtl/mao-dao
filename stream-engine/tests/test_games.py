@@ -186,6 +186,18 @@ class RussianTest(unittest.TestCase):
         self.assertEqual(g.sem.level, "easy")
         self.assertIn("быстро", g.sem.index)                       # easy: any part of speech
         self.assertEqual(g.snapshot()["languages"], ["en", "es", "fr", "ru"])
+        g.set_option("level", 3)                                   # hard: normal + OpenCorpora nouns
+        g.tick(max(time.time(), g.phase_until) + 0.1)              # countdown -> playing
+        g.on_comment(Viewer("ivan", "Иван", "", 1), g.secret)
+        for _ in range(10):
+            if g.phase == guess_mod.COUNTDOWN:
+                break
+            g.tick(max(time.time(), g.phase_until) + 0.1)
+        self.assertEqual(g.sem.level, "hard")
+        self.assertIn("стамеска", g.sem.index)
+        self.assertIn("яхромчанка", g.sem.index)
+        self.assertNotIn("яхромчанка", normal.index)
+        self.assertEqual(g.dict_key("en", 3), "en")                # no hard dictionary: the normal one
 
     def test_switch_language_starts_new_round(self):
         g = GuessGame(JsonStore(tempfile.mkdtemp()))

@@ -49,8 +49,8 @@ _INDEXES = {}                                    # assets dir -> indexes: one co
 
 
 def load_indexes(assets_dir):
-    """{key: SemanticIndex} for every folder in assets: "en", "ru" (normal level) and
-    "en-easy", "ru-easy" (easy level, the original dictionary). Loaded once per process."""
+    """{key: SemanticIndex} for every folder in assets: "en", "ru" (normal level),
+    "en-easy", "ru-easy" (easy level, the original dictionary) and "ru-hard". Loaded once per process."""
     if assets_dir not in _INDEXES:
         _INDEXES[assets_dir] = _load_indexes(assets_dir)
     return _INDEXES[assets_dir]
@@ -98,7 +98,7 @@ class GuessGame(BaseGame):
                "round_min": [10, 20, 30],          # round length, minutes
                "follow": [1, 0],                   # only followers can play / win
                "grace": [15, 30, 60],              # seconds a non-follower gets to follow
-               "level": [1, 2],                    # dictionary: 1 easy (any word), 2 normal (nouns)
+               "level": [1, 2, 3],                 # dictionary: 1 easy (any word), 2 normal (nouns), 3 hard (ru only)
                "hint_cd": [5, 10, 15, 20],         # seconds between two hints of the same viewer
                "chroma": [0, 1],                   # TikTok chroma key: green top for the streamer's camera
                "chroma_top": [25, 30, 32, 33, 35, 40, 45, 50],   # height of that green zone, % of the frame
@@ -759,8 +759,7 @@ class GuessGame(BaseGame):
     @property
     def sem(self):
         lang = self.round_lang if self.round_lang in self.sems else self.lang
-        level = self.round_level                     # = self.level from the next countdown on
-        return (level == 1 and self.sems.get(lang + "-easy")) or self.sems.get(lang)             or self.sems.get(lang + "-easy")
+        return self.sems.get(self.dict_key(lang, self.round_level))    # round_level = self.level from the next countdown on
 
     def set_lang(self, lang):
         """Switch the word language: the current round is dropped and a new one starts."""
@@ -941,10 +940,13 @@ class GuessGame(BaseGame):
 
     # ------------------------------------------------------------------ next round's table (ranker Lambda)
     def dict_key(self, lang, level):
-        """name of the dictionary (assets folder) used for a language + level"""
-        easy = lang + "-easy"
+        """name of the dictionary (assets folder) used for a language + level; a language without a hard
+        dictionary (all but Russian) plays its normal one on level 3"""
+        easy, hard = lang + "-easy", lang + "-hard"
         if level == 1 and easy in self.sems:
             return easy
+        if level == 3 and hard in self.sems:
+            return hard
         return lang if lang in self.sems else easy
 
     def sem_for(self, lang, level):

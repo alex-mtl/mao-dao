@@ -18,6 +18,8 @@ RUN python build_assets.py --lang en --level easy --out /assets/en-easy
 RUN python build_assets.py --lang ru --level easy --vocab-size 50000 --out /assets/ru-easy
 RUN python build_assets.py --lang en --level normal --out /assets/en
 RUN python build_assets.py --lang ru --level normal --vocab-size 100000 --out /assets/ru
+# "hard" (Russian only) = normal + every common noun of OpenCorpora
+RUN python build_assets.py --lang ru --level hard --vocab-size 100000 --out /assets/ru-hard
 # French / Spanish come last: changes in lang_romance.py don't rebuild the dictionaries above
 COPY tools/lang_romance.py ./
 RUN python build_assets.py --lang fr --level normal --out /assets/fr

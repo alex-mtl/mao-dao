@@ -23,7 +23,7 @@ class RankerTest(unittest.TestCase):
         handler._keys.add(hashlib.sha256(b"x").hexdigest())
 
     def test_same_as_game(self):
-        for name, lang, words in [("ru", "ru", ["огурец", "кошка"]), ("ru-easy", "ru", None),
+        for name, lang, words in [("ru", "ru", ["огурец", "кошка"]), ("ru-easy", "ru", None), ("ru-hard", "ru", ["огурец", "яхромчанка"]),
                                   ("en", "en", ["ocean"]), ("en-easy", "en", None),
                                   ("fr", "fr", None), ("es", "es", None)]:
             sem = SemanticIndex("/app/assets/" + name, lang)

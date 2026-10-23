@@ -101,6 +101,28 @@ def build_ru_normal(vocab_size):
     return (vocab, aliases) + ru_pools(vocab, morph)
 
 
+def build_ru_hard(vocab_size):
+    """'Hard' level (Russian only): the normal dictionary plus every common noun of the morphology dictionary
+    (OpenCorpora) it lacks - rare professions, demonyms, terms. They have no frequency, so they go last."""
+    import pymorphy3
+    vocab, aliases, *_ = build_ru_normal(vocab_size)
+    morph = pymorphy3.MorphAnalyzer()
+    seen, added = set(vocab), set()
+    for word, tag, nf, para, idx in morph.dictionary.iter_known_words(""):
+        if idx != 0 or tag.POS != "NOUN" or RU_PROPER & set(tag.grammemes):
+            continue                              # lemmas of common nouns only
+        w = norm(word)
+        if w in seen or w in added or not RU_NOUN_RE.match(w) or bad(w):
+            continue
+        p = common_noun(morph, w)
+        if p is None or (norm(p.normal_form) != w and not plural_only(morph, w)):
+            continue                              # a form of another word (the same rule as the normal level)
+        added.add(w)
+    vocab = vocab + sorted(added)[:max(0, vocab_size - len(vocab))]
+    print(f"[vocab ru hard] {len(vocab)} nouns (+{len(added)} from OpenCorpora), {len(aliases)} aliases")
+    return (vocab, aliases) + ru_pools(vocab, morph)
+
+
 def ru_pools(vocab, morph):
     from wordfreq import zipf_frequency
     # the secret word: a common noun in the singular, any frequency or length, any topic (the owner's decision,

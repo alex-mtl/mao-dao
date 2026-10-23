@@ -5,6 +5,7 @@ Build the word assets for "Guess the Word" (once per language, in the Docker bui
     python build_assets.py --lang ru --out assets/ru   (see lang_ru.py)
     --level easy    the original dictionary: 30k most frequent lemmas of any part of speech
     --level normal  (default) nouns only, ~35-50k incl. rare animals, plants, tools, science terms
+    --level hard    Russian only: normal + every common noun of OpenCorpora (~60k)
 
 Output (--out dir):
   vocab.txt          every guessable word (lemmas), most frequent first
@@ -219,7 +220,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--lang", default="en", choices=sorted(MODELS))
     ap.add_argument("--out", default="assets/en")
-    ap.add_argument("--level", default="normal", choices=["easy", "normal"])
+    ap.add_argument("--level", default="normal", choices=["easy", "normal", "hard"])
     ap.add_argument("--vocab-size", type=int, default=0, help="default: 30000 easy, 50000 normal")
     args = ap.parse_args()
     size = args.vocab_size or (30000 if args.level == "easy" else 50000)
@@ -227,8 +228,8 @@ def main():
     t0 = time.time()
 
     if args.lang == "ru":
-        from lang_ru import build_ru, build_ru_normal
-        build = build_ru if args.level == "easy" else build_ru_normal
+        from lang_ru import build_ru, build_ru_hard, build_ru_normal
+        build = {"easy": build_ru, "hard": build_ru_hard}.get(args.level, build_ru_normal)
     elif args.lang in ("fr", "es"):                   # normal level only
         from lang_romance import build_romance
         build = lambda n: build_romance(args.lang, n)
@@ -252,7 +253,7 @@ def main():
         json.dump({"lang": args.lang, "level": args.level, "model": model_name,
                    "sources": sources + [model_name],
                    # close-word hints prefer the most frequent words (the tail is rare/odd)
-                   "hint_limit": 20000 if args.level == "normal" else 0,
+                   "hint_limit": 20000 if args.level != "easy" else 0,
                    "pools": pools, "aliases": aliases, "categories": categories},
                   f, ensure_ascii=False)
 

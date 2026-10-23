@@ -72,6 +72,7 @@ return [
     'opt_level' => 'Dictionary',
     'opt_level_1' => 'Easy (any words)',
     'opt_level_2' => 'Normal (nouns)',
+    'opt_level_3' => 'Hard (Russian only)',
     'opt_hint_cd' => 'Pause between a viewer’s hints',
     'opt_follow' => 'Who can play',
     'opt_follow_1' => 'Followers only',
