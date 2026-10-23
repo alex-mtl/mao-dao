@@ -132,7 +132,7 @@ class HostReportsTest(unittest.TestCase):
     def test_round_and_history(self):
         from app.games.guess.game import GuessGame
         g = GuessGame(JsonStore(tempfile.mkdtemp()))
-        g.tick(time.time()); g.tick(time.time() + 0.01)
+        g.tick(time.time()); g.tick(time.time() + 60)          # past the countdown
         r = lambda k: g.sem.words[int(g.order[k])]
         nina, tati = Viewer("nina", "Нина", "", 1), Viewer("tati", "Tati", "", 1)
         g.on_comment(nina, r(30)); g.on_comment(nina, r(5)); g.on_comment(tati, r(200))
