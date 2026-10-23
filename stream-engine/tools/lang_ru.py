@@ -3,23 +3,15 @@ secret-word pools of common singular nouns. Used by build_assets.py --lang ru.""
 
 import re
 
-RU_WORD_RE = re.compile(r"^[а-я]{3,15}$")
+RU_WORD_RE = re.compile(r"^[а-я]{3,22}$")
 RU_PROPER = {"Name", "Surn", "Patr", "Geox", "Orgn", "Trad", "Abbr", "Init"}
 # roots of Russian profanity: such words are neither guessable nor secret
 RU_BAD_ROOTS = ("хуй", "хуе", "хуя", "пизд", "ебл", "ебат", "ебан", "ебу", "бля", "сука", "суки",
                 "мудак", "мудил", "жоп", "говн", "дерьм", "срать", "сран", "шлюх", "пидор", "пидар",
                 "гандон", "залуп", "манда", "дроч", "ублюд", "трах", "секс", "порн")
-# fine to guess, but never chosen as the secret word on a family-friendly stream
-RU_SECRET_BLOCK = {
-    "аборт", "терроризм", "террорист", "самоубийство", "суицид", "убийство", "убийца", "геноцид",
-    "холокост", "рабство", "раб", "расизм", "рак", "опухоль", "болезнь", "смерть", "труп", "похороны",
-    "оружие", "пистолет", "винтовка", "бомба", "пуля", "наркотик", "алкоголь", "сигарета",
-    "проститутка", "религия", "церковь", "мечеть", "заложник", "насилие", "пытка", "жертва",
-    "зависимость", "наркоман", "тюрьма", "заключенный", "развод", "девственница", "моча", "туалет",
-    "беременность", "презерватив", "грудь", "война", "фашизм", "нацизм", "казнь", "расстрел",
-    "сволочь", "мосгорсуд", "хаус", "реал", "дума", "киллер", "поп", "мент", "бомж",
-}
-RU_TIERS = {"easy": (4.3, 9.0), "medium": (3.8, 4.3), "hard": (3.3, 3.8)}
+# secret words by wordfreq zipf frequency; every noun is a secret word (no lower bound, any length):
+# the game picks among all of them alike, the tier only tells how common the word is
+RU_TIERS = {"easy": (4.15, 9.0), "medium": (3.8, 4.15), "hard": (3.3, 3.8), "rare": (-1.0, 3.3)}
 
 
 def norm(w):
@@ -57,7 +49,7 @@ def build_ru(vocab_size):
 
 # words of 2 letters are mostly junk (notes, letters, units); these are real nouns
 RU_SHORT = {"ад", "ас", "еж", "ил", "ум", "уж", "ус", "щи", "юг", "яд", "як"}
-RU_NOUN_RE = re.compile(r"^[а-я]{3,20}$")
+RU_NOUN_RE = re.compile(r"^[а-я]{3,22}$")
 
 
 def common_noun(morph, w):
@@ -78,7 +70,7 @@ def build_ru_normal(vocab_size):
     vocab, aliases, seen = [], {}, set()
     for raw in top_n_list("ru", 2_000_000, wordlist="large"):
         w = norm(raw)
-        if not re.match(r"^[а-я]{2,20}$", w):
+        if not re.match(r"^[а-я]{2,22}$", w):
             continue
         p = common_noun(morph, w)
         if p is None:
@@ -100,15 +92,11 @@ def build_ru_normal(vocab_size):
 
 def ru_pools(vocab, morph):
     from wordfreq import zipf_frequency
+    # every word of the dictionary may be the secret word (the owner's decision, 2026-10-23): only profanity
+    # is never picked (it isn't in the vocabulary either)
     pools = {k: [] for k in RU_TIERS}
     for w in vocab:
-        if len(w) > 12 or w in RU_SECRET_BLOCK:
-            continue
-        parses = morph.parse(w)
-        p = parses[0]
-        if p.tag.POS != "NOUN" or p.score < 0.6 or "sing" not in p.tag or "nomn" not in p.tag:
-            continue                              # common singular nouns only
-        if any(RU_PROPER & set(q.tag.grammemes) for q in parses[:3]):
+        if bad(w):
             continue
         z = zipf_frequency(w, "ru")
         for tier, (lo, hi) in RU_TIERS.items():

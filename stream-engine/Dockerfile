@@ -15,9 +15,9 @@ WORKDIR /build
 COPY tools/build_assets.py tools/lang_ru.py ./
 # "easy" level = the original dictionary (any part of speech); "normal" = nouns only, bigger
 RUN python build_assets.py --lang en --level easy --out /assets/en-easy
-RUN python build_assets.py --lang ru --level easy --out /assets/ru-easy
+RUN python build_assets.py --lang ru --level easy --vocab-size 50000 --out /assets/ru-easy
 RUN python build_assets.py --lang en --level normal --out /assets/en
-RUN python build_assets.py --lang ru --level normal --out /assets/ru
+RUN python build_assets.py --lang ru --level normal --vocab-size 100000 --out /assets/ru
 # French / Spanish come last: changes in lang_romance.py don't rebuild the dictionaries above
 COPY tools/lang_romance.py ./
 RUN python build_assets.py --lang fr --level normal --out /assets/fr

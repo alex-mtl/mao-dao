@@ -973,13 +973,16 @@ class GuessGame(BaseGame):
         return sum(1 for p in sem.pools.values() for w in p if w not in used and w in sem.index)
 
     def _pick_secret(self, sem, lang):
-        """(word, tier): a word never picked before; all of them played -> a new cycle (the list starts anew)"""
+        """(word, tier): any word never picked before, all of them alike (common and rare); all of them played ->
+        a new cycle (the list starts anew)"""
         used = self.used.setdefault(lang, set())
-        if not self._fresh_words(sem, lang):
+        fresh = [(w, t) for t, pool in sem.pools.items() for w in pool if w not in used and w in sem.index]
+        if not fresh:
             print(f"[guess] every word of the {lang} dictionary has been played ({len(used)}): a new cycle")
             used.clear()
             self.store.save(self.USED, {k: sorted(v) for k, v in self.used.items()})
-        return sem.pick_secret(self._next_tier(), used)
+            fresh = [(w, t) for t, pool in sem.pools.items() for w in pool if w in sem.index]
+        return random.choice(fresh)
 
     def _table_ready(self):
         plan = self.planned_next()
