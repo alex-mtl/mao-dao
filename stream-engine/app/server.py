@@ -205,6 +205,28 @@ def create_app(manager):
             raise HTTPException(409, "not possible now (no such viewer, or not during a round)")
         return {"ok": True}
 
+    @app.get("/r/{token}/api/monitor")
+    def monitor(token: str):
+        """the room page's monitor of the guess game: the round now, this stream's rounds, what's planned"""
+        _, _, hub = room_of(token, need_control=True)
+        g = hub.games.get("guess")
+        return dict(g.monitor(), active=hub.active) if g else {"active": hub.active}
+
+    @app.post("/r/{token}/api/control")
+    async def control(token: str, req: Request):
+        """the host's command for the guess game: {cmd, ...} - pause, extend, skip, the word queue..."""
+        _, _, hub = room_of(token, need_control=True)
+        g = hub.games.get("guess")
+        body = await req.json()
+        r = g.control(str(body.get("cmd") or ""), body) if g else False
+        if isinstance(r, dict):
+            if not r.get("ok"):
+                raise HTTPException(409, r.get("error") or "not possible")
+        elif not r:
+            raise HTTPException(409, "not possible now")
+        g.save()
+        return {"ok": True}
+
     @app.post("/r/{token}/api/active")
     async def set_active(token: str, req: Request):
         _, _, hub = room_of(token, need_control=True)

@@ -1,5 +1,6 @@
 import { useLaravelReactI18n } from 'laravel-react-i18n';
 import { useState } from 'react';
+import GameMonitor from './GameMonitor';
 import GiftCatalog from './GiftCatalog';
 import { GiftsTab, ToastsTab } from './ToastsAndGifts';
 
@@ -86,6 +87,10 @@ export default function SettingsPanel({ s, mode, setMode, footer }) {
     const { t } = useLaravelReactI18n();
     const [tab, setTab] = useState({ battle: 'gifts', guess: 'game', streamer: 'frame' });
     const section = tab[mode];
+    // the panel turns over: the settings, or the monitor of the guess game (remembered on this device)
+    const [view, setViewState] = useState(() => { try { return localStorage.getItem('gw-panel-view') || 'settings'; } catch { return 'settings'; } });
+    const setView = (v) => { setViewState(v); try { localStorage.setItem('gw-panel-view', v); } catch { /* private mode */ } };
+    const monitor = view === 'monitor' && mode === 'guess';
     const g = s.draft.guess || {};
     const gl = s.draft.global || {};
     const sec = (n) => t('guessword.sec', { n });
@@ -116,8 +121,16 @@ export default function SettingsPanel({ s, mode, setMode, footer }) {
                             </button>
                         ))}
                     </div>
+                    {mode === 'guess' && (
+                        <button type="button" onClick={() => setView(monitor ? 'settings' : 'monitor')}
+                                className="ml-auto flex h-9 items-center gap-1.5 whitespace-nowrap rounded-lg border border-warm-300 bg-surface px-3 text-sm font-semibold text-ink-800 hover:bg-warm-50">
+                            <span className={monitor ? 'text-ink-500' : 'text-ink-900'}>⚙ {t('guessword.view_settings')}</span>
+                            <span className="text-primary-500">⇄</span>
+                            <span className={monitor ? 'text-ink-900' : 'text-ink-500'}>📊 {t('guessword.view_monitor')}</span>
+                        </button>
+                    )}
                 </div>
-                <div className="flex items-center gap-1 overflow-x-auto px-3">
+                {!monitor && <div className="flex items-center gap-1 overflow-x-auto px-3">
                     {SECTIONS[mode].map((k) => (
                         <button
                             key={k}
@@ -135,10 +148,12 @@ export default function SettingsPanel({ s, mode, setMode, footer }) {
                     <span className="whitespace-nowrap text-xs text-ink-500">
                         {s.changes ? t('guessword.changes', { n: s.changes }) : t('guessword.no_changes')}
                     </span>
-                </div>
+                </div>}
             </div>
 
-            <div className="px-5 py-2">
+            {monitor && <GameMonitor s={s} />}
+
+            <div className={'px-5 py-2' + (monitor ? ' hidden' : '')}>
                 {s.failed && <p className="py-4 text-sm text-danger-700">{t('guessword.settings_offline')}</p>}
 
                 {!s.failed && s.info && mode === 'guess' && section === 'game' && (
@@ -240,7 +255,7 @@ export default function SettingsPanel({ s, mode, setMode, footer }) {
                 )}
             </div>
 
-            {footer}
+            {!monitor && footer}
         </div>
     );
 }

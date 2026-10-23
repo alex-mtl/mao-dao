@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ход игры — макет</title>
+<style>
+  :root { --bg:#f3f5f9; --card:#fbfcfe; --line:#e3e8f0; --ink:#1d2433; --muted:#5b6b86; --primary:#3cc4f2; --soft:#eef3f9;
+          --ok:#1fbf75; --warn:#f0a020; --bad:#e5484d; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.4 Inter, system-ui, sans-serif; padding: 20px; }
+  .card { max-width: 1100px; background: var(--card); border: 1px solid var(--line); border-radius: 18px; overflow: hidden; }
+  .head { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--line); }
+  .seg { display: flex; background: var(--soft); border-radius: 12px; padding: 3px; }
+  .seg span { padding: 7px 14px; border-radius: 9px; font-weight: 600; color: var(--muted); cursor: pointer; }
+  .seg span.on { background: #fff; color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+  .flip { margin-left: auto; display: flex; align-items: center; gap: 8px; border: 1px solid #cfd8e5; background: #fff; border-radius: 10px;
+          padding: 8px 12px; font-weight: 600; cursor: pointer; }
+  .flip b { color: var(--primary); }
+  .tabs { display: flex; gap: 4px; padding: 0 16px; border-bottom: 1px solid var(--line); }
+  .tabs span { padding: 12px; font-weight: 600; color: var(--muted); border-bottom: 2px solid transparent; cursor: pointer; }
+  .tabs span.on { color: var(--ink); border-bottom-color: var(--primary); }
+  .tabs .n { display: inline-block; min-width: 18px; padding: 0 5px; margin-left: 4px; border-radius: 999px; background: var(--soft); font-size: 11px; text-align: center; }
+  .pane { display: none; padding: 16px; }
+  .pane.on { display: block; }
+  .row { display: flex; gap: 14px; flex-wrap: wrap; }
+  .kpi { flex: 1 1 130px; background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; }
+  .kpi small { display: block; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .04em; font-weight: 600; }
+  .kpi b { font-size: 20px; }
+  .kpi .sub { color: var(--muted); font-size: 12px; }
+  .word { display: inline-flex; align-items: center; gap: 8px; }
+  .word .w { filter: blur(7px); transition: filter .2s; letter-spacing: .05em; }
+  .word.show .w { filter: none; }
+  .eye { border: 0; background: var(--soft); border-radius: 8px; padding: 2px 8px; cursor: pointer; font-size: 12px; }
+  .cols { display: grid; grid-template-columns: 1.3fr 1fr; gap: 14px; margin-top: 14px; }
+  .box { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; min-width: 0; }
+  .box h4 { margin: 0 0 8px; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+  table { width: 100%; border-collapse: collapse; }
+  th { text-align: left; font: 600 11px Inter, sans-serif; color: var(--muted); text-transform: uppercase; padding: 4px 6px; }
+  td { padding: 5px 6px; border-top: 1px solid #edf1f6; white-space: nowrap; }
+  td.r { text-align: right; color: var(--muted); }
+  .rk { display: inline-block; min-width: 38px; padding: 1px 6px; border-radius: 6px; color: #fff; font-weight: 700; font-size: 12px; text-align: center; }
+  .hot { background: #ff2d55; } .warm { background: #ff6a00; } .mid { background: #ffb800; } .cold { background: #8aa2c8; }
+  .av { width: 22px; height: 22px; border-radius: 50%; display: inline-grid; place-items: center; color: #fff; font-weight: 700; font-size: 11px; vertical-align: middle; margin-right: 6px; }
+  .tag { display: inline-block; padding: 1px 7px; border-radius: 999px; font-size: 11px; font-weight: 600; background: var(--soft); color: var(--muted); margin-left: 4px; }
+  .tag.g { background: #e3f8ee; color: #138a52; } .tag.o { background: #fff2dc; color: #a86400; } .tag.r { background: #fde6e7; color: #b42328; }
+  .feed div { padding: 4px 0; border-top: 1px solid #edf1f6; font-size: 13px; }
+  .feed time { color: var(--muted); font-size: 11px; margin-right: 6px; }
+  .acts { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
+  .btn { height: 36px; padding: 0 14px; border-radius: 10px; border: 1px solid #cfd8e5; background: #fff; font-weight: 600; cursor: pointer; }
+  .btn.p { background: var(--primary); color: #fff; border: 0; }
+  .btn.d { color: var(--bad); }
+  .past tr.main { cursor: pointer; }
+  .past tr.main:hover td { background: var(--soft); }
+  .past tr.more td { background: #f8fafd; white-space: normal; }
+  .chips span { display: inline-block; margin: 2px 4px 2px 0; padding: 2px 8px; border-radius: 6px; background: var(--soft); font-size: 12px; }
+  .q { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border: 1px solid var(--line); border-radius: 10px; background: #fff; margin-bottom: 8px; }
+  .q .h { cursor: grab; color: #a9b4c6; }
+  .q .num { width: 28px; color: var(--muted); font-weight: 700; }
+  .q .x { margin-left: auto; display: flex; gap: 6px; }
+  .q.next { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(60,196,242,.15); }
+  .add { display: flex; gap: 8px; margin-top: 6px; }
+  .add input, .add select { height: 36px; border: 1px solid #cfd8e5; border-radius: 10px; padding: 0 10px; font: inherit; }
+  .add input { flex: 1; min-width: 0; }
+  .add .btn, .add select { flex: none; }
+  .legend { max-width: 1100px; margin-top: 18px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+  .legend div { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; color: #33405a; line-height: 1.5; font-size: 13px; }
+  .legend h3 { margin: 0 0 6px; font-size: 14px; }
+  .legend ul { margin: 0; padding-left: 18px; }
+  @media (max-width: 800px) { .cols, .legend { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="head">
+    <div class="seg"><span>Батл</span><span class="on">Угадай слово</span><span>Анимация</span></div>
+    <button class="flip" id="flip">⚙ <span>Настройки</span> <b>⇄</b> 📊 <span>Ход игры</span></button>
+  </div>
+  <div class="tabs">
+    <span class="on" data-p="now">🔴 Текущий раунд</span>
+    <span data-p="past">Прошлые <span class="n">29</span></span>
+    <span data-p="plan">Запланированные <span class="n">3</span></span>
+  </div>
+
+  <!-- CURRENT ROUND -->
+  <div class="pane on" id="now">
+    <div class="row">
+      <div class="kpi"><small>Раунд 30 · обычный</small><b class="word" id="w"><span class="w">КРЫША</span><button class="eye">👁 показать</button></b>
+        <div class="sub">загадал: бот · словарь лёгкий</div></div>
+      <div class="kpi"><small>Осталось</small><b>13:59</b><div class="sub">из 20 мин · идёт 6:01</div></div>
+      <div class="kpi"><small>Ближе всех</small><b><span class="rk hot">16</span></b><div class="sub">Нина mdaz · «кабина»</div></div>
+      <div class="kpi"><small>Игроки / слова</small><b>11 / 184</b><div class="sub">темп: 31 слово/мин</div></div>
+      <div class="kpi"><small>Подсказки</small><b>2</b><div class="sub">Нина mdaz, Krestik · на счету: 4</div></div>
+    </div>
+    <div class="cols">
+      <div class="box">
+        <h4>Таблица раунда — топ 20</h4>
+        <table><thead><tr><th>Место</th><th>Слово</th><th>Кто</th><th>Когда</th></tr></thead><tbody id="top"></tbody></table>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:14px;min-width:0">
+        <div class="box">
+          <h4>Игроки раунда</h4>
+          <table><thead><tr><th>Игрок</th><th>Лучшее</th><th>Слов</th><th></th></tr></thead><tbody id="pl"></tbody></table>
+        </div>
+        <div class="box feed">
+          <h4>Лента раунда</h4>
+          <div><time>13:21:40</time>🎁 Нина mdaz — Eye for an Eye → 💡 подсказка «склад»</div>
+          <div><time>13:20:02</time>✈️ Варя — самолётик (Perfume ×2)</div>
+          <div><time>13:19:30</time>⚡ Krestik — буст набора до конца стрима</div>
+          <div><time>13:18:11</time>💡 Krestik — подсказка «ангар»</div>
+          <div><time>13:15:59</time>▶ раунд начался</div>
+        </div>
+      </div>
+    </div>
+    <div class="acts">
+      <button class="btn">⏸ Пауза</button>
+      <button class="btn">+5 мин</button>
+      <button class="btn">💡 Подсказка всем</button>
+      <button class="btn">⏭ Пропустить слово</button>
+      <button class="btn d">⏹ Завершить и открыть слово</button>
+    </div>
+  </div>
+
+  <!-- PAST ROUNDS -->
+  <div class="pane" id="past">
+    <div class="row" style="margin-bottom:14px">
+      <div class="kpi"><small>Этот стрим</small><b>29 раундов</b><div class="sub">с 10:42 · 3 ч 31 мин</div></div>
+      <div class="kpi"><small>Угадали</small><b>24</b><div class="sub">💰 украли 2 · ⌛ время вышло 3</div></div>
+      <div class="kpi"><small>Среднее время</small><b>7:12</b><div class="sub">быстрее всех: 0:48 (раунд 17)</div></div>
+      <div class="kpi"><small>Чемпион стрима</small><b><span class="av" style="background:#d64b8a">Н</span>Нина mdaz</b><div class="sub">7 побед</div></div>
+    </div>
+    <div class="box past">
+      <table><thead><tr><th>#</th><th>Слово</th><th>Загадал</th><th>Итог</th><th>Время</th><th>Игроков</th><th>Слов</th><th>Начало</th></tr></thead>
+        <tbody id="hist"></tbody></table>
+    </div>
+  </div>
+
+  <!-- PLANNED -->
+  <div class="pane" id="plan">
+    <div class="cols" style="margin-top:0">
+      <div class="box">
+        <h4>Очередь слов</h4>
+        <div class="q next"><span class="h">⋮⋮</span><span class="num">31</span><span><span class="av" style="background:#2a9be0">Н</span><b class="word"><span class="w">МАЯК</span></b>
+          <span class="tag o">от зрителя</span> Нина mdaz через бота</span><span class="x"><button class="eye">👁</button><button class="btn" style="height:28px">✕</button></span></div>
+        <div class="q"><span class="h">⋮⋮</span><span class="num">32</span><span><span class="av" style="background:#6b4bd6">K</span><b class="word"><span class="w">ГИТАРА</span></b>
+          <span class="tag o">от зрителя</span> Krestik через бота</span><span class="x"><button class="eye">👁</button><button class="btn" style="height:28px">✕</button></span></div>
+        <div class="q"><span class="h">⋮⋮</span><span class="num">33</span><span>🎲 <b class="word"><span class="w">ПОДУШКА</span></b>
+          <span class="tag">случайное</span> словарь лёгкий · таблица готова ✓</span><span class="x"><button class="eye">👁</button><button class="btn" style="height:28px">🔄 другое</button></span></div>
+        <div class="add"><input placeholder="Своё слово в очередь…"><select><option>после очереди</option><option>следующим</option></select><button class="btn p">Добавить</button></div>
+        <p style="color:var(--muted);font-size:12px;margin:10px 0 0">Порядок меняется перетаскиванием. Слова, которых нет в словаре, не принимаются (подскажем похожие).</p>
+      </div>
+      <div class="box">
+        <h4>Следующий раунд</h4>
+        <table>
+          <tr><td>Начнётся</td><td class="r">после победы + пауза 30 с</td></tr>
+          <tr><td>Длительность</td><td class="r">20 мин</td></tr>
+          <tr><td>Словарь</td><td class="r">лёгкий (любые слова)</td></tr>
+          <tr><td>Язык</td><td class="r">RU</td></tr>
+        </table>
+        <h4 style="margin-top:14px">Отложенные действия</h4>
+        <div class="feed">
+          <div>💡 На счету подсказок: Нина mdaz 3, Krestik 1</div>
+          <div>⚡ Буст до конца стрима: Krestik, Варя</div>
+          <div>⏸ Перерыв: <button class="btn" style="height:26px">через 2 раунда…</button></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="legend">
+  <div><h3>🔴 Текущий раунд</h3><ul>
+    <li><b>Смотрим:</b> слово (по умолчанию размыто — страница может попасть в кадр), кто загадал, таймер, ближайшее слово и кто его назвал, игроки и их лучшие места, темп чата, лента подарков и действий.</li>
+    <li><b>Делаем:</b> пауза, +5 мин, подсказка всем, пропустить слово, завершить с открытием слова. Действие за зрителя — уже есть на вкладке «Подарки».</li></ul></div>
+  <div><h3>Прошлые</h3><ul>
+    <li><b>Смотрим:</b> все раунды стрима (и прошлых стримов — фильтр), слово, кто загадал, победитель и как (угадал / украл 💰 / время вышло), время, игроков, слов.</li>
+    <li>Клик по строке — топ-20 слов раунда и путь победителя (его слова по порядку), как в /history бота.</li>
+    <li>Сверху — итоги стрима: раунды, среднее время, чемпион.</li></ul></div>
+  <div><h3>Запланированные</h3><ul>
+    <li><b>Смотрим:</b> очередь слов: от зрителей через бота, потом случайное; готова ли таблица от ранкера; параметры следующего раунда.</li>
+    <li><b>Делаем:</b> менять порядок, убрать слово, заменить случайное, добавить своё слово (следующим или в конец), запланировать перерыв.</li>
+    <li>Отложенное: подсказки на счету, бусты.</li></ul></div>
+</div>
+
+<script>
+const $ = (s, r = document) => r.querySelector(s), $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const C = ['#d64b8a', '#6b4bd6', '#e07b2a', '#2a9be0', '#9c6b3a', '#2abf7a', '#bf2a4a'];
+const av = (n, i) => `<span class="av" style="background:${C[i % C.length]}">${n[0]}</span>`;
+const cls = r => r < 1000 ? 'hot' : r < 5000 ? 'warm' : r < 20000 ? 'mid' : 'cold';
+const TOP = [[16,'КАБИНА','Нина mdaz','13:20'],[43,'АНГАР','Нина mdaz','13:18'],[61,'ОТСЕК','ꕥꕥꕥꕥ','13:19'],
+  [95,'САЛОН','Нина mdaz','13:17'],[103,'БУНКЕР','тони','13:20'],[116,'ФОРТ','ДОН','13:19'],[118,'ЗЕНИТКА','ꕥꕥꕥꕥ','13:21'],[121,'ЛЮК','Нина mdaz','13:18']];
+$('#top').innerHTML = TOP.map(([r, w, n, t], i) => `<tr><td><span class="rk ${cls(r)}">${r}</span></td><td><b>${w}</b></td><td>${av(n, i)}${n}</td><td class="r">${t}</td></tr>`).join('');
+const PL = [['Нина mdaz',16,41,'💡2'],['тони',103,22,''],['ДОН',116,19,''],['ꕥꕥꕥꕥ',61,30,''],['Krestik',412,15,'⚡'],['Варя',980,9,'✈️']];
+$('#pl').innerHTML = PL.map(([n, b, g, x], i) => `<tr><td>${av(n, i)}${n}</td><td><span class="rk ${cls(b)}">${b}</span></td><td class="r">${g}</td><td>${x}</td></tr>`).join('');
+const H = [[29,'ШТОРМ','бот','Нина mdaz','g','угадала','5:40',12,210,'13:08'],[28,'ПЕЧЕНЬЕ','Krestik','ДОН','g','угадал','9:12',10,301,'12:57'],
+  [27,'ВУЛКАН','бот','Варя','o','💰 украла','2:03',8,77,'12:50'],[26,'ЗОНТИК','Нина mdaz','—','r','⌛ время вышло','20:00',9,402,'12:28'],
+  [25,'ПОЕЗД','бот','тони','g','угадал','4:31',11,155,'12:21']];
+$('#hist').innerHTML = H.map(([n, w, s, win, c, how, t, p, g, at], i) => `<tr class="main" data-i="${i}"><td>${n}</td><td><b>${w}</b></td><td>${s}</td>
+  <td>${win !== '—' ? av(win, i) + win : '—'} <span class="tag ${c}">${how}</span></td><td>${t}</td><td>${p}</td><td>${g}</td><td class="r">${at}</td></tr>
+  <tr class="more" id="m${i}" style="display:none"><td colspan="8"><div class="chips"><b>Топ-20:</b> <span>1 ${w}</span><span>4 БУРЯ</span><span>9 ГРОЗА</span><span>15 УРАГАН</span><span>22 ВИХРЬ</span><span>…</span></div>
+  <div class="chips"><b>Путь победителя:</b> <span>МОРЕ 812</span><span>ВЕТЕР 64</span><span>БУРЯ 4</span><span>${w} ✓</span></div></td></tr>`).join('');
+document.addEventListener('click', e => {
+  const tab = e.target.closest('.tabs > span');
+  if (tab) { $$('.tabs > span').forEach(t => t.classList.toggle('on', t === tab)); $$('.pane').forEach(p => p.classList.toggle('on', p.id === tab.dataset.p)); }
+  const eye = e.target.closest('.eye');
+  if (eye) { const w = eye.closest('.q') ? $('.word', eye.closest('.q')) : eye.closest('.word'); w.classList.toggle('show'); }
+  const tr = e.target.closest('tr.main');
+  if (tr) { const m = $('#m' + tr.dataset.i); m.style.display = m.style.display ? '' : 'none'; }
+});
+</script>
+</body>
+</html>

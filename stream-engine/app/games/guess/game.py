@@ -38,6 +38,8 @@ MY_HINTS_WORDS = {"мои подсказки", "мои подскази", "ка�
 MAO_CALL_WORDS = {"мао внимание", "mao внимание", "mao attention"}
 MAO_CALL_SEC = 30
 SETTER_TICKER_SEC = 120                          # "this word was picked by ..." on the ticker every 2 minutes
+LOG_EVENTS = {"round_start", "gift", "hint", "boost", "steal", "new_leader", "winner", "timeout", "mao_call"}
+LOG_KEYS = ("name", "gift", "count", "word", "by", "rank", "kind", "reason", "cmd", "n")
 STUCK_PAUSE_SEC = 120                          # the active game paused this long = a bug: drop the round, start anew
 MAX_WORDS = 5000              # cap of aggregated words per round (memory guard)
 SIM_NAMES = ["Alex", "Mike", "Sarah", "John", "Emma", "Liam", "Olivia", "Noah", "Mia", "Leo"]
@@ -162,6 +164,8 @@ class GuessGame(BaseGame):
         self.difficulty = []          # (solved, seconds, best rank) of recent rounds
         self.tier = "easy"
         self.paused_at = None
+        self.frozen = None                           # the host paused the game: {at, elapsed, ends, phase} (s)
+        self.pause_after = 0                         # the host asked for a break after this round (0 = no)
         self._clear_round()
         self.phase = IDLE
         self.load()
@@ -191,6 +195,14 @@ class GuessGame(BaseGame):
         self.setter = None            # {"id", "name"} of the viewer who picked this round's word
         self.word_hidden = False      # a viewer's word nobody found: never shown
         self.setter_t = 0.0
+        self.log = []                 # the round's events for the room page's monitor
+        self.guess_times = deque(maxlen=3000)   # accepted guesses: the chat's pace
+
+    def emit(self, type, **data):
+        super().emit(type, **data)
+        if type in LOG_EVENTS and hasattr(self, "log"):
+            self.log = (self.log + [dict({k: data[k] for k in LOG_KEYS if data.get(k) is not None},
+                                         type=type, t=time.time())])[-80:]
 
     def _start_countdown(self, now):
         self._clear_round()
@@ -200,7 +212,10 @@ class GuessGame(BaseGame):
         self.round_lang, self.round_level = self.lang, self.level
         used = self.used.setdefault(self.lang, set())
         item = self._take_custom()
-        if item:                                     # a viewer's word: always the normal dictionary
+        if item and item.get("host"):                # the host's own word (room page): nobody to name
+            self.round_level = 2
+            self.secret = item["word"]
+        elif item:                                   # a viewer's word: always the normal dictionary
             self.round_level = 2
             self.secret = item["word"]
             sid = item["tiktok_id"].lower()                 # the nickname now, not as it was when picked
@@ -250,17 +265,19 @@ class GuessGame(BaseGame):
             i = max(i - 1, 0)
         return tiers[i]
 
-    def _finish(self, now, reason, player=None):
-        """PLAYING -> WINNER. reason: exact | timeout | skip. Atomic by construction."""
+    def _finish(self, now, reason, player=None, hide=False):
+        """PLAYING -> WINNER. reason: exact | timeout | skip. Atomic by construction. hide: the word stays secret."""
         if self.phase != PLAYING:
             return
+        if self.frozen is not None:                  # paused by the host: the round ends, the pause too
+            self.host_resume(now)
         self.phase = WINNER
         self.finished_at = now
         self.phase_until = now + config.WINNER_SEC
         if reason != "exact":                        # nobody found it: no winner, the day's wins don't change
             self.emit("timeout", reason=reason)
             player = None
-            self.word_hidden = bool(self.setter)
+            self.word_hidden = bool(self.setter) or hide
             if self.setter:                              # the picker earns a hint, the bot keeps the word for them
                 self.add_credits(self.setter["id"], 1)
                 self.unguessed_custom.append({"id": self.setter.get("cid", ""), "tiktok_id": self.setter["id"],
@@ -290,6 +307,7 @@ class GuessGame(BaseGame):
             "guesses": sum(p.guesses for p in self.players.values()), "at": int(now),
             "podium": [p["name"] for p in self.podium],
             "setter": self.setter["name"] if self.setter else None, "hidden": self.word_hidden,
+            "stolen": bool(player) and player.id == self.stolen_by,
             "top": self._top_guesses(20),                 # for the host's /history in the bot
             "winner_words": self._words_of(player, 20) if player else []}])[-300:]
         self.store.save(self.ROUNDS, self.history)
@@ -323,6 +341,8 @@ class GuessGame(BaseGame):
             return
         if self.setter and (viewer.id or "").lower() == self.setter["id"] and self.phase in (COUNTDOWN, PLAYING):
             return                                       # who picked the word can't guess it
+        if self.frozen is not None:                      # paused by the host: no guesses
+            return
         if not self.sem or self.phase not in (PLAYING, WINNER) or self.rank is None:
             return
         now = time.time()
@@ -410,6 +430,7 @@ class GuessGame(BaseGame):
 
     def _accept(self, p, word, now):
         r = int(self.rank[self.sem.index[word]])
+        self.guess_times.append(now)
         p.last_t = now
         p.words.add(word)
         p.guesses += 1
@@ -749,6 +770,12 @@ class GuessGame(BaseGame):
         print(f"[guess] language -> {lang}")
 
     def tick(self, now):
+        if self.frozen is not None:                      # the host paused the game: timers stand still
+            return
+        if self.pause_after and self.phase in (IDLE, FINISHED) and self.round_id >= self.pause_after:
+            self.pause_after = 0                         # the break the host asked for, after that round
+            self.host_pause(now)
+            return
         if self.paused_at:
             # only the active game ticks, and the active game is never meant to stay paused: a safety net
             # for bugs like a restored round waiting for a table that never comes - after STUCK_PAUSE_SEC
@@ -1004,6 +1031,146 @@ class GuessGame(BaseGame):
                 return c
         return None
 
+    # ------------------------------------------------------------------ the host's controls (room page)
+    def host_pause(self, now):
+        if self.frozen is not None:
+            return False
+        self.frozen = {"at": now, "elapsed": now - self.started_at if self.started_at else 0,
+                       "ends": self.ends_at - now, "phase": self.phase_until - now}
+        self.dirty = True
+        return True
+
+    def host_resume(self, now):
+        f, self.frozen = self.frozen, None
+        if f is None:
+            return False
+        if self.phase in (COUNTDOWN, PLAYING, WINNER, REVEAL):
+            if self.started_at:
+                self.started_at = now - f["elapsed"]
+            self.ends_at, self.phase_until = now + f["ends"], now + f["phase"]
+            for p in self.players.values():
+                if p.pending_until:
+                    p.pending_until += max(0, now - f["at"])
+        self.dirty = True
+        return True
+
+    def control(self, cmd, params):
+        """The host's command from the room page -> done or not (not now / unknown)."""
+        now = time.time()
+        if cmd == "pause":
+            ok = self.host_pause(now)
+        elif cmd == "resume":
+            ok = self.host_resume(now)
+        elif cmd == "extend":                            # +N minutes to the round
+            n = max(1, min(int(params.get("min") or 5), 30))
+            ok = self.phase == PLAYING
+            if ok:
+                self.ends_at += n * 60
+                if self.frozen is not None:
+                    self.frozen["ends"] += n * 60
+                self.emit("extended", n=n)
+        elif cmd == "hint":                              # a hint for everyone, now
+            if self.frozen is not None:
+                return False
+            self.last_hint_t = 0
+            ok = bool(self.give_hint("host", now))
+        elif cmd in ("skip", "finish"):                  # end the round: the word stays secret / is shown
+            ok = self.phase == PLAYING
+            self._finish(now, "skip" if cmd == "skip" else "timeout", hide=cmd == "skip")
+        elif cmd == "break_after":                       # a break after round N (0 = none)
+            n = int(params.get("round") or 0)
+            self.pause_after = n if n >= self.round_id else 0
+            ok = True
+        elif cmd == "queue_remove":
+            n = len(self.custom)
+            self.cancel_custom(params.get("id"))
+            ok = len(self.custom) < n
+        elif cmd == "queue_move":                        # {id, to}: its new place in the queue
+            item = next((c for c in self.custom if c["id"] == params.get("id")), None)
+            ok = item is not None
+            if ok:
+                self.custom.remove(item)
+                self.custom.insert(max(0, min(int(params.get("to") or 0), len(self.custom))), item)
+                self.store.save(self.CUSTOM, self.custom)
+        elif cmd == "queue_add":                         # the host's own word: {word, first}
+            ok, word = self.check_custom({"word": params.get("word", ""), "tiktok_id": "host"})
+            if not ok:
+                return {"ok": False, "error": "not_in_dictionary"}
+            if any(c["word"] == word and c["lang"] == self.lang for c in self.custom):
+                return {"ok": False, "error": "already_queued"}
+            item = {"id": "host-%x" % int(now * 1000), "word": word, "lang": self.lang, "name": "", "tiktok_id": "",
+                    "host": True}
+            self.custom.insert(0, item) if params.get("first") else self.custom.append(item)
+            self.store.save(self.CUSTOM, self.custom)
+        elif cmd == "reroll":                            # another random word for the next round
+            ok = bool(self.next_pick)
+            if ok:
+                self.used.setdefault(self.next_pick[0], set()).add(self.next_pick[2])
+                self.next_pick = None
+                if self.phase in (IDLE, WINNER, REVEAL, FINISHED):
+                    self.planned_next()
+        else:
+            return False
+        if ok:
+            self.log = (self.log + [{"type": "host", "cmd": cmd, "t": now}])[-80:]
+            self.dirty = True
+            print(f"[guess] host: {cmd} {params or ''}")
+        return ok
+
+    def _stream_rounds(self):
+        """the finished rounds of this stream, newest first (round numbers restart with every stream)"""
+        out, prev = [], None
+        for r in reversed(self.history):
+            n = r.get("round") or 0
+            if n > (self.round_id if prev is None else prev - 1) or n < 1:
+                break
+            out.append(r)
+            prev = n
+        return out
+
+    def monitor(self):
+        """Everything the room page's monitor shows: the round now, this stream's rounds, what's planned."""
+        now = time.time()
+        f = self.frozen
+        names = getattr(self, "names", {})
+        players = sorted(self.players.values(), key=lambda p: (not p.best, p.best or 0, p.best_t))
+        top = sorted(self.guesses.values(), key=lambda g: g["rank"])[:20]
+        current = {
+            "round": self.round_id, "phase": self.phase, "type": self.round_type, "tier": self.tier,
+            "word": (self.secret or "").upper(), "setter": self.setter["name"] if self.setter else None,
+            "lang": self.round_lang, "level": self.round_level,
+            "paused": f is not None, "left": max(0, round(f["ends"] if f else self.ends_at - now)),
+            "elapsed": round(f["elapsed"] if f else (now - self.started_at if self.started_at else 0)),
+            "duration": round(self.ends_at - self.started_at) if self.started_at else self.round_sec,
+            "phaseLeft": max(0, round(f["phase"] if f else self.phase_until - now)),
+            "players": len(self.players), "guesses": sum(p.guesses for p in self.players.values()),
+            "pace": sum(1 for x in self.guess_times if x > now - 60),
+            "top": [{"word": g["word"].upper(), "rank": g["rank"], "name": g["name"], "avatar": g["avatar"],
+                     "count": g["count"], "t": g.get("t")} for g in top],
+            "people": [{"id": p.id, "name": p.name, "avatar": p.avatar, "best": p.best, "word": (p.best_word or "").upper(),
+                        "guesses": p.guesses, "boost": p.id in self.boost_ids, "multi": p.id in self.multi_ids,
+                        "credits": self.credits.get(account_id(p.id), 0), "pending": bool(p.pending_until), "dq": p.dq}
+                       for p in players[:60]],
+            "hints": [{"word": h.get("word"), "type": h.get("type"), "by": h.get("by")} for h in self.hints],
+            "log": self.log[::-1][:50],
+        }
+        past = [{k: r.get(k) for k in ("round", "word", "setter", "winner", "reason", "stolen", "hidden", "players",
+                                         "guesses", "seconds", "at", "top", "winner_words")}
+                for r in self._stream_rounds()]
+        queue = [{"id": c["id"], "word": c["word"].upper(), "name": c.get("name") or "", "host": bool(c.get("host"))}
+                 for c in self.custom if c["lang"] == self.lang]
+        nxt = self.next_pick if self.next_pick and self.next_pick[:2] == (self.lang, self.level) else None
+        plan = {
+            "queue": queue,
+            "next": {"word": nxt[2].upper(), "tier": nxt[3],
+                     "ready": (self.dict_key(self.lang, self.level), nxt[2]) in self.ranks} if nxt else None,
+            "pause": self.reveal_sec, "roundSec": self.round_sec, "level": self.level, "lang": self.lang,
+            "breakAfter": self.pause_after,
+            "credits": sorted(([names.get(k, k), n] for k, n in self.credits.items() if n > 0), key=lambda x: -x[1])[:20],
+            "boosts": sorted(names.get(k.lower(), k) for k in self.boost_ids),
+        }
+        return {"current": current, "past": past, "plan": plan, "now": now}
+
     # ------------------------------------------------------------------ reports for the host (the bot)
     def _top_guesses(self, n):
         """[[WORD, rank, who named it first]] closest first."""
@@ -1072,6 +1239,8 @@ class GuessGame(BaseGame):
             "phaseUntil": self.phase_until,
             "now": now,
             "paused": bool(self.paused_at),
+            "hostPaused": self.frozen is not None,
+            "pausedLeft": max(0, round(self.frozen["ends"])) if self.frozen else 0,
             "secretWord": self._shown_word() if reveal else None,
             "guesses": [self._row(self.guesses[w]) for w in self.recent if w in self.guesses],
             "bestGuesses": [self._row(g) for g in best[:20] if g["rank"] > 1 or reveal],
@@ -1118,6 +1287,7 @@ class GuessGame(BaseGame):
             "saved_at": self.paused_at or time.time(), "lang": self.round_lang,
             "level": self.round_level, "next_level": self.level,
             "setter": self.setter, "setter_t": self.setter_t, "word_hidden": self.word_hidden,
+            "frozen": self.frozen, "pause_after": self.pause_after,
         })
 
     def load(self):
@@ -1130,6 +1300,7 @@ class GuessGame(BaseGame):
             self.round_level = d.get("level", 1)          # rounds saved before levels: easy
             self.level = d.get("next_level", 2)
             self.round_id = d["round_id"]
+            self.frozen, self.pause_after = d.get("frozen"), d.get("pause_after", 0)
             self.tier = d.get("tier", "easy")
             self.difficulty = [tuple(x) for x in d.get("difficulty", [])]
             secret = d.get("secret")

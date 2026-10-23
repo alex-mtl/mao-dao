@@ -238,3 +238,79 @@ class GiftPromosTest(unittest.TestCase):
         self.assertEqual(items["steal"]["gift"], "Monster Box!")                  # the defaults are shown too
         h.set_options("gifts", {"steal": ""})
         self.assertNotIn("steal", [p["action"] for p in h.message("guess")["giftPromos"]])   # follows at once
+
+
+class MonitorTest(unittest.TestCase):
+    """The room page's monitor: the round now, the stream's rounds, what's planned, the host's controls."""
+
+    def game(self):
+        h = Hub(JsonStore(tempfile.mkdtemp()), username="host")
+        h.set_active("guess")
+        g = h.game
+        g.tick(time.time()); g.tick(time.time() + 60)                        # past the countdown: playing
+        return h, g
+
+    def test_the_round_now(self):
+        h, g = self.game()
+        nina = Viewer("nina", "Нина", "", 1)
+        g.on_comment(nina, g.sem.words[int(g.order[4])])
+        h.gift(nina, "Rose", 1)                                              # any gift: a hint
+        m = g.monitor()["current"]
+        self.assertEqual((m["round"], m["word"], m["players"]), (1, g.secret.upper(), 1))
+        self.assertEqual(m["people"][0]["name"], "Нина")
+        self.assertGreaterEqual(m["pace"], 1)
+        self.assertEqual(m["top"][0]["rank"], min(x["rank"] for x in m["top"]))
+        self.assertIn("gift", [e["type"] for e in m["log"]])
+        self.assertEqual(len(m["hints"]), 1)
+
+    def test_pause_stops_the_timers_and_the_guesses(self):
+        h, g = self.game()
+        left = g.ends_at - time.time()
+        self.assertTrue(g.control("pause", {}))
+        self.assertTrue(g.snapshot()["hostPaused"])
+        g.on_comment(Viewer("nina", "Нина", "", 1), g.sem.words[int(g.order[4])])
+        self.assertEqual(g.players, {})                                      # paused: no guesses
+        g.frozen["at"] -= 100; g.frozen["elapsed"] -= 0                      # 100 s of pause...
+        g.tick(time.time() + 10_000)                                         # ...the round doesn't end
+        self.assertEqual(g.phase, "playing")
+        self.assertTrue(g.control("resume", {}))
+        self.assertAlmostEqual(g.ends_at - time.time(), left, delta=2)
+        self.assertTrue(g.control("extend", {"min": 5}))
+        self.assertAlmostEqual(g.ends_at - time.time(), left + 300, delta=2)
+
+    def test_skip_finish_and_the_stream_rounds(self):
+        h, g = self.game()
+        word = g.secret
+        self.assertTrue(g.control("skip", {}))                               # the word stays secret
+        self.assertTrue(g.word_hidden)
+        self.assertFalse(g.control("skip", {}))                              # no round now
+        past = g.monitor()["past"]
+        self.assertEqual((past[0]["round"], past[0]["word"], past[0]["hidden"]), (1, word, True))
+        g.phase = "finished"; g.tick(time.time()); g.tick(time.time() + 60)
+        self.assertTrue(g.control("finish", {}))
+        self.assertEqual([r["round"] for r in g.monitor()["past"]], [2, 1])
+        g.history.append(dict(g.history[-1], round=40))                      # an old stream's round: not shown
+        g.history = [dict(g.history[-1], round=40)] + g.history[:-1]
+        self.assertEqual([r["round"] for r in g.monitor()["past"]], [2, 1])
+
+    def test_word_queue_and_a_break(self):
+        h, g = self.game()
+        g.queue_custom({"id": "v1", "word": g.sem.words[100], "name": "Нина", "tiktok_id": "nina"})
+        self.assertEqual(g.control("queue_add", {"word": "qqqzzz"}), {"ok": False, "error": "not_in_dictionary"})
+        self.assertTrue(g.control("queue_add", {"word": g.sem.words[200], "first": True}))
+        q = g.monitor()["plan"]["queue"]
+        self.assertEqual([x["host"] for x in q], [True, False])
+        self.assertTrue(g.control("queue_move", {"id": "v1", "to": 0}))
+        self.assertEqual(g.monitor()["plan"]["queue"][0]["id"], "v1")
+        self.assertTrue(g.control("queue_remove", {"id": "v1"}))
+        self.assertTrue(g.control("break_after", {"round": 1}))
+        g.control("finish", {})
+        g.phase = "finished"
+        g.tick(time.time())
+        self.assertIsNotNone(g.frozen)                                       # the break: no new round
+        self.assertEqual(g.round_id, 1)
+        g.control("resume", {})
+        g.tick(time.time())
+        self.assertEqual(g.round_id, 2)
+        self.assertIsNone(g.setter)                                          # the host's word: nobody to name
+        self.assertEqual(g.secret, g.sem.words[200])

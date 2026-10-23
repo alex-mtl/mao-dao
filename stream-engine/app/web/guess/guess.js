@@ -857,6 +857,13 @@
       n.textContent = t(n.dataset.short ? 'g.followShort' : 'g.follow', { n: Math.max(0, Math.ceil(Number(n.dataset.until) - now)) });
     });
     const timerEl = $('timer');
+    if (S.hostPaused) {                            // the host paused the game: the timers stand still
+      const left = S.pausedLeft || 0;
+      timerEl.textContent = '⏸ ' + (S.phase === 'playing' ? Math.floor(left / 60) + ':' + String(left % 60).padStart(2, '0') : '');
+      timerEl.classList.remove('low');
+      bigNum('⏸', 'cd');
+      return;
+    }
     if (S.phase === 'playing') {
       const left = Math.max(0, Math.ceil(S.endsAt - now));
       timerEl.textContent = Math.floor(left / 60) + ':' + String(left % 60).padStart(2, '0');
