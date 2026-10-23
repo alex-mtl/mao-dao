@@ -120,6 +120,7 @@ return [
     'act_steal' => '💰 Voler la victoire : gagne la manche tout de suite avec le mot',
     'toast_steal' => '💰 A volé la victoire',
     'toast_boost' => '⚡ Boost de frappe',
+    'toast_promo' => '🎁 Ce que font les cadeaux (toutes les 3 min)',
     'act_balloon' => '🎈 Ballon',
     'act_plane' => '✈️ Avion',
     'act_bomber' => '🦋 Avion à papillons',

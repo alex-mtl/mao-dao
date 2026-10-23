@@ -18,7 +18,7 @@ TOASTS = {
     "leader": None, "jump": None, "so_close": None, "top": None, "streak": None, "hint": None,
     "gift": None, "hint_wait": None, "thanks": 1, "follow_needed": 1, "found_pending": 1, "dq": 1,
     "winner": 1, "time_up": None, "round": 1, "break": 1, "custom_word": None, "tg_word": None,
-    "tg_linked": None, "greet": None, "balloon": None, "plane": None, "steal": 1, "boost": None,
+    "tg_linked": None, "greet": None, "balloon": None, "plane": None, "steal": 1, "boost": None, "promo": None,
     "b_score": None, "b_lead": None, "b_win": 1, "b_round": 1, "b_sum": None,
 }
 RATES = [0.75, 1, 1.25, 1.5, 1.75, 2]

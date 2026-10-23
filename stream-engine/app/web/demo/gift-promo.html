@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Подсказки о подарках — макет</title>
+<link href="https://fonts.googleapis.com/css2?family=Russo+One&family=Rubik:wght@600;800&display=swap" rel="stylesheet">
+<style>
+  body { margin: 0; background: #1b1d22; color: #eee; font: 15px system-ui, sans-serif; display: flex; gap: 28px; padding: 20px; flex-wrap: wrap; }
+  /* the phone frame 9:20, --u = 1% of its width, like the game's overlay */
+  .phone { --u: 3.8px; width: 380px; aspect-ratio: 9 / 20; position: relative; overflow: hidden; border-radius: 18px;
+           background: #0b0614; font-family: Rubik, sans-serif; color: #fff; box-shadow: 0 10px 40px rgba(0,0,0,.5); }
+  .cam { position: absolute; left: 0; right: 0; top: 0; height: 33%;
+         background: radial-gradient(circle at 50% 55%, #c9a07a 0 12%, transparent 13%), linear-gradient(160deg, #3b2a55, #7a3d5a 60%, #b0605a); }
+  .cam::after { content: 'камера стримера'; position: absolute; left: 50%; top: 18%; transform: translateX(-50%);
+                font-size: 12px; color: rgba(255,255,255,.55); }
+  .bar { position: absolute; top: calc(var(--u) * 2); left: calc(var(--u) * 2.5); right: calc(var(--u) * 2.5); display: flex;
+         justify-content: space-between; align-items: center; font: 800 calc(var(--u) * 3.2) Rubik; z-index: 3; }
+  .bar .pill { background: rgba(0,0,0,.45); border-radius: 999px; padding: calc(var(--u)*.6) calc(var(--u)*2); }
+  .bar .timer { font: calc(var(--u) * 7) 'Russo One'; color: #00e5ff; text-shadow: 0 0 10px #00e5ff; }
+  /* right column, at the bottom of the camera zone: [promo] / bot / champions */
+  .champs { position: absolute; right: calc(var(--u) * 2.8); bottom: calc(67% + var(--u) * .6); display: flex; flex-direction: column;
+            align-items: flex-end; gap: calc(var(--u) * .5); z-index: 4; }
+  .tgbot { font: 800 calc(var(--u) * 3.4) Rubik; text-shadow: 0 1px 2px rgba(0,0,0,.9), 0 0 .5em rgba(0,0,0,.7); padding: 0 calc(var(--u)); }
+  .champ { display: flex; align-items: center; gap: calc(var(--u) * 1.6); border-radius: 999px; background: rgba(0,0,0,.4);
+           padding: calc(var(--u)*.25) calc(var(--u)*2.2) calc(var(--u)*.25) calc(var(--u)*.25); font: 800 calc(var(--u)*3.4) Rubik; }
+  .champ .av { width: calc(var(--u)*7.2); height: calc(var(--u)*7.2); border-radius: 50%; border: calc(var(--u)*.4) solid #fff;
+               display: grid; place-items: center; font-size: calc(var(--u)*3.2); }
+  .likers { position: absolute; left: calc(var(--u) * 2.8); bottom: calc(67% + var(--u) * .6); display: flex; flex-direction: column; gap: calc(var(--u)*.5); z-index: 4; }
+
+  /* THE PROMO: a gift and what it does - one at a time, a bit bigger than the bot's line */
+  .promo { display: flex; align-items: center; gap: calc(var(--u) * 1.4); border-radius: 999px;
+           padding: calc(var(--u)*.5) calc(var(--u)*2.4) calc(var(--u)*.5) calc(var(--u)*.6);
+           background: linear-gradient(90deg, rgba(255,216,74,.95), rgba(255,140,40,.95)); color: #1a0b00;
+           font: 800 calc(var(--u) * 4.2) Rubik; box-shadow: 0 0 1em rgba(255,190,60,.55);
+           transform-origin: right center; opacity: 0; transform: translateX(30%) scale(.8); transition: opacity .45s, transform .45s cubic-bezier(.2,1.5,.4,1); }
+  .promo.on { opacity: 1; transform: none; }
+  .promo img { width: calc(var(--u) * 8); height: calc(var(--u) * 8); object-fit: contain; filter: drop-shadow(0 1px 2px rgba(0,0,0,.4)); }
+  .promo .stack { display: flex; }
+  .promo .stack img { width: calc(var(--u) * 6.5); height: calc(var(--u) * 6.5); margin-left: calc(var(--u) * -2.2); }
+  .promo .stack img:first-child { margin-left: 0; }
+  .promo small { display: block; font: 600 calc(var(--u) * 2.6) Rubik; opacity: .8; margin-top: calc(var(--u) * -.2); }
+
+  .table { position: absolute; top: 34%; left: calc(var(--u)*3); right: calc(var(--u)*3); display: flex; flex-direction: column; gap: calc(var(--u)*1.1); }
+  .row { display: flex; align-items: center; gap: calc(var(--u)*2); font: calc(var(--u)*3.8) 'Russo One'; }
+  .row .p { height: calc(var(--u)*5.6); border-radius: calc(var(--u)*1.4); display: flex; align-items: center; padding: 0 calc(var(--u)*1.6); color: #fff; }
+  .row .n { margin-left: auto; font: 600 calc(var(--u)*3.4) Rubik; }
+
+  .side { max-width: 420px; line-height: 1.5; }
+  .side h3 { margin: 0 0 8px; }
+  .side li { margin: 4px 0; }
+  .side button { margin: 4px 6px 4px 0; padding: 8px 12px; border-radius: 8px; border: 1px solid #555; background: #2a2d34; color: #eee; cursor: pointer; }
+  .side button.on { background: #3cc4f2; color: #001; border-color: transparent; }
+  .clock { color: #9aa; font-size: 13px; }
+</style>
+</head>
+<body>
+<div class="phone">
+  <div class="cam"></div>
+  <div class="bar"><span class="pill">РАУНД 8</span><span class="timer">7:42</span><span class="pill">👥 14</span></div>
+  <div class="likers">
+    <div class="champ"><span>✈️</span><span>3</span><span class="av" style="background:#6b4bd6">K</span><span>Krestik</span></div>
+    <div class="champ"><span>🎈</span><span>8</span><span class="av" style="background:#d64b8a">л</span><span>лисёнок</span></div>
+  </div>
+  <div class="champs">
+    <div class="promo" id="promo"></div>
+    <div class="tgbot">📲 @maotiktok_26_bot</div>
+    <div class="champ"><span class="av" style="background:#c9772f">Д</span><span>ДОН</span><span>1</span><span>🥇</span></div>
+  </div>
+  <div class="table">
+    <div class="row"><span class="p" style="background:#ff2d55;width:40%">6 КОЛЕСО</span><span class="n">ДОН</span></div>
+    <div class="row"><span class="p" style="background:#ff2d55;width:46%">10 ДОРОЖКА</span><span class="n">ANESYA</span></div>
+    <div class="row"><span class="p" style="background:#ff6a00;width:42%">19 ТРАССА</span><span class="n">ANESYA</span></div>
+    <div class="row"><span class="p" style="background:#ff6a00;width:48%">20 КОЛЕСИКО</span><span class="n">Taisiia</span></div>
+    <div class="row"><span class="p" style="background:#ffb800;width:36%">40 АВТО</span><span class="n">ANESYA</span></div>
+  </div>
+</div>
+
+<div class="side">
+  <h3>Подсказки о подарках</h3>
+  <p>В зоне стримера, прямо над ссылкой на бота — по одной: картинка подарка из TikTok и что он делает.
+    Раз в <b>3 минуты</b> на <b>20 секунд</b>, по очереди: то одно, то другое. Берутся из правил подарков комнаты
+    (что не настроено — не показывается).</p>
+  <ul id="list"></ul>
+  <div>
+    <button id="fast" class="on">Демо-темп: каждые 6 с на 4 с</button>
+    <button id="real">Реальный темп: каждые 3 мин на 20 с</button>
+  </div>
+  <p class="clock" id="clock"></p>
+</div>
+
+<script>
+// the room's gift rules today (gw1) -> what the promo says
+const IMG = {
+  eye: 'https://p16-webcast.tiktokcdn.com/img/alisg/webcast-sg/resource/f13894e35ea4efa123d1f8475bd5349f.png~tplv-obj.webp',
+  rose: 'https://p16-webcast.tiktokcdn.com/img/maliva/webcast-va/eba3a9bb85c33e017f3648eaf88d7189~tplv-obj.webp',
+  ghost: 'https://p16-webcast.tiktokcdn.com/img/alisg/webcast-sg/resource/2d49630ebd574db497a26dd20562ff7e.png~tplv-obj.webp',
+  monster: 'https://p16-webcast.tiktokcdn.com/img/alisg/webcast-sg/resource/f7f46645aebc64dfa0f3bde6f9cc8685.png~tplv-obj.webp',
+  panther: 'https://p16-webcast.tiktokcdn.com/img/maliva/webcast-va/8e779968d715ee8f47b94d5ac6245da5~tplv-obj.webp',
+  paws: 'https://p16-webcast.tiktokcdn.com/img/maliva/webcast-va/81c8ecd8f50b511a95259a29aea86e96~tplv-obj.webp',
+  galaxy: 'https://p16-webcast.tiktokcdn.com/img/maliva/webcast-va/resource/79a02148079526539f7599150da9fd28.png~tplv-obj.webp',
+};
+const ITEMS = [
+  { imgs: [IMG.eye], title: 'Подсказка', sub: 'Око за око' },
+  { imgs: [IMG.panther, IMG.paws, IMG.galaxy], title: 'Бабочкопад', sub: 'любой подарок от 10 монет' },
+  { imgs: [IMG.rose], title: 'Буст на раунд', sub: 'Роза — 3 слова в сообщении' },
+  { imgs: [IMG.ghost], title: 'Буст на сегодня', sub: 'Ghostfire — 3 слова до конца стрима' },
+  { imgs: [IMG.monster], title: 'Победа!', sub: 'Monster Box! — выигрываешь раунд' },
+];
+const $ = id => document.getElementById(id);
+$('list').innerHTML = ITEMS.map(i => `<li><b>${i.title}</b> — ${i.sub}</li>`).join('');
+let every = 6000, hold = 4000, n = 0, timer = 0, tick = 0, nextAt = 0;
+function show() {
+  const it = ITEMS[n++ % ITEMS.length];
+  const pics = it.imgs.length > 1 ? `<span class="stack">${it.imgs.map(s => `<img src="${s}" referrerpolicy="no-referrer">`).join('')}</span>`
+                                  : `<img src="${it.imgs[0]}" referrerpolicy="no-referrer">`;
+  $('promo').innerHTML = `${pics}<span>${it.title}<small>${it.sub}</small></span>`;
+  $('promo').classList.add('on');
+  setTimeout(() => $('promo').classList.remove('on'), hold);
+  nextAt = Date.now() + every;
+}
+function start() { clearInterval(timer); show(); timer = setInterval(show, every); }
+setInterval(() => { $('clock').textContent = 'следующая через ' + Math.max(0, Math.round((nextAt - Date.now()) / 1000)) + ' с'; }, 250);
+$('fast').onclick = () => { every = 6000; hold = 4000; $('fast').classList.add('on'); $('real').classList.remove('on'); start(); };
+$('real').onclick = () => { every = 180000; hold = 20000; $('real').classList.add('on'); $('fast').classList.remove('on'); start(); };
+start();
+</script>
+</body>
+</html>

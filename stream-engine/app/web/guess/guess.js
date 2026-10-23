@@ -478,12 +478,38 @@
   // stream champions (chroma / TT mode): one line per place - avatar + nick when alone, overlapping
   // avatars when tied (like TikTok's viewers), wins, medal
   let champsKey = '', tgBot = '';
+  // what the stream's gifts do (the room's gift rules): one at a time, every PROMO_EVERY for PROMO_SHOW,
+  // in turn - a gift's picture and the action ("Hint", "Butterflies", "Win!"...)
+  const PROMO_FIRST = 30000, PROMO_EVERY = 180000, PROMO_SHOW = 20000;
+  let promos = [], promoN = 0;
+  const promoEl = el('div', 'giftpromo');
+  function showPromo() {
+    if (!promos.length || !Toasts.show('promo')) return;
+    const p = promos[promoN++ % promos.length];
+    const name = I18N.lang === 'ru' && p.ru ? p.ru : p.gift;
+    const sub = p.rule.startsWith('gift:') ? name : p.rule === 'any' ? t('g.promo.any') : t('g.promo.min', { n: p.coins });
+    promoEl.replaceChildren();
+    if (p.images.length > 1) {
+      const st = el('span', 'stack');
+      p.images.forEach(src => { const i = el('img'); i.src = src; i.referrerPolicy = 'no-referrer'; st.append(i); });
+      promoEl.append(st);
+    } else if (p.images.length) {
+      const i = el('img'); i.src = p.images[0]; i.referrerPolicy = 'no-referrer'; promoEl.append(i);
+    } else promoEl.append(el('span', 'gi', '🎁'));
+    const txt = el('span', 'tx', t('g.promo.' + p.action));
+    txt.append(el('small', '', sub));
+    promoEl.append(txt);
+    promoEl.classList.add('on');
+    setTimeout(() => promoEl.classList.remove('on'), PROMO_SHOW);
+  }
+  setTimeout(() => { showPromo(); setInterval(showPromo, PROMO_EVERY); }, PROMO_FIRST);
   function renderChamps(groups) {
     const box = $('champs');
     const key = JSON.stringify([groups, tgBot]);
     if (key === champsKey) return;
     champsKey = key;
     box.replaceChildren();
+    box.append(promoEl);                                           // what the gifts do: above the bot's name
     if (tgBot) box.append(el('div', 'tgbot', '📲 @' + tgBot));     // the bot's name, readable above the champions
     groups.forEach((g, i) => {
       const row = el('div', 'champ');
@@ -882,7 +908,7 @@
   // (above the hint / call to action) and lifts off at 100 likes
   Balloons.mount({ ground: true, area: $('stage'), bottom: 'calc(var(--u) * 26)',
                    width: 'calc(var(--u) * 20)', sound: true });
-  Live.start({ game: 'guess', onState: (s, msg) => { tgBot = msg.tgBot || ''; render(s); Balloons.render(msg.balloons);
+  Live.start({ game: 'guess', onState: (s, msg) => { tgBot = msg.tgBot || ''; promos = msg.giftPromos || []; render(s); Balloons.render(msg.balloons);
                                                     renderLikers((msg.balloons || {}).likers); }, onEvent,
                onFeed: e => {
                  if (e.type === 'balloon') Balloons.launch(e);

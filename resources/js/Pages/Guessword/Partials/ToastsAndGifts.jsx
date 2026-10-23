@@ -5,14 +5,14 @@ import { Switch } from './SettingsPanel';
 // toast / voice line ids of each mode (the engine's room_prefs.TOASTS); greet / balloon / plane are on every page
 const TOASTS = {
     guess: ['leader', 'jump', 'so_close', 'top', 'streak', 'hint', 'gift', 'hint_wait', 'thanks', 'follow_needed',
-            'found_pending', 'dq', 'winner', 'steal', 'boost', 'time_up', 'round', 'break', 'custom_word', 'tg_word', 'tg_linked',
+            'found_pending', 'dq', 'winner', 'steal', 'boost', 'promo', 'time_up', 'round', 'break', 'custom_word', 'tg_word', 'tg_linked',
             'greet', 'balloon', 'plane'],
     battle: ['b_score', 'b_lead', 'b_sum', 'b_win', 'b_round', 'greet', 'balloon', 'plane'],
     streamer: ['greet', 'balloon', 'plane'],
 };
 // lines that are only said (no toast of their own) / only shown (never said)
 const VOICE_ONLY = ['winner', 'round', 'break', 'balloon', 'plane', 'b_score', 'b_lead', 'b_sum', 'b_win', 'b_round'];
-const SHOW_ONLY = ['gift', 'hint_wait', 'custom_word', 'tg_word', 'tg_linked', 'boost'];
+const SHOW_ONLY = ['gift', 'hint_wait', 'custom_word', 'tg_word', 'tg_linked', 'boost', 'promo'];
 // gift actions of each mode (the engine's room_prefs.GIFT_ACTIONS)
 const GIFT_ACTIONS = { guess: ['hint', 'multi', 'boost', 'steal', 'balloon', 'plane', 'bomber'], battle: ['balloon', 'plane', 'bomber'],
                        streamer: ['balloon', 'plane', 'bomber'] };

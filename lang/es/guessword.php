@@ -120,6 +120,7 @@ return [
     'act_steal' => '💰 Robar la victoria: gana la ronda al instante con la palabra',
     'toast_steal' => '💰 Robó la victoria',
     'toast_boost' => '⚡ Impulso de escritura',
+    'toast_promo' => '🎁 Qué hacen los regalos (cada 3 min)',
     'act_balloon' => '🎈 Globo',
     'act_plane' => '✈️ Avión',
     'act_bomber' => '🦋 Avión con mariposas',

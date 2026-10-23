@@ -104,6 +104,7 @@ class Hub:
     def set_options(self, name, opts):
         if name in ("toasts", "gifts"):
             (self.toasts if name == "toasts" else self.gift_rules).set(opts)
+            self._promos = None                       # the promo line follows the new rules at once
             self.save_session()
             self.game.dirty = True                    # pages get the new toast settings
             print(f"[hub] {name} -> {(self.toasts if name == 'toasts' else self.gift_rules).values()}")
@@ -200,6 +201,37 @@ class Hub:
 
     GIFT_ANIMATIONS_MAX = 50                          # one batch of a combo: a sane upper bound (the feed keeps 100)
 
+    PROMO_ORDER = ["hint", "bomber", "multi", "boost", "steal", "balloon", "plane"]
+
+    def gift_promos(self):
+        """What the stream's gifts do, for the promo line above the bot's name (TT mode): one item per action
+        that has a gift - {action, rule, gift, ru, coins, images}; "from N coins" and "any" show 2-3 popular
+        gifts. Rebuilt at most every 30 s."""
+        now = time.time()
+        if getattr(self, "_promos", None) is not None and now - self._promos_t < 30:
+            return self._promos
+        gifts = catalog().list()                     # most sent first
+        by_name = {g["name"]: g for g in gifts}
+        tiers = [5, 10, 30, 100]
+        out = []
+        for action in self.PROMO_ORDER:
+            rule = self.gift_rules.values().get(action, "")
+            if not rule:
+                continue
+            item = {"action": action, "rule": rule, "gift": "", "ru": "", "coins": 0, "images": []}
+            if rule.startswith("gift:"):
+                g = by_name.get(rule[5:], {"name": rule[5:]})
+                item.update(gift=g["name"], ru=g.get("ru", ""), coins=g.get("coins", 0),
+                            images=[g["image"]] if g.get("image") else [])
+            else:
+                lo = int(rule[4:]) if rule.startswith("min:") else 0
+                hi = next((t for t in tiers if t > lo), 10 ** 9) if lo else 10 ** 9
+                item["coins"] = lo
+                item["images"] = [g["image"] for g in gifts if g.get("image") and lo <= g["coins"] < hi][:3]
+            out.append(item)
+        self._promos, self._promos_t = out, now
+        return out
+
     def _gift_animations(self, v, gift, actions, count):
         """Balloon / plane / butterfly plane for a gift bound to them (the streamer's gift rules), on every
         page: one per gift, no pause - 10 gifts = 10 planes (combo parts included)."""
@@ -256,6 +288,7 @@ class Hub:
                 "version": getattr(self, "web_version", ""),
                 "lang": self.lang, "voiceRate": self.global_settings.get("VOICE_RATE"),
                 "toasts": self.toasts.values(),
+                "giftPromos": self.gift_promos(),
                 "voiceVolume": self.global_settings.get("VOICE_VOLUME"), "fxVolume": self.global_settings.get("FX_VOLUME"),
                 "events": g.events_since(since) if since is not None else [],
                 "balloons": self.balloons.snapshot(),

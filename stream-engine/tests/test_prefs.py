@@ -225,3 +225,16 @@ class StealAndBoostTest(unittest.TestCase):
 def GuessGameFrom(g):
     from app.games.guess.game import GuessGame
     return GuessGame(g.store)
+
+
+class GiftPromosTest(unittest.TestCase):
+    def test_promo_items_follow_the_rules(self):
+        h = Hub(JsonStore(tempfile.mkdtemp()), username="host")
+        h.set_options("gifts", {"hint": "gift:Rose", "bomber": "min:10", "multi": ""})
+        items = {p["action"]: p for p in h.message("guess")["giftPromos"]}
+        self.assertEqual(list(items)[:2], ["hint", "bomber"])                     # the promo order
+        self.assertEqual((items["hint"]["gift"], items["bomber"]["coins"]), ("Rose", 10))
+        self.assertNotIn("multi", items)                                          # no gift: no promo
+        self.assertEqual(items["steal"]["gift"], "Monster Box!")                  # the defaults are shown too
+        h.set_options("gifts", {"steal": ""})
+        self.assertNotIn("steal", [p["action"] for p in h.message("guess")["giftPromos"]])   # follows at once

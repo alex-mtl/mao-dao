@@ -120,6 +120,7 @@ return [
     'act_steal' => '💰 Steal the win: wins the round at once with the word',
     'toast_steal' => '💰 Stole the win',
     'toast_boost' => '⚡ Typing boost',
+    'toast_promo' => '🎁 What the gifts do (every 3 min, above the bot)',
     'act_balloon' => '🎈 Balloon',
     'act_plane' => '✈️ Plane',
     'act_bomber' => '🦋 Plane with butterflies',
