@@ -300,4 +300,5 @@ return [
     'mon_boosts' => 'Boost jusqu’à la fin du live',
     'mon_q_viewer_host' => 'de :name (ajouté par toi)',
     'mon_add_who' => 'mot de qui — facultatif',
+    'mon_fresh' => 'Mots neufs avant la première répétition : :n',
 ];

@@ -348,6 +348,7 @@ function Plan({ plan, round, control, call, t }) {
                             <tr><td className="py-1 text-ink-500">{t('guessword.mon_lang')}</td><td className="py-1 text-right">{(plan.lang || '').toUpperCase()}</td></tr>
                         </tbody>
                     </table>
+                    <div className="mt-1 text-sm text-ink-500">{t('guessword.mon_fresh', { n: plan.fresh ?? '—' })}</div>
                     <div className="mt-2 text-sm text-ink-500">{t('guessword.mon_break')}</div>
                     <div className="mt-1 flex flex-wrap gap-1">
                         {breaks.map(([n, label]) => (

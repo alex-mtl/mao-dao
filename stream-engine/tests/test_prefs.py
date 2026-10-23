@@ -327,3 +327,31 @@ class MonitorTest(unittest.TestCase):
         g.tick(time.time() + 60)
         g.on_comment(Viewer("innusya", "Иннуся", "", 1), word)               # her own word: she can't guess it
         self.assertEqual(g.phase, "playing")
+
+
+class NoRepeatsTest(unittest.TestCase):
+    """The game's own words never come back - not on the next stream either - until the dictionary is played through."""
+
+    def test_words_dont_repeat_across_streams(self):
+        h = Hub(JsonStore(tempfile.mkdtemp()), username="host")
+        h.set_active("guess")
+        g = h.game
+        g.tick(time.time())
+        first = g.secret
+        g.new_session()                                                       # the next stream
+        sem = g.sem
+        pool = {w for p in sem.pools.values() for w in p if w in sem.index}
+        keep = sorted(pool - {first})[:2]                                     # only these two not played yet
+        g.used[g.lang] = pool - set(keep)
+        left = set(keep)
+        g.next_pick = None
+        g.tick(time.time())
+        self.assertIn(g.secret, left)                                         # only a word not played yet
+        g.next_pick = None
+        g.used[g.lang] |= left                                                # now all of them are played
+        self.assertEqual(g.monitor()["plan"]["fresh"], 0)
+        g.phase = "finished"; g.next_pick = None
+        g.tick(time.time())                                                   # all played: a new cycle
+        self.assertEqual(len(g.used[g.lang]), 1)
+        h2 = Hub(h.store, username="host")                                    # a restart keeps the list
+        self.assertIn(g.secret, h2.games["guess"].used[g.lang])

@@ -149,8 +149,15 @@ class GuessGame(BaseGame):
         used = store.load(self.USED, {})
         if isinstance(used, list):                   # old format: English only
             used = {"en": used}
+        # words the game itself picked (and viewers' / the host's words): never picked again, on any stream,
+        # until every word of the dictionary's pools has been played - then a new cycle starts
         self.used = {k: set(v) for k, v in used.items()}
         self.history = store.load(self.ROUNDS, [])
+        for r in self.history:                       # rounds played before the list was kept across streams
+            for lang, sem in self.sems.items():
+                if r.get("word") in sem.index:
+                    self.used.setdefault(lang.split("-")[0], set()).add(r["word"])
+                    break
         self.boost_ids = set(store.load(self.BOOSTS, []) or [])
         self.credits = {}
         for k, v in (store.load(self.CREDITS, {}) or {}).items():
@@ -226,7 +233,7 @@ class GuessGame(BaseGame):
             if nxt and nxt[:2] == (self.lang, self.level) and nxt[2] not in used and nxt[2] in self.sem.index:
                 self.secret, self.tier = nxt[2], nxt[3]         # picked at the end of the last round
             else:
-                self.secret, self.tier = self.sem.pick_secret(self._next_tier(), used)
+                self.secret, self.tier = self._pick_secret(self.sem, self.lang)
         used.add(self.secret)
         self.store.save(self.USED, {k: sorted(v) for k, v in self.used.items()})
         rank = self.ranks.pop((self.dict_key(self.round_lang, self.round_level), self.secret), None)
@@ -311,9 +318,8 @@ class GuessGame(BaseGame):
             "top": self._top_guesses(20),                 # for the host's /history in the bot
             "winner_words": self._words_of(player, 20) if player else []}])[-300:]
         self.store.save(self.ROUNDS, self.history)
-        used = self.used.get(self.lang, set())        # the next word, picked now: its table comes in the break
-        self.next_pick = (self.lang, self.level) + tuple(self.sem_for(self.lang, self.level)
-                                                        .pick_secret(self._next_tier(), used))
+        # the next word, picked now: its table comes in the break
+        self.next_pick = (self.lang, self.level) + tuple(self._pick_secret(self.sem_for(self.lang, self.level), self.lang))
         print(f"[guess] round {self.round_id} {reason}: word={self.secret} "
               f"winner={player.name if player else '-'}")
 
@@ -697,8 +703,6 @@ class GuessGame(BaseGame):
         self.stats.save()
         self.boost_ids = set()                                # a new stream: the boosts are over
         self.store.save(self.BOOSTS, [])
-        self.used = {}
-        self.store.save(self.USED, {})
         self.round_id = 0
         self.difficulty = []
         self.tier = "easy"
@@ -959,10 +963,23 @@ class GuessGame(BaseGame):
                 return key, c["word"], self.sems[key].vocab_hash
         used = self.used.get(self.lang, set())
         if not self.next_pick or self.next_pick[:2] != (self.lang, self.level) or self.next_pick[2] in used:
-            self.next_pick = (self.lang, self.level) + tuple(self.sem_for(self.lang, self.level)
-                                                            .pick_secret(self._next_tier(), used))
+            self.next_pick = (self.lang, self.level) + tuple(self._pick_secret(self.sem_for(self.lang, self.level), self.lang))
         key = self.dict_key(self.lang, self.level)
         return key, self.next_pick[2], self.sems[key].vocab_hash
+
+    def _fresh_words(self, sem, lang):
+        """how many words of the dictionary's pools the game hasn't picked yet"""
+        used = self.used.get(lang, set())
+        return sum(1 for p in sem.pools.values() for w in p if w not in used and w in sem.index)
+
+    def _pick_secret(self, sem, lang):
+        """(word, tier): a word never picked before; all of them played -> a new cycle (the list starts anew)"""
+        used = self.used.setdefault(lang, set())
+        if not self._fresh_words(sem, lang):
+            print(f"[guess] every word of the {lang} dictionary has been played ({len(used)}): a new cycle")
+            used.clear()
+            self.store.save(self.USED, {k: sorted(v) for k, v in self.used.items()})
+        return sem.pick_secret(self._next_tier(), used)
 
     def _table_ready(self):
         plan = self.planned_next()
@@ -1169,6 +1186,7 @@ class GuessGame(BaseGame):
                      "ready": (self.dict_key(self.lang, self.level), nxt[2]) in self.ranks} if nxt else None,
             "pause": self.reveal_sec, "roundSec": self.round_sec, "level": self.level, "lang": self.lang,
             "breakAfter": self.pause_after,
+            "fresh": self._fresh_words(self.sem_for(self.lang, self.level), self.lang) if self.sems else 0,
             "credits": sorted(([names.get(k, k), n] for k, n in self.credits.items() if n > 0), key=lambda x: -x[1])[:20],
             "boosts": sorted(names.get(k.lower(), k) for k in self.boost_ids),
         }

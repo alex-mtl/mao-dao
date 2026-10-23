@@ -300,4 +300,5 @@ return [
     'mon_boosts' => 'Impulso hasta el fin del directo',
     'mon_q_viewer_host' => 'de :name (añadida por ti)',
     'mon_add_who' => 'de quién es — opcional',
+    'mon_fresh' => 'Palabras nuevas antes de repetir: :n',
 ];

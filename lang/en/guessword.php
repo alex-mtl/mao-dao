@@ -300,4 +300,5 @@ return [
     'mon_boosts' => 'Boost till the stream ends',
     'mon_q_viewer_host' => 'from :name (added by you)',
     'mon_add_who' => 'whose word — optional',
+    'mon_fresh' => 'New words left before any repeat: :n',
 ];
