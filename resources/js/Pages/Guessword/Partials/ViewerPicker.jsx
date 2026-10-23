@@ -1,9 +1,9 @@
 import { useLaravelReactI18n } from 'laravel-react-i18n';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
-export const Avatar = ({ v }) =>
-    v.avatar ? <img src={v.avatar} alt="" loading="lazy" referrerPolicy="no-referrer" className="h-6 w-6 flex-none rounded-full object-cover" />
-        : <span className="flex h-6 w-6 flex-none items-center justify-center rounded-full bg-primary-500 text-xs font-bold text-white">
+export const Avatar = ({ v, size = 'h-6 w-6' }) =>
+    v.avatar ? <img src={v.avatar} alt="" loading="lazy" referrerPolicy="no-referrer" className={size + ' flex-none rounded-full object-cover'} />
+        : <span className={size + ' flex flex-none items-center justify-center rounded-full bg-primary-500 text-xs font-bold text-white'}>
             {[...v.name.replace(/[^\p{L}\p{N}]/gu, '')][0] || '?'}
         </span>;
 

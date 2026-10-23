@@ -43,7 +43,7 @@ function Secret({ word, big }) {
 }
 
 const th = 'px-1.5 py-1 text-left text-[11px] font-semibold uppercase tracking-wide text-ink-500';
-const td = 'whitespace-nowrap border-t border-warm-100 px-1.5 py-1.5 text-sm';
+const td = 'whitespace-nowrap border-t border-warm-100 px-1.5 py-px text-sm leading-5';
 const btn = 'h-9 rounded-lg border border-warm-300 bg-surface px-3 text-sm font-semibold text-ink-800 hover:bg-warm-50 disabled:opacity-40';
 
 /**
@@ -153,7 +153,7 @@ function Now({ c, left, run, control, t }) {
                                     <tr key={g.word}>
                                         <td className={td}><Rank r={g.rank} /></td>
                                         <td className={td + ' font-bold'}>{g.rank === 1 ? <Secret word={g.word} /> : g.word}</td>
-                                        <td className={td}><span className="flex min-w-0 items-center gap-1.5"><Avatar v={g} /><span className="truncate">{g.name}</span>
+                                        <td className={td}><span className="flex min-w-0 items-center gap-1.5"><Avatar v={g} size="h-5 w-5" /><span className="truncate">{g.name}</span>
                                             {g.count > 1 && <span className="text-xs text-ink-500">+{g.count - 1}</span>}</span></td>
                                         <td className={td + ' text-right text-ink-500'}>{hhmm(g.t)}</td>
                                     </tr>
@@ -172,7 +172,7 @@ function Now({ c, left, run, control, t }) {
                                 <tbody>
                                     {c.people.map((p) => (
                                         <tr key={p.id} className={p.dq ? 'opacity-50' : ''}>
-                                            <td className={td}><span className="flex min-w-0 max-w-[12rem] items-center gap-1.5"><Avatar v={p} /><span className="truncate">{p.name}</span></span></td>
+                                            <td className={td}><span className="flex min-w-0 max-w-[12rem] items-center gap-1.5"><Avatar v={p} size="h-5 w-5" /><span className="truncate">{p.name}</span></span></td>
                                             <td className={td}><Rank r={p.best} /></td>
                                             <td className={td + ' text-right text-ink-500'}>{p.guesses}</td>
                                             <td className={td}>{p.credits ? '💡' + p.credits + ' ' : ''}{p.boost ? '⚡' : ''}{p.multi ? '✍️' : ''}{p.pending ? '⏳' : ''}</td>
