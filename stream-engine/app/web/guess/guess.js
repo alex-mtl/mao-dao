@@ -478,14 +478,18 @@
   // stream champions (chroma / TT mode): one line per place - avatar + nick when alone, overlapping
   // avatars when tied (like TikTok's viewers), wins, medal
   let champsKey = '', tgBot = '';
-  // what the stream's gifts do (the room's gift rules): one at a time, every PROMO_EVERY for PROMO_SHOW,
-  // in turn - a gift's picture and the action ("Hint", "Butterflies", "Win!"...)
-  const PROMO_FIRST = 30000, PROMO_EVERY = 180000, PROMO_SHOW = 20000;
-  let promos = [], promoN = 0;
+  // what the stream's gifts do (the room's gift rules): every PROMO_EVERY a series - each gift in turn for
+  // PROMO_SHOW (its picture and the action: "Hint", "Butterflies", "Win!"...), then a pause till the next series
+  const PROMO_FIRST = 30000, PROMO_EVERY = 180000, PROMO_SHOW = 20000, PROMO_GAP = 600;
+  let promos = [];
   const promoEl = el('div', 'giftpromo');
-  function showPromo() {
-    if (!promos.length || !Toasts.show('promo')) return;
-    const p = promos[promoN++ % promos.length];
+  function promoSeries() {
+    const start = Date.now(), items = Toasts.show('promo') ? promos.slice() : [];
+    items.forEach((p, i) => setTimeout(() => showPromo(p), i * (PROMO_SHOW + PROMO_GAP)));
+    const end = start + items.length * (PROMO_SHOW + PROMO_GAP);
+    setTimeout(promoSeries, Math.max(start + PROMO_EVERY, end + 10000) - Date.now());   // a long series: never overlaps
+  }
+  function showPromo(p) {
     const name = I18N.lang === 'ru' && p.ru ? p.ru : p.gift;
     const sub = p.rule.startsWith('gift:') ? name : p.rule === 'any' ? t('g.promo.any') : t('g.promo.min', { n: p.coins });
     promoEl.replaceChildren();
@@ -502,7 +506,7 @@
     promoEl.classList.add('on');
     setTimeout(() => promoEl.classList.remove('on'), PROMO_SHOW);
   }
-  setTimeout(() => { showPromo(); setInterval(showPromo, PROMO_EVERY); }, PROMO_FIRST);
+  setTimeout(promoSeries, PROMO_FIRST);
   function renderChamps(groups) {
     const box = $('champs');
     const key = JSON.stringify([groups, tgBot]);
