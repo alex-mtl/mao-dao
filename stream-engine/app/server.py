@@ -189,6 +189,22 @@ def create_app(manager):
         _, _, hub = room_of(token, need_control=True)
         return apply_settings(hub, await req.json())
 
+    @app.get("/r/{token}/api/viewers")
+    def viewers(token: str):
+        _, _, hub = room_of(token, need_control=True)
+        return {"viewers": hub.viewers()}
+
+    @app.post("/r/{token}/api/action")
+    async def manual_action(token: str, req: Request):
+        """the room page: do a gift's action for a viewer of the stream, now - {action, id}"""
+        _, _, hub = room_of(token, need_control=True)
+        body = await req.json()
+        if body.get("action") not in GIFT_ACTIONS:
+            raise HTTPException(400, "unknown action")
+        if not hub.manual_action(body["action"], str(body.get("id") or "")):
+            raise HTTPException(409, "not possible now (no such viewer, or not during a round)")
+        return {"ok": True}
+
     @app.post("/r/{token}/api/active")
     async def set_active(token: str, req: Request):
         _, _, hub = room_of(token, need_control=True)

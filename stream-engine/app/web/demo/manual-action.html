@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Действие за зрителя — макет</title>
+<style>
+  :root { --bg:#f3f5f9; --card:#fbfcfe; --line:#e3e8f0; --ink:#1d2433; --muted:#5b6b86; --primary:#3cc4f2; --soft:#eef3f9; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.4 Inter, system-ui, sans-serif; padding: 20px; }
+  .card { max-width: 1060px; background: var(--card); border: 1px solid var(--line); border-radius: 18px; }
+  .tabs { display: flex; gap: 4px; padding: 0 16px; border-bottom: 1px solid var(--line); }
+  .tabs span { padding: 12px; font-weight: 600; color: var(--muted); border-bottom: 2px solid transparent; }
+  .tabs span.on { color: var(--ink); border-bottom-color: var(--primary); }
+  table { width: 100%; border-collapse: collapse; }
+  th { text-align: left; font: 600 11px Inter, sans-serif; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; padding: 10px 8px 6px; }
+  td { padding: 8px; border-top: 1px solid #edf1f6; vertical-align: middle; }
+  td.act { width: 26%; font-weight: 600; }
+  td.vw { width: 30%; }
+  .viewer .ph { white-space: nowrap; }
+  .pick { display: flex; align-items: center; gap: 8px; height: 38px; padding: 0 10px; border: 1px solid #cfd8e5; border-radius: 10px; background: #fff;
+          cursor: pointer; min-width: 0; position: relative; }
+  .pick img { width: 24px; height: 24px; object-fit: contain; border-radius: 50%; flex: none; }
+  .pick .t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pick .arr { margin-left: auto; color: #8a97ad; }
+  .viewer .ph { color: var(--muted); }
+  .drop { position: absolute; left: -1px; right: -1px; top: 40px; z-index: 5; background: #fff; border: 1px solid var(--line); border-radius: 12px;
+          box-shadow: 0 10px 30px rgba(20,30,60,.15); padding: 6px; cursor: default; }
+  .drop input { width: 100%; height: 34px; border: 1px solid #cfd8e5; border-radius: 8px; padding: 0 8px; margin-bottom: 6px; font: inherit; }
+  .drop .row { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 8px; cursor: pointer; }
+  .drop .row:hover { background: var(--soft); }
+  .drop .row small { margin-left: auto; color: var(--muted); }
+  .av { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; color: #fff; font-weight: 700; font-size: 12px; flex: none; }
+  .go { height: 38px; padding: 0 14px; border-radius: 10px; border: 0; background: var(--primary); color: #fff; font-weight: 700; cursor: pointer; white-space: nowrap; }
+  .go:disabled { opacity: .4; cursor: default; }
+  .note { padding: 10px 16px 16px; color: var(--muted); font-size: 12px; }
+  .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: #1fbf75; color: #fff; padding: 10px 16px;
+           border-radius: 999px; font-weight: 600; opacity: 0; transition: opacity .3s; }
+  .toast.on { opacity: 1; }
+  .legend { max-width: 1060px; margin-top: 16px; color: var(--muted); line-height: 1.6; }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="tabs"><span>Игра</span><span>Кадр</span><span class="on">Подарки</span><span>Всплывашки и диктор</span><span>Лайки и шарики</span><span>Каталог подарков</span></div>
+  <table>
+    <thead><tr><th>Действие</th><th>За какой подарок</th><th>Сделать сейчас за зрителя</th><th></th></tr></thead>
+    <tbody id="rows"></tbody>
+  </table>
+  <div class="note">«Любой подарок» — любой, кроме привязанных к другим действиям. Справа — выполнить действие прямо сейчас от имени зрителя
+    со стрима (например, если подарок пришёл, а правило в этот момент было другим).</div>
+</div>
+<div class="legend">
+  <b>Как работает:</b> выбираешь зрителя (список — кто был активен на этом стриме, последние сверху, с поиском по нику)
+  и жмёшь «Применить» в строке действия — игра сразу делает это действие от его имени, как будто пришёл подарок:
+  самолётик/шарик/бабочки летят с его аватаркой, подсказка выдаётся ему (если пауза между подсказками не прошла — на счёт),
+  «Украсть победу» — он сразу выигрывает раунд. Изменения правил в левых колонках по-прежнему применяются общей кнопкой «Применить».
+</div>
+<div class="toast" id="toast"></div>
+<script>
+const IMG = {
+  eye: 'https://p16-webcast.tiktokcdn.com/img/alisg/webcast-sg/resource/f13894e35ea4efa123d1f8475bd5349f.png~tplv-obj.webp',
+  rose: 'https://p16-webcast.tiktokcdn.com/img/maliva/webcast-va/eba3a9bb85c33e017f3648eaf88d7189~tplv-obj.webp',
+  finger: 'https://p16-webcast.tiktokcdn.com/img/maliva/webcast-va/a4c4dc437fd3a6632aba149769491f49.png~tplv-obj.webp',
+  donut: 'https://p16-webcast.tiktokcdn.com/img/maliva/webcast-va/4e7ad6bdf0a1d860c538f38026d4e812~tplv-obj.webp',
+  panther: 'https://p16-webcast.tiktokcdn.com/img/maliva/webcast-va/8e779968d715ee8f47b94d5ac6245da5~tplv-obj.webp',
+};
+const ACTIONS = [
+  ['💡 Подсказка', IMG.eye, 'Око за око'], ['✍️ 3 слова в сообщении (до конца раунда)', IMG.rose, 'Роза'],
+  ['⚡ Буст набора: 3 слова до конца стрима', IMG.finger, 'Сердечко из пальцев'], ['💰 Украсть победу', IMG.donut, 'Пончик'],
+  ['🎈 Шарик', null, 'Без подарка'], ['✈️ Самолётик', IMG.panther, 'Любой от 10 монет'], ['🦋 Самолётик с бабочками', IMG.panther, 'Любой от 30 монет'],
+];
+const VIEWERS = [['Иннуся', '#d64b8a', '2 мин'], ['Krestik', '#6b4bd6', 'сейчас'], ['꧁༺ лисёнок ༻꧂', '#e07b2a', '1 мин'], ['Нина 🇲🇩', '#2a9be0', '5 мин'],
+                 ['🧸Мишка🧸топчик', '#9c6b3a', '3 мин'], ['💫ᴠᴀʟᴇʀɪᴀ💫', '#2abf7a', '4 мин'], ['ANESYA🥀', '#bf2a4a', '12 мин']];
+const av = (n, c) => `<span class="av" style="background:${c}">${[...n.replace(/[^\p{L}]/gu, '')][0] || '?'}</span>`;
+document.getElementById('rows').innerHTML = ACTIONS.map(([a, img, g], i) => `<tr>
+  <td class="act">${a}</td>
+  <td><div class="pick">${img ? `<img src="${img}" referrerpolicy="no-referrer">` : ''}<span class="t">${g}</span><span class="arr">▾</span></div></td>
+  <td class="vw"><div class="pick viewer" data-i="${i}"><span class="ph">— зритель —</span><span class="arr">▾</span></div></td>
+  <td><button class="go" data-i="${i}" disabled>Применить</button></td></tr>`).join('');
+let chosen = {};
+document.addEventListener('click', e => {
+  const p = e.target.closest('.viewer'), row = e.target.closest('.drop .row'), go = e.target.closest('.go');
+  if (row) {
+    const i = row.closest('.viewer').dataset.i, [n, c] = VIEWERS[row.dataset.v];
+    chosen[i] = n;
+    row.closest('.viewer').innerHTML = `${av(n, c)}<span class="t">${n}</span><span class="arr">▾</span>`;
+    document.querySelector(`.go[data-i="${i}"]`).disabled = false;
+    return;
+  }
+  if (go) {
+    const t = document.getElementById('toast');
+    t.textContent = `✓ ${ACTIONS[go.dataset.i][0].replace(/^\S+ /, '')} — для ${chosen[go.dataset.i]}`;
+    t.classList.add('on'); setTimeout(() => t.classList.remove('on'), 2200);
+    return;
+  }
+  document.querySelectorAll('.drop').forEach(d => { if (!p || !p.contains(d)) d.remove(); });
+  if (p && !p.querySelector('.drop') && !e.target.closest('.drop')) {
+    const d = document.createElement('div'); d.className = 'drop';
+    d.innerHTML = '<input placeholder="Найти по нику…">' + VIEWERS.map(([n, c, t], v) =>
+      `<div class="row" data-v="${v}">${av(n, c)}<span>${n}</span><small>${t}</small></div>`).join('');
+    p.append(d);
+    d.querySelector('input').oninput = ev => d.querySelectorAll('.row').forEach(r =>
+      r.style.display = r.textContent.toLowerCase().includes(ev.target.value.toLowerCase()) ? '' : 'none');
+  }
+});
+</script>
+</body>
+</html>

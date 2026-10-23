@@ -74,7 +74,7 @@ export default function useEngineSettings(controlUrl, enabled) {
     const setActive = (game) => call('active', { game }).then((d) => setInfo((i) => (i ? { ...i, active: d.active } : i)));
 
     return {
-        info, draft, set, changes, busy, failed, apply, setActive,
+        info, draft, set, changes, busy, failed, apply, setActive, call,
         reset: () => setDraft(saved),
         choices: (section, key) =>
             section === 'global'

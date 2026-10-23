@@ -561,6 +561,30 @@ class GuessGame(BaseGame):
             if n:
                 self.add_credits(viewer.id, n)
 
+    def manual_action(self, viewer, action):
+        """the streamer does a gift's action for a viewer (room page): -> done or not"""
+        now = time.time()
+        if action == "hint":
+            self._mark_credit_account(viewer.id)
+            if self.phase == PLAYING and self._hint_wait(viewer, now) == 0 and self.give_hint(viewer.name, now, viewer=viewer):
+                self.hint_t[viewer.id] = now
+            else:
+                self.add_credits(viewer.id, 1)           # not now: on their account
+            return True
+        if action == "multi" and self.phase == PLAYING:
+            self.multi_ids.add(viewer.id)
+            return True
+        if action == "boost":
+            if viewer.id not in self.boost_ids:
+                self.boost_ids.add(viewer.id)
+                self.store.save(self.BOOSTS, sorted(self.boost_ids))
+                self.emit("boost", name=viewer.name, avatar=viewer.avatar)
+            return True
+        if action == "steal" and self.phase == PLAYING and not (self.setter and viewer.id.lower() == self.setter["id"]):
+            self._steal(viewer)
+            return True
+        return False
+
     def _steal(self, viewer):
         """"steal the win" gift: the gifter wins the round at once with the word - nobody can get ahead,
         the round ends right here (follow / pending rules don't hold a paid win back)"""

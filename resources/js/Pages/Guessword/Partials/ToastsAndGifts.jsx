@@ -1,5 +1,7 @@
 import { useLaravelReactI18n } from 'laravel-react-i18n';
+import { useEffect, useState } from 'react';
 import GiftPicker from './GiftPicker';
+import ViewerPicker from './ViewerPicker';
 import { Switch } from './SettingsPanel';
 
 // toast / voice line ids of each mode (the engine's room_prefs.TOASTS); greet / balloon / plane are on every page
@@ -114,6 +116,23 @@ export function GiftsTab({ s, mode }) {
     const { t } = useLaravelReactI18n();
     const gifts = s.info?.gifts || { min: [], catalog: [] };
     const rule = (a) => s.draft.gifts?.[a] ?? '';
+    // do an action for a viewer of the stream now, as if their gift came (e.g. it came while the rule was another)
+    const [viewers, setViewers] = useState([]);
+    const [who, setWho] = useState({});             // action -> the viewer picked for it
+    const [done, setDone] = useState(null);         // {ok, text}: the last "Apply now"
+    useEffect(() => {
+        const load = () => s.call('viewers').then((d) => setViewers(d.viewers || [])).catch(() => {});
+        load();
+        const id = setInterval(load, 15000);
+        return () => clearInterval(id);
+    }, [s.call]);
+    const act = (a) => {
+        const v = who[a];
+        s.call('action', { action: a, id: v.id })
+            .then(() => setDone({ ok: true, text: t('guessword.act_now_done', { action: t('guessword.act_' + a), name: v.name }) }))
+            .catch(() => setDone({ ok: false, text: t('guessword.act_now_failed') }))
+            .finally(() => setTimeout(() => setDone(null), 4000));
+    };
 
     return (
         <>
@@ -122,21 +141,35 @@ export function GiftsTab({ s, mode }) {
                     <tr className="text-left text-[11px] font-semibold uppercase tracking-wide text-ink-500">
                         <th className="py-2">{t('guessword.col_action')}</th>
                         <th className="py-2">{t('guessword.col_gift')}</th>
+                        <th className="py-2 pl-3" colSpan={2}>{t('guessword.col_now')}</th>
                     </tr>
                 </thead>
                 <tbody>
                     {GIFT_ACTIONS[mode].map((a) => (
                         <tr key={a} className="border-t border-warm-100">
-                            <td className="w-[46%] py-2.5 pr-3 text-sm font-medium text-ink-900">{t('guessword.act_' + a)}</td>
+                            <td className="w-[28%] py-2.5 pr-3 text-sm font-medium text-ink-900">{t('guessword.act_' + a)}</td>
                             <td className="py-2.5">
                                 <GiftPicker value={rule(a)} onChange={(v) => s.set('gifts', a, v)}
                                             catalog={gifts.catalog} tiers={gifts.min} />
+                            </td>
+                            <td className="w-[24%] py-2.5 pl-3">
+                                <ViewerPicker value={who[a]} onChange={(v) => setWho((w) => ({ ...w, [a]: v }))} viewers={viewers} />
+                            </td>
+                            <td className="py-2.5 pl-2">
+                                <button type="button" disabled={!who[a]} onClick={() => act(a)}
+                                        className="h-10 whitespace-nowrap rounded-lg bg-primary-500 px-3 text-sm font-semibold text-white disabled:opacity-40">
+                                    {t('guessword.act_now')}
+                                </button>
                             </td>
                         </tr>
                     ))}
                 </tbody>
             </table>
-            <p className="py-3 text-xs text-ink-500">{t('guessword.gift_any_note')}</p>
+            <p className="py-3 text-xs text-ink-500">{t('guessword.gift_any_note')} {t('guessword.act_now_note')}</p>
+            {done && (
+                <div className={'fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-full px-4 py-2 text-sm font-semibold text-white shadow-lg '
+                    + (done.ok ? 'bg-success-500' : 'bg-danger-500')}>{done.text}</div>
+            )}
         </>
     );
 }

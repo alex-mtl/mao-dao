@@ -6,7 +6,7 @@ import json
 import os
 import random
 import time
-from collections import deque
+from collections import OrderedDict, deque
 
 from . import config
 from .games import GAMES
@@ -55,6 +55,8 @@ class Hub:
         self.feed_sent = 0
         self.greeted = set()                      # viewers already welcomed this stream
         self.names = {}                           # viewer id -> their TikTok nickname as of their last event
+        self.recent = OrderedDict((u["id"], {k: u.get(k, "") for k in ("name", "avatar", "t")})
+                                  for u in s.get("viewers") or [] if u.get("id"))   # this stream's viewers, latest last
         for g in self.games.values():
             g.names = self.names
         self.balloons = LikeBalloons(store, self.global_settings)   # like balloons fly over every page
@@ -92,7 +94,8 @@ class Hub:
 
     def save_session(self):
         self.store.save(self.SESSION, {"room_id": self.room_id, "active": self.active, "lang": self.lang,
-                                       "options": self.options()})
+                                       "options": self.options(),
+                                       "viewers": [{"id": k, **u} for k, u in self.recent.items()]})
 
     def options(self):
         out = {n: g.get_options() for n, g in self.games.items() if g.OPTIONS}
@@ -133,6 +136,7 @@ class Hub:
             for g in self.games.values():
                 g.new_session()
             self.greeted = set()
+            self.recent.clear()
             self.balloons.new_session()
             self.save_session()
             print(f"[hub] new LIVE (room {room_id}) -> all games reset")
@@ -153,9 +157,34 @@ class Hub:
         self.feed.append(e)
 
     def _seen(self, v):
-        """nicknames change: every event carries the current one"""
+        """nicknames change: every event carries the current one; the stream's viewers, latest first (the room
+        page picks one to act for)"""
         if v.id and v.name:
             self.names[v.id.lower()] = v.name
+            r = self.recent.pop(v.id, None) or {}
+            self.recent[v.id] = {"name": v.name, "avatar": v.avatar or r.get("avatar", ""), "t": time.time()}
+            while len(self.recent) > 500:
+                self.recent.pop(next(iter(self.recent)))
+
+    def viewers(self, limit=300):
+        """[{id, name, avatar}] the stream's viewers, the latest active first"""
+        return [{"id": k, "name": u["name"], "avatar": u["avatar"]}
+                for k, u in reversed(list(self.recent.items()))][:limit]
+
+    def manual_action(self, action, viewer_id):
+        """The streamer acts for a viewer from the room page, as if their gift came: a hint, 3 words, the boost,
+        steal the win, a balloon, a plane, butterflies."""
+        u = self.recent.get(viewer_id)
+        if not u:
+            return False
+        v = Viewer(viewer_id, u["name"], u["avatar"], 1)
+        print(f"[manual] {u['name']}: {action}")
+        if action in ("balloon", "plane", "bomber"):
+            self._gift_animations(v, "", {action}, 1)
+            return True
+        ok = bool(getattr(self.game, "manual_action", None)) and self.game.manual_action(v, action)
+        self._save_if_needed()
+        return ok
 
     def comment(self, v: Viewer, text, ts=None):
         if self.closed:                               # shutting down: nothing changes any more

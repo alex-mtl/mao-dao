@@ -170,3 +170,37 @@ class RoomPrefsApiTest(unittest.TestCase):
             self.assertEqual(info["gifts"]["values"]["plane"], "gift:Rose")
             self.assertIsInstance(info["gifts"]["catalog"], list)
             self.assertEqual(c.get(f"/r/{ov}/api/state").json()["toasts"], {"hint": {"voice": 0}})   # pages get them
+
+
+class ManualActionTest(unittest.TestCase):
+    """The room page acts for a viewer of the stream: as if their gift came."""
+
+    def setUp(self):
+        self.saved = config.INTERNAL_SECRET, config.BASE_PATH
+        config.INTERNAL_SECRET, config.BASE_PATH = "s3cret", "/guessword/engine"
+        self.manager = RoomManager(tempfile.mkdtemp())
+
+    def tearDown(self):
+        config.INTERNAL_SECRET, config.BASE_PATH = self.saved
+
+    def test_plane_and_hint_for_a_viewer(self):
+        from app.games.base import Viewer
+        with TestClient(create_app(self.manager)) as c:
+            a = c.put("/internal/rooms/a", headers=SECRET, json={"simulate": True}).json()
+            ctl = a["control_token"]
+            c.get(f"/r/{ctl}/api/games")                                  # the room's hub exists
+            hub = self.manager.rooms["a"].hub
+            hub.like(Viewer("intchik1", "Иннуся", "https://x/ava.png"), 3)   # she was on the stream
+            v = c.get(f"/r/{ctl}/api/viewers").json()["viewers"]
+            self.assertEqual(v[0], {"id": "intchik1", "name": "Иннуся", "avatar": "https://x/ava.png"})
+            self.assertEqual(c.post(f"/r/{ctl}/api/action", json={"action": "bomber", "id": "intchik1"}).status_code, 200)
+            plane = [e for e in hub.feed if e["type"] == "plane"][-1]
+            self.assertEqual((plane["name"], plane["avatar"], plane["bomber"]), ("Иннуся", "https://x/ava.png", True))
+            self.assertEqual(c.post(f"/r/{ctl}/api/action", json={"action": "plane", "id": "nobody"}).status_code, 409)
+            self.assertEqual(c.post(f"/r/{ctl}/api/action", json={"action": "fly", "id": "intchik1"}).status_code, 400)
+            hub.set_active("guess")
+            c.post(f"/r/{ctl}/api/action", json={"action": "hint", "id": "intchik1"})   # not a round now: on account
+            self.assertEqual(hub.game.credits.get("intchik1"), 1)
+            hub.save_session()
+            from app.hub import Hub
+            self.assertEqual(Hub(hub.store).viewers()[0]["name"], "Иннуся")   # the list survives a restart
