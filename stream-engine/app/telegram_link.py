@@ -28,6 +28,9 @@ def norm(text):
     return " ".join(re.sub(r"[^\w\s]", " ", (text or "").lower().replace("ё", "е")).split())
 
 
+LINKS_SEC = 300                                  # viewers' Telegram links from the bot, refreshed this often
+
+
 class TelegramLink:
     def __init__(self, hub, url, key):
         self.hub, self.url, self.key = hub, url.rstrip("/"), key
@@ -40,6 +43,8 @@ class TelegramLink:
         self.instance = secrets.token_hex(6)
         self.sent_credits = {}        # hint credits as the bot last got them (only changes are sent)
         self.sent_names = {}          # nicknames as the bot last got them (only new/changed ones are sent)
+        self.links = {}               # TikTok id -> {tg, id, full}: the viewer's Telegram (the room page links it)
+        self.links_t = 0.0            # last time the bot sent them (asked every LINKS_SEC)
 
     async def api(self, path, **body):
         import httpx
@@ -101,14 +106,17 @@ class TelegramLink:
         credits = {k: v for k, v in g.credits.items() if self.sent_credits.get(k) != v}
         credits.update({k: 0 for k in self.sent_credits if k not in g.credits and self.sent_credits[k]})
         names = dict(list((k, v) for k, v in self.hub.names.items() if self.sent_names.get(k) != v)[:500])
+        want_links = time.time() - self.links_t > LINKS_SEC
         r = await self.api("/game/poll", v=2, instance=self.instance, results=self.results, played=played, unguessed=unguessed,
-                           credits=credits, names=names, queue_ids=[c["id"] for c in g.custom])
+                           credits=credits, names=names, queue_ids=[c["id"] for c in g.custom], want_links=want_links)
         if "error" in r:
             g.played_custom = played + g.played_custom          # retry next time
             g.unguessed_custom = unguessed + g.unguessed_custom
             return
         self.sent_credits.update(credits)
         self.sent_names.update(names)
+        if isinstance(r.get("links"), dict):
+            self.links, self.links_t = r["links"], time.time()
         self.results = []
         for cid in r.get("cancel") or []:
             g.cancel_custom(cid)

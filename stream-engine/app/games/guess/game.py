@@ -1146,6 +1146,7 @@ class GuessGame(BaseGame):
             "players": len(self.players), "guesses": sum(p.guesses for p in self.players.values()),
             "pace": sum(1 for x in self.guess_times if x > now - 60),
             "top": [{"word": g["word"].upper(), "rank": g["rank"], "name": g["name"], "avatar": g["avatar"],
+                     "id": (g.get("ids") or [""])[0],
                      "count": g["count"], "t": g.get("t")} for g in top],
             "people": [{"id": p.id, "name": p.name, "avatar": p.avatar, "best": p.best, "word": (p.best_word or "").upper(),
                         "guesses": p.guesses, "boost": p.id in self.boost_ids, "multi": p.id in self.multi_ids,

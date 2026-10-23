@@ -2,6 +2,7 @@
 
 import asyncio
 import tempfile
+import time
 import unittest
 
 from fastapi.testclient import TestClient
@@ -204,3 +205,21 @@ class ManualActionTest(unittest.TestCase):
             hub.save_session()
             from app.hub import Hub
             self.assertEqual(Hub(hub.store).viewers()[0]["name"], "Иннуся")   # the list survives a restart
+
+    def test_monitor_links_a_players_telegram(self):
+        from types import SimpleNamespace
+        from app.games.base import Viewer
+        with TestClient(create_app(self.manager)) as c:
+            ctl = c.put("/internal/rooms/a", headers=SECRET, json={"simulate": True}).json()["control_token"]
+            c.get(f"/r/{ctl}/api/games")
+            hub = self.manager.rooms["a"].hub
+            hub.set_active("guess")
+            g = hub.game
+            g.tick(time.time()); g.tick(time.time() + 60)
+            hub.tg = SimpleNamespace(links={"nina": {"tg": "nina_tg", "id": "7", "full": "Нина"}})
+            g.on_comment(Viewer("Nina", "Нина", "", 1), g.sem.words[int(g.order[5])])
+            g.on_comment(Viewer("eve", "Eve", "", 1), g.sem.words[int(g.order[9])])
+            m = c.get(f"/r/{ctl}/api/monitor").json()["current"]
+            people = {p["name"]: p["tg"] for p in m["people"]}
+            self.assertEqual(people, {"Нина": {"tg": "nina_tg", "id": "7", "full": "Нина"}, "Eve": None})
+            self.assertEqual(m["top"][0]["tg"]["tg"], "nina_tg")

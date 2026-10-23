@@ -210,7 +210,13 @@ def create_app(manager):
         """the room page's monitor of the guess game: the round now, this stream's rounds, what's planned"""
         _, _, hub = room_of(token, need_control=True)
         g = hub.games.get("guess")
-        return dict(g.monitor(), active=hub.active) if g else {"active": hub.active}
+        if not g:
+            return {"active": hub.active}
+        m = g.monitor()
+        links = hub.tg.links if hub.tg else {}
+        for p in m["current"]["people"] + m["current"]["top"]:     # a player's Telegram, when they linked it in the bot
+            p["tg"] = links.get((p.get("id") or "").lower())
+        return dict(m, active=hub.active)
 
     @app.post("/r/{token}/api/control")
     async def control(token: str, req: Request):

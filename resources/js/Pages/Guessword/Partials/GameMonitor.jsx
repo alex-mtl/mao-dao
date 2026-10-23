@@ -9,6 +9,28 @@ const hms = (t) => (t ? new Date(t * 1000).toLocaleTimeString([], { hour: '2-dig
 const rankCls = (r) => (r <= 1 ? 'bg-success-500' : r < 300 ? 'bg-danger-500' : r < 1000 ? 'bg-warning-500' : r < 5000 ? 'bg-warning-300' : 'bg-ink-400');
 const Rank = ({ r }) => (r ? <span className={'inline-block min-w-[2.6rem] rounded-md px-1.5 text-center text-xs font-bold text-white ' + rankCls(r)}>{r}</span> : <span className="text-ink-400">—</span>);
 
+/** the player's TikTok and, when they linked it in the bot, Telegram - small round links */
+function Links({ p }) {
+    const icon = 'flex h-[18px] w-[18px] flex-none items-center justify-center rounded-full text-white hover:opacity-80';
+    const tg = p.tg;
+    return (
+        <span className="ml-1 inline-flex flex-none items-center gap-1">
+            {p.id && (
+                <a href={'https://www.tiktok.com/@' + encodeURIComponent(p.id)} target="_blank" rel="noopener noreferrer"
+                   title={'TikTok @' + p.id} className={icon + ' bg-black'} onClick={(e) => e.stopPropagation()}>
+                    <svg viewBox="0 0 24 24" className="h-2.5 w-2.5" fill="currentColor"><path d="M16.6 5.8A4.3 4.3 0 0 1 15.5 3h-3.1v12.4a2.6 2.6 0 1 1-2.6-2.6c.3 0 .5 0 .8.1V9.7a5.7 5.7 0 1 0 4.9 5.7V9a7.4 7.4 0 0 0 4.3 1.4V7.3a4.3 4.3 0 0 1-3.2-1.5z" /></svg>
+                </a>
+            )}
+            {tg && (
+                <a href={tg.tg ? 'https://t.me/' + encodeURIComponent(tg.tg) : 'tg://user?id=' + encodeURIComponent(tg.id)} target="_blank" rel="noopener noreferrer"
+                   title={'Telegram ' + (tg.tg ? '@' + tg.tg : tg.full || tg.id)} className={icon + ' bg-[#229ED9]'}>
+                    <svg viewBox="0 0 24 24" className="h-2.5 w-2.5" fill="currentColor"><path d="M9.8 15.3l-.4 5.4c.6 0 .8-.3 1.1-.6l2.6-2.5 5.5 4c1 .6 1.7.3 2-.9l3.6-16.9c.3-1.5-.6-2.1-1.6-1.7L1.4 10.3c-1.4.6-1.4 1.4-.2 1.7l5.4 1.7L19 5.9c.6-.4 1.1-.2.7.2z" /></svg>
+                </a>
+            )}
+        </span>
+    );
+}
+
 function Kpi({ label, children, sub }) {
     return (
         <div className="min-w-0 flex-1 basis-36 rounded-xl border border-warm-200 bg-surface px-3 py-2.5">
@@ -153,7 +175,7 @@ function Now({ c, left, run, control, t }) {
                                     <tr key={g.word}>
                                         <td className={td}><Rank r={g.rank} /></td>
                                         <td className={td + ' font-bold'}>{g.rank === 1 ? <Secret word={g.word} /> : g.word}</td>
-                                        <td className={td}><span className="flex min-w-0 items-center gap-1.5"><Avatar v={g} size="h-5 w-5" /><span className="truncate">{g.name}</span>
+                                        <td className={td}><span className="flex min-w-0 items-center gap-1.5"><Avatar v={g} size="h-5 w-5" /><span className="truncate">{g.name}</span><Links p={g} />
                                             {g.count > 1 && <span className="text-xs text-ink-500">+{g.count - 1}</span>}</span></td>
                                         <td className={td + ' text-right text-ink-500'}>{hhmm(g.t)}</td>
                                     </tr>
@@ -172,7 +194,7 @@ function Now({ c, left, run, control, t }) {
                                 <tbody>
                                     {c.people.map((p) => (
                                         <tr key={p.id} className={p.dq ? 'opacity-50' : ''}>
-                                            <td className={td}><span className="flex min-w-0 max-w-[12rem] items-center gap-1.5"><Avatar v={p} size="h-5 w-5" /><span className="truncate">{p.name}</span></span></td>
+                                            <td className={td}><span className="flex min-w-0 max-w-[15rem] items-center gap-1.5"><Avatar v={p} size="h-5 w-5" /><span className="truncate">{p.name}</span><Links p={p} /></span></td>
                                             <td className={td}><Rank r={p.best} /></td>
                                             <td className={td + ' text-right text-ink-500'}>{p.guesses}</td>
                                             <td className={td}>{p.credits ? '💡' + p.credits + ' ' : ''}{p.boost ? '⚡' : ''}{p.multi ? '✍️' : ''}{p.pending ? '⏳' : ''}</td>

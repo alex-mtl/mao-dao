@@ -121,6 +121,11 @@ class BotTest(unittest.TestCase):
     def poll(self, body=None):
         return call("/game/poll", dict(body or {}, v=2), self.key)[1]
 
+    def test_links_for_the_room_page(self):
+        self.host_and_viewer()
+        self.assertNotIn("links", self.poll())                         # only when the game asks
+        self.assertEqual(self.poll({"want_links": True})["links"]["vorobey"]["id"], "7")
+
     def test_host_picks_viewer(self):
         call("/tg", msg("загадывает", uid=5))
         self.assertIn("только для ведущего", tg.sent[-1][1])

@@ -404,4 +404,9 @@ def game_poll(game, body):
         del items[cid]                                    # the game drops it now
     if changed or words or cancel:
         store.put("PEND#" + gid, {"items": list(items.values())})
-    return 200, {"words": words, "cancel": cancel, "requests": pending(gid)}
+    out = {"words": words, "cancel": cancel, "requests": pending(gid)}
+    if body.get("want_links"):                            # the room page: a player's Telegram next to their TikTok
+        users = (store.get("GAMEUSERS#" + gid) or {}).get("users", {})
+        out["links"] = {tt: {"tg": u.get("tg_name", ""), "id": u.get("tg", ""), "full": u.get("tg_full", "")}
+                        for tt, u in users.items()}
+    return 200, out
