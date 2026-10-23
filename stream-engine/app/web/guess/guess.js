@@ -291,6 +291,11 @@
         fx('follow');
         mini(t('g.t.followed', { name }), 'follow', 'thanks');
         break;
+      case 'last_round': {                          // "что было" in the chat: the last round on the ticker
+        const html = S && tickerText(S);
+        if (html) queueTicker(html);
+        break;
+      }
       case 'fans_only':
         queueTicker(t('g.tk.fans', { name: esc(clean(e.name)), n: e.n }));
         break;

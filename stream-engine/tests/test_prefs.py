@@ -390,3 +390,10 @@ class FansAndRowsTest(unittest.TestCase):
         g.dirty = False
         g.tick(time.time() + gm.LAST_NAMER_SEC + 1)
         self.assertTrue(g.dirty)                                              # pages get it re-rendered
+
+    def test_what_was_it(self):
+        h, g = self.game()
+        g.on_comment(Viewer("a", "A", "", 1), "Что было?")
+        g.on_comment(Viewer("b", "B", "", 1), "что было")                     # too soon: once
+        self.assertEqual(sum(e["type"] == "last_round" for e in g.events), 1)
+        self.assertEqual(g.players, {})                                       # never a guess

@@ -36,6 +36,8 @@ MY_HINTS_WORDS = {"мои подсказки", "мои подскази", "ка�
                   "my hints", "mes indices", "mis pistas"}
 # "мао внимание": a leader of the day / round calls the host (red ticker + voice), once per MAO_CALL_SEC
 MAO_CALL_WORDS = {"мао внимание", "mao внимание", "mao attention"}
+LAST_ROUND_WORDS = {"что было", "прошлый раунд", "last round", "what was it"}   # anyone: the last round on the ticker
+LAST_ROUND_SEC = 20                              # ... at most this often
 MAO_CALL_SEC = 30
 SETTER_TICKER_SEC = 120                          # "this word was picked by ..." on the ticker every 2 minutes
 LOG_EVENTS = {"round_start", "gift", "hint", "boost", "steal", "new_leader", "winner", "timeout", "mao_call"}
@@ -350,6 +352,11 @@ class GuessGame(BaseGame):
             return
         if cmd in MAO_CALL_WORDS:                        # "мао внимание": never a guess
             self.call_host(viewer)
+            return
+        if cmd in LAST_ROUND_WORDS:                      # "что было": the last round's word and podium, never a guess
+            if time.time() - getattr(self, "last_round_t", 0) > LAST_ROUND_SEC:
+                self.last_round_t = time.time()
+                self.emit("last_round", name=viewer.name)
             return
         if self.setter and (viewer.id or "").lower() == self.setter["id"] and self.phase in (COUNTDOWN, PLAYING):
             return                                       # who picked the word can't guess it
