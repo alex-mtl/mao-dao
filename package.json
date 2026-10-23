@@ -29,6 +29,7 @@
         "laravel-echo": "^2.1.0",
         "laravel-react-i18n": "^2.0.5",
         "mediasoup-client": "3.6.49",
-        "pusher-js": "^8.4.0"
+        "pusher-js": "^8.4.0",
+        "qrcode-generator": "^1.4.4"
     }
 }

@@ -10,6 +10,7 @@ import { Head, router, useForm } from '@inertiajs/react';
 import { useLaravelReactI18n } from 'laravel-react-i18n';
 import { useEffect, useRef, useState } from 'react';
 import SettingsPanel, { MODES } from './Partials/SettingsPanel';
+import qrcode from 'qrcode-generator';
 import useEngineSettings from './Partials/useEngineSettings';
 
 /**
@@ -152,6 +153,41 @@ export default function Room({ room, languages, notice, problem }) {
 }
 
 /** TikTok username, game language, Euler key and the Studio link (they will live in the profile's streamer pack). */
+/** The streamer becomes the host in the Telegram bot: a one-time link (10 min) + its QR, to open on the phone. */
+function HostBot({ room }) {
+    const { t } = useLaravelReactI18n();
+    const [state, setState] = useState(null);      // null | 'busy' | {link, qr} | {error}
+    const get = () => {
+        setState('busy');
+        fetch(room.controlUrl + 'api/tg/host-link', { method: 'POST' })
+            .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
+            .then((d) => {
+                const q = qrcode(0, 'M');
+                q.addData(d.link);
+                q.make();
+                setState({ link: d.link, qr: q.createSvgTag({ cellSize: 4, margin: 2 }) });
+            })
+            .catch((e) => setState({ error: t(e === 404 ? 'guessword.host_bot_not_running' : 'guessword.host_bot_error') }));
+    };
+    return (
+        <div className="mt-4 rounded-xl border border-warm-200 p-3">
+            <InputLabel value={t('guessword.host_bot')} />
+            <p className="mt-1 text-xs text-ink-500">{t('guessword.host_bot_help')}</p>
+            <SecondaryButton type="button" className="mt-2" disabled={state === 'busy'} onClick={get}>📲 {t('guessword.host_bot_btn')}</SecondaryButton>
+            {state?.link && (
+                <div className="mt-3 flex flex-wrap items-center gap-3">
+                    <span className="rounded-lg bg-white p-1" dangerouslySetInnerHTML={{ __html: state.qr }} />
+                    <span className="min-w-0 flex-1 text-sm">
+                        <a href={state.link} target="_blank" rel="noopener noreferrer" className="break-all font-semibold text-primary-700 hover:underline">{state.link}</a>
+                        <span className="mt-1 block text-xs text-danger-600">{t('guessword.host_bot_note')}</span>
+                    </span>
+                </div>
+            )}
+            {state?.error && <p className="mt-2 text-sm text-danger-600">{state.error}</p>}
+        </div>
+    );
+}
+
 function AccountModal({ show, onClose, room, languages }) {
     const { t } = useLaravelReactI18n();
     const [copied, setCopied] = useState(false);
@@ -192,6 +228,8 @@ function AccountModal({ show, onClose, room, languages }) {
                     </SecondaryButton>
                 </div>
                 <p className="mt-1 text-xs text-ink-500">{t('guessword.studio_help')}</p>
+
+                <HostBot room={room} />
 
                 <div className="mt-4 grid gap-4 sm:grid-cols-2">
                     <div>

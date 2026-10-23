@@ -302,4 +302,10 @@ return [
     'mon_q_viewer_host' => 'from :name (added by you)',
     'mon_add_who' => 'whose word — optional',
     'mon_fresh' => 'New words left before any repeat: :n',
+    'host_bot' => 'Host Telegram bot',
+    'host_bot_help' => 'Connect your Telegram as the game host: approve viewers’ words, see /round and /history.',
+    'host_bot_btn' => 'Connect the host bot',
+    'host_bot_note' => 'Open it on your phone in Telegram. One-time link, valid 10 minutes. Don’t show it on stream!',
+    'host_bot_not_running' => 'Start the game first (Start), then press again.',
+    'host_bot_error' => 'The bot is unavailable, try later.',
 ];

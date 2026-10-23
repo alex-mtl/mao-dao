@@ -302,4 +302,10 @@ return [
     'mon_q_viewer_host' => 'de :name (añadida por ti)',
     'mon_add_who' => 'de quién es — opcional',
     'mon_fresh' => 'Palabras nuevas antes de repetir: :n',
+    'host_bot' => 'Bot de Telegram del anfitrión',
+    'host_bot_help' => 'Conecta tu Telegram como anfitrión del juego: aprueba las palabras de los espectadores, mira /round y /history.',
+    'host_bot_btn' => 'Conectar el bot del anfitrión',
+    'host_bot_note' => 'Ábrelo en tu teléfono en Telegram. Enlace único, válido 10 minutos. ¡No lo muestres en el directo!',
+    'host_bot_not_running' => 'Primero inicia el juego (Start) y vuelve a pulsar.',
+    'host_bot_error' => 'Bot no disponible, inténtalo más tarde.',
 ];
