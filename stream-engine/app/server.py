@@ -248,6 +248,15 @@ def create_app(manager):
         if action == "gift":
             hub.gift(Viewer(name.lower(), name, ""), params.get("gift") or "Rose", 1)
             return {"ok": True}
+        if action == "plane":                        # by hand for a viewer: {"id": "intchik1", "bomber": 1}
+            vid = (params.get("id") or "").strip().lstrip("@")
+            u = hub.balloons.likes.get(vid) or {}
+            if not u:
+                raise HTTPException(404, "no such viewer in this stream's likes")
+            hub._feed(type="plane", id=vid, name=u.get("name") or vid, avatar=u.get("avatar") or "",
+                      total=u.get("total", 0), auto=True, bomber=bool(params.get("bomber")))
+            print(f"[plane] by hand for {u.get('name')}: bomber={bool(params.get('bomber'))}")
+            return {"ok": True}
         return JSONResponse(hub.game.debug(action, params))
 
     @app.post("/r/{token}/api/tg/host-link")
