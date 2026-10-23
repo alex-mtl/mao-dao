@@ -16,7 +16,8 @@ export default function GiftCatalog({ catalog }) {
     const counts = useMemo(() => {
         const c = { all: catalog.length, seen: 0, audio: 0, combo: 0 };
         catalog.forEach((g) => {
-            c[g.theme] = (c[g.theme] || 0) + 1;
+            const th = g.theme || 'other';
+            c[th] = (c[th] || 0) + 1;
             if (g.seen) c.seen++;
             if (g.audio) c.audio++;
             if (g.combo) c.combo++;
@@ -32,7 +33,7 @@ export default function GiftCatalog({ catalog }) {
             if (group === 'seen' && !g.seen) return false;
             if (group === 'audio' && !g.audio) return false;
             if (group === 'combo' && !g.combo) return false;
-            if (!['all', 'seen', 'audio', 'combo'].includes(group) && g.theme !== group) return false;
+            if (!['all', 'seen', 'audio', 'combo'].includes(group) && (g.theme || 'other') !== group) return false;
             if (g.coins < lo || g.coins > hi) return false;
             if (num !== null) return g.coins === num;
             return !s || g.name.toLowerCase().includes(s) || (g.ru || '').toLowerCase().includes(s);

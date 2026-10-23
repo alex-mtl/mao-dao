@@ -1,5 +1,6 @@
 import { useLaravelReactI18n } from 'laravel-react-i18n';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { THEMES } from './GiftCatalog';
 
 const Icon = ({ g, size = 'h-6 w-6' }) =>
     g?.image ? <img src={g.image} alt="" loading="lazy" referrerPolicy="no-referrer" className={size + ' flex-none object-contain'} />
@@ -23,6 +24,7 @@ export default function GiftPicker({ value, onChange, catalog, tiers }) {
     const { t } = useLaravelReactI18n();
     const [open, setOpen] = useState(false);
     const [q, setQ] = useState('');
+    const [group, setGroup] = useState('all');      // a collection: sent on our streams, a theme
     const ref = useRef(null);
 
     useEffect(() => {
@@ -44,8 +46,9 @@ export default function GiftPicker({ value, onChange, catalog, tiers }) {
     const byName = useMemo(() => Object.fromEntries(catalog.map((g) => [g.name, g])), [catalog]);
     const found = useMemo(() => {
         const s = q.trim().toLowerCase();
-        return (s ? catalog.filter((g) => g.name.toLowerCase().includes(s) || (g.ru || '').toLowerCase().includes(s)) : catalog).slice(0, 300);
-    }, [catalog, q]);
+        return catalog.filter((g) => (group === 'all' || (group === 'seen' ? g.seen > 0 : (g.theme || 'other') === group))
+            && (!s || g.name.toLowerCase().includes(s) || (g.ru || '').toLowerCase().includes(s))).slice(0, 300);
+    }, [catalog, q, group]);
 
     const label = (v) => {
         if (!v) return <span className="text-ink-500">{t('guessword.gift_none')}</span>;
@@ -62,7 +65,7 @@ export default function GiftPicker({ value, onChange, catalog, tiers }) {
     const row = 'flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-sm hover:bg-warm-50 ';
 
     return (
-        <div className="relative w-full max-w-xs" ref={ref}>
+        <div className="relative w-full max-w-sm" ref={ref}>
             <button type="button" onClick={() => setOpen(!open)}
                     className="flex h-10 w-full items-center gap-2 rounded-lg border border-warm-300 bg-surface px-2.5 text-left text-sm text-ink-900">
                 {label(value)}
@@ -75,12 +78,20 @@ export default function GiftPicker({ value, onChange, catalog, tiers }) {
                     {tiers.map((n) => (
                         <button key={n} type="button" className={row} onClick={() => pick('min:' + n)}>{label('min:' + n)}</button>
                     ))}
-                    <input
-                        value={q}
-                        onChange={(e) => setQ(e.target.value)}
-                        placeholder={t('guessword.gift_search')}
-                        className="my-1.5 h-9 w-full rounded-lg border-warm-300 bg-surface text-sm text-ink-900"
-                    />
+                    <div className="my-1.5 flex gap-1.5">
+                        <input
+                            value={q}
+                            onChange={(e) => setQ(e.target.value)}
+                            placeholder={t('guessword.gift_search')}
+                            className="h-9 min-w-0 flex-1 rounded-lg border-warm-300 bg-surface text-sm text-ink-900"
+                        />
+                        <select value={group} onChange={(e) => setGroup(e.target.value)}
+                                className="h-9 w-32 rounded-lg border-warm-300 bg-surface py-0 text-sm text-ink-900">
+                            <option value="all">{t('guessword.catalog_all')}</option>
+                            <option value="seen">{t('guessword.catalog_seen')}</option>
+                            {THEMES.map((th) => <option key={th} value={th}>{t('guessword.theme_' + th)}</option>)}
+                        </select>
+                    </div>
                     <div className="max-h-64 overflow-y-auto">
                         {found.map((g) => (
                             <button key={g.name} type="button" className={row + (value === 'gift:' + g.name ? 'bg-primary-50' : '')}
