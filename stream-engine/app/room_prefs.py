@@ -18,7 +18,7 @@ TOASTS = {
     "leader": None, "jump": None, "so_close": None, "top": None, "streak": None, "hint": None,
     "gift": None, "hint_wait": None, "thanks": 1, "follow_needed": 1, "found_pending": 1, "dq": 1,
     "winner": 1, "time_up": None, "round": 1, "break": 1, "custom_word": None, "tg_word": None,
-    "tg_linked": None, "greet": None, "balloon": None, "plane": None,
+    "tg_linked": None, "greet": None, "balloon": None, "plane": None, "steal": 1, "boost": None,
     "b_score": None, "b_lead": None, "b_win": 1, "b_round": 1, "b_sum": None,
 }
 RATES = [0.75, 1, 1.25, 1.5, 1.75, 2]
@@ -62,13 +62,14 @@ class Toasts:
 
 
 # actions a gift can trigger; the hub runs the animations, the game the game actions
-GIFT_ACTIONS = ["hint", "multi", "balloon", "plane", "bomber"]
+# steal: the gifter wins the round at once with the word; boost: 3 words in a comment till the stream ends
+GIFT_ACTIONS = ["hint", "multi", "boost", "steal", "balloon", "plane", "bomber"]
 GIFT_MIN_COINS = [5, 10, 30, 100]
 
 
 class GiftRules:
     """{action: rule}: "" (no gift), "any", "min:<coins>", "gift:<name>". Default: any gift gives a hint."""
-    DEFAULT = {"hint": "any"}
+    DEFAULT = {"hint": "any", "steal": "gift:Monster Box!", "boost": "gift:Ghostfire"}
 
     def __init__(self, values=None):
         self._v = dict(self.DEFAULT)

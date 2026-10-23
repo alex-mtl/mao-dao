@@ -275,6 +275,14 @@
       case 'hint_wait':
         mini(t('g.t.hintWait', { name, s: e.seconds }), 'gift', 'hint_wait');
         break;
+      case 'steal':                       // a gift bought the win: the winner card follows at once
+        fx('winner');
+        toast(NAME, t('g.t.steal'), 'var(--yellow)', { huge: true, important: true, keep: true, now: true, hold: 2.4, id: 'steal' });
+        break;
+      case 'boost':
+        fx('gift');
+        mini(t('g.t.boost', { name }), 'gift', 'boost');
+        break;
       case 'gift':
         fx('gift');
         mini(t('g.t.gift', { name, gift: clean(e.gift) }) + (e.count > 1 ? ' ×' + e.count : ''), 'gift', 'gift');
@@ -325,7 +333,8 @@
         fx('winner');
         if (!e.word) break;                       // a viewer's word nobody found: not said aloud
         const word = e.word.toLowerCase();
-        if (e.reason === 'exact') voice('winner', t('g.v.winner', { name: sname, word }), 'urgent', 1);
+        if (e.stolen) voice('steal', t('g.v.steal', { name: sname, word }), 'urgent', 1);
+        else if (e.reason === 'exact') voice('winner', t('g.v.winner', { name: sname, word }), 'urgent', 1);
         else if (e.name) voice('winner', t('g.v.closest', { name: sname, word }), 'high', 1);
         else voice('winner', t('g.v.nobody', { word }), 'high', 1);
         break;

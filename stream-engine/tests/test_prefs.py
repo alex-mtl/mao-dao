@@ -175,3 +175,53 @@ class GiftBackfillTest(unittest.TestCase):
         c.record("Eye for an Eye", 1)
         c.save()
         self.assertEqual({g["name"]: g["seen"] for g in GiftCatalog(root + "/gifts_seen.json").list()}["Eye for an Eye"], 4)   # once
+
+
+class StealAndBoostTest(unittest.TestCase):
+    def game(self):
+        h = Hub(JsonStore(tempfile.mkdtemp()), username="host")
+        h.set_active("guess")
+        g = h.game
+        g.tick(time.time()); g.tick(time.time() + 60)                        # past the countdown: playing
+        return h, g
+
+    def test_defaults(self):
+        r = GiftRules()
+        self.assertEqual(r.actions_for("Monster Box!", 0), {"steal"})          # bound: no hint for it
+        self.assertEqual(r.actions_for("Ghostfire", 0), {"boost"})
+        self.assertEqual(r.actions_for("Rose", 1), {"hint"})
+
+    def test_steal_the_win(self):
+        from app.games.guess import game as gm
+        h, g = self.game()
+        nina = Viewer("nina", "Нина", "", 1)
+        g.on_comment(nina, g.sem.words[int(g.order[3])])                       # close, but...
+        h.gift(Viewer("thief", "Thief", "", 0), "Monster Box!", 1)             # ...the gift wins it, even not following
+        self.assertEqual(g.phase, gm.WINNER)
+        self.assertEqual(g.winner["name"], "Thief")
+        win = [e for e in g.events if e["type"] == "winner"][-1]
+        self.assertTrue(win["stolen"])
+        self.assertTrue(any(e["type"] == "steal" for e in g.events))
+        h.gift(Viewer("late", "Late", "", 1), "Monster Box!", 1)               # the round is over: nothing
+        self.assertEqual(g.winner["name"], "Thief")
+
+    def test_boost_for_the_whole_stream(self):
+        h, g = self.game()
+        r = lambda k: g.sem.words[int(g.order[k])]
+        for pid, k in (("a", 5), ("b", 6), ("c", 7)):                          # 3 round champions: others may not
+            g.on_comment(Viewer(pid, pid, "", 1), r(k))
+        eve = Viewer("eve", "Eve", "", 1)
+        h.gift(eve, "Ghostfire", 1)
+        g.on_comment(eve, r(40) + " " + r(41))
+        self.assertEqual(g.players["eve"].guesses, 2)
+        self.assertIn("eve", g.boost_ids)
+        g._finish(time.time(), "timeout"); g._clear_round()                  # next round: still boosted
+        self.assertIn("eve", g.boost_ids)
+        self.assertIn("eve", GuessGameFrom(g).boost_ids)                     # survives a restart
+        g.new_session()                                                       # a new stream: over
+        self.assertEqual(g.boost_ids, set())
+
+
+def GuessGameFrom(g):
+    from app.games.guess.game import GuessGame
+    return GuessGame(g.store)

@@ -106,6 +106,7 @@ class GuessGame(BaseGame):
     STATE = "guess/state.json"
     USED = "guess/used_words.json"
     ROUNDS = "guess/rounds.json"
+    BOOSTS = "guess/boosts.json"                  # viewers with "3 words" for the whole stream (a gift)
     CREDITS = "guess/hint_credits.json"          # viewer id -> hint credits ("on account")
     CREDITS_EVER = "guess/hint_credits_ever.json"  # everyone who ever had hints on account
     CUSTOM = "guess/custom_words.json"           # words viewers picked via the bot ("загадывает"), in order
@@ -148,6 +149,7 @@ class GuessGame(BaseGame):
             used = {"en": used}
         self.used = {k: set(v) for k, v in used.items()}
         self.history = store.load(self.ROUNDS, [])
+        self.boost_ids = set(store.load(self.BOOSTS, []) or [])
         self.credits = {}
         for k, v in (store.load(self.CREDITS, {}) or {}).items():
             if int(v) > 0:
@@ -185,6 +187,7 @@ class GuessGame(BaseGame):
         self.unknown_t = 0.0
         self._batch = None                               # collects the words of a several-words comment
         self.multi_ids = set()                           # viewers whose gift lets them send 3 words this round
+        self.stolen_by = None                            # the viewer winning with a "steal the win" gift, now
         self.setter = None            # {"id", "name"} of the viewer who picked this round's word
         self.word_hidden = False      # a viewer's word nobody found: never shown
         self.setter_t = 0.0
@@ -272,7 +275,8 @@ class GuessGame(BaseGame):
                            "word": self.secret.upper(), "reason": reason,
                            "seconds": round(now - self.started_at), "guesses": player.guesses,
                            "best": player.best, "streak": streak}
-        self.emit("winner", reason=reason, word=self._shown_word(),
+        stolen = bool(player) and player.id == self.stolen_by          # won with a "steal the win" gift
+        self.emit("winner", reason=reason, word=self._shown_word(), stolen=stolen,
                   name=player.name if player else None,
                   avatar=player.avatar if player else "", streak=streak)
         if player and streak >= 2:
@@ -332,6 +336,7 @@ class GuessGame(BaseGame):
         # champion places, anyone may.
         round_champs = self._round_champion_ids() if self.phase == PLAYING else set()
         if self.phase == PLAYING and self._batch is None and (len(round_champs) < 3 or viewer.id in self.multi_ids
+                                      or viewer.id in self.boost_ids
                                       or viewer.id in round_champs
                                       or viewer.id in self.stats.champion_ids()):
             several = self.sem.split_words(text)
@@ -531,6 +536,17 @@ class GuessGame(BaseGame):
               + (f" -> {sorted(actions)}" if actions else ""))
         if actions is None:
             actions = {"hint"}
+        if "steal" in actions and self.phase == PLAYING and not repeat:
+            if self.setter and (viewer.id or "").lower() == self.setter["id"]:
+                print(f"[guess] {viewer.name}: no stealing their own word")
+            else:
+                self._steal(viewer)
+                return
+        if "boost" in actions and viewer.id not in self.boost_ids:
+            self.boost_ids.add(viewer.id)                # 3 words in one comment till the stream ends
+            self.store.save(self.BOOSTS, sorted(self.boost_ids))
+            self.emit("boost", name=viewer.name, avatar=viewer.avatar)
+            print(f"[guess] {viewer.name} may send 3 words till the stream ends (gift)")
         if "multi" in actions and self.phase == PLAYING and viewer.id not in self.multi_ids:
             self.multi_ids.add(viewer.id)                # 3 words in one comment until the round ends
             print(f"[guess] {viewer.name} may send 3 words this round (gift)")
@@ -544,6 +560,22 @@ class GuessGame(BaseGame):
                 n -= 1
             if n:
                 self.add_credits(viewer.id, n)
+
+    def _steal(self, viewer):
+        """"steal the win" gift: the gifter wins the round at once with the word - nobody can get ahead,
+        the round ends right here (follow / pending rules don't hold a paid win back)"""
+        now = time.time()
+        p = self.players.setdefault(viewer.id, RoundPlayer(viewer.id, viewer.name, viewer.avatar))
+        p.name, p.avatar = viewer.name, viewer.avatar or p.avatar
+        p.pending_until, p.dq = 0.0, False
+        self.emit("steal", name=p.name, avatar=p.avatar)
+        print(f"[guess] {p.name} stole the win (gift): {self.secret}")
+        p.words.discard(self.secret)
+        self.stolen_by = p.id
+        try:
+            self._accept(p, self.secret, now)
+        finally:
+            self.stolen_by = None
 
     # ------------------------------------------------------------------ hint credits
     def add_credits(self, viewer_id, n=1):
@@ -618,6 +650,8 @@ class GuessGame(BaseGame):
     def new_session(self):
         self.stats.reset()
         self.stats.save()
+        self.boost_ids = set()                                # a new stream: the boosts are over
+        self.store.save(self.BOOSTS, [])
         self.used = {}
         self.store.save(self.USED, {})
         self.round_id = 0
