@@ -35,7 +35,7 @@ def build_ru(vocab_size):
         p = morph.parse(w)[0]
         if RU_PROPER & set(p.tag.grammemes):
             continue
-        lemma = norm(p.normal_form)
+        lemma = w if plural_only(morph, w) else norm(p.normal_form)
         if lemma == w:
             if len(vocab) < vocab_size:
                 vocab.append(w)
@@ -50,6 +50,17 @@ def build_ru(vocab_size):
 # words of 2 letters are mostly junk (notes, letters, units); these are real nouns
 RU_SHORT = {"ад", "ас", "еж", "ил", "ум", "уж", "ус", "щи", "юг", "яд", "як"}
 RU_NOUN_RE = re.compile(r"^[а-я]{3,22}$")
+
+
+# plural-only nouns the morphology dictionary takes for a plural of another word (деньги -> деньга)
+RU_PLURAL_ONLY = {"деньги"}
+
+
+def plural_only(morph, w):
+    """w is a noun used only in the plural (сутки, деньги, духи, ножницы): a word of its own, not a form of
+    a singular noun (деньга, дух) the first parse may suggest"""
+    return w in RU_PLURAL_ONLY or any(q.tag.POS == "NOUN" and "Pltm" in q.tag and norm(q.normal_form) == w
+               and not RU_PROPER & set(q.tag.grammemes) for q in morph.parse(w))
 
 
 def common_noun(morph, w):
@@ -75,7 +86,7 @@ def build_ru_normal(vocab_size):
         p = common_noun(morph, w)
         if p is None:
             continue
-        lemma = norm(p.normal_form)
+        lemma = w if plural_only(morph, w) else norm(p.normal_form)
         if not ok(lemma) or not morph.word_is_known(lemma) or common_noun(morph, lemma) is None:
             continue
         if lemma not in seen:
@@ -92,12 +103,19 @@ def build_ru_normal(vocab_size):
 
 def ru_pools(vocab, morph):
     from wordfreq import zipf_frequency
-    # every word of the dictionary may be the secret word (the owner's decision, 2026-10-23): only profanity
-    # is never picked (it isn't in the vocabulary either)
+    # the secret word: a common noun in the singular, any frequency or length, any topic (the owner's decision,
+    # 2026-10-23: no stop-list - only profanity, which isn't in the vocabulary either)
     pools = {k: [] for k in RU_TIERS}
     for w in vocab:
         if bad(w):
             continue
+        parses = morph.parse(w)
+        p = parses[0]
+        if not plural_only(morph, w) and (p.tag.POS != "NOUN" or p.score < 0.6 or "sing" not in p.tag
+                                          or "nomn" not in p.tag):
+            continue                              # a common noun in the singular, or one with no singular (сутки)
+        if any(RU_PROPER & set(q.tag.grammemes) for q in parses[:3]):
+            continue                              # names (Роза, Лев...) neither
         z = zipf_frequency(w, "ru")
         for tier, (lo, hi) in RU_TIERS.items():
             if lo <= z < hi:
