@@ -480,7 +480,7 @@
   let champsKey = '', tgBot = '';
   // what the stream's gifts do (the room's gift rules): every PROMO_EVERY a series - each gift in turn for
   // PROMO_SHOW (its picture and the action: "Hint", "Butterflies", "Win!"...), then a pause till the next series
-  const PROMO_FIRST = 30000, PROMO_EVERY = 180000, PROMO_SHOW = 20000, PROMO_GAP = 600;
+  const PROMO_FIRST = 30000, PROMO_EVERY = 180000, PROMO_SHOW = 10000, PROMO_GAP = 600;
   let promos = [];
   const promoEl = el('div', 'giftpromo');
   function promoSeries() {
