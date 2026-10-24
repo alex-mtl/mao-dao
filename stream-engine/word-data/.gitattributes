@@ -1,0 +1,2 @@
+# raw data: store every file byte for byte (sha256 in MANIFEST.sha256)
+* -text

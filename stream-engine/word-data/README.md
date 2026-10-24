@@ -21,7 +21,7 @@ zips) are byte-identical to `built/`.
 | `built/` | 200 MB | finished dictionaries, one folder per dictionary | GitHub (this repo) |
 | `models/hub/` | 2.55 GB | Hugging Face snapshots (an `HF_HOME/hub` cache, real files, no symlinks) | S3 `s3://aws-for-claude-registry-565905128720/word-data/models/` (LaBSE alone is 1.8 GB, over GitHub's 100 MB per file) |
 
-The folders are in `stream-engine/.gitignore` until their files are uploaded; the description comes first.
+`models/` is in `stream-engine/.gitignore`; fetch it from S3 (`aws s3 sync s3://aws-for-claude-registry-565905128720/word-data/models/ models/`).
 
 ## Sources (`sources/`)
 

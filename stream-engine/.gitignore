@@ -1,7 +1,5 @@
 __pycache__/
 data/
 .env
-# Guess the Word raw data: described in word-data/README.md + MANIFEST.sha256, files uploaded separately
-word-data/sources/
-word-data/built/
+# Guess the Word models: in S3 (see word-data/README.md), too big for GitHub
 word-data/models/
