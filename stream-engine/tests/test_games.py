@@ -804,7 +804,7 @@ class TelegramLinkTest(unittest.TestCase):
 
         async def api(path, **body):
             calls.append((path, body))
-            return {"ok": True, "linked": True, "first": True}
+            return {"ok": True, "linked": path != "/game/switch", "first": True}   # not linked yet
         link.api = api
         link.word, link.bot = "маринад", "test_bot"
         v = Viewer("Vorobey", "воробей")
@@ -812,12 +812,12 @@ class TelegramLinkTest(unittest.TestCase):
         async def go():
             hub.comment(v, "Настроить связь!")
             hub.comment(v, "мой ключ-тг-AbC_12-z")
-            await asyncio.sleep(0)
+            await asyncio.sleep(0.05)
         asyncio.run(go())
         types = [e["type"] for e in hub.game.events]
         self.assertIn("tg_info", types)
         self.assertIn("tg_linked", types)
-        self.assertEqual(calls, [("/game/key", {"key": "ключ-тг-AbC_12-z", "tiktok_id": "Vorobey", "tiktok_name": "воробей"})])
+        self.assertEqual(calls, [("/game/switch", {"tiktok_id": "Vorobey"}), ("/game/key", {"key": "ключ-тг-AbC_12-z", "tiktok_id": "Vorobey", "tiktok_name": "воробей"})])
         info = [e for e in hub.game.events if e["type"] == "tg_info"][0]
         self.assertEqual((info["bot"], info["word"]), ("test_bot", "МАРИНАД"))
         self.assertFalse(link.on_comment(v, "огурец"))                 # an ordinary guess goes to the game

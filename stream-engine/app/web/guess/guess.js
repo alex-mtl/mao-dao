@@ -258,6 +258,9 @@
       case 'credits_info':                       // "мои подсказки": on the ticker line
         queueTicker(t('g.tk.credits', { name: esc(e.name), hints: I18N.n(e.n || 0, 'hint') }));
         break;
+      case 'tg_switched':                        // "настроить связь" from a viewer linked already
+        toast('📲 ' + clean(e.name), t('g.t.tgSwitched', { w: e.word || '' }), 'var(--cyan)', { important: true, hold: 4, id: 'tg_switched' });
+        break;
       case 'tg_info':                            // "настроить связь": the bot and the stream word
         toast('📲 ' + (e.bot ? '@' + e.bot : ''), t('g.t.tgWord', { w: clean(e.word) }), '#2aabee', { important: true, keep: true, hold: 6, id: 'tg_word' });
         queueTicker(t('g.tk.tg', { bot: esc(e.bot ? '@' + e.bot : ''), w: esc(e.word) }));

@@ -320,6 +320,24 @@ def game_push(game, body):
     return 200, {"ok": True, "sent": True}
 
 
+def game_switch(game, body):
+    """"настроить связь" in a stream's chat from a viewer linked already: they play in this game now (the
+    TikTok link itself stays) - no stream word, no /game"""
+    link = store.get("TT#" + (body.get("tiktok_id") or "").lower())
+    if not link:
+        return 200, {"ok": True, "linked": False}
+    switched = link.get("game") != game["id"]
+    if switched:
+        link["game"] = game["id"]
+        store.put("TG#" + link["tg"], link)
+        store.put("TT#" + link["tiktok_id"], link)
+        riddle.add_game_user(game["id"], link)
+        events.log(game["id"], "switch", tt=link["tiktok_id"], tg=link["tg"], via="chat")
+        tx = texts.TEXT[lang_of(game.get("lang") or DEFAULT_LANG)]
+        tg.send(link["chat"], tx["game_ok"].format(word=html_escape((game.get("word") or "").upper())))
+    return 200, {"ok": True, "linked": True, "switched": switched}
+
+
 HOST_CODE_TTL = 10 * 60
 
 
@@ -333,7 +351,7 @@ def host_code(game, body, now=None):
 
 
 GAME_ROUTES = {"/game/stream/start": stream_start, "/game/stream/stop": stream_stop,
-               "/game/key": game_key, "/game/push": game_push, "/game/host_code": host_code,
+               "/game/key": game_key, "/game/push": game_push, "/game/switch": game_switch, "/game/host_code": host_code,
                "/game/poll": riddle.game_poll}
 
 

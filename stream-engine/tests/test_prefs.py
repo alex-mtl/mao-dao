@@ -397,3 +397,31 @@ class FansAndRowsTest(unittest.TestCase):
         g.on_comment(Viewer("b", "B", "", 1), "что было")                     # too soon: once
         self.assertEqual(sum(e["type"] == "last_round" for e in g.events), 1)
         self.assertEqual(g.players, {})                                       # never a guess
+
+
+class LinkUpTest(unittest.TestCase):
+    """"настроить связь": a viewer linked already plays here (their toast); not linked - the bot and the word."""
+
+    def test_link_up(self):
+        import asyncio
+        from app.telegram_link import TelegramLink
+        h = Hub(JsonStore(tempfile.mkdtemp()), username="host")
+        h.set_active("guess")
+        tg = TelegramLink(h, "https://bot", "k")
+        tg.word, tg.bot = "пастила", "bot"
+        calls = []
+
+        async def api(path, **body):
+            calls.append((path, body))
+            return {"ok": True, "linked": body["tiktok_id"] == "nina", "switched": True}
+        tg.api = api
+
+        async def run():
+            self.assertTrue(tg.on_comment(Viewer("nina", "Нина", "", 1), "Настроить связь!"))
+            tg.on_comment(Viewer("nina", "Нина", "", 1), "настроить связь")       # too soon: once
+            tg.on_comment(Viewer("eve", "Eve", "", 1), "настроить связь")
+            await asyncio.sleep(0.05)
+        asyncio.run(run())
+        self.assertEqual([c[1]["tiktok_id"] for c in calls], ["nina", "eve"])
+        types = [(e["type"], e.get("name")) for e in h.game.events if e["type"] in ("tg_switched", "tg_info")]
+        self.assertEqual(types, [("tg_switched", "Нина"), ("tg_info", None)])

@@ -21,6 +21,7 @@ KEY_RE = re.compile(r"ключ-тг-[A-Za-z0-9_-]{8}", re.IGNORECASE)
 LINK_COMMANDS = {"настроить связь", "link up"}    # never the messenger's name: TikTok may filter it
 OFFLINE_STOP_SEC = 10 * 60         # LIVE offline that long -> the stream word is released
 LINK_COOLDOWN_SEC = 60            # "настроить связь": after anyone calls it, nobody can for a minute
+SWITCH_COOLDOWN_SEC = 30          # ... a linked viewer: their own toast, at most this often
 POLL_SEC = 10                     # asking the bot for words viewers picked (only while LIVE)
 
 
@@ -38,6 +39,7 @@ class TelegramLink:
         self.bot = ""
         self.offline_since = None
         self.info_t = 0.0
+        self.switch_t = {}            # viewer id -> their last "настроить связь" (a linked viewer moves here)
         self.results = []             # dictionary checks of picked words, not yet delivered to the bot
         # this running copy of the game: the bot warns if two copies use one key (a home game + the platform)
         self.instance = secrets.token_hex(6)
@@ -64,11 +66,26 @@ class TelegramLink:
             return True
         if norm(text) in LINK_COMMANDS:
             now = time.time()
-            if self.word and now - self.info_t > LINK_COOLDOWN_SEC:   # one call per minute for the whole chat
-                self.info_t = now
-                self.hub.game.emit("tg_info", bot=self.bot, word=self.word.upper())
+            if now - self.switch_t.get(viewer.id, 0) > SWITCH_COOLDOWN_SEC:
+                self.switch_t[viewer.id] = now
+                asyncio.get_event_loop().create_task(self._link_up(viewer))
             return True
         return False
+
+    async def _link_up(self, viewer):
+        """linked in the bot already: they play in this room now (a toast for them); not linked: the bot's
+        name and the stream word for everybody (one call per minute for the whole chat)"""
+        r = await self.api("/game/switch", tiktok_id=viewer.id)
+        if self.hub.closed:
+            return
+        if r.get("linked"):
+            print(f"[telegram] {viewer.name} plays here now (switched: {r.get('switched')})")
+            self.hub.game.emit("tg_switched", name=viewer.name, avatar=viewer.avatar, word=(self.word or "").upper())
+            return
+        now = time.time()
+        if self.word and now - self.info_t > LINK_COOLDOWN_SEC:
+            self.info_t = now
+            self.hub.game.emit("tg_info", bot=self.bot, word=self.word.upper())
 
     async def _key(self, viewer, key):
         r = await self.api("/game/key", key=key, tiktok_id=viewer.id, tiktok_name=viewer.name)

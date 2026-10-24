@@ -121,6 +121,20 @@ class BotTest(unittest.TestCase):
     def poll(self, body=None):
         return call("/game/poll", dict(body or {}, v=2), self.key)[1]
 
+    def test_link_up_moves_a_linked_viewer_here(self):
+        self.host_and_viewer()
+        self.assertEqual(call("/game/switch", {"tiktok_id": "nobody"}, self.key)[1], {"ok": True, "linked": False})
+        r = call("/game/switch", {"tiktok_id": "Vorobey"}, self.key)[1]
+        self.assertEqual((r["linked"], r["switched"]), (True, False))      # this game already
+        link = store.get("TT#vorobey")
+        store.put("TT#vorobey", dict(link, game="other"))
+        store.put("TG#7", dict(link, game="other"))
+        tg.sent.clear()
+        r = call("/game/switch", {"tiktok_id": "vorobey"}, self.key)[1]
+        self.assertTrue(r["switched"])
+        self.assertEqual(store.get("TG#7")["game"], link["game"])
+        self.assertEqual(tg.sent[-1][0], 7)                                 # told in the messenger
+
     def test_links_for_the_room_page(self):
         self.host_and_viewer()
         self.assertNotIn("links", self.poll())                         # only when the game asks
