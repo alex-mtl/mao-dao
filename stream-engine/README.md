@@ -30,6 +30,14 @@ Plan: `../../Stream Games — Requirements and Implementation Plan.md`, section 
 | `DEBUG_CONTROLS` | `1` = debug buttons in the control pages |
 | `DEV_ROOMS` | local testing: N simulated rooms, tokens `dev1`/`view1`, `dev2`/`view2`… |
 
+## Dictionaries (`word-data/`)
+
+Raw sets, models and the finished dictionaries live in `word-data/` (description, versions, licenses, sha256:
+`word-data/README.md`). The Dockerfile's `assets` stage reads only that folder — nothing is downloaded but
+the pinned Python libraries; refreshing a set from the internet is a developer's explicit decision.
+`word-data/built/<dict>/` = the dictionaries in production (with embeddings) — use it as `ASSETS_DIR` for
+the tests.
+
 ## Run and test locally
 
 ```bash

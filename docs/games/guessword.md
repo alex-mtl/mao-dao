@@ -18,6 +18,23 @@ them by meaning and shows who is closest on an overlay that TikTok LIVE Studio c
 | Telegram bot (AWS Lambda) | `services/telegram-bot/` | viewers link Telegram ↔ TikTok, offer words; the host approves |
 | Word ranking (AWS Lambdas) | `services/word-ranker/` | the round's ranking table per language (no embeddings on the server) |
 
+## Dictionaries and how places are counted
+
+Everything the dictionaries are made from is kept in **`stream-engine/word-data/`** — raw sets by library
+and version (`sources/`: wordfreq, OpenCorpora via pymorphy3, WordNet / Open Multilingual Wordnet, spaCy
+fr/es models, profanity list), the embedding models (`models/`: MiniLM for en, rubert-tiny2 for ru, LaBSE for
+fr, a Spanish BETO model for es) and the finished dictionaries now in production (`built/<dict>/`). Sources,
+versions, licenses, sha256 and where each part is stored (GitHub / S3): `stream-engine/word-data/README.md`.
+
+A build uses **only** these local sets: the `assets` stage of `stream-engine/Dockerfile` reads them
+(`HF_HUB_OFFLINE=1`, libraries pinned) and `services/word-ranker/build.sh` packs `word-data/built` as is.
+Data or models are downloaded again only when a developer explicitly decides to refresh a set.
+
+Places: every vocabulary word has an L2-normalized vector; the round's ranking sorts all words by cosine
+similarity to the secret word (the secret itself is always #1) — `SemanticIndex.ranking()` in
+`stream-engine/app/games/guess/semantic.py`, the same math in `ranking()` of `services/word-ranker/handler.py`,
+which is what production uses (the game server holds no vectors).
+
 ## Access
 
 Who may run a room is answered by the platform service `App\Services\Capabilities`
