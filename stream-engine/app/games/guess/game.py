@@ -44,6 +44,7 @@ LOG_EVENTS = {"round_start", "gift", "hint", "boost", "steal", "new_leader", "wi
 LOG_KEYS = ("name", "gift", "count", "word", "by", "rank", "kind", "reason", "cmd", "n")
 STUCK_PAUSE_SEC = 120                          # the active game paused this long = a bug: drop the round, start anew
 LAST_NAMER_SEC = 20           # a row shows who named its word last this long, then the first namer again
+NEIGHBOURS_FROM_RANK = 10      # a boosted word gets its rank neighbours only when it is below this place
 FANS_NOTE_SEC = 30            # "only the team plays" reminder for one viewer at most this often
 MAX_WORDS = 5000              # cap of aggregated words per round (memory guard)
 SIM_NAMES = ["Alex", "Mike", "Sarah", "John", "Emma", "Liam", "Olivia", "Noah", "Mia", "Leo"]
@@ -459,10 +460,10 @@ class GuessGame(BaseGame):
                     or viewer.id in self._round_champion_ids()
                     or viewer.id in self.stats.champion_ids())
         # no neighbours for a word already in the table (else repeating someone else's rank-2 word
-        # would hand over the secret at rank 1); a new rank-2 word does win with its neighbour
-        if _boosted and word not in self.guesses:
-            _r = int(self.rank[self.sem.index[word]])
-            _words = [self.sem.words[self.order[_k - 1]] for _k in (_r - 1, _r, _r + 1) if 1 <= _k <= self.sem.size]
+        # would hand over the secret at rank 1); no neighbours for a top-10 word either (owner, 2026-10-27)
+        _r = int(self.rank[self.sem.index[word]])
+        if _boosted and word not in self.guesses and _r > NEIGHBOURS_FROM_RANK:
+            _words =[self.sem.words[self.order[_k - 1]] for _k in (_r - 1, _r, _r + 1) if 1 <= _k <= self.sem.size]
         if self._batch is None and len(_words) > 1:
             # the neighbours of one word = one row of several words, not three guess rows
             self._batch = []

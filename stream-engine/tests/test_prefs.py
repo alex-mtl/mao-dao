@@ -136,12 +136,12 @@ class HostReportsTest(unittest.TestCase):
         g.tick(time.time()); g.tick(time.time() + 60)          # past the countdown
         r = lambda k: g.sem.words[int(g.order[k])]
         nina, tati = Viewer("nina", "Нина", "", 1), Viewer("tati", "Tati", "", 1)
-        g.on_comment(nina, r(30)); g.on_comment(nina, r(5)); g.on_comment(tati, r(200))
+        g.on_comment(nina, r(30)); g.on_comment(nina, r(5)); g.on_comment(nina, r(20)); g.on_comment(tati, r(200))
         rep = g.round_report()
-        # Нина leads after her first word: her second one comes with its neighbours (#5, #6, #7)
-        self.assertEqual((rep["word"], rep["players"], rep["guesses"]), (g.secret.upper(), 2, 5))
+        # Нина leads after her first word: #6 is in the top 10, so no neighbours; #21 comes with #20 and #22
+        self.assertEqual((rep["word"], rep["players"], rep["guesses"]), (g.secret.upper(), 2, 6))
         self.assertEqual([w[0] for w in rep["who"]], ["Нина", "Tati"])           # closest first
-        self.assertEqual([t[1] for t in rep["top"]], [5, 6, 7, 31, 201])
+        self.assertEqual([t[1] for t in rep["top"]], [6, 20, 21, 22, 31, 201])
         g.on_comment(tati, g.secret)                                             # Tati wins
         h = g.history_report(3)
         self.assertEqual(len(h), 1)
