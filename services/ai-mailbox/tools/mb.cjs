@@ -11,8 +11,8 @@
 //   node mb.cjs show T-0001                        a task with all its messages
 //   node mb.cjs tasks [open|closed|all]
 //   node mb.cjs stats [days]
-//   node mb.cjs watch                              waits (long poll) and exits when Druzhok writes, a task stalls,
-//                                                 or nothing is open; meant for a background run
+//   node mb.cjs watch                              waits (long poll); exits on a result / question, a task stalled 15 min,
+//                                                 nothing open, or after 60 min; meant for a background run
 const fs = require('fs'), path = require('path'), os = require('os');
 const dir = path.join(os.homedir(), '.ai-mailbox');
 const url = fs.readFileSync(path.join(dir, 'url'), 'utf8').trim().replace(/\/$/, '');
@@ -98,13 +98,18 @@ function upload(tid, local) {
   } else if (cmd === 'stats') {
     out(await api('GET', '/v1/stats?days=' + (a[0] || 7)));
   } else if (cmd === 'watch') {
-    const stalledBefore = new Set();
+    // every wake-up of Claude re-reads its whole context, so wake only when there is something to act on:
+    // a result or a question, a task stalled for STALL_MIN, nothing open any more, or MAX_MIN passed;
+    // ack / progress are collected and shown at the wake-up
+    const STALL_MIN = 15, MAX_MIN = 60, started = Date.now(), stalledSince = new Map(), got = [];
     for (;;) {
       const r = await api('GET', '/v1/inbox?wait=25');
-      const stalled = r.open_tasks.filter(t => t.stalled && !stalledBefore.has(t.id));
-      r.open_tasks.forEach(t => t.stalled ? stalledBefore.add(t.id) : stalledBefore.delete(t.id));
-      if (r.messages.length || stalled.length || !r.open_tasks.length) {
-        r.messages.forEach(m => console.log(fmt(m) + '\n'));
+      got.push(...r.messages);
+      r.open_tasks.forEach(t => t.stalled ? stalledSince.has(t.id) || stalledSince.set(t.id, Date.now()) : stalledSince.delete(t.id));
+      const longStall = [...stalledSince.values()].some(t0 => Date.now() - t0 > STALL_MIN * 60e3);
+      if (r.messages.some(m => m.kind === 'result' || m.kind === 'question') || longStall || !r.open_tasks.length
+          || Date.now() - started > MAX_MIN * 60e3) {
+        got.forEach(m => console.log(fmt(m) + '\n'));
         r.open_tasks.forEach(t => console.log(taskLine(t)));
         if (!r.open_tasks.length) console.log('no open tasks');
         return;
