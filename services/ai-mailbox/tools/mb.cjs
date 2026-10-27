@@ -3,15 +3,15 @@
 //   ~/.ai-mailbox/url            https://....lambda-url.us-east-1.on.aws
 //   ~/.ai-mailbox/claude.token   the token (never print it)
 // Usage:
-//   node mb.js task "<title>" <body file | ->     new task; prints its id
-//   node mb.js say T-0001 <kind> "<text>" [local file...]   answer | instruction | thanks | cancel; the files go
+//   node mb.cjs task "<title>" <body file | ->     new task; prints its id
+//   node mb.cjs say T-0001 <kind> "<text>" [local file...]   answer | instruction | thanks | cancel; the files go
 //                                                 to the exchange folder first (thanks / cancel clear the task's folder)
-//   node mb.js get T-0001 <local dir>             download Druzhok's files of the task, then delete them there
-//   node mb.js inbox                              new messages from Druzhok + open tasks
-//   node mb.js show T-0001                        a task with all its messages
-//   node mb.js tasks [open|closed|all]
-//   node mb.js stats [days]
-//   node mb.js watch                              waits (long poll) and exits when Druzhok writes, a task stalls,
+//   node mb.cjs get T-0001 <local dir>             download Druzhok's files of the task, then delete them there
+//   node mb.cjs inbox                              new messages from Druzhok + open tasks
+//   node mb.cjs show T-0001                        a task with all its messages
+//   node mb.cjs tasks [open|closed|all]
+//   node mb.cjs stats [days]
+//   node mb.cjs watch                              waits (long poll) and exits when Druzhok writes, a task stalls,
 //                                                 or nothing is open; meant for a background run
 const fs = require('fs'), path = require('path'), os = require('os');
 const dir = path.join(os.homedir(), '.ai-mailbox');
