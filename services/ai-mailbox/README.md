@@ -6,7 +6,7 @@ API и правила работы — [API.md](API.md) (его же получ�
 - `aimail/` — Lambda `ai-mailbox` (Python 3.12, без зависимостей, 128 МБ, таймаут 30 с) за Function URL (AuthType NONE, токены проверяются внутри по sha256 из переменных `TOKEN_SHA256_CLAUDE` / `TOKEN_SHA256_DRUZHOK`).
 - DynamoDB `ai-mailbox`: ключ `pk` (S) + `sk` (S), PROVISIONED 5/5 (в always-free 25/25 на аккаунт), TTL по `ttl`. Раскладка — в `aimail/store.py`.
 - IAM-роль `ai-mailbox-role` (`deploy/trust.json`, `deploy/role-policy.json`): логи + get/put/update/query на эту таблицу.
-- Папка обмена на `aws-dev`: `deploy/setup-exchange.sh` (том 1 ГБ `/srv/ai-exchange`, пользователь `druzhok` только SFTP в chroot, чистка файлов старше 7 дней).
+- Папка обмена на `aws-dev`: `deploy/setup-exchange.sh` (том 1 ГБ `/srv/ai-exchange`, файлы в `/srv/ai-exchange/files`, чистка файлов старше 7 дней; Дружок заходит своим доступом). Настроена 2026-10-27.
 - `tools/mb.cjs` — сторона Claude (Node 18+): `task`, `say`, `get`, `inbox`, `show`, `tasks`, `stats`, `watch`. Адрес и токен — в `~/.ai-mailbox/` (вне репо).
 - Логи CloudWatch — 7 дней (`log-retention-enforcer`), тег `Project=ai-mailbox`, запись в реестре aws-for-claude.
 
