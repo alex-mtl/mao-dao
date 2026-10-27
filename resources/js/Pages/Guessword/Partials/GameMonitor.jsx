@@ -36,7 +36,7 @@ function Kpi({ label, children, sub }) {
         <div className="min-w-0 flex-1 basis-36 rounded-xl border border-warm-200 bg-surface px-3 py-2.5">
             <div className="text-[11px] font-semibold uppercase tracking-wide text-ink-500">{label}</div>
             <div className="truncate text-xl font-bold text-ink-900">{children}</div>
-            {sub && <div className="truncate text-xs text-ink-500">{sub}</div>}
+            {sub && <div className="truncate text-xs text-ink-500" title={sub}>{sub}</div>}
         </div>
     );
 }
@@ -57,7 +57,8 @@ function Secret({ word, big }) {
     return (
         // a long word shrinks (ellipsis), never the button: inside a truncating box it used to be cut off
         <span className="inline-flex max-w-full items-center gap-2 align-bottom">
-            <span className={(big ? 'tracking-wide ' : '') + 'min-w-0 truncate transition ' + (show ? '' : 'select-none blur-[6px]')}>{word}</span>
+            <span title={show ? word : undefined}
+                  className={(big ? 'tracking-wide ' : '') + 'min-w-0 truncate transition ' + (show ? '' : 'select-none blur-[6px]')}>{word}</span>
             <button type="button" onClick={() => setShow(!show)} className="shrink-0 rounded-md bg-warm-100 px-1.5 text-xs font-medium text-ink-700">
                 {show ? '🙈' : '👁'}
             </button>
