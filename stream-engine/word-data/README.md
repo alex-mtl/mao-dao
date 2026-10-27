@@ -39,7 +39,8 @@ zips) are byte-identical to `built/`.
 | Model | Revision | Dictionaries | License |
 |---|---|---|---|
 | `sentence-transformers/all-MiniLM-L6-v2` | 1110a243fdf4706b3f48f1d95db1a4f5529b4d41 | en, en-easy | Apache-2.0 |
-| `cointegrated/rubert-tiny2` | e8ed3b0c8bbf4fb6984c3de043bf7d2f4e5969ae | ru, ru-easy, ru-hard | MIT |
+| `cointegrated/rubert-tiny2` | e8ed3b0c8bbf4fb6984c3de043bf7d2f4e5969ae | ru-easy, ru-hard; ru until 2026-10-27 (kept as `built/ru/embeddings.rubert-tiny2.npy`) | MIT |
+| Sber sbert large (1024-dim; computed outside the repo by the owner, 2026-10-25 — exact model id and script not recorded) | — | ru (normal) since 2026-10-27: `built/ru/embeddings.npy` | check the model card |
 | `sentence-transformers/LaBSE` | 836121a0533e5664b21c7aacc5d22951f2b8b25b | fr | Apache-2.0 |
 | `hiiamsid/sentence_similarity_spanish_es` | 66ab46adac3910bb6ea6085b962a25e49513b981 | es | Apache-2.0 |
 
@@ -62,7 +63,7 @@ frequency of each pool word; the game picks normal-level Russian secrets only fr
 | en-easy | d20aff51a53d | 2026-10-14 | election-game 0373694 |
 | en | 214fea340819 | 2026-10-14 | election-game 0373694 |
 | ru-easy | aa9d346e1399 | 2026-10-14 | election-game 0373694 |
-| ru | adea3f1869b5 | 2026-10-14 (vocab); meta.json + secret_nouns.txt replaced on the server 2026-10-26 | election-game 0373694 |
+| ru | adea3f1869b5 | 2026-10-14 (vocab); meta.json + secret_nouns.txt replaced on the server 2026-10-26; embeddings: Sber large since 2026-10-27 (the old ones: embeddings.rubert-tiny2.npy) | election-game 0373694 |
 | ru-hard | f4b8e7ff8552 | 2026-10-23 | quiz `stream-engine/tools` 11c42ee |
 | fr | 2e7cca203229 | 2026-10-14 | election-game 0373694 |
 | es | c3234eafeadf | 2026-10-14 | election-game 0373694 |

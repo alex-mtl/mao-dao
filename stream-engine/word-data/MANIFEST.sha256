@@ -22,7 +22,6 @@ a2ebce32f47963f3955c0f97d67190274a4f44c589aa5a6c252a50d9daac26c2 *built/ru-hard/
 362a0af80692bc24b0f389555a2c75e213e4032a718124790cfac40799b3d34d *built/ru-hard/meta.json
 7f2779414c1dd98305b171892fe36af94b1af47b1e919bbd737a2646a2974df7 *built/ru-hard/secret_nouns.txt
 2f419eff6e8cc4191d5309a04727cb8cbd9aca9449e155048d0913a406f79f40 *built/ru-hard/vocab.txt
-0969e032d682c3bcfd55ce445e2b11f3a6b0e86899fb73138b980c654d862df9 *built/ru/embeddings.npy
 146e23cdcf9baed236d62e4ba288fad5033fa662421653a8aecc33a9be2a75ee *built/ru/meta.json
 22b198bb34968bf2481c980dafc6466f4e06c530f0d8379888f1b641cfee895c *built/ru/secret_nouns.txt
 c6a82b02294edac8e8fa5f8c1162f7bf9198181e66f150e5593b7b76ee604fbf *built/ru/vocab.txt
@@ -266,3 +265,5 @@ fab1698966706a4b5fbfc9e50f7b4eafd96d78b21f75d491235b477bc26081e1 *sources/wordfr
 af8b2ee15aa560981a5fb663c99c797a4ec579658824bc8017200f57ebcd8179 *sources/wordfreq-3.1.1/wordfreq-3.1.1.dist-info/RECORD
 e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 *sources/wordfreq-3.1.1/wordfreq-3.1.1.dist-info/REQUESTED
 ed9f3fdbbb9a1c8fd4640738528c783e906143d639fe6a1d65758cc6d522e0d5 *sources/wordfreq-3.1.1/wordfreq-3.1.1.dist-info/WHEEL
+b408855c4e1f6ff2f06abfba6c952c10bcf28507e60ad9241197566c5a650f4e *built/ru/embeddings.npy
+0969e032d682c3bcfd55ce445e2b11f3a6b0e86899fb73138b980c654d862df9 *built/ru/embeddings.rubert-tiny2.npy
