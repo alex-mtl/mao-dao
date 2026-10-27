@@ -55,9 +55,10 @@ function Secret({ word, big }) {
     const [show, setShow] = useState(false);
     if (!word) return <span className="text-ink-400">—</span>;
     return (
-        <span className="inline-flex items-center gap-2">
-            <span className={(big ? 'tracking-wide ' : '') + 'transition ' + (show ? '' : 'select-none blur-[6px]')}>{word}</span>
-            <button type="button" onClick={() => setShow(!show)} className="rounded-md bg-warm-100 px-1.5 text-xs font-medium text-ink-700">
+        // a long word shrinks (ellipsis), never the button: inside a truncating box it used to be cut off
+        <span className="inline-flex max-w-full items-center gap-2 align-bottom">
+            <span className={(big ? 'tracking-wide ' : '') + 'min-w-0 truncate transition ' + (show ? '' : 'select-none blur-[6px]')}>{word}</span>
+            <button type="button" onClick={() => setShow(!show)} className="shrink-0 rounded-md bg-warm-100 px-1.5 text-xs font-medium text-ink-700">
                 {show ? '🙈' : '👁'}
             </button>
         </span>
