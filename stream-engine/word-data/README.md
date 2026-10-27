@@ -40,7 +40,7 @@ zips) are byte-identical to `built/`.
 |---|---|---|---|
 | `sentence-transformers/all-MiniLM-L6-v2` | 1110a243fdf4706b3f48f1d95db1a4f5529b4d41 | en, en-easy | Apache-2.0 |
 | `cointegrated/rubert-tiny2` | e8ed3b0c8bbf4fb6984c3de043bf7d2f4e5969ae | ru-easy, ru-hard; ru until 2026-10-27 (kept as `built/ru/embeddings.rubert-tiny2.npy`) | MIT |
-| `ai-forever/sbert_large_mt_nlu_ru` (Sber, ex-SberDevices; 1024-dim) — computed by the owner on 2026-10-25 with `SentenceTransformer("ai-forever/sbert_large_mt_nlu_ru")` over `built/ru/vocab.txt` (weights pulled from the HF Hub; revision not recorded, the weights are not in models/) | — | ru (normal) since 2026-10-27: `built/ru/embeddings.npy` | see the model card |
+| `ai-forever/sbert_large_mt_nlu_ru` (Sber, ex-SberDevices; 1024-dim) — computed on Kaggle GPU on 2026-10-25, notebook `kaggle/sbert-full.ipynb` (Kaggle kernel kimalexandermontreal/sbert-full): `SentenceTransformer(...).encode(vocab, batch_size=256, normalize_embeddings=True)` over `built/ru/vocab.txt` from GitHub main, saved as float16; weights from the HF Hub (revision not recorded, not in models/) | — | ru (normal) since 2026-10-27: `built/ru/embeddings.npy` | see the model card |
 | `sentence-transformers/LaBSE` | 836121a0533e5664b21c7aacc5d22951f2b8b25b | fr | Apache-2.0 |
 | `hiiamsid/sentence_similarity_spanish_es` | 66ab46adac3910bb6ea6085b962a25e49513b981 | es | Apache-2.0 |
 
@@ -84,3 +84,12 @@ A normal build never downloads data or models. To take a newer version of a set:
 put it in a new folder named by its version (`sources/<library>-<version>/`, or a new snapshot under
 `models/hub/`), rebuild the dictionaries, update `MANIFEST.sha256`, `pip-freeze.txt`, this file and the
 Dockerfile, then upload (GitHub / S3) the same way.
+
+## Computing embeddings: Kaggle first
+
+Embeddings of a dictionary are computed on **Kaggle GPU** (free, much faster than the laptop), not locally:
+a notebook reads `built/<dict>/vocab.txt` (from GitHub main), encodes it with the model and saves a float16
+matrix in vocab order as the run's output; the result goes to `built/<dict>/embeddings.npy` and into the
+`word-ranker-<lang>` Lambda package. The notebooks are in `kaggle/`: `sbert-full` (the production ru matrix),
+`rosberta` (ai-forever/ru-en-RoSBERTa, a candidate, not used), `sbert-rare30` / `sbert-kaggle-test` (quality
+checks on test secrets and their synonyms). Local builds (`tools/build_assets.py` in Docker) are the fallback.
