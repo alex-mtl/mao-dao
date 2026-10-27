@@ -76,7 +76,8 @@ class GiftAnimationsTest(unittest.TestCase):
         self.assertNotIn("eve", g.players)
         h.gift(eve, "Finger Heart", 1, coins=5)
         g.on_comment(eve, " ".join(words))
-        self.assertEqual(g.players["eve"].guesses, 3)
+        self.assertEqual(g.players["eve"].guesses, 9)                       # 3 new words, each with 2 neighbours
+        self.assertTrue(set(words) <= g.players["eve"].words)
 
 
 class ToastsTest(unittest.TestCase):
@@ -137,9 +138,10 @@ class HostReportsTest(unittest.TestCase):
         nina, tati = Viewer("nina", "Нина", "", 1), Viewer("tati", "Tati", "", 1)
         g.on_comment(nina, r(30)); g.on_comment(nina, r(5)); g.on_comment(tati, r(200))
         rep = g.round_report()
-        self.assertEqual((rep["word"], rep["players"], rep["guesses"]), (g.secret.upper(), 2, 3))
+        # Нина leads after her first word: her second one comes with its neighbours (#5, #6, #7)
+        self.assertEqual((rep["word"], rep["players"], rep["guesses"]), (g.secret.upper(), 2, 5))
         self.assertEqual([w[0] for w in rep["who"]], ["Нина", "Tati"])           # closest first
-        self.assertEqual([t[1] for t in rep["top"]], [6, 31, 201])
+        self.assertEqual([t[1] for t in rep["top"]], [5, 6, 7, 31, 201])
         g.on_comment(tati, g.secret)                                             # Tati wins
         h = g.history_report(3)
         self.assertEqual(len(h), 1)
@@ -213,7 +215,7 @@ class StealAndBoostTest(unittest.TestCase):
         eve = Viewer("eve", "Eve", "", 1)
         h.gift(eve, "Ghostfire", 1)
         g.on_comment(eve, r(40) + " " + r(41))
-        self.assertEqual(g.players["eve"].guesses, 2)
+        self.assertEqual(g.players["eve"].guesses, 3)                        # #40-#42: the 2nd word is a neighbour
         self.assertIn("eve", g.boost_ids)
         g._finish(time.time(), "timeout"); g._clear_round()                  # next round: still boosted
         self.assertIn("eve", g.boost_ids)

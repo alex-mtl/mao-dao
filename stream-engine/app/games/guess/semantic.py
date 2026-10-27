@@ -16,6 +16,11 @@ ARTICLES = {"en": {"a", "an", "the"}, "ru": set(),
 # letters of a guess per language (anything else in a single-word message = not a guess)
 LETTERS = {"en": "a-z", "ru": "а-яё", "fr": "a-zàâæçéèêëîïôœùûüÿ", "es": "a-záéíóúüñ"}
 ELISION = re.compile(r"^(?:l|d|j|m|n|s|t|c|qu)'")      # French: l'arbre -> arbre
+# Normal level (ru, level 2): secrets are picked only from words with
+# wordfreq zipf >= this threshold. Words below it stay in the pool and stay
+# guessable (they are in vocab), they are just never picked as secrets.
+# The zipf map lives in meta.json ("zipf"); without it, pools are unfiltered.
+NORMAL_MIN_ZIPF = 3.4
 
 
 class SemanticIndex:
@@ -39,6 +44,14 @@ class SemanticIndex:
         self.pools = meta.get("pools", {})
         self.categories = meta.get("categories", {})
         self.level = meta.get("level", "easy")
+        self.zipf = meta.get("zipf", {})
+        if self.lang == "ru" and self.level == "normal" and self.zipf:
+            # Filter secret pools, not the vocabulary: guessing and hints
+            # still use the full vocab; only secret picking is restricted.
+            self.pools = {t: [w for w in pool if self.zipf.get(w, 0) >= NORMAL_MIN_ZIPF]
+                          for t, pool in self.pools.items()}
+            print(f"[semantic {lang}] normal-level secret filter: zipf >= {NORMAL_MIN_ZIPF}, "
+                  f"pools { {k: len(v) for k, v in self.pools.items()} }")
         self.hint_limit = meta.get("hint_limit", 0)       # hints prefer words[:hint_limit]
         self.size = len(self.words)
         print(f"[semantic {lang}] {self.size} words, pools "

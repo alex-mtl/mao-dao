@@ -152,6 +152,14 @@ class Hub:
                 print(f"[hub] save error ({g.name}):", e)
 
     def _feed(self, **e):
+        # Deterministic plane trajectory (2026-10-26): the server picks dir / height / angle
+        # ONCE per plane event, so the preview and the Studio overlay fly the same way.
+        # Before this, plane.js rolled Math.random() on every client independently.
+        if e.get("type") == "plane" and "dir" not in e:
+            e["dir"] = random.choice([-1, 1])          # -1: right -> left, 1: left -> right
+            e["y_frac"] = round(random.uniform(0.12, 0.45) if e.get("bomber")
+                                else random.uniform(0.2, 0.8), 3)
+            e["deg"] = round(random.uniform(-15, 15), 1)
         self.feed_seq += 1
         e.update(seq=self.feed_seq, t=time.time())
         self.feed.append(e)

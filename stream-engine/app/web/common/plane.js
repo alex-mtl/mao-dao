@@ -133,7 +133,7 @@ window.Plane = (() => {
     const flight = document.createElement('div');
     flight.className = 'pl-flight';
     flight.style.setProperty('--ph', ph + 'px');
-    const dir = Math.random() < 0.5 ? -1 : 1;           // -1: right -> left, 1: left -> right
+    const dir = (e.dir === 1 || e.dir === -1) ? e.dir : (Math.random() < 0.5 ? -1 : 1);  // server-set, else random (old events)
     if (dir > 0) flight.classList.add('rev');
     const bob = document.createElement('div'); bob.className = 'pl-bob';
     const row = document.createElement('div'); row.className = 'pl-row';
@@ -155,8 +155,8 @@ window.Plane = (() => {
     // start at 20-80% of the height (a bomber: 12-45%, it stays in the upper half), climb or dive
     // up to 15 degrees; the end stays within the band
     const [lo, hi] = e.bomber ? [0.1, 0.48] : [0.1, 0.9];
-    const y0 = H * (e.bomber ? 0.12 + Math.random() * 0.33 : 0.2 + Math.random() * 0.6);
-    let deg = (Math.random() * 2 - 1) * 15;             // + climbs, - dives
+    const y0 = H * (typeof e.y_frac === 'number' ? e.y_frac : (e.bomber ? 0.12 + Math.random() * 0.33 : 0.2 + Math.random() * 0.6));
+    let deg = (typeof e.deg === 'number') ? e.deg : (Math.random() * 2 - 1) * 15;  // + climbs, - dives
     const endY = d => y0 - dx * Math.tan(d * Math.PI / 180);
     const out = d => endY(d) < H * lo || endY(d) > H * hi;
     if (out(deg)) deg = -deg;                           // turn towards the middle

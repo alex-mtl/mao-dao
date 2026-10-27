@@ -452,7 +452,41 @@ class GuessGame(BaseGame):
             self._confirm(p, now)                        # their newer comments show them following
         if word in p.words:
             return                                       # same word again: ignore (no pause between words)
-        self._accept(p, word, now)
+        # a player with the 3-word right (boost, the round's gift, round / stream champion) gets a new
+        # word's rank neighbours too: rank-1, the word, rank+1 (owner's decision, 2026-10-26)
+        _words = [word]
+        _boosted = (viewer.id in self.boost_ids or viewer.id in self.multi_ids
+                    or viewer.id in self._round_champion_ids()
+                    or viewer.id in self.stats.champion_ids())
+        # no neighbours for a word already in the table (else repeating someone else's rank-2 word
+        # would hand over the secret at rank 1); a new rank-2 word does win with its neighbour
+        if _boosted and word not in self.guesses:
+            _r = int(self.rank[self.sem.index[word]])
+            _words = [self.sem.words[self.order[_k - 1]] for _k in (_r - 1, _r, _r + 1) if 1 <= _k <= self.sem.size]
+        if self._batch is None and len(_words) > 1:
+            # the neighbours of one word = one row of several words, not three guess rows
+            self._batch = []
+            try:
+                for _w in _words:
+                    if _w not in p.words:
+                        self._accept(p, _w, now)
+                        if self.phase != PLAYING:
+                            break                        # a neighbour won the round
+                _batch = self._batch
+            finally:
+                self._batch = None
+            if len(_batch) > 1:
+                self.emit("multi_guess", name=p.name, avatar=p.avatar, words=_batch)
+            elif _batch:
+                _b = _batch[0]
+                self.emit("guess", word=_b["word"], rank=_b["rank"], temp=_b["temp"], name=p.name,
+                          avatar=p.avatar, count=_b["count"])
+        else:
+            for _w in _words:
+                if _w not in p.words:
+                    self._accept(p, _w, now)
+                    if self.phase != PLAYING:
+                        break                            # a neighbour won the round
 
     def _accept(self, p, word, now):
         r = int(self.rank[self.sem.index[word]])

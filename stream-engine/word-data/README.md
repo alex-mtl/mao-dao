@@ -52,12 +52,17 @@ Each `built/<dict>/`: `vocab.txt` (guessable words, most frequent first), `embed
 L2-normalized row per vocab word), `secret_nouns.txt`, `meta.json` (pools, aliases, categories, sources).
 `vocab_hash` = first 12 hex of sha1(`vocab.txt`) — what the game and the Lambdas compare.
 
+`built/ru/meta.json` (2026-10-26, made on the server, copied back as is) also has `zipf`: the wordfreq zipf
+frequency of each pool word; the game picks normal-level Russian secrets only from words with zipf >= 3.4
+(`NORMAL_MIN_ZIPF` in `app/games/guess/semantic.py`). The script that added it is not in the repo:
+`tools/lang_ru.py` does not write `zipf` yet, so a rebuild must add it back.
+
 | Dictionary | vocab_hash | Built | Code |
 |---|---|---|---|
 | en-easy | d20aff51a53d | 2026-10-14 | election-game 0373694 |
 | en | 214fea340819 | 2026-10-14 | election-game 0373694 |
 | ru-easy | aa9d346e1399 | 2026-10-14 | election-game 0373694 |
-| ru | adea3f1869b5 | 2026-10-14 | election-game 0373694 |
+| ru | adea3f1869b5 | 2026-10-14 (vocab); meta.json + secret_nouns.txt replaced on the server 2026-10-26 | election-game 0373694 |
 | ru-hard | f4b8e7ff8552 | 2026-10-23 | quiz `stream-engine/tools` 11c42ee |
 | fr | 2e7cca203229 | 2026-10-14 | election-game 0373694 |
 | es | c3234eafeadf | 2026-10-14 | election-game 0373694 |

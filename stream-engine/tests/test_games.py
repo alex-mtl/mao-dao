@@ -64,9 +64,9 @@ class GuessTest(unittest.TestCase):
         a = v("Alex")
         g.on_comment(a, "water")
         g.on_comment(a, "fire")                                 # right away: counts too (no pause)
-        self.assertEqual(g.players["alex"].guesses, 2)
+        self.assertEqual(g.players["alex"].guesses, 4)          # leading now: "fire" comes with its 2 neighbours
         g.on_comment(a, "water")                                # the same word again -> ignored
-        self.assertEqual(g.players["alex"].guesses, 2)
+        self.assertEqual(g.players["alex"].guesses, 4)
         g.on_comment(v("Mike"), "fire")                         # others not blocked
         self.assertEqual(g.players["mike"].guesses, 1)
 
@@ -529,7 +529,7 @@ class ChampionWordsTest(unittest.TestCase):
         g.tick(time.time()); g.tick(time.time() + 0.01)
         words = [w for w in ("water", "fire", "house", "tree", "stone", "river") if w != g.secret]
         g.on_comment(Viewer("ann", "Ann", "", 1), words[0] + " " + words[1])   # empty round: anyone
-        self.assertEqual(g.players["ann"].guesses, 2)
+        self.assertEqual(g.players["ann"].guesses, 4)          # a champion after the 1st word: the 2nd + neighbours
         g.on_comment(Viewer("bob", "Bob", "", 1), words[2])
         g.on_comment(Viewer("cat", "Cat", "", 1), words[3])                    # three champions now
         g.on_comment(Viewer("dan", "Dan", "", 1), words[4] + " " + words[5])   # not one of them: ignored
@@ -542,13 +542,15 @@ class ChampionWordsTest(unittest.TestCase):
             g.stats.get(pid, pid.title(), "")["wins"] = w
         words = [w for w in ("water", "fire", "house", "tree") if w != g.secret]
         g.on_comment(Viewer("cat", "Cat", "", 1), " ".join(words[:3]))         # 2nd place (tie): 3 words
-        self.assertEqual(g.players["cat"].guesses, 3)
-        multi = [e for e in g.events if e["type"] == "multi_guess"]          # one row for all three words
-        self.assertEqual([w["word"] for w in multi[-1]["words"]], [w.upper() for w in words[:3]])
+        self.assertEqual(g.players["cat"].guesses, 9)                       # each with its 2 neighbours
+        multi = [e for e in g.events if e["type"] == "multi_guess"]          # one row for all of them
+        shown = [w["word"] for w in multi[-1]["words"]]
+        self.assertEqual(len(shown), 9)
+        self.assertTrue({w.upper() for w in words[:3]} <= set(shown))
         self.assertEqual(multi[-1]["name"], "Cat")
         self.assertFalse(any(e["type"] == "guess" and e["name"] == "Cat" for e in g.events))
         g.on_comment(Viewer("dan", "Dan", "", 1), "the " + words[3] + " " + words[0])   # 3rd place: article dropped
-        self.assertEqual(g.players["dan"].guesses, 2)
+        self.assertEqual(g.players["dan"].guesses, 4)                       # a new word + 2 neighbours, one already named
         g.on_comment(Viewer("fay", "Fay", "", 1), "stone")                       # 3 round champions now
         g.on_comment(Viewer("eve", "Eve", "", 1), words[0] + " " + words[1])    # not a champion: ignored
         self.assertNotIn("eve", g.players)
@@ -567,7 +569,7 @@ class ChampionWordsTest(unittest.TestCase):
         self.assertNotIn("copy", g._round_champion_ids())
         g.players["first"].last_t = 0
         g.on_comment(first, r(20) + " " + r(30))                     # round champion: both words count
-        self.assertEqual(g.players["first"].guesses, 3)
+        self.assertEqual(g.players["first"].guesses, 7)              # ... each with its 2 neighbours
         # "first" now holds the table's top 3: the next author down the table is a champion too
         self.assertEqual(g._round_champion_ids(), {"first", "o"})
         g.on_comment(Viewer("p", "P", "", 1), r(600))                # a third author: all 3 places taken
