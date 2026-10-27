@@ -40,7 +40,7 @@ zips) are byte-identical to `built/`.
 |---|---|---|---|
 | `sentence-transformers/all-MiniLM-L6-v2` | 1110a243fdf4706b3f48f1d95db1a4f5529b4d41 | en, en-easy | Apache-2.0 |
 | `cointegrated/rubert-tiny2` | e8ed3b0c8bbf4fb6984c3de043bf7d2f4e5969ae | ru-easy, ru-hard; ru until 2026-10-27 (kept as `built/ru/embeddings.rubert-tiny2.npy`) | MIT |
-| Sber sbert large (1024-dim; computed outside the repo by the owner, 2026-10-25 — exact model id and script not recorded) | — | ru (normal) since 2026-10-27: `built/ru/embeddings.npy` | check the model card |
+| `ai-forever/sbert_large_mt_nlu_ru` (Sber, ex-SberDevices; 1024-dim) — computed by the owner on 2026-10-25 with `SentenceTransformer("ai-forever/sbert_large_mt_nlu_ru")` over `built/ru/vocab.txt` (weights pulled from the HF Hub; revision not recorded, the weights are not in models/) | — | ru (normal) since 2026-10-27: `built/ru/embeddings.npy` | see the model card |
 | `sentence-transformers/LaBSE` | 836121a0533e5664b21c7aacc5d22951f2b8b25b | fr | Apache-2.0 |
 | `hiiamsid/sentence_similarity_spanish_es` | 66ab46adac3910bb6ea6085b962a25e49513b981 | es | Apache-2.0 |
 
