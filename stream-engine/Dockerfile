@@ -23,7 +23,7 @@ RUN SP=/usr/local/lib/python3.12/site-packages \
              spacy-fr_core_news_sm-3.8.0 spacy-es_core_news_sm-3.8.0; do cp -r /word-data/sources/$d/* $SP/; done
 
 WORKDIR /build
-COPY tools/build_assets.py tools/lang_ru.py ./
+COPY tools/build_assets.py tools/lang_ru.py tools/ru_secret_exclude.txt ./
 # "easy" level = the original dictionary (any part of speech); "normal" = nouns only, bigger
 RUN python build_assets.py --lang en --level easy --out /assets/en-easy
 RUN python build_assets.py --lang ru --level easy --vocab-size 50000 --out /assets/ru-easy

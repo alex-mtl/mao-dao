@@ -56,6 +56,12 @@ RU_NOUN_RE = re.compile(r"^[а-я]{3,22}$")
 RU_PLURAL_ONLY = {"деньги"}
 
 
+# never the secret word (still guessable): the owner's list in ru_secret_exclude.txt next to this file
+import os as _os
+RU_SECRET_EXCLUDE = {w for line in open(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "ru_secret_exclude.txt"),
+                                        encoding="utf-8") if not line.startswith("#") for w in line.split()}
+
+
 def plural_only(morph, w):
     """w is a noun used only in the plural (сутки, деньги, духи, ножницы): a word of its own, not a form of
     a singular noun (деньга, дух) the first parse may suggest"""
@@ -129,7 +135,7 @@ def ru_pools(vocab, morph):
     # 2026-10-23: no stop-list - only profanity, which isn't in the vocabulary either)
     pools = {k: [] for k in RU_TIERS}
     for w in vocab:
-        if bad(w):
+        if bad(w) or w in RU_SECRET_EXCLUDE:
             continue
         parses = morph.parse(w)
         p = parses[0]
