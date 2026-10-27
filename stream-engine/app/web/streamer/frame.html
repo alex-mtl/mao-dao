@@ -32,7 +32,9 @@
   const qs = new URLSearchParams(location.search);
   if (qs.get('bg')) document.body.classList.add('bg-' + qs.get('bg'));
   document.getElementById('menu').onclick = () => { (window.parent !== window ? window.parent : window).location.href = new URL('./', document.baseURI).href; };
-  const sound = qs.get('sound') === '1';
+  // sound on, as in the games: the Studio link (guess/?tt=1...) switches here with no sound=1, so an opt-in
+  // left this mode silent; ?sound=0, the mute button and the room page's preview turn it off (AudioKit)
+  const sound = qs.get('sound') !== '0';
   if (sound) AudioKit.mount({ hello: 'b.v.hello' });
 
   // heart balloons: inflating at the bottom (20% of the screen wide), lift off at 100 likes
