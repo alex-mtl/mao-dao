@@ -437,19 +437,39 @@ html.chroma #recent > .title { display: none; }
 /* a word not in the dictionary: a moment under the table, over the chat zone */
 .grow.unknown-line { position: fixed; z-index: 31; padding: calc(var(--u) * .6) 0; }
 
-/* what the gifts do: one at a time above the bot's name (TT mode), a bit bigger than it */
-#champs .giftpromo { display: flex; align-items: center; gap: calc(var(--u) * 1.4); border-radius: 999px;
+/* what the gifts do, one at a time (TT mode): above the bot's name or bottom right of the chat zone, a bit bigger than the name */
+.giftpromo { display: flex; align-items: center; gap: calc(var(--u) * 1.4); border-radius: 999px;
                  padding: calc(var(--u) * .5) calc(var(--u) * 2.4) calc(var(--u) * .5) calc(var(--u) * .6);
                  background: linear-gradient(90deg, rgba(255,216,74,.95), rgba(255,140,40,.95)); color: #1a0b00;
                  font: 800 calc(var(--u) * 4.2) var(--font-text); box-shadow: 0 0 1em rgba(255,190,60,.55);
                  transform-origin: right center; opacity: 0; transform: translateX(30%) scale(.8);
                  transition: opacity .45s, transform .45s cubic-bezier(.2,1.5,.4,1); }
-#champs .giftpromo:empty { display: none; }
-#champs .giftpromo.on { opacity: 1; transform: none; }
-#champs .giftpromo img { width: calc(var(--u) * 8); height: calc(var(--u) * 8); object-fit: contain;
+.giftpromo:empty { display: none; }
+.giftpromo.on { opacity: 1; transform: none; }
+.giftpromo img { width: calc(var(--u) * 8); height: calc(var(--u) * 8); object-fit: contain;
                      filter: drop-shadow(0 1px 2px rgba(0,0,0,.4)); }
-#champs .giftpromo .stack { display: flex; }
-#champs .giftpromo .stack img { width: calc(var(--u) * 6.5); height: calc(var(--u) * 6.5); margin-left: calc(var(--u) * -2.2); }
-#champs .giftpromo .stack img:first-child { margin-left: 0; }
-#champs .giftpromo .gi { font-size: calc(var(--u) * 6); }
-#champs .giftpromo small { display: block; font: 600 calc(var(--u) * 2.6) var(--font-text); opacity: .8; }
+.giftpromo .stack { display: flex; }
+.giftpromo .stack img { width: calc(var(--u) * 6.5); height: calc(var(--u) * 6.5); margin-left: calc(var(--u) * -2.2); }
+.giftpromo .stack img:first-child { margin-left: 0; }
+.giftpromo .gi { font-size: calc(var(--u) * 6); }
+.giftpromo small { display: block; font: 600 calc(var(--u) * 2.6) var(--font-text); opacity: .8; }
+
+/* the other place for what the gifts do: bottom right of the chat zone (TikTok's chat is on the left) */
+#giftsBottom { display: none; }
+html.chroma #giftsBottom { display: flex; position: absolute; right: calc(var(--u) * 2.8); bottom: calc(var(--u) * 8); z-index: 33;
+                           max-width: 52%; flex-direction: column; align-items: flex-end; pointer-events: none; }
+/* what the gifts do, every gift at once: tiles, a column, a ticker - the colours of the one-at-a-time pill */
+.giftsbox { background: linear-gradient(90deg, rgba(255,216,74,.95), rgba(255,140,40,.95)); color: #1a0b00;
+            font: 800 calc(var(--u) * 2.8) var(--font-text); box-shadow: 0 0 1em rgba(255,190,60,.45);
+            border-radius: calc(var(--u) * 2.4); padding: calc(var(--u) * 1) calc(var(--u) * 1.4); animation: fadeIn .4s; }
+.giftsbox .gitem { display: flex; align-items: center; gap: calc(var(--u) * 1); white-space: nowrap; }
+.giftsbox img { width: calc(var(--u) * 5.5); height: calc(var(--u) * 5.5); object-fit: contain; flex: none; }
+.giftsbox .gi { font-size: calc(var(--u) * 4.5); }
+.giftsbox.column { display: flex; flex-direction: column; gap: calc(var(--u) * .5); }
+.giftsbox.tiles { display: grid; grid-template-columns: repeat(4, minmax(0, calc(var(--u) * 11))); gap: calc(var(--u) * .8); }
+.giftsbox.tiles .gitem { flex-direction: column; gap: calc(var(--u) * .3); white-space: normal; text-align: center;
+                         font-size: calc(var(--u) * 2.2); line-height: 1.1; background: rgba(255,255,255,.3);
+                         border-radius: calc(var(--u) * 1.4); padding: calc(var(--u) * .6) calc(var(--u) * .4); }
+.giftsbox.ticker { width: calc(var(--u) * 46); overflow: hidden; border-radius: 999px; padding: calc(var(--u) * .6) 0; }
+.giftsbox.ticker .run { display: inline-flex; gap: calc(var(--u) * 3); padding-left: 100%; animation: giftsRun 16s linear infinite; }
+@keyframes giftsRun { to { transform: translateX(-100%); } }

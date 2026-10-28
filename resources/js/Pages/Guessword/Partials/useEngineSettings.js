@@ -71,10 +71,18 @@ export default function useEngineSettings(controlUrl, enabled) {
         }
     };
 
-    const setActive = (game) => call('active', { game }).then((d) => setInfo((i) => (i ? { ...i, active: d.active } : i)));
+    // live settings (the "On screen" tab): sent at once, no Apply; the draft and the saved values follow together
+    const setNow = (section, values) => {
+        const merge = (o) => ({ ...o, [section]: { ...o[section], ...values } });
+        setDraft(merge);
+        setSaved(merge);
+        return call('settings', { game: section, options: values });
+    };
+
+    const setActive =(game) => call('active', { game }).then((d) => setInfo((i) => (i ? { ...i, active: d.active } : i)));
 
     return {
-        info, draft, set, changes, busy, failed, apply, setActive, call,
+        info, draft, set, setNow, changes, busy, failed, apply, setActive, call,
         reset: () => setDraft(saved),
         choices: (section, key) =>
             section === 'global'

@@ -2,16 +2,18 @@ import { useLaravelReactI18n } from 'laravel-react-i18n';
 import { useState } from 'react';
 import GameMonitor from './GameMonitor';
 import GiftCatalog from './GiftCatalog';
+import ScreenTab, { ScreenQuick } from './ScreenTab';
 import { GiftsTab, ToastsTab } from './ToastsAndGifts';
 
 // the panel's modes (engine game names) and the sections of each mode
 export const MODES = ['battle', 'guess', 'streamer'];
 const SECTIONS = {
     battle: ['gifts', 'toasts', 'likes', 'catalog'],
-    guess: ['game', 'frame', 'gifts', 'toasts', 'likes', 'catalog'],
+    guess: ['game', 'frame', 'screen', 'gifts', 'toasts', 'likes', 'catalog'],
     streamer: ['frame', 'gifts', 'toasts', 'likes', 'catalog'],
 };
-const TAB_KEY = { game: 'guessword.tab_game', frame: 'guessword.tab_frame', gifts: 'guessword.tab_gifts',
+const LIVE_SECTIONS = ['screen'];            // applied at once, no Apply button
+const TAB_KEY = { game: 'guessword.tab_game', frame: 'guessword.tab_frame', screen: 'guessword.tab_screen', gifts: 'guessword.tab_gifts',
                   toasts: 'guessword.tab_toasts', likes: 'guessword.tab_likes', catalog: 'guessword.tab_catalog' };
 // like thresholds the streamer picks from (every N likes of one viewer); 0 = off
 const BALLOON_STEPS = [100, 500, 1000, 2000, 5000, 10000];
@@ -147,12 +149,15 @@ export default function SettingsPanel({ s, mode, setMode, footer }) {
                         </button>
                     ))}
                     <span className="flex-1" />
-                    <span className="whitespace-nowrap text-xs text-ink-500">
-                        {s.changes ? t('guessword.changes', { n: s.changes }) : t('guessword.no_changes')}
-                    </span>
+                    {LIVE_SECTIONS.includes(section)
+                        ? <span className="whitespace-nowrap text-xs font-semibold text-success-600">{t('guessword.scr_live')}</span>
+                        : <span className="whitespace-nowrap text-xs text-ink-500">
+                              {s.changes ? t('guessword.changes', { n: s.changes }) : t('guessword.no_changes')}
+                          </span>}
                 </div>}
             </div>
 
+            {monitor && !s.failed && s.info && <ScreenQuick s={s} />}
             {monitor && <GameMonitor s={s} />}
 
             <div className={'px-5 py-2' + (monitor ? ' hidden' : '')}>
@@ -234,7 +239,9 @@ export default function SettingsPanel({ s, mode, setMode, footer }) {
                     </div>
                 )}
 
-                {!s.failed && s.info && mode === 'streamer' && section === 'frame' && <div className="py-3">{frameSeg('streamer')}</div>}
+                {!s.failed && s.info && mode === 'guess' && section === 'screen' && <ScreenTab s={s} />}
+
+                {!s.failed && s.info && mode === 'streamer' && section === 'frame' &&<div className="py-3">{frameSeg('streamer')}</div>}
 
                 {!s.failed && s.info && section === 'toasts' && <ToastsTab s={s} mode={mode} />}
                 {!s.failed && s.info && section === 'gifts' && <GiftsTab s={s} mode={mode} />}

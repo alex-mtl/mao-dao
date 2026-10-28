@@ -488,23 +488,92 @@
   }
   // stream champions (chroma / TT mode): one line per place - avatar + nick when alone, overlapping
   // avatars when tied (like TikTok's viewers), wins, medal
-  let champsKey = '', tgBot = '';
-  // what the stream's gifts do (the room's gift rules): every PROMO_EVERY a series - each gift in turn for
-  // PROMO_SHOW (its picture and the action: "Hint", "Butterflies", "Win!"...), then a pause till the next series
-  const PROMO_FIRST = 30000, PROMO_EVERY = 180000, PROMO_SHOW = 10000, PROMO_GAP = 600;
-  let promos = [];
-  const promoEl = el('div', 'giftpromo');
-  function promoSeries() {
-    const start = Date.now(), n = Toasts.show('promo') ? promos.length : 0;
-    for (let i = 0; i < n; i++) {                       // each step takes the list as it is now: a change on the
-      setTimeout(() => { if (promos[i] && Toasts.show('promo')) showPromo(promos[i]); }, i * (PROMO_SHOW + PROMO_GAP));
-    }                                                    // room page shows up even in the middle of a series
-    const end = start + n * (PROMO_SHOW + PROMO_GAP);
-    setTimeout(promoSeries, Math.max(start + PROMO_EVERY, end + 10000) - Date.now());   // a long series: never overlaps
+  let tgBot = '', champGroups = [], likersData = null, sidesKey = '';
+  // what the overlay shows besides the game (the panel's "On screen" tab, state.screen): each element always,
+  // never, or periodically (every N min for N s, on the wall clock); tops may also take turns in a carousel
+  const SCREEN_DEFAULT = {
+    screen: 1, tops: 1, top_stream: 'always', top_planes: 'always', top_balloons: 'always',
+    top_stream_every: 5, top_stream_dur: 30, top_planes_every: 5, top_planes_dur: 30, top_balloons_every: 5, top_balloons_dur: 30,
+    carousel_slot: 15, carousel_pause: 0, carousel_side: 'l', bot: 'always', bot_every: 3, bot_dur: 30,
+    gifts: 'periodic', gifts_every: 3, gifts_dur: 10, gifts_view: 'line', gifts_place: 'host',
+  };
+  let scr = SCREEN_DEFAULT;
+  const TOPS = ['stream', 'planes', 'balloons'], TOP_SIDE = { stream: 'r', planes: 'l', balloons: 'l' };
+  const nowSec = () => Date.now() / 1000;
+  const onAir = (mode, every, dur) => mode === 'always' || (mode === 'periodic' && nowSec() % (every * 60) < dur);
+  function shownTops() {                              // top -> the side it shows on now ('l' / 'r'), hidden ones absent
+    const out = {};
+    if (!scr.screen || !scr.tops) return out;
+    const has = { stream: champGroups.length > 0, planes: !!(likersData && (likersData.planes || []).length),
+                  balloons: !!(likersData && likersData.balloon) };
+    const ring = TOPS.filter(k => scr['top_' + k] === 'carousel' && has[k]);   // an empty top gives up its turn
+    let turn = null;
+    if (ring.length) {
+      const run = ring.length * scr.carousel_slot, ph = nowSec() % (run + scr.carousel_pause * 60);
+      if (ph < run) turn = ring[Math.floor(ph / scr.carousel_slot)];
+    }
+    TOPS.forEach(k => {
+      const m = scr['top_' + k];
+      if (m === 'carousel' ? k === turn : onAir(m, scr['top_' + k + '_every'], scr['top_' + k + '_dur'])) {
+        out[k] = m === 'carousel' ? scr.carousel_side : TOP_SIDE[k];
+      }
+    });
+    return out;
   }
-  function showPromo(p) {
+
+  // what the stream's gifts do (the room's gift rules). "One by one": a series - each gift in turn for gifts_dur s
+  // (its picture and the action: "Hint", "Butterfly rain", "Win!"...), every gifts_every min or back to back
+  // ("always"); the other views show every gift at once (tiles, a ticker, a column)
+  const PROMO_FIRST = 30000, PROMO_GAP = 600;
+  let promos = [], promoGen = 0, promoCfg = '';
+  const promoEl = el('div', 'giftpromo');
+  const giftsBox = el('div', 'giftsbox');
+  function promoSeries(gen) {
+    if (gen !== promoGen) return;                      // the settings changed: a new series took over
+    const show = scr.gifts_dur * 1000, start = Date.now();
+    const n = scr.screen && scr.gifts !== 'never' && scr.gifts_view === 'line' ? promos.length : 0;
+    for (let i = 0; i < n; i++) {                       // each step takes the list as it is now: a change on the
+      setTimeout(() => { if (gen === promoGen && promos[i]) showPromo(promos[i], show); }, i * (show + PROMO_GAP));
+    }                                                    // room page shows up even in the middle of a series
+    const end = start + n * (show + PROMO_GAP);
+    const next = scr.gifts === 'always' ? end : Math.max(start + scr.gifts_every * 60000, end + 10000);   // never overlaps
+    setTimeout(() => promoSeries(gen), Math.max(1000, next - Date.now()));
+  }
+  function restartPromo(delay) {
+    const gen = ++promoGen;
+    promoEl.classList.remove('on');
+    setTimeout(() => promoSeries(gen), delay);
+  }
+  function giftLabel(p) {
     const name = I18N.lang === 'ru' && p.ru ? p.ru : p.gift;
-    const sub = p.rule.startsWith('gift:') ? name : p.rule === 'any' ? t('g.promo.any') : t('g.promo.min', { n: p.coins });
+    return p.rule.startsWith('gift:') ? name : p.rule === 'any' ? t('g.promo.any') : t('g.promo.min', { n: p.coins });
+  }
+  function giftPic(p) {
+    if (!p.images.length) return el('span', 'gi', '🎁');
+    const i = el('img'); i.src = p.images[0]; i.referrerPolicy = 'no-referrer';
+    return i;
+  }
+  let giftsBoxKey = '';
+  function renderGiftsBox() {                          // tiles / ticker / column: every gift at once
+    const key = JSON.stringify([promos, scr.gifts_view, I18N.lang]);
+    if (key === giftsBoxKey) return;
+    giftsBoxKey = key;
+    giftsBox.className = 'giftsbox ' + scr.gifts_view;
+    const items = promos.map(p => {
+      const it = el('span', 'gitem');
+      it.append(giftPic(p), el('span', 'tx', t('g.promo.' + p.action)));
+      it.title = giftLabel(p);
+      return it;
+    });
+    if (scr.gifts_view === 'ticker') {
+      const run = el('span', 'run');
+      run.append(...items);
+      run.style.animationDuration = Math.max(8, promos.length * 4) + 's';
+      giftsBox.replaceChildren(run);
+    } else giftsBox.replaceChildren(...items);
+  }
+  function showPromo(p, ms) {
+    const sub = giftLabel(p);
     promoEl.replaceChildren();
     if (p.images.length > 1) {
       const st = el('span', 'stack');
@@ -517,58 +586,69 @@
     txt.append(el('small', '', sub));
     promoEl.append(txt);
     promoEl.classList.add('on');
-    setTimeout(() => promoEl.classList.remove('on'), PROMO_SHOW);
+    setTimeout(() => promoEl.classList.remove('on'), ms);
   }
-  setTimeout(promoSeries, PROMO_FIRST);
-  function renderChamps(groups) {
-    const box = $('champs');
-    const key = JSON.stringify([groups, tgBot]);
-    if (key === champsKey) return;
-    champsKey = key;
-    box.replaceChildren();
-    box.append(promoEl);                                           // what the gifts do: above the bot's name
-    if (tgBot) box.append(el('div', 'tgbot', '📲 @' + tgBot));     // the bot's name, readable above the champions
-    groups.forEach((g, i) => {
-      const row = el('div', 'champ');
-      if (g.n === 1) {
-        row.append(avatar(g.players[0].name, g.players[0].avatar), el('span', 'cn', g.players[0].name));
-      } else {
-        const stack = el('span', 'stack');
-        g.players.slice(0, 3).forEach(p => stack.append(avatar(p.name, p.avatar)));
-        if (g.n > 3) stack.append(el('span', 'more', '+' + (g.n - 3)));
-        row.append(stack);
-      }
-      row.append(el('span', 'cw', String(g.wins)), el('span', 'cm', ['🥇', '🥈', '🥉'][i]));
-      box.append(row);
-    });
-    sideColumns();
+  restartPromo(PROMO_FIRST);
+  // the screen settings of a new state: a change of the gift settings starts the series over at once
+  function setScreen(s) {
+    scr = { ...SCREEN_DEFAULT, ...(s.screen || {}) };
+    const cfg = JSON.stringify([scr.screen, scr.gifts, scr.gifts_every, scr.gifts_dur, scr.gifts_view]);
+    if (promoCfg && cfg !== promoCfg) restartPromo(1000);
+    promoCfg = cfg;
   }
 
-  // top likers (chroma / TT mode), left side mirrored: icon, count, avatar(s), nick when alone
-  let likersKey = '';
-  function renderLikers(l) {
-    const rows = l ? [...(l.planes || []).map(g => ['✈️', g]), ...(l.balloon ? [['🎈', l.balloon]] : [])] : [];
-    const key = JSON.stringify(rows);
-    if (key !== likersKey) {
-      likersKey = key;
-      const box = $('likers');
-      box.replaceChildren();
-      rows.forEach(([icon, g]) => {
-        const row = el('div', 'champ liker');
-        row.append(el('span', 'cm', icon), el('span', 'cw', String(g.count)));
-        if (g.n === 1) {
-          row.append(avatar(g.players[0].name, g.players[0].avatar), el('span', 'cn', g.players[0].name));
-        } else {
-          const stack = el('span', 'stack');
-          g.players.slice(0, 3).forEach(p => stack.append(avatar(p.name, p.avatar)));
-          if (g.n > 3) stack.append(el('span', 'more', '+' + (g.n - 3)));
-          row.append(stack);
-        }
-        box.append(row);
+  // avatar + nick when alone, overlapping avatars when tied (like TikTok's viewers)
+  function who(row, g) {
+    if (g.n === 1) {
+      row.append(avatar(g.players[0].name, g.players[0].avatar), el('span', 'cn', g.players[0].name));
+    } else {
+      const stack = el('span', 'stack');
+      g.players.slice(0, 3).forEach(p => stack.append(avatar(p.name, p.avatar)));
+      if (g.n > 3) stack.append(el('span', 'more', '+' + (g.n - 3)));
+      row.append(stack);
+    }
+  }
+  // the rows of one top: stream champions (one line per place: who, wins, medal), likers mirrored (icon, count, who)
+  function topRows(k) {
+    if (k === 'stream') {
+      return champGroups.map((g, i) => {
+        const row = el('div', 'champ');
+        who(row, g);
+        row.append(el('span', 'cw', String(g.wins)), el('span', 'cm', ['🥇', '🥈', '🥉'][i]));
+        return row;
       });
     }
+    const l = likersData || {};
+    const groups = k === 'planes' ? (l.planes || []).map(g => ['✈️', g]) : l.balloon ? [['🎈', l.balloon]] : [];
+    return groups.map(([icon, g]) => {
+      const row = el('div', 'champ liker');
+      row.append(el('span', 'cm', icon), el('span', 'cw', String(g.count)));
+      who(row, g);
+      return row;
+    });
+  }
+  // chroma / TT mode: the side columns on the bottom edge of the camera zone - right: what the gifts do, the bot's
+  // name, the stream champions; left: the top likers - and the bottom right of the chat zone. Re-checked twice a
+  // second, so "periodically" and the carousel run on their own.
+  function renderSides() {
+    const tops = shownTops();
+    const bot = !!(scr.screen && tgBot && onAir(scr.bot, scr.bot_every, scr.bot_dur));
+    const gifts = scr.screen && scr.gifts !== 'never';
+    const boxOn = gifts && scr.gifts_view !== 'line' && promos.length > 0 && onAir(scr.gifts, scr.gifts_every, scr.gifts_dur);
+    const place = scr.gifts_place === 'bottom' && TT && S && S.chatZone ? 'bottom' : 'host';
+    if (boxOn) renderGiftsBox();
+    const key = JSON.stringify([champGroups, likersData, tops, bot, tgBot, gifts, boxOn, place, scr.gifts_view, giftsBoxKey]);
+    if (key === sidesKey) return;
+    sidesKey = key;
+    const gift = !gifts ? null : scr.gifts_view === 'line' ? promoEl : boxOn ? giftsBox : null;
+    const right = $('champs'), left = $('likers'), bottom = $('giftsBottom');
+    right.replaceChildren(); left.replaceChildren(); bottom.replaceChildren();
+    if (gift) (place === 'bottom' ? bottom : right).append(gift);
+    if (bot) right.append(el('div', 'tgbot', '📲 @' + tgBot));     // the bot's name, readable above the champions
+    TOPS.forEach(k => { if (tops[k]) (tops[k] === 'r' ? right : left).append(...topRows(k)); });
     sideColumns();
   }
+  setInterval(renderSides, 500);
   // popups at the bottom of the camera zone go above both side columns (champions, likers)
   function sideColumns() {
     const h = Math.max($('champs').offsetHeight, $('likers').offsetHeight);
@@ -758,6 +838,9 @@
     document.documentElement.style.setProperty('--chat-zone', TT && s.chatZone
       ? `calc(var(--u) * ${(100 * (s.frame || 16) / 9 * s.chatZone / 100).toFixed(2)})` : '0px');
     vocab = s.vocabSize || vocab;
+    champGroups = s.champions || [];                       // the side columns and the gifts follow the screen settings
+    setScreen(s);
+    renderSides();
     $('error').hidden = !s.error;
     if (s.error) { $('errText').textContent = t('g.err') + s.error; return; }
 
@@ -774,7 +857,6 @@
       $('goalFill').style.width = Math.min(100, 100 * s.goal.value / s.goal.target) + '%';
     }
     renderHunters(s.topHunters);
-    renderChamps(s.champions || []);
     renderGuesses(s.bestGuesses);
     tagline(s);
 
@@ -939,7 +1021,7 @@
     return { sound: true, root: $('stage'), skyBottom: cam ? cam * .85 : undefined };
   };
   Live.start({ game: 'guess', onState: (s, msg) => { tgBot = msg.tgBot || ''; promos = msg.giftPromos || []; render(s); Balloons.render(msg.balloons);
-                                                    renderLikers((msg.balloons || {}).likers); }, onEvent,
+                                                    likersData = (msg.balloons || {}).likers || null; renderSides(); }, onEvent,
                onFeed: e => {
                  if (e.type === 'balloon') Balloons.launch(e);
                  else if (e.type === 'plane') Plane.fly(e, { sound: true });

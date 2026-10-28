@@ -42,6 +42,11 @@ class Hub:
             if name in self.games and isinstance(opts, dict):
                 for k, v in opts.items():
                     self.games[name].set_option(k, v)
+        # "what the gifts do" moved from the toasts ("promo" show on/off) to the guess game's screen settings:
+        # a room that had it off keeps it off
+        g = self.games.get("guess")
+        if g and "gifts" not in saved.get("guess", {}) and self.toasts.values().get("promo", {}).get("show") == 0:
+            g.set_option("gifts", "never")
         for g in self.games.values():
             g.set_lang(self.lang)
         self.clients = set()                      # websockets

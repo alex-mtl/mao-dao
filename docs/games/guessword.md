@@ -55,6 +55,21 @@ Browser / Studio addresses go through nginx: `GUESSWORD_ENGINE_PUBLIC_PATH` (def
   regenerated (the old one stops working);
 - **control link** `/guessword/engine/r/<control_token>/` — the game's menu, embedded on the room page.
 
+## "On screen" tab (live overlay elements)
+
+The room page's settings panel has an **On screen** tab (after Frame) and a short strip of the same
+switches over the game monitor. They control what the overlay shows besides the game, in TT / chroma
+mode: the three tops (stream champions on the right, planes and balloons on the left, on the bottom
+edge of the camera zone), the Telegram bot's name, and "what the gifts do". Each is always / never /
+periodically (every N min for N s, on the wall clock); tops can also take turns in a carousel; the gifts
+have a view (one by one, tiles, ticker, column) and a place (host zone, or bottom right of the chat
+zone - only when the chat zone is on). "Hide everything" and "all tops" keep the modes.
+
+Unlike the other tabs these settings are sent at once (no Apply): `useEngineSettings().setNow()`. In the
+engine they are guess options (`GuessGame.SCREEN`, saved with the room) and go to the overlay as
+`state.screen`; `guess.js` (`renderSides`) re-checks them twice a second. The old toast switch
+"what the gifts do" (`toasts.promo`) is gone: a room that had it off got `gifts = never`.
+
 ## Environment
 
 | Variable | Meaning |

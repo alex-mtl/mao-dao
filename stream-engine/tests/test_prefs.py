@@ -427,3 +427,30 @@ class LinkUpTest(unittest.TestCase):
         self.assertEqual([c[1]["tiktok_id"] for c in calls], ["nina", "eve"])
         types = [(e["type"], e.get("name")) for e in h.game.events if e["type"] in ("tg_switched", "tg_info")]
         self.assertEqual(types, [("tg_switched", "Нина"), ("tg_info", None)])
+
+
+class ScreenSettingsTest(unittest.TestCase):
+    """The panel's "On screen" tab: tops, the bot's name, what the gifts do - set live, kept over a restart."""
+
+    def test_set_live_and_kept(self):
+        store = JsonStore(tempfile.mkdtemp())
+        h = Hub(store, username="host")
+        self.assertEqual(h.message("guess")["state"]["screen"]["gifts"], "periodic")      # as before: every 3 min
+        h.set_options("guess", {"top_planes": "carousel", "gifts_view": "tiles", "gifts_place": "bottom", "screen": 0})
+        h.set_options("guess", {"top_stream": "sometimes", "bot_every": 7})                # not a choice: ignored
+        s = h.message("guess")["state"]["screen"]
+        self.assertEqual((s["top_planes"], s["gifts_view"], s["gifts_place"], s["screen"]), ("carousel", "tiles", "bottom", 0))
+        self.assertEqual((s["top_stream"], s["bot_every"]), ("always", 3))
+        s2 = Hub(store, username="host").message("guess")["state"]["screen"]
+        self.assertEqual(s2, s)
+
+    def test_promo_toast_off_becomes_gifts_never(self):
+        store = JsonStore(tempfile.mkdtemp())
+        h = Hub(store, username="host")
+        h.set_options("toasts", {"promo": {"show": 0}})                   # the old switch, before the "On screen" tab
+        h.games["guess"].screen.pop("gifts")                              # a room saved before the tab existed
+        h.save_session()
+        h2 = Hub(store, username="host")
+        self.assertEqual(h2.games["guess"].screen["gifts"], "never")
+        h2.set_options("guess", {"gifts": "always"})                      # turned on in the new tab: stays on
+        self.assertEqual(Hub(store, username="host").games["guess"].screen["gifts"], "always")

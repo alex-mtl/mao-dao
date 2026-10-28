@@ -111,6 +111,28 @@ class GuessGame(BaseGame):
                "frame": [16, 19.5, 20],            # frame 9:16 / 9:19.5 (phones) / 9:20
                "chat_zone": [0, 10, 15, 20, 25, 30, 35],  # % of the frame kept free at the bottom: the stream chat stays readable
                "row_anim": [0, 0.1, 0.2, 0.5]}           # a new table row slides in this fast when the chat is busy (s)
+    # what the overlay shows besides the game (the panel's "On screen" tab, changed live during a stream):
+    # key -> (default, choices). Modes: always / periodic (every N min for N s) / carousel (the tops in turn) / never
+    SCREEN = {
+        "screen": (1, [1, 0]),                                   # 0 = everything below hidden, modes kept
+        "tops": (1, [1, 0]),                                     # all three tops at once
+        **{f"top_{k}{sfx}": v for k in ("stream", "planes", "balloons") for sfx, v in (
+            ("", ("always", ["always", "periodic", "carousel", "never"])),
+            ("_every", (5, [1, 2, 3, 5, 10])),                   # minutes
+            ("_dur", (30, [10, 20, 30, 60])))},                  # seconds
+        "carousel_slot": (15, [10, 15, 20, 30]),                 # seconds per top
+        "carousel_pause": (0, [0, 1, 2, 5]),                     # minutes after each round of the carousel
+        "carousel_side": ("l", ["l", "r"]),
+        "bot": ("always", ["always", "periodic", "never"]),      # the Telegram bot's name
+        "bot_every": (3, [1, 2, 3, 5, 10]),
+        "bot_dur": (30, [10, 20, 30, 60]),
+        "gifts": ("periodic", ["always", "periodic", "never"]),  # what the gifts do
+        "gifts_every": (3, [1, 2, 3, 5, 10]),
+        "gifts_dur": (10, [5, 10, 15, 20, 30, 60]),              # "one by one": per gift, the other views: in all
+        "gifts_view": ("line", ["line", "tiles", "ticker", "column"]),
+        "gifts_place": ("host", ["host", "bottom"]),             # by the camera / bottom right of the chat zone
+    }
+    OPTIONS.update({k: choices for k, (_, choices) in SCREEN.items()})
     STATE = "guess/state.json"
     USED = "guess/used_words.json"
     ROUNDS = "guess/rounds.json"
@@ -141,7 +163,8 @@ class GuessGame(BaseGame):
         self.chat_zone = 20                           # % of the frame at the bottom left to the stream chat
         self.row_anim = 0.2                           # a new row slides in this fast at the busiest (calm: smoother)
         self.frame = 16                              # frame format 9:frame
-        self.hint_t = {}                             # viewer id -> time of their last hint
+        self.screen = {k: d for k, (d, _) in self.SCREEN.items()}   # what the overlay shows besides the game
+        self.hint_t = {}                            # viewer id -> time of their last hint
         self.mao_call_t = 0.0                        # last "мао внимание"
         self.custom = store.load(self.CUSTOM, []) or []   # [{id, word, lang, name, tiktok_id}]
         self.played_custom = []                      # ids of custom words whose round started (for the bot)
@@ -802,6 +825,8 @@ class GuessGame(BaseGame):
             self.chat_zone = int(value)
         elif key == "level" and int(value) in self.OPTIONS["level"]:
             self.level = int(value)                      # from the next round
+        elif key in self.SCREEN and value in self.SCREEN[key][1]:
+            self.screen[key] = value
         self.dirty = True
 
     def get_options(self):
@@ -810,7 +835,7 @@ class GuessGame(BaseGame):
                 "fan_min": self.fan_min,
                 "level": self.level, "hint_cd": self.hint_cd,
                 "chroma": int(self.chroma), "chroma_top": self.chroma_top, "frame": self.frame, "chat_zone": self.chat_zone,
-                "row_anim": self.row_anim}
+                "row_anim": self.row_anim, **self.screen}
 
     @property
     def reveal_sec(self):
@@ -1352,6 +1377,7 @@ class GuessGame(BaseGame):
             "frame": self.frame,                                          # 9:frame
             "chatZone": self.chat_zone,                                   # % of the frame at the bottom: the chat
             "rowAnim": self.row_anim,                                     # s a new row slides in at the busiest
+            "screen": self.screen,                                        # tops, bot's name, gifts: show modes
             "streak": self.stats.top_streak(),
             "vocabSize": self.sem.size if self.sem else 0,
             "temps": dict(zip(TEMPS, config.TEMPERATURE_BOUNDS + [None])),

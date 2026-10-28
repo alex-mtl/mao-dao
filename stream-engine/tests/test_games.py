@@ -419,9 +419,12 @@ class NonStopTest(unittest.TestCase):
         g.set_option("round_min", 20)
         g.set_option("follow", 0)
         g.set_option("grace", 60)
-        self.assertEqual(g.get_options(), {"pause": 30, "round_min": 20, "follow": 0, "grace": 60, "fan_min": 1, "level": 2,
-                                           "hint_cd": 20, "chroma": 0, "chroma_top": 33,
-                                           "frame": 16, "chat_zone": 20, "row_anim": 0.2})
+        opts = g.get_options()
+        screen = {k: opts.pop(k) for k in GuessGame.SCREEN}                    # the "on screen" settings: own test
+        self.assertEqual(opts, {"pause": 30, "round_min": 20, "follow": 0, "grace": 60, "fan_min": 1, "level": 2,
+                                "hint_cd": 20, "chroma": 0, "chroma_top": 33,
+                                "frame": 16, "chat_zone": 20, "row_anim": 0.2})
+        self.assertEqual(screen["top_stream"], "always")
         self.assertFalse(g.follow_required)
         g.tick(time.time()); g.tick(time.time() + 0.01)
         self.assertAlmostEqual(g.ends_at - g.started_at, 20 * 60, delta=1)   # 20-minute round
