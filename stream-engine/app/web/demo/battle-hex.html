@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Крепости — бой на сотах</title>
+<style>
+  /* battle prototype v3 on the agreed hex map (battle-map.js): units path-find over the cells, walls and castle
+     rings are cells with hit points, gates are open and covered by archer towers; a fake TikTok chat on the right */
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; font-family: 'Segoe UI', system-ui, sans-serif; color: #eee; background: #0d0d14; }
+  body { display: flex; gap: 1.2vh; padding: 1.2vh; }
+  #stage { height: min(calc(100vh - 2.4vh), calc((100vw - 260px - 3.6vh) * 16 / 9)); aspect-ratio: 9 / 16; border-radius: 1.2vh;
+           overflow: hidden; flex: none; box-shadow: 0 0 0 1px #2a2a3a, 0 1vh 4vh #0008; }
+  #stage canvas { width: 100%; height: 100%; display: block; }
+  #side { flex: 1; min-width: 250px; max-width: 460px; height: calc(100vh - 2.4vh); display: flex; flex-direction: column; gap: 1vh; }
+  .panel { background: #161622; border: 1px solid #2a2a3a; border-radius: 1vh; padding: 1vh 1.2vh; }
+  .panel h3 { margin: 0 0 .8vh; font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: #8a8aa8; }
+  .row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin: 4px 0; font-size: 13px; }
+  .row label { color: #aab; }
+  button { font: 700 12px system-ui; padding: 6px 9px; border-radius: 7px; border: 0; cursor: pointer; background: #2c2c44; color: #eee; }
+  button:hover { background: #3a3a5a; }
+  button.on { background: #fe2c55; }
+  input[type=text] { background: #0d0d14; color: #eee; border: 1px solid #333; border-radius: 6px; padding: 5px 7px; font-size: 13px; }
+  input[type=range] { width: 110px; }
+  #chat { flex: 1; overflow: hidden; display: flex; flex-direction: column; min-height: 0; }
+  #chatlog { overflow-y: auto; display: flex; flex-direction: column; gap: 3px; font-size: 13px; flex: 1; }
+  .msg { display: flex; gap: 6px; align-items: flex-start; padding: 2px 0; animation: in .25s; }
+  .msg .av { width: 22px; height: 22px; border-radius: 50%; flex: none; display: grid; place-items: center; font-size: 11px; font-weight: 800; color: #000; }
+  .msg .nick { color: #9ad; font-weight: 700; margin-right: 4px; }
+  .msg.gift { background: linear-gradient(90deg, #fe2c5533, transparent); border-radius: 6px; padding: 3px 4px; }
+  .msg.sys .text { color: #8a8; font-style: italic; }
+  .msg.like .text { color: #f8a; }
+  @keyframes in { from { opacity: 0; transform: translateY(6px); } }
+  #stats { font-size: 12px; color: #99a; }
+</style>
+</head>
+<body>
+<div id="stage"><canvas id="cv" width="540" height="960"></canvas></div>
+<div id="side">
+  <div class="panel">
+    <h3>Симуляция</h3>
+    <div class="row">
+      <button id="restart">🗺 Новая карта</button>
+      <button id="pause">⏸</button>
+      <button id="speed">×1</button>
+      <button id="voice" class="on">🔊</button>
+    </div>
+    <div class="row"><label>Ботов</label><input type="range" id="bots" min="0" max="300" value="150"><span id="botsV">150</span>
+      <label>чат</label><input type="range" id="rate" min="0" max="40" value="12"><span id="rateV">12</span>/с</div>
+    <div id="stats"></div>
+  </div>
+  <div class="panel">
+    <h3>Я зритель</h3>
+    <div class="row"><input type="text" id="nick" value="mao.montreal" size="11">
+      <input type="text" id="text" placeholder="1 · !защита · !атака 2" size="16"><button id="send">➤</button></div>
+    <div class="row">
+      <button data-act="small">🌹 Роза</button>
+      <button data-act="medium">🍩 Пончик</button>
+      <button data-act="big">🌌 Галактика</button>
+      <button data-act="likes">❤×50</button>
+      <button data-act="sub">⭐ Подписка</button>
+      <button data-act="share">↗ Репост</button>
+    </div>
+  </div>
+  <div class="panel" id="chat"><h3>Чат стрима</h3><div id="chatlog"></div></div>
+</div>
+<script src="battle-map.js"></script>
+<script>
+'use strict';
+const cv = document.getElementById('cv'), g = cv.getContext('2d');
+const base = document.createElement('canvas'); base.width = W; base.height = H;
+const NAMES = ['Красные', 'Синие', 'Зелёные', 'Жёлтые', 'Фиолетовые', 'Бирюзовые'], EMO = ['🔴', '🔵', '🟢', '🟡', '🟣', '🩵'], STEM = ['крас', 'син', 'зел', 'жёл', 'фиол', 'бир'];
+const CFG = {
+  teams: 4, roundSec: 240, intro: 2.6, commentCooldown: 3, garrison: 20, likeFrenzy: 250, frenzySec: 10, maxUnits: 600,
+  wallHp: 40, towerHp: 90, ringHp: 60, cornerHp: 120, donHp: 500, breach: 14,       // breach = path cost of an intact enemy wall cell
+  inf:    { hp: 12, dps: 5,  wall: 3,  don: 3,  speed: 26, r: 4 },
+  knight: { hp: 60, dps: 13, wall: 7,  don: 7,  speed: 30, r: 6 },
+  cav:    { hp: 18, dps: 6,  wall: 1.5, don: 2, speed: 56, r: 5 },
+  ram:    { hp: 160, dps: 0, wall: 26, don: 12, speed: 12, r: 8 },
+  mil:    { hp: 14, dps: 6, speed: 26, r: 4 },
+  mason:  { hp: 20, dps: 0, speed: 26, r: 4, repair: 10, life: 30 },
+  ghost:  { life: 9, don: 1.5, speed: 40, r: 5 },
+  archer: { range: 88, cd: 1.6, dmg: 6 }, corner: { range: 76, cd: 2, dmg: 6 },
+  comeback: 1.25,
+};
+const rnd = (a, b) => a + Math.random() * (b - a), pick = a => a[Math.random() * a.length | 0];
+const d2 = (ax, ay, bx, by) => (ax - bx) ** 2 + (ay - by) ** 2;
+const isWallK = k => k === 1 || k === 7 || k === 8;
+let B = null, viewers = new Map(), paused = false, speed = 1, voiceOn = true;
+
+// ================= round =================
+function newRound() {
+  const M = genValid(CFG.teams); render(M, base, true);
+  const hp = new Float32Array(N), max = new Float32Array(N), wallCells = [];
+  for (let i = 0; i < N; i++) { const k = M.kind[i]; if (!isWallK(k)) continue;
+    max[i] = hp[i] = k === 7 ? CFG.towerHp : k === 8 ? (M.towns[M.own[i]].corners.includes(i) ? CFG.cornerHp : CFG.ringHp) : CFG.wallHp; wallCells.push(i); }
+  const teams = M.towns.map(T => ({ i: T.t, name: NAMES[T.t], color: TEAMS[T.t], emoji: EMO[T.t], stem: STEM[T.t], T, x: hx(T.keep), y: hy(T.keep),
+    don: CFG.donHp, likes: 0, frenzy: 0, members: 0, dead: false, coins: new Map(), breached: false, donCells: T.hexes.filter(i => M.kind[i] === 6) }));
+  const towers = [];
+  for (const T of M.towns) { for (const i of T.towers) towers.push({ i, t: T.t, cd: Math.random() * 2, P: CFG.archer }); for (const i of T.corners) towers.push({ i, t: T.t, cd: Math.random() * 2, P: CFG.corner }); }
+  B = { n: CFG.teams, M, hp, max, wallCells, teams, towers, phase: 'intro', pt: 0, t: 0, overT: 0, units: [], fx: [], arrows: [], rocks: [], texts: [], toasts: [],
+    kills: new Map(), F: new Map(), D: [], dirty: true, fieldT: 0, grid: new Map() };
+  recomputeFields();
+  for (const v of viewers.values()) { v.team = null; v.target = null; v.role = v.role0 || 'att'; v.lastUnit = -99; }
+  toast(`Карта №${M.seed % 10000} · пиши номер команды 1–${B.n}`, '#fff', 3.4);
+  say(`Новая карта. ${B.n} королевства. Пишите номер команды в чат!`);
+}
+// path cost for a unit of team m: own walls and own castle ring are closed (it leaves by the gates), an intact enemy
+// wall cell can be battered through but costs CFG.breach, rubble is open
+function cost(m, i) {
+  const M = B.M, k = M.kind[i];
+  if (isWallK(k)) { if (B.hp[i] <= 0) return 1.3; return M.own[i] === m ? Infinity : CFG.breach; }
+  const t = M.terr[i]; return t === 1 ? 1.6 : t === 4 ? 1.4 : t === 2 ? 1.1 : 1;
+}
+const blockedFor = (m, i) => isWallK(B.M.kind[i]) && B.hp[i] > 0 && B.M.own[i] !== m;
+function posts(m) { // where the garrison stands: our gates and breaches in our wall
+  const out = []; for (const i of B.wallCells) if (B.M.own[i] === m && B.hp[i] <= 0 && B.M.kind[i] !== 8) out.push(i);
+  for (const gt of B.teams[m].T.gates) out.push(...gt); return out.length ? out : [B.teams[m].T.cgate];
+}
+function recomputeFields() {
+  B.F.clear();
+  for (const A of B.teams) { if (A.dead) continue;
+    for (const T of B.teams) if (!T.dead && T !== A) B.F.set(A.i * 8 + T.i, dijkstra(T.donCells, i => cost(A.i, i)).d);
+    B.D[A.i] = dijkstra(posts(A.i), i => cost(A.i, i)).d; }
+  B.dirty = false; B.fieldT = .4;
+  for (const u of B.units) u.from = -1;
+}
+
+// ================= viewers & chat events =================
+function viewer(nick) {
+  let v = viewers.get(nick);
+  if (!v) { v = { nick, team: null, target: null, role: 'att', lastUnit: -99, hue: (Math.random() * 360) | 0 }; viewers.set(nick, v); }
+  return v;
+}
+function teamFromText(t) {
+  const m = t.match(/^\s*([1-6])\s*$/) || t.match(/(?:^|\s)(?:команда|за)\s*([1-6])/);
+  if (m && +m[1] <= B.n) return +m[1] - 1;
+  for (const tm of B.teams) if (t.includes(tm.emoji) || t.toLowerCase().includes(tm.stem)) return tm.i;
+  return null;
+}
+function ensureTeam(v, text) {
+  if (v.team != null) return false;
+  let ti = text != null ? teamFromText(text) : null;
+  if (ti == null) { const alive = B.teams.filter(t => !t.dead); ti = alive.reduce((a, b) => (b.members < a.members ? b : a)).i; }
+  else if (B.teams[ti].dead) return false;
+  v.team = ti; B.teams[ti].members++; return true;
+}
+function onComment(nick, text) {
+  const v = viewer(nick); chat(v, text);
+  if (B.phase === 'over') return;
+  if (ensureTeam(v, text)) sys(`${nick} вступает: ${B.teams[v.team].emoji} ${B.teams[v.team].name}`);
+  if (/!?(защита|оборона|на стены)/i.test(text)) v.role = v.role0 = 'def';
+  const a = text.match(/!?атака\s*([1-6])?/i);
+  if (a) { v.role = v.role0 = 'att'; if (a[1]) { const ti = +a[1] - 1; if (ti < B.n && ti !== v.team && !B.teams[ti].dead) v.target = ti; } }
+  if (B.phase !== 'battle') return;
+  if (B.teams[v.team].dead) { spawn(v, 'ghost'); return; }
+  if (B.t - v.lastUnit < CFG.commentCooldown) return;
+  v.lastUnit = B.t;
+  if (v.role !== 'def') { spawn(v, 'inf'); return; }
+  if (B.units.filter(u => u.team === v.team && u.kind === 'mil').length < CFG.garrison) { spawn(v, 'mil'); return; }
+  patch(v.team, 6); // a full garrison patches the worst wall cell
+}
+function onLikes(nick, count) {
+  const v = viewer(nick); chat(v, `поставил(а) лайки ×${count}`, 'like');
+  if (B.phase === 'over') return; ensureTeam(v); const tm = B.teams[v.team]; if (tm.dead) return;
+  tm.likes += count;
+  if (tm.likes >= CFG.likeFrenzy) { tm.likes -= CFG.likeFrenzy; tm.frenzy = CFG.frenzySec; toast(`🔥 огненные стрелы с башен: ${tm.emoji} ${tm.name}`, tm.color); }
+}
+const GIFTS = { small: ['Роза', 1, '🌹'], medium: ['Пончик', 30, '🍩'], big: ['Галактика', 1000, '🌌'] };
+function onGift(nick, kind) {
+  const v = viewer(nick), [gname, coins, ico] = GIFTS[kind];
+  chat(v, `отправил(а) ${ico} ${gname}`, 'gift');
+  if (B.phase === 'over') return; ensureTeam(v); const tm = B.teams[v.team];
+  tm.coins.set(nick, (tm.coins.get(nick) || 0) + coins);
+  if (B.phase !== 'battle') return;
+  if (tm.dead) { spawn(v, 'ghost'); return; }
+  const def = v.role === 'def';
+  if (kind === 'small') spawn(v, def ? 'mason' : 'knight');
+  if (kind === 'medium') { if (def) guild(tm, nick); else { spawn(v, 'ram'); toast(`${nick}: таран ${tm.emoji}`, tm.color); } }
+  if (kind === 'big') { const to = targetOf(v); if (to) trebuchet(tm, to, nick); }
+}
+function onSub(nick) {
+  const v = viewer(nick); chat(v, 'подписался(ась) ⭐', 'gift');
+  if (B.phase !== 'battle') return; ensureTeam(v); const tm = B.teams[v.team]; if (tm.dead) return;
+  for (let k = 0; k < 3; k++) spawn(v, 'mil'); toast(`${tm.emoji} гарнизон +3 от ${nick}`, tm.color);
+}
+function onShare(nick) {
+  const v = viewer(nick); chat(v, 'поделился(ась) эфиром ↗', 'gift');
+  if (B.phase !== 'battle') return; ensureTeam(v); const tm = B.teams[v.team]; if (tm.dead) return;
+  for (let k = 0; k < 4; k++) spawn(v, 'cav'); toast(`${tm.emoji} конница от ${nick}`, tm.color);
+}
+
+// ================= engine =================
+function wallsOf(t) { let s = 0, m = 0; for (const i of B.wallCells) if (B.M.own[i] === t) { s += Math.max(0, B.hp[i]); m += B.max[i]; } return [s, m]; }
+const power = tm => tm.don + wallsOf(tm.i)[0] * .3;
+function leaderFor(ti) { let best = null, bp = -1; for (const t of B.teams) if (!t.dead && t.i !== ti) { const p = power(t); if (p > bp) { bp = p; best = t; } } return best; }
+function targetOf(v) { if (v.target != null && !B.teams[v.target].dead && v.target !== v.team) return B.teams[v.target]; return leaderFor(v.team); }
+function spawn(v, kind) {
+  const tm = B.teams[v.team];
+  if (B.units.length >= CFG.maxUnits) { const k = B.units.findIndex(u => u.kind === 'inf' || u.kind === 'mil'); if (k >= 0) B.units.splice(k, 1); }
+  const u = { kind, team: v.team, nick: v.nick, hp: 1, maxHp: 1, jx: rnd(-2.5, 2.5), jy: rnd(-2.5, 2.5), scan: Math.random() * .25, step: Math.random() * 6, fx: 0, fy: 1, foe: null, from: -1, next: -1 };
+  if (kind === 'ghost') { const l = leaderFor(-1); if (!l) return; const a = Math.random() * 7;
+    Object.assign(u, { x: W / 2 + Math.cos(a) * 330, y: H / 2 + Math.sin(a) * 560, tgt: l.i, life: CFG.ghost.life }); B.units.push(u); return; }
+  u.hp = u.maxHp = CFG[kind].hp;
+  const c = tm.T.cgate; u.x = hx(c) + rnd(-3, 3); u.y = hy(c) + rnd(-3, 3);
+  if (kind === 'mason') u.life = CFG.mason.life;
+  if (kind !== 'mil' && kind !== 'mason') { const tg = targetOf(v); if (!tg) return; u.tgt = tg.i; }
+  B.units.push(u);
+}
+function moveTo(u, x, y, sp, dt, reach) {
+  const dx = x - u.x, dy = y - u.y, d = Math.hypot(dx, dy); if (d <= reach) return true;
+  const s = Math.min(d - reach, sp * dt); u.x += dx / d * s; u.y += dy / d * s; u.fx = dx / d; u.fy = dy / d; u.step += dt * 12; return false;
+}
+const terrMul = c => { const t = B.M.terr[c]; return t === 1 ? .7 : t === 4 ? .8 : t === 2 ? .92 : 1; };
+// one step down a distance field; returns the next cell (or -1 when the unit stands at the bottom)
+function downhill(u, f) {
+  const c = hexAt(u.x, u.y);
+  if (u.from !== c || u.next < 0) {
+    let best = -1, bv = f[c]; for (let k = 0; k < 6; k++) { const v = nbrs[c * 6 + k]; if (v >= 0 && f[v] < bv) { bv = f[v]; best = v; } }
+    u.from = c; u.next = best;
+  }
+  return u.next;
+}
+function hitCell(i, dmg, by) {
+  if (B.hp[i] <= 0) return; B.hp[i] -= dmg;
+  if (B.hp[i] > 0) return;
+  B.hp[i] = 0; B.dirty = true;
+  for (let k = 0; k < 8; k++) dust(hx(i) + rnd(-6, 6), hy(i) + rnd(-6, 6));
+  const tm = B.teams[B.M.own[i]];
+  if (!tm.breached && B.M.kind[i] !== 8) { tm.breached = true; toast(`Пролом в стене: ${tm.emoji} ${tm.name}!`, tm.color, 3); say(`Пролом в стене у команды ${tm.name}!`); }
+  if (B.M.kind[i] === 8 && !tm.ringHit) { tm.ringHit = true; toast(`Штурм замка: ${tm.emoji} ${tm.name}!`, tm.color, 3); say(`Враг у стен замка команды ${tm.name}!`); }
+}
+function repairCell(i, amount) { const was = B.hp[i]; B.hp[i] = Math.min(B.max[i], Math.max(0, B.hp[i]) + amount); if (was <= 0 && B.hp[i] > 0) B.dirty = true; }
+function worstWall(t) { let b = -1, bf = 1; for (const i of B.wallCells) if (B.M.own[i] === t) { const f = B.hp[i] / B.max[i]; if (f < bf) { bf = f; b = i; } } return b; }
+function patch(t, amount) { const i = worstWall(t); if (i >= 0) { repairCell(i, amount); spark(hx(i), hy(i), '#ffd27a'); } }
+function hurtDon(tm, dmg, by) {
+  if (tm.dead) return; tm.don -= dmg;
+  if (tm.don < CFG.donHp * .5 && Math.random() < .02) B.fx.push({ x: tm.x + rnd(-10, 10), y: tm.y + rnd(-10, 10), vx: rnd(-4, 8), vy: rnd(-26, -14), life: 2, max: 2, c: '#3a3530', r: 5, grow: 8, soft: true });
+  if (tm.don <= 0) eliminate(tm, by);
+}
+const sideBlocked = (a, b) => { const m = hexAt((a.x + b.x) / 2, (a.y + b.y) / 2); return isWallK(B.M.kind[m]) && B.hp[m] > 0; };
+function nearestFoe(u, R) {
+  const c = hexAt(u.x, u.y), cells = new Set([c]);
+  for (let k = 0; k < 6; k++) { const v = nbrs[c * 6 + k]; if (v < 0) continue; cells.add(v); for (let j = 0; j < 6; j++) { const w = nbrs[v * 6 + j]; if (w >= 0) cells.add(w); } }
+  let best = null, bd = R * R;
+  for (const cc of cells) { const list = B.grid.get(cc); if (!list) continue;
+    for (const o of list) { if (o.team === u.team || o.kind === 'ghost' || o.hp <= 0) continue; const d = d2(u.x, u.y, o.x, o.y); if (d < bd && !sideBlocked(u, o)) { bd = d; best = o; } } }
+  return best;
+}
+function fight(u, dt, mult, R) {
+  const P = CFG[u.kind];
+  if (u.foe && (u.foe.hp <= 0 || d2(u.x, u.y, u.foe.x, u.foe.y) > (R + 10) ** 2)) u.foe = null;
+  if ((u.scan -= dt) <= 0) { u.scan = .25; if (!u.foe) u.foe = nearestFoe(u, R); }
+  if (!u.foe) return false;
+  if (moveTo(u, u.foe.x, u.foe.y, P.speed, dt, P.r + 3)) {
+    u.foe.hp -= P.dps * mult * dt; if (Math.random() < dt * 5) spark(u.foe.x, u.foe.y, '#fff');
+    if (u.foe.hp <= 0) { B.kills.set(u.nick, (B.kills.get(u.nick) || 0) + 1); burst(u.foe.x, u.foe.y, B.teams[u.foe.team].color, 6); u.foe = null; }
+  }
+  return true;
+}
+function attackerStep(u, dt, mult) {
+  const P = CFG[u.kind];
+  if (B.teams[u.tgt].dead) { const l = leaderFor(u.team); if (!l) return; u.tgt = l.i; u.from = -1; }
+  if (u.kind !== 'ram' && fight(u, dt, mult, 24)) return;
+  const f = B.F.get(u.team * 8 + u.tgt); if (!f) return;
+  const c = hexAt(u.x, u.y), tm = B.teams[u.tgt];
+  if (f[c] === 0) { // inside the donjon: strike it
+    moveTo(u, hx(c) + u.jx, hy(c) + u.jy, P.speed, dt, 1); hurtDon(tm, P.don * mult * dt, u.team);
+    if (Math.random() < dt * 2) spark(hx(c), hy(c), B.teams[u.team].color); return;
+  }
+  const nb = downhill(u, f); if (nb < 0) return;
+  if (blockedFor(u.team, nb)) { // a wall cell in the way: batter it from where we stand
+    if (moveTo(u, hx(c) * .55 + hx(nb) * .45 + u.jx, hy(c) * .55 + hy(nb) * .45 + u.jy, P.speed, dt, 1)) {
+      hitCell(nb, P.wall * mult * dt, u.team); if (Math.random() < dt * (u.kind === 'ram' ? 8 : 2)) dust(hx(nb) + rnd(-3, 3), hy(nb) + rnd(-3, 3)); }
+    return;
+  }
+  moveTo(u, hx(nb) + u.jx, hy(nb) + u.jy, P.speed * terrMul(c), dt, 1);
+}
+function milStep(u, dt, mult) {
+  if (fight(u, dt, mult, 30)) return;
+  const f = B.D[u.team]; if (!f) return;
+  const nb = downhill(u, f);
+  if (nb < 0) { if (!u.post || (u.postT -= dt) <= 0) { u.post = [rnd(-4, 4), rnd(-4, 4)]; u.postT = rnd(2, 5); } const c = hexAt(u.x, u.y); moveTo(u, hx(c) + u.post[0], hy(c) + u.post[1], 8, dt, 1); return; }
+  moveTo(u, hx(nb) + u.jx, hy(nb) + u.jy, CFG.mil.speed * terrMul(nb), dt, 1);
+}
+function masonStep(u, dt) {
+  u.life -= dt; if (u.life <= 0) { u.hp = 0; return; }
+  if (u.e == null || B.hp[u.e] >= B.max[u.e]) { u.e = worstWall(u.team); if (u.e < 0 || B.hp[u.e] >= B.max[u.e]) { u.e = null; return; }
+    u.f = dijkstra([u.e], i => cost(u.team, i)).d; u.from = -1; }
+  const c = hexAt(u.x, u.y);
+  if (u.f[c] <= 1.7) { moveTo(u, hx(c) * .6 + hx(u.e) * .4, hy(c) * .6 + hy(u.e) * .4, CFG.mason.speed, dt, 1); repairCell(u.e, CFG.mason.repair * dt); if (Math.random() < dt * 5) spark(hx(u.e), hy(u.e), '#ffd27a'); return; }
+  const nb = downhill(u, u.f); if (nb >= 0) moveTo(u, hx(nb) + u.jx, hy(nb) + u.jy, CFG.mason.speed, dt, 1);
+}
+function unitStep(u, dt, mult) {
+  if (u.kind === 'ghost') {
+    u.life -= dt; if (u.life <= 0) { u.hp = 0; return; }
+    if (B.teams[u.tgt].dead) { const l = leaderFor(-1); if (!l) { u.hp = 0; return; } u.tgt = l.i; }
+    const tm = B.teams[u.tgt]; if (moveTo(u, tm.x + u.jx * 4, tm.y + u.jy * 4, CFG.ghost.speed, dt, 4)) hurtDon(tm, CFG.ghost.don * dt, null); return;
+  }
+  if (u.kind === 'mil') return milStep(u, dt, mult);
+  if (u.kind === 'mason') return masonStep(u, dt);
+  attackerStep(u, dt, mult);
+}
+function guild(tm, nick) {
+  for (const i of B.wallCells) if (B.M.own[i] === tm.i) repairCell(i, B.max[i] * .4);
+  toast(`🧱 артель каменщиков ${nick}: стены ${tm.emoji} +40%`, tm.color, 3);
+}
+function trebuchet(from, to, nick) {
+  const near = B.wallCells.filter(i => B.M.own[i] === to.i && B.hp[i] > 0).sort((a, b) => d2(hx(a), hy(a), from.x, from.y) - d2(hx(b), hy(b), from.x, from.y)).slice(0, 30);
+  for (let k = 0; k < 6; k++) {
+    const cell = near.length && Math.random() < .7 ? pick(near) : -1, x1 = cell >= 0 ? hx(cell) : to.x + rnd(-6, 6), y1 = cell >= 0 ? hy(cell) : to.y + rnd(-6, 6);
+    const a = Math.atan2(from.y - y1, from.x - x1);
+    B.rocks.push({ x0: x1 + Math.cos(a) * 650, y0: y1 + Math.sin(a) * 650, x1, y1, t: -k * .22, dur: 1.4, cell, to: to.i, from: from.i });
+  }
+  toast(`🌌 ${nick}: требушет бьёт по ${to.emoji} ${to.name}!`, from.color, 3); say(`${nick} обстреливает из требушета команду ${to.name}!`);
+}
+function eliminate(tm, by) {
+  if (tm.dead) return; tm.dead = true; tm.don = 0;
+  for (const i of B.wallCells) if (B.M.own[i] === tm.i && B.hp[i] > 0) { B.hp[i] = 0; if (Math.random() < .3) dust(hx(i), hy(i)); }
+  for (const u of B.units) if (u.team === tm.i && u.kind !== 'ghost') { u.hp = 0; burst(u.x, u.y, tm.color, 3); }
+  burst(tm.x, tm.y, tm.color, 60); B.shake = .6; B.dirty = true;
+  const killer = by != null ? B.teams[by] : null;
+  toast(`${tm.emoji} ${tm.name} потеряли замок!`, tm.color, 3.5); say(`${tm.name} потеряли замок!` + (killer ? ` Добили ${killer.name}.` : ''));
+  sys(`${tm.name} выбывают. Их зрители теперь призраки и кусают лидера.`);
+  if (B.teams.filter(x => !x.dead).length <= 1) finish();
+}
+function finish() {
+  if (B.phase === 'over') return; B.phase = 'over'; B.overT = 0;
+  // on time: the strongest donjon wins, then the most intact wall (as a share, so a long border is no advantage)
+  const score = t => { const [s, m] = wallsOf(t.i); return t.don + s / m; };
+  const alive = B.teams.filter(t => !t.dead), win = (alive.length ? alive : B.teams).reduce((a, b) => (score(b) > score(a) ? b : a));
+  B.winner = win.i;
+  let cap = null; for (const [n, c] of win.coins) if (!cap || c > cap[1]) cap = [n, c];
+  let best = null; for (const [n, k] of B.kills) if (!best || k > best[1]) best = [n, k];
+  B.cap = cap; B.best = best;
+  say(`Победа! ${win.name} побеждают.` + (cap ? ` Капитан ${cap[0]}.` : '')); sys(`🏆 Победа: ${win.emoji} ${win.name}`);
+}
+function towersStep(dt) {
+  for (const tw of B.towers) {
+    const tm = B.teams[tw.t]; if (tm.dead || B.hp[tw.i] <= 0) continue;
+    if ((tw.cd -= dt * (tm.frenzy > 0 ? 3 : 1)) > 0) continue;
+    const x = hx(tw.i), y = hy(tw.i); let best = null, bd = tw.P.range ** 2;
+    for (const u of B.units) if (u.team !== tw.t && u.kind !== 'ghost' && u.hp > 0) { const d = d2(u.x, u.y, x, y); if (d < bd) { bd = d; best = u; } }
+    if (!best) { tw.cd = .3; continue; }
+    tw.cd = tw.P.cd * rnd(.8, 1.2);
+    B.arrows.push({ x0: x, y0: y, tg: best, x1: best.x, y1: best.y, t: 0, dur: .25 + Math.sqrt(bd) / 500, fire: tm.frenzy > 0, dmg: tw.P.dmg });
+  }
+}
+function step(dt) {
+  if (B.phase === 'intro') { B.pt += dt; if (B.pt >= CFG.intro) { B.phase = 'battle'; toast('⚔ В бой!', '#fff', 2); say('В бой!'); } fxStep(dt); return; }
+  if (B.phase === 'over') { B.overT += dt; if (B.overT > 12) newRound(); fxStep(dt); return; }
+  B.t += dt; if (B.t >= CFG.roundSec) { finish(); return; }
+  if (B.dirty && (B.fieldT -= dt) <= 0) recomputeFields();
+  B.grid.clear(); for (const u of B.units) { if (u.hp <= 0) continue; const c = hexAt(u.x, u.y); let l = B.grid.get(c); if (!l) B.grid.set(c, l = []); l.push(u); }
+  const alive = B.teams.filter(t => !t.dead), weakest = alive.length > 2 ? alive.reduce((a, b) => (power(b) < power(a) ? b : a)) : null;
+  for (const t of B.teams) if (t.frenzy > 0) t.frenzy -= dt;
+  towersStep(dt);
+  for (const u of B.units) if (u.hp > 0) unitStep(u, dt, weakest && u.team === weakest.i ? CFG.comeback : 1);
+  B.units = B.units.filter(u => u.hp > 0);
+  fxStep(dt);
+}
+
+// ================= effects =================
+function spark(x, y, c) { B.fx.push({ x, y, vx: rnd(-40, 40), vy: rnd(-40, 40), life: .3, max: .3, c, r: 2 }); }
+function burst(x, y, c, n) { for (let k = 0; k < n; k++) B.fx.push({ x, y, vx: rnd(-120, 120), vy: rnd(-120, 120), life: rnd(.4, .9), max: .9, c, r: rnd(2, 4) }); }
+function dust(x, y) { B.fx.push({ x, y, vx: rnd(-20, 20), vy: rnd(-25, 5), life: rnd(.6, 1.2), max: 1.2, c: '#b9ab8e', r: rnd(3, 6), grow: 8, soft: true }); }
+function toast(text, c, life = 2.4) { if (!B) return; B.toasts.push({ text, c, life }); if (B.toasts.length > 4) B.toasts.shift(); }
+const rockPos = m => { const k = Math.max(0, m.t / m.dur), s = Math.sin(k * Math.PI); return { x: m.x0 + (m.x1 - m.x0) * k, y: m.y0 + (m.y1 - m.y0) * k - s * 220, r: 5 + s * 6 }; };
+function fxStep(dt) {
+  for (const tm of B.teams) if (!tm.dead && tm.don < CFG.donHp * .5 && Math.random() < dt * 14)
+    B.fx.push({ x: tm.x + rnd(-14, 14), y: tm.y + rnd(-12, 12), vx: rnd(-6, 6), vy: rnd(-40, -20), life: rnd(.3, .6), max: .6, c: pick(['#ffb03d', '#ff7a2a', '#ffe08a']), r: rnd(2, 4), soft: true });
+  for (const p of B.fx) { p.x += p.vx * dt; p.y += p.vy * dt; if (!p.grow) { p.vx *= .92; p.vy *= .92; } else p.r += p.grow * dt; p.life -= dt; }
+  B.fx = B.fx.filter(p => p.life > 0); if (B.fx.length > 2500) B.fx.splice(0, B.fx.length - 2500);
+  for (const a of B.arrows) { a.t += dt;
+    if (a.t >= a.dur && !a.done) { a.done = true; const u = a.tg;
+      if (u.hp > 0 && d2(u.x, u.y, a.x1, a.y1) < 20 * 20) { u.hp -= a.dmg * (a.fire ? 1.5 : 1); if (u.hp <= 0) burst(u.x, u.y, B.teams[u.team].color, 5); } } }
+  B.arrows = B.arrows.filter(a => a.t < a.dur);
+  for (const m of B.rocks) {
+    m.t += dt;
+    if (m.t > 0 && m.t < m.dur) { const p = rockPos(m); B.fx.push({ x: p.x, y: p.y, vx: rnd(-10, 10), vy: rnd(-10, 10), life: .45, max: .45, c: pick(['#ffb03d', '#ff7a2a']), r: p.r * .7, soft: true }); }
+    if (m.t >= m.dur && !m.hit) {
+      m.hit = true; const tm = B.teams[m.to];
+      for (let k = 0; k < 16; k++) dust(m.x1 + rnd(-12, 12), m.y1 + rnd(-12, 12)); burst(m.x1, m.y1, '#ffb03d', 20);
+      if (B.phase === 'battle' && !tm.dead) {
+        if (m.cell >= 0) { const cs = [m.cell]; for (let k = 0; k < 6; k++) { const v = nbrs[m.cell * 6 + k]; if (v >= 0) cs.push(v); }
+          for (const c of cs) if (isWallK(B.M.kind[c]) && B.M.own[c] === m.to) hitCell(c, c === m.cell ? 95 : 45, m.from); }
+        else hurtDon(tm, 60, m.from);
+        for (const u of B.units) if (u.kind !== 'ghost' && u.team !== m.from && d2(u.x, u.y, m.x1, m.y1) < 16 * 16) u.hp = 0;
+        B.texts.push({ x: m.x1, y: m.y1 - 18, text: m.cell >= 0 ? '💥' : '-60', life: 1.3, c: '#ffb03d' });
+      }
+      B.shake = .35;
+    }
+  }
+  B.rocks = B.rocks.filter(m => m.t < m.dur + .1);
+  for (const t of B.texts) { t.y -= 30 * dt; t.life -= dt; } B.texts = B.texts.filter(t => t.life > 0);
+  for (const t of B.toasts) t.life -= dt; B.toasts = B.toasts.filter(t => t.life > 0);
+  if (B.shake) B.shake = Math.max(0, B.shake - dt);
+}
+
+// ================= render =================
+function draw() {
+  g.save();
+  if (B.shake) g.translate(rnd(-8, 8) * B.shake, rnd(-8, 8) * B.shake);
+  let wallA = 1;
+  if (B.phase === 'intro') { // the map unrolls from the castles outwards
+    g.fillStyle = '#101309'; g.fillRect(-20, -20, W + 40, H + 40);
+    const r = Math.min(1, B.pt / (CFG.intro * .7)) * 520;
+    g.save(); g.beginPath(); for (const tm of B.teams) { g.moveTo(tm.x + r, tm.y); g.arc(tm.x, tm.y, r, 0, 7); } g.clip(); g.drawImage(base, 0, 0); g.restore();
+    wallA = clamp((B.pt - CFG.intro * .45) / (CFG.intro * .4), 0, 1);
+  } else g.drawImage(base, 0, 0);
+  if (wallA > 0) { g.globalAlpha = wallA; drawForts(); g.globalAlpha = 1; }
+  const names = B.units.length < 120;
+  for (const u of B.units) drawUnit(u, names);
+  for (const a of B.arrows) {
+    const k = a.t / a.dur, x = a.x0 + (a.x1 - a.x0) * k, y = a.y0 + (a.y1 - a.y0) * k - Math.sin(k * Math.PI) * 24;
+    const k2 = Math.max(0, k - .1), x2 = a.x0 + (a.x1 - a.x0) * k2, y2 = a.y0 + (a.y1 - a.y0) * k2 - Math.sin(k2 * Math.PI) * 24;
+    g.strokeStyle = a.fire ? '#ffb03d' : '#f2ead8'; g.lineWidth = a.fire ? 2.5 : 1.5; g.beginPath(); g.moveTo(x2, y2); g.lineTo(x, y); g.stroke();
+  }
+  for (const p of B.fx) { g.globalAlpha = Math.max(0, p.life / p.max) * (p.soft ? .75 : 1); g.fillStyle = p.c;
+    if (p.soft) { g.beginPath(); g.arc(p.x, p.y, p.r, 0, 7); g.fill(); } else g.fillRect(p.x - p.r / 2, p.y - p.r / 2, p.r, p.r); }
+  g.globalAlpha = 1;
+  for (const m of B.rocks) { if (m.t <= 0 || m.t >= m.dur) continue; const p = rockPos(m), k = m.t / m.dur;
+    g.fillStyle = '#0005'; g.beginPath(); g.ellipse(m.x0 + (m.x1 - m.x0) * k + 4, m.y0 + (m.y1 - m.y0) * k + 4, 6, 4, 0, 0, 7); g.fill();
+    g.fillStyle = '#5b544b'; g.beginPath(); g.arc(p.x, p.y, p.r, 0, 7); g.fill(); g.fillStyle = '#8a8276'; g.beginPath(); g.arc(p.x - p.r * .3, p.y - p.r * .3, p.r * .45, 0, 7); g.fill(); }
+  g.font = '900 22px system-ui'; g.textAlign = 'center';
+  for (const t of B.texts) { g.globalAlpha = Math.min(1, t.life); g.fillStyle = t.c; g.fillText(t.text, t.x, t.y); }
+  g.globalAlpha = 1;
+  const vg = g.createRadialGradient(W / 2, H / 2, 260, W / 2, H / 2, 660); vg.addColorStop(0, '#0000'); vg.addColorStop(1, '#0007'); g.fillStyle = vg; g.fillRect(0, 0, W, H);
+  g.restore();
+  hud();
+  if (B.phase === 'intro' && B.pt > CFG.intro * .6) banner('В БОЙ!', Math.min(1, (B.pt - CFG.intro * .6) * 3));
+  if (B.phase === 'over') results();
+}
+function drawForts() {
+  const { M, hp, max } = B;
+  g.fillStyle = '#0005'; g.beginPath(); for (const i of B.wallCells) if (hp[i] > 0) hexPath(g, hx(i) + 1.6, hy(i) + 2.2, 6.0); g.fill();
+  for (const i of B.wallCells) {
+    const x = hx(i), y = hy(i), k = M.kind[i], f = hp[i] / max[i];
+    if (hp[i] <= 0) { // rubble
+      g.fillStyle = '#6e685e'; g.beginPath(); hexPath(g, x, y, 3.6); g.fill();
+      g.fillStyle = '#8f887c'; g.fillRect(x - 3, y - 1, 2.5, 2.5); g.fillRect(x + 1, y + 1, 2, 2); continue; }
+    const baseC = k === 8 ? [176, 170, 158] : rgb(TEAMS[M.own[i]]), c = mix(baseC, [30, 26, 22], (1 - f) * .55);
+    g.fillStyle = `rgb(${c.map(Math.round)})`; g.beginPath(); hexPath(g, x, y, 6.0); g.fill();
+    if (f < .5) { g.strokeStyle = '#1b1814'; g.lineWidth = 1; g.beginPath(); g.moveTo(x - 3, y - 2); g.lineTo(x + 1, y + 2); if (f < .25) { g.moveTo(x + 3, y - 3); g.lineTo(x, y + 3); } g.stroke(); }
+  }
+  for (const tw of B.towers) {
+    const x = hx(tw.i), y = hy(tw.i), tm = B.teams[tw.t], r = tw.P === CFG.corner ? 8 : 6.6;
+    if (hp[tw.i] <= 0) continue;
+    g.fillStyle = '#0006'; g.beginPath(); g.arc(x + 2, y + 2.5, r + .5, 0, 7); g.fill();
+    g.fillStyle = '#a19b90'; g.strokeStyle = '#3b3631'; g.lineWidth = 1.5; g.beginPath(); g.arc(x, y, r, 0, 7); g.fill(); g.stroke();
+    g.fillStyle = tm.frenzy > 0 ? '#ffb03d' : tm.color; g.beginPath(); g.arc(x, y, r * .45, 0, 7); g.fill();
+    if (tw.P === CFG.archer) { g.strokeStyle = '#3a2614'; g.lineWidth = 1.4; g.beginPath(); g.arc(x - 1, y, 3.2, -1.1, 1.1); g.stroke(); }
+  }
+  for (const tm of B.teams) {
+    const T = tm.T, x = tm.x, y = tm.y;
+    if (T.cgate >= 0) { const gx = hx(T.cgate), gy = hy(T.cgate), a = Math.atan2(gy - y, gx - x);
+      g.save(); g.translate(gx, gy); g.rotate(a); g.fillStyle = '#6b4423'; g.fillRect(-1, -5.6, 4, 3.5); g.fillRect(-1, 2.1, 4, 3.5); g.restore(); }
+    if (tm.dead) { g.fillStyle = '#5d574f'; for (let k = 0; k < 7; k++) g.fillRect(x - 12 + (k % 4) * 7, y - 6 + (k / 4 | 0) * 8, 6, 5); continue; }
+    const wv = Math.sin(performance.now() / 180 + tm.i) * 3;
+    g.strokeStyle = '#2b2622'; g.lineWidth = 2; g.beginPath(); g.moveTo(x, y); g.lineTo(x, y - 26); g.stroke();
+    g.fillStyle = tm.color; g.beginPath(); g.moveTo(x, y - 26); g.quadraticCurveTo(x + 10, y - 24 + wv, x + 18, y - 20 + wv); g.lineTo(x, y - 15); g.fill();
+    g.fillStyle = '#fff'; g.font = '900 10px system-ui'; g.textAlign = 'center'; g.fillText(tm.i + 1, x + 7, y - 18 + wv * .5);
+    const f = tm.don / CFG.donHp; g.fillStyle = '#000a'; g.fillRect(x - 18, y + 16, 36, 5); g.fillStyle = f > .3 ? '#7f7' : '#f66'; g.fillRect(x - 18, y + 16, 36 * Math.max(0, f), 5);
+  }
+}
+function line(x1, y1, x2, y2) { g.beginPath(); g.moveTo(x1, y1); g.lineTo(x2, y2); g.stroke(); }
+function drawUnit(u, names) {
+  const tc = B.teams[u.team].color, b = Math.abs(Math.sin(u.step)) * 1.2, r = CFG[u.kind].r;
+  if (u.kind === 'ghost') { g.globalAlpha = .35 + .2 * Math.sin(u.life * 8); g.fillStyle = '#dfe'; g.beginPath(); g.arc(u.x, u.y - b, 6, 0, 7); g.fill();
+    g.fillStyle = tc; g.fillRect(u.x - 2, u.y - 1 - b, 4, 2); g.globalAlpha = 1; return; }
+  g.fillStyle = '#0006'; g.beginPath(); g.ellipse(u.x + 2, u.y + 3, r, r * .65, 0, 0, 7); g.fill();
+  const ang = Math.atan2(u.fy, u.fx);
+  if (u.kind === 'ram') { g.save(); g.translate(u.x, u.y); g.rotate(ang);
+    g.fillStyle = '#3a2a1a'; g.fillRect(-11, -7, 22, 14); g.fillStyle = '#7d5530'; g.fillRect(-10, -6, 20, 12); g.fillStyle = tc; g.fillRect(-10, -1.5, 20, 3);
+    g.fillStyle = '#555'; g.fillRect(9, -2.5, 6, 5); g.restore(); tag(u.nick, u.x, u.y - 13, tc); return; }
+  if (u.kind === 'cav') { g.save(); g.translate(u.x, u.y - b); g.rotate(ang);
+    g.fillStyle = '#6b4a2b'; g.beginPath(); g.ellipse(0, 0, 8, 3.5, 0, 0, 7); g.fill(); g.fillRect(6, -2, 5, 4);
+    g.fillStyle = tc; g.beginPath(); g.arc(-1, 0, 3.5, 0, 7); g.fill(); g.strokeStyle = '#0008'; g.lineWidth = 1; g.stroke(); g.restore();
+    if (names) small(u.nick, u.x, u.y - 8); return; }
+  g.fillStyle = tc; g.beginPath(); g.arc(u.x, u.y - b, r, 0, 7); g.fill();
+  g.strokeStyle = u.kind === 'knight' ? '#fff' : '#0009'; g.lineWidth = u.kind === 'knight' ? 2 : 1; g.stroke();
+  if (u.kind === 'inf' || u.kind === 'knight') { g.strokeStyle = '#e0d5b8'; g.lineWidth = 1.2; line(u.x + u.fx * 2, u.y - b + u.fy * 2, u.x + u.fx * (r + 6), u.y - b + u.fy * (r + 6)); }
+  if (u.kind === 'mil') { g.fillStyle = '#e8e2d0'; g.fillRect(u.x + u.fx * 4 - 2.5, u.y - b + u.fy * 4 - 2.5, 5, 5); }
+  if (u.kind === 'mason') { g.fillStyle = '#ffd27a'; g.beginPath(); g.arc(u.x, u.y - b, 2.2, 0, 7); g.fill(); }
+  else { g.fillStyle = '#9a9a9a'; g.beginPath(); g.arc(u.x - u.fx, u.y - b - u.fy, r * .5, 0, 7); g.fill(); }
+  if (u.kind === 'knight') { g.fillStyle = tc; g.fillRect(u.x - 1, u.y - b - r - 5, 2, 5); tag(u.nick, u.x, u.y - 18 - b, tc); }
+  else if (names) small(u.nick, u.x, u.y - 7 - b);
+}
+function tag(text, x, y, c) { g.font = '700 10px system-ui'; g.textAlign = 'center'; const w = g.measureText(text).width + 8; g.fillStyle = '#000b'; g.fillRect(x - w / 2, y - 9, w, 12); g.fillStyle = c; g.fillText(text, x, y); }
+function small(text, x, y) { g.font = '600 8px system-ui'; g.textAlign = 'center'; g.fillStyle = '#000a'; g.fillText(text.slice(0, 9), x + .7, y + .7); g.fillStyle = '#fffd'; g.fillText(text.slice(0, 9), x, y); }
+function hud() {
+  g.fillStyle = '#000c'; g.fillRect(0, 0, W, TOP - 10);
+  const left = B.phase === 'battle' ? Math.max(0, CFG.roundSec - B.t) : CFG.roundSec, mm = left / 60 | 0, ss = String(left % 60 | 0).padStart(2, '0');
+  g.textAlign = 'center'; g.font = '900 21px Georgia, serif'; g.fillStyle = left < 30 ? '#ff5d6c' : '#f4e6c2'; g.fillText(`⚔ КРЕПОСТИ  ${mm}:${ss}`, W / 2, 25);
+  const cw = W / B.n;
+  for (const t of B.teams) {
+    const x0 = t.i * cw + 4, w = cw - 8, y0 = 33, [ws, wm] = wallsOf(t.i);
+    g.globalAlpha = t.dead ? .4 : 1;
+    g.fillStyle = '#ffffff10'; g.fillRect(x0, y0, w, 58); g.fillStyle = t.color; g.fillRect(x0, y0, 3, 58);
+    g.fillStyle = t.color; g.font = '800 12px system-ui'; g.textAlign = 'left'; g.fillText(`${t.i + 1} ${t.name}`, x0 + 7, y0 + 13);
+    g.fillStyle = '#ffffff22'; g.fillRect(x0 + 7, y0 + 18, w - 13, 6); g.fillStyle = t.color; g.fillRect(x0 + 7, y0 + 18, (w - 13) * Math.max(0, t.don) / CFG.donHp, 6);
+    g.fillStyle = '#ffffff22'; g.fillRect(x0 + 7, y0 + 26, w - 13, 3); g.fillStyle = '#c8c2b4'; g.fillRect(x0 + 7, y0 + 26, (w - 13) * ws / wm, 3);
+    g.fillStyle = '#ffffff22'; g.fillRect(x0 + 7, y0 + 31, w - 13, 2); g.fillStyle = t.frenzy > 0 ? '#ffb03d' : '#f8a'; g.fillRect(x0 + 7, y0 + 31, (w - 13) * (t.frenzy > 0 ? 1 : t.likes / CFG.likeFrenzy), 2);
+    let att = 0, def = 0; for (const u of B.units) if (u.team === t.i) { if (u.kind === 'mil' || u.kind === 'mason') def++; else if (u.kind !== 'ghost') att++; }
+    g.fillStyle = '#ddd'; g.font = '600 10px system-ui'; g.fillText(`🗡${att} 🛡${def} 👥${t.members}`, x0 + 7, y0 + 44);
+    let cap = null; for (const [nn, c] of t.coins) if (!cap || c > cap[1]) cap = [nn, c];
+    if (cap) g.fillText('👑 ' + cap[0].slice(0, 12), x0 + 7, y0 + 55);
+    g.globalAlpha = 1;
+  }
+  g.textAlign = 'center';
+  B.toasts.forEach((t, k) => { g.globalAlpha = Math.min(1, t.life * 2); g.font = '800 15px system-ui'; const w = g.measureText(t.text).width + 22;
+    g.fillStyle = '#000c'; g.fillRect(W / 2 - w / 2, TOP + 4 + k * 26, w, 22); g.fillStyle = t.c; g.fillText(t.text, W / 2, TOP + 20 + k * 26); });
+  g.globalAlpha = 1;
+  g.fillStyle = '#000c'; g.fillRect(0, BOT + 6, W, H - BOT); g.fillStyle = '#ddd'; g.font = '600 11.5px system-ui';
+  g.fillText(`Номер 1–${B.n} — вступить · !защита — к воротам · !атака N · ❤ огненные стрелы`, W / 2, BOT + 20);
+  g.fillStyle = '#aaa'; g.fillText('🌹 рыцарь / каменщик · 🍩 таран / артель · 🌌 требушет · ↗ конница · ⭐ гарнизон', W / 2, BOT + 34);
+}
+function banner(text, k) { g.globalAlpha = k; g.textAlign = 'center'; g.font = '900 64px Georgia, serif';
+  g.fillStyle = '#000'; g.fillText(text, W / 2 + 3, H / 2 + 23); g.fillStyle = '#f4e6c2'; g.fillText(text, W / 2, H / 2 + 20); g.globalAlpha = 1; }
+function results() {
+  const k = Math.min(1, B.overT * 2), t = B.teams[B.winner];
+  g.fillStyle = `rgba(0,0,0,${.6 * k})`; g.fillRect(0, 0, W, H); g.globalAlpha = k; g.textAlign = 'center';
+  g.font = '900 56px Georgia, serif'; g.fillStyle = t.color; g.shadowColor = t.color; g.shadowBlur = 30; g.fillText('ПОБЕДА', W / 2, 380); g.shadowBlur = 0;
+  g.font = '800 30px system-ui'; g.fillText(`${t.emoji} ${t.name}`, W / 2, 430);
+  g.font = '600 18px system-ui'; g.fillStyle = '#fff';
+  if (B.cap) g.fillText(`👑 Капитан: ${B.cap[0]} (${B.cap[1]} 💎)`, W / 2, 490);
+  if (B.best) g.fillText(`🗡 Лучший боец: ${B.best[0]} (${B.best[1]} побед)`, W / 2, 522);
+  g.fillStyle = '#aaa'; g.font = '14px system-ui'; g.fillText(`Новая карта через ${Math.max(0, Math.ceil(12 - B.overT))} с`, W / 2, 580); g.globalAlpha = 1;
+}
+
+// ================= chat panel & voice =================
+const log = document.getElementById('chatlog');
+function chat(v, text, cls = '') {
+  const el = document.createElement('div'); el.className = 'msg ' + cls;
+  const tc = v.team != null && B.teams[v.team] ? B.teams[v.team].color : `hsl(${v.hue},60%,65%)`;
+  el.innerHTML = `<div class="av" style="background:${tc}">${v.nick[0].toUpperCase()}</div><div><span class="nick"></span><span class="text"></span></div>`;
+  el.querySelector('.nick').textContent = v.nick; el.querySelector('.text').textContent = text; push(el);
+}
+function sys(text) { const el = document.createElement('div'); el.className = 'msg sys'; el.innerHTML = '<div class="av" style="background:#8a8">⚔</div><div class="text"></div>'; el.querySelector('.text').textContent = text; push(el); }
+function push(el) { log.appendChild(el); while (log.children.length > 90) log.firstChild.remove(); log.scrollTop = log.scrollHeight; }
+function say(text) { if (!voiceOn || !window.speechSynthesis) return; const u = new SpeechSynthesisUtterance(text); u.lang = 'ru-RU'; u.rate = 1.1; speechSynthesis.speak(u); }
+
+// ================= bots =================
+const P1 = ['dark', 'kot', 'lisa', 'max', 'nika', 'vovan', 'sasha', 'pro', 'zaya', 'tigr', 'baton', 'misha', 'ole4ka', 'den', 'ruslan', 'kira', 'gena', 'yulia', 'boss', 'shadow'];
+const P2 = ['_tt', '777', '.live', '_ru', '2008', '_kz', 'x', '_mtl', '99', '_official', '228', '.ok', ''];
+const SAY = ['го го го', 'вперёд!', 'держим ворота', 'ахаха', 'давай!!', 'мы сильнее', 'кто за нас?', 'ломаем стену!', '🔥🔥🔥', 'ещё!', 'не сдаёмся', 'красава', 'жмите лайки', 'ура', 'помогите'];
+let bots = [], botAcc = 0;
+function makeBots(n) { while (bots.length < n) bots.push({ nick: pick(P1) + pick(P2) + (Math.random() * 100 | 0), w: Math.random() ** 2 + .05, said: 0 }); bots.length = n; }
+function botTick(dt) {
+  const rate = +document.getElementById('rate').value; if (!bots.length || !rate || B.phase === 'over') return;
+  botAcc += rate * dt;
+  while (botAcc >= 1) {
+    botAcc--; let b; do b = pick(bots); while (Math.random() > b.w);
+    const r = Math.random();
+    if (b.said === 0) { b.said = 1; onComment(b.nick, Math.random() < .6 ? String(1 + (Math.random() * B.n | 0)) : (Math.random() < .5 ? pick(B.teams).emoji : pick(SAY))); }
+    else if (b.said === 1) { b.said = 2; onComment(b.nick, Math.random() < .25 ? '!защита' : pick(SAY)); }
+    else if (r < .62) onComment(b.nick, Math.random() < .08 ? `!атака ${1 + (Math.random() * B.n | 0)}` : pick(SAY));
+    else if (r < .9) onLikes(b.nick, 5 + (Math.random() * 25 | 0));
+    else if (r < .945) onGift(b.nick, 'small');
+    else if (r < .96) onGift(b.nick, 'medium');
+    else if (r < .9625) onGift(b.nick, 'big');
+    else if (r < .98) onShare(b.nick);
+    else onSub(b.nick);
+  }
+}
+
+// ================= controls =================
+const $ = id => document.getElementById(id);
+$('restart').onclick = () => { bots.forEach(b => b.said = 0); newRound(); };
+$('pause').onclick = e => { paused = !paused; e.target.textContent = paused ? '▶' : '⏸'; e.target.classList.toggle('on', paused); };
+$('speed').onclick = e => { speed = speed === 1 ? 2 : speed === 2 ? 4 : 1; e.target.textContent = '×' + speed; };
+$('voice').onclick = e => { voiceOn = !voiceOn; e.target.classList.toggle('on', voiceOn); e.target.textContent = voiceOn ? '🔊' : '🔇'; if (!voiceOn) speechSynthesis.cancel(); };
+$('bots').oninput = e => { $('botsV').textContent = e.target.value; makeBots(+e.target.value); };
+$('rate').oninput = e => { $('rateV').textContent = e.target.value; };
+const me = () => $('nick').value.trim() || 'viewer';
+$('send').onclick = () => { const t = $('text').value.trim(); if (t) { onComment(me(), t); $('text').value = ''; } };
+$('text').onkeydown = e => { if (e.key === 'Enter') $('send').onclick(); };
+document.querySelectorAll('[data-act]').forEach(b => b.onclick = () => {
+  const a = b.dataset.act; if (a === 'likes') onLikes(me(), 50); else if (a === 'sub') onSub(me()); else if (a === 'share') onShare(me()); else onGift(me(), a);
+});
+
+makeBots(+$('bots').value); $('botsV').textContent = $('bots').value; $('rateV').textContent = $('rate').value;
+newRound();
+let last = performance.now(), fpsAcc = 0, fpsN = 0;
+function frame(now) {
+  const real = clamp((now - last) / 1000, 0, .05); last = now;
+  fpsAcc += real; fpsN++;
+  if (fpsAcc > .5) { $('stats').textContent = `карта №${B.M.seed % 10000} · юнитов ${B.units.length} · частиц ${B.fx.length} · ${Math.round(fpsN / fpsAcc)} fps`; fpsAcc = fpsN = 0; }
+  if (!paused) { botTick(real * speed); for (let k = 0; k < speed; k++) step(real); }
+  draw();
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
