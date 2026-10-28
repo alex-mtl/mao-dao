@@ -26,7 +26,7 @@ window.Cake = (() => {
   const WAVES = 3, WAVE_GAP = .1;                            // the slices go in 3 waves, .1 s apart
   const T_TIER = [0, .5, 1, 1.45];                           // when the tiers and the candle pop in, s
   const T_BOX = 2.3, T_POUR = 3.4, POUR = 4.5;               // the box drops in, tips over, pours for POUR s
-  const GAP = 1, MAX_PARTS = 1400, MAX_SPARKS = 900;
+  const GAP = 1, MAX_PARTS = 1400, MAX_SPARKS = 900, CATCH_UP = 180;   // CATCH_UP: the longest pause made up, s
   const WORDS = ['огонь', 'fire', 'feu', 'fuego'];  // the chat command, in our 4 languages
   const QUEUE = 3, shows = [];                               // cake shows waiting for the one playing
   const STICK = '#e9cf9f', HUES = 24, N = 40;                // N: points along the visible half of a tier's edge
@@ -639,12 +639,22 @@ window.Cake = (() => {
       tilt = TILT; lift = 0; finAt = 0; fin = 0; fans = new Map(); hero = null; slices = null; cut = null;
       setup(); layout();
       running = true;
+      // the clock is the wall clock: a hidden page (a background tab, the room page's preview behind LIVE Studio)
+      // gets no frames, so on its next frame the show catches up in silent .05 s steps - the preview shows the
+      // same moment as the Studio overlay instead of resuming where it froze
       let last = performance.now();
       (function loop(now) {
         if (!running || my !== gen) return;
-        const dt = Math.min(.05, (now - last) / 1000); last = now;
+        let dt = Math.max(0, Math.min(CATCH_UP, (now - last) / 1000)); last = now;
         if (root.clientWidth !== Math.round(W) || root.clientHeight !== Math.round(H)) layout();
-        if (geo.length) { step(dt); if (running && my === gen) draw(); }
+        if (geo.length) {
+          const sound = opts.sound;
+          if (dt > .1) opts.sound = false;
+          while (dt > .05 && running && my === gen) { step(.05); dt -= .05; }
+          if (my !== gen) return;                          // the show ended while catching up, the next one runs
+          opts.sound = sound;
+          if (running) { step(dt); if (running && my === gen) draw(); }
+        }
         raf = requestAnimationFrame(loop);
       })(last);
     },
