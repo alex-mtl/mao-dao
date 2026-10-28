@@ -63,6 +63,8 @@ function dijkstra(src, cost, stop) { // cost(i) per hex entered; returns {d, par
       if (du + w < d[v]) { d[v] = du + w; par[v] = u; h.push(d[v], v); } } }
   return { d, par };
 }
+const cube = i => { const c = i % COLS, r = i / COLS | 0, x = c - (r - (r & 1)) / 2; return [x, r, -x - r]; };
+const hdist = (a, b) => { const p = cube(a), q = cube(b); return Math.max(Math.abs(p[0] - q[0]), Math.abs(p[1] - q[1]), Math.abs(p[2] - q[2])); };
 const trace = (par, t) => { const p = []; for (let v = t; v >= 0; v = par[v]) p.push(v); return p; };
 
 // ================= generation =================
@@ -160,14 +162,26 @@ function gen(n, seed) {
   for (let i = 0; i < N; i++) { if (own[i] < 0) continue;
     for (let k = 0; k < 6; k++) { const v = nbrs[i * 6 + k]; if (v >= 0 && own[v] !== own[i]) { border.push(i); break; } } }
   { const { d } = dijkstra(border, i => own[i] >= 0 ? 1 : Infinity); for (let i = 0; i < N; i++) if (own[i] >= 0) depth[i] = d[i]; }
-  const towns = anchors.map((_, t) => ({ t, keep: -1, hexes: [], gates: [], towers: [] }));
-  for (let i = 0; i < N; i++) { const t = own[i]; if (t < 0 || terr[i] === 3) continue; const T = towns[t];
+  const towns = anchors.map((_, t) => ({ t, keep: -1, hexes: [], gates: [], towers: [], corners: [], cgate: -1 }));
+  for (let i = 0; i < N; i++) { const t = own[i]; if (t < 0) continue; const T = towns[t];
     if (T.keep < 0 || depth[i] + hash(i, t, 3) * .5 > depth[T.keep]) T.keep = i; }
+  // the castle: one big hex with a side of 5 cells (radius 4 → 61 cells) round the deepest point of the territory:
+  // ring = castle wall (6 corner towers, one gate facing the map centre), inside a courtyard, the 7 central cells = donjon
   for (const T of towns) {
-    const kx = hx(T.keep), ky = hy(T.keep), rad = 30 + R() * 10;
-    for (let i = 0; i < N; i++) if (own[i] === T.t && terr[i] !== 3) { const d = Math.hypot(hx(i) - kx, hy(i) - ky);
-      if (d < rad * (.75 + vnoise(hx(i) / 14, hy(i) / 14, seed + T.t) * .5)) { kind[i] = 2; T.hexes.push(i); } }
-    kind[T.keep] = 6;
+    // centre: the cell farthest from both our border and the visible screen edge (the HUD bands count as edge)
+    const src = []; for (let i = 0; i < N; i++) if (own[i] !== T.t || hy(i) < TOP || hy(i) > BOT || hx(i) < HW / 2 || hx(i) > W - HW / 2) src.push(i);
+    const room = dijkstra(src, () => 1).d; T.keep = -1;
+    for (let i = 0; i < N; i++) if (own[i] === T.t && (T.keep < 0 || room[i] + hash(i, T.t, 3) * .5 > room[T.keep])) T.keep = i;
+    T.room = room[T.keep];
+    const ctr = hexAt(W / 2, H / 2); let gBest = -1, gd = Infinity;
+    for (let i = 0; i < N; i++) {
+      const d = hdist(i, T.keep); if (d > 4 || own[i] !== T.t) continue;
+      T.hexes.push(i); kind[i] = d === 4 ? 8 : d <= 1 ? 6 : 9;
+      if (d === 4) { const p = cube(i), q = cube(T.keep), ax = [Math.abs(p[0] - q[0]), Math.abs(p[1] - q[1]), Math.abs(p[2] - q[2])];
+        if (ax.filter(v => v === 4).length === 2) T.corners.push(i);
+        else { const dc = hdist(i, ctr); if (dc < gd) { gd = dc; gBest = i; } } }
+    }
+    T.cgate = gBest; if (gBest >= 0) kind[gBest] = 9;
   }
   // walls: every territory hex that touches another owner (not water); the map edge needs no wall
   // the wall is unbroken: every border hex, whatever the ground (water included); off-screen hexes are the map edge
@@ -187,8 +201,6 @@ function gen(n, seed) {
   let hub = -1; for (let i = 0, bd = Infinity; i < N; i++) { if (ownD[i] < 3 || terr[i] === 3) continue; const d = Math.hypot(hx(i) - hc[0], hy(i) - hc[1]); if (d < bd) { bd = d; hub = i; } }
   const roads = []; // no roads for now (owner's call)
   // gates: two per wall, each 4 wall hexes in a row along the wall, ≥ 5 hexes from every map edge, ≥ 20 hexes from the other gate
-  const cube = i => { const c = i % COLS, r = i / COLS | 0, x = c - (r - (r & 1)) / 2; return [x, r, -x - r]; };
-  const hdist = (a, b) => { const p = cube(a), q = cube(b); return Math.max(Math.abs(p[0] - q[0]), Math.abs(p[1] - q[1]), Math.abs(p[2] - q[2])); };
   const visC = Math.floor((W - HW / 2) / HW), visR = Math.floor((H - 1) / RS); // last on-screen column / row
   const offEdge = i => { const c = i % COLS, r = i / COLS | 0; return c >= 5 && r >= 5 && c <= visC - 5 && r <= visR - 5; };
   for (const T of towns) {
@@ -214,9 +226,9 @@ function gen(n, seed) {
     }
     for (const gt of T.gates) for (const i of gt) kind[i] = 4;
   }
-  for (const T of towns) for (const [x, y] of walls[T.t].filter((_, j) => j % 10 === 5)) { // towers spaced along the wall
-    let b = -1, bd = Infinity; for (let i = 0; i < N; i++) if (own[i] === T.t && kind[i] === 1) { const d = (hx(i) - x) ** 2 + (hy(i) - y) ** 2; if (d < bd) { bd = d; b = i; } }
-    if (b >= 0 && !T.towers.includes(b)) T.towers.push(b); }
+  // archer towers on the wall cells that flank each gate
+  for (const T of towns) for (const gt of T.gates) for (const i of gt) for (let k = 0; k < 6; k++) {
+    const v = nbrs[i * 6 + k]; if (v >= 0 && own[v] === T.t && kind[v] === 1 && !T.towers.includes(v)) { kind[v] = 7; T.towers.push(v); } }
   // neutral holdings: farthest-point sampling over the neutral land
   const objs = [], cand = []; for (let i = 0; i < N; i += 7) if (own[i] < 0 && terr[i] !== 3 && hy(i) > TOP + 30 && hy(i) < BOT - 30 && hx(i) > 20 && hx(i) < W - 20) cand.push(i);
   for (let k = 0; k < 5 + n && cand.length; k++) {
@@ -233,14 +245,14 @@ function gen(n, seed) {
     trees.push({ x: hx(i), y: hy(i), r: 3.5 + hash(i, 2, seed) * 3, h: 95 + hash(i, 3, seed) * 30 | 0, l: 21 + hash(i, 4, seed) * 9 | 0 }); }
   trees.sort((a, b) => a.y - b.y);
   // self-check: wall pieces per team (must be 1) and the fewest hexes between two teams' walls (must be ≥ 5)
-  const isWall = (i, t) => own[i] === t && (kind[i] === 1 || kind[i] === 4);
+  const isWall = (i, t) => own[i] === t && (kind[i] === 1 || kind[i] === 4 || kind[i] === 7);
   const pieces = anchors.map((_, t) => { const seen = new Uint8Array(N); let c = 0;
     for (let i = 0; i < N; i++) { if (!isWall(i, t) || seen[i]) continue; c++; const st = [i]; seen[i] = 1;
       while (st.length) { const u = st.pop(); for (let k = 0; k < 6; k++) { const v = nbrs[u * 6 + k]; if (v >= 0 && !seen[v] && isWall(v, t)) { seen[v] = 1; st.push(v); } } } }
     return c; });
   let minGap = Infinity;
   anchors.forEach((_, t) => { const src = []; for (let i = 0; i < N; i++) if (isWall(i, t)) src.push(i);
-    const { d } = dijkstra(src, () => 1); for (let i = 0; i < N; i++) if ((kind[i] === 1 || kind[i] === 4) && own[i] !== t) minGap = Math.min(minGap, d[i] - 1); });
+    const { d } = dijkstra(src, () => 1); for (let i = 0; i < N; i++) if ((kind[i] === 1 || kind[i] === 4 || kind[i] === 7) && own[i] !== t) minGap = Math.min(minGap, d[i] - 1); });
   const gateGap = Math.min(...towns.map(T => T.gates.length === 2 ? Math.min(...T.gates[0].flatMap(g => T.gates[1].map(h => hdist(g, h)))) : 0));
   return { n, seed, terr, elev, own, kind, pat, fseeds, towns, roads, hub, objs, trees, got, land, walls, pieces, minGap, gateGap };
 }
@@ -260,9 +272,10 @@ function render(M, cv) {
     const x = hx(i), y = hy(i), t = terr[i], k = kind[i], e = elev[i], det = hash(i, 0, seed);
     const e1 = elev[Math.max(0, i - COLS * 2 - 2)], e2 = elev[Math.min(N - 1, i + COLS * 2 + 2)];
     let hs = clamp(1 + (e1 - e2) * 8, .75, 1.28), c;
-    if (k === 6) c = teamRGB[own[i]];
-    else if (k === 1) c = mix([168, 162, 150], [120, 115, 106], det * .5);
-    else if (k === 4) c = [122, 77, 36];
+    if (k === 6) { c = mix(teamRGB[own[i]], [0, 0, 0], .15 + det * .15); hs = 1; }           // donjon roof
+    else if (k === 1 || k === 7) { c = teamRGB[own[i]]; hs = 1; }                              // territory wall: team colour
+    else if (k === 8) { c = mix([176, 170, 158], [140, 134, 124], det * .6); hs = 1; }           // castle wall: stone
+    else if (k === 9) { c = mix([196, 184, 152], [176, 162, 128], det * .6); hs = 1; }           // castle courtyard
     else if (k === 5) c = [123, 82, 48];
     else if (k === 3) c = mix([211, 192, 139], [180, 160, 110], det * .5);
     else if (k === 2) { const v = vnoise(x / 7, y / 7, seed + 9); c = v > .38 ? ROOFS[(vnoise(x / 9, y / 9, seed + 5) * 6) | 0] : [196, 182, 150]; if (v > .38) c = mix(c, [255, 255, 255], det * .12); hs = 1; }
@@ -271,15 +284,17 @@ function render(M, cv) {
     else if (t === 1) c = mix([40, 66, 30], [62, 94, 42], det * .7 + vnoise(x / 10, y / 10, seed + 2) * .3);
     else if (t === 4) c = mix([128, 124, 98], [150, 144, 112], det);
     else { const f = fbm(x / 45, y / 45, seed + 51); c = [84 + f * 30 + det * 10, 116 + f * 28 + det * 10, 48 + f * 14 + det * 4]; }
-    if (own[i] >= 0 && k !== 6 && k !== 1 && k !== 4) c = mix(c, teamRGB[own[i]], .13);
+    if (own[i] >= 0 && ![1, 6, 7, 8, 9].includes(k)) c = mix(c, teamRGB[own[i]], .13); // gates (4) show the ground, tinted
     const q = c.map(v => clamp(Math.round(v * hs / 6) * 6, 0, 255)), key = `rgb(${q[0]},${q[1]},${q[2]})`;
     let b = buckets.get(key); if (!b) { b = []; buckets.set(key, b); } b.push(i);
   }
   for (const [col, list] of buckets) { g.fillStyle = col; g.beginPath(); for (const i of list) hexPath(g, hx(i), hy(i), S * .93); g.fill(); }
-  // wall shadow on the outer side, towers, keeps
-  g.fillStyle = '#0004'; g.beginPath();
-  for (let i = 0; i < N; i++) if (kind[i] === 1 || kind[i] === 4) hexPath(g, hx(i) + 1.6, hy(i) + 2, S * .9); g.fill();
-  for (let i = 0; i < N; i++) if (kind[i] === 1 || kind[i] === 4) { g.fillStyle = kind[i] === 4 ? '#ff9f1a' : '#39ff14' /* border hexes bright green, gates orange (debug view) */; g.beginPath(); hexPath(g, hx(i), hy(i), S * .95); g.fill(); }
+  // walls (territory: team colour, castle: stone) lifted on a shadow
+  const raised = k => k === 1 || k === 7 || k === 8;
+  g.fillStyle = '#0005'; g.beginPath(); for (let i = 0; i < N; i++) if (raised(kind[i])) hexPath(g, hx(i) + 1.6, hy(i) + 2.2, S * .92); g.fill();
+  for (let i = 0; i < N; i++) if (raised(kind[i])) {
+    g.fillStyle = kind[i] === 8 ? `rgb(${mix([176, 170, 158], [140, 134, 124], hash(i, 0, seed) * .6).map(Math.round)})` : TEAMS[own[i]];
+    g.beginPath(); hexPath(g, hx(i), hy(i), S * .95); g.fill(); }
   for (const tr of M.trees) {
     g.fillStyle = '#0006'; g.beginPath(); g.ellipse(tr.x + 1.5, tr.y + 2, tr.r, tr.r * .8, 0, 0, 7); g.fill();
     g.fillStyle = `hsl(${tr.h},40%,${tr.l}%)`; g.beginPath(); g.arc(tr.x, tr.y, tr.r, 0, 7); g.fill();
@@ -287,15 +302,20 @@ function render(M, cv) {
   }
   for (const T of M.towns) {
     const col = TEAMS[T.t];
-    for (const i of T.towers) { const x = hx(i), y = hy(i);
-      g.fillStyle = '#0006'; g.beginPath(); g.arc(x + 2, y + 2.5, 5.5, 0, 7); g.fill();
-      g.fillStyle = '#a19b90'; g.strokeStyle = '#3b3631'; g.lineWidth = 1.5; g.beginPath(); g.arc(x, y, 5, 0, 7); g.fill(); g.stroke();
-      g.fillStyle = col; g.beginPath(); g.arc(x, y, 2.6, 0, 7); g.fill(); }
+    const tower = (x, y, r) => {
+      g.fillStyle = '#0006'; g.beginPath(); g.arc(x + 2, y + 2.5, r + .5, 0, 7); g.fill();
+      g.fillStyle = '#a19b90'; g.strokeStyle = '#3b3631'; g.lineWidth = 1.5; g.beginPath(); g.arc(x, y, r, 0, 7); g.fill(); g.stroke();
+      g.strokeStyle = '#d6d0c2'; g.lineWidth = 1.2; g.setLineDash([2, 2]); g.beginPath(); g.arc(x, y, r - 1.6, 0, 7); g.stroke(); g.setLineDash([]);
+      g.fillStyle = col; g.beginPath(); g.arc(x, y, r * .45, 0, 7); g.fill();
+    };
+    for (const i of T.towers) { const x = hx(i), y = hy(i); tower(x, y, S * 1.05); // archer tower: a bow on top
+      g.strokeStyle = '#3a2614'; g.lineWidth = 1.4; g.beginPath(); g.arc(x - 1, y, 3.2, -1.1, 1.1); g.stroke();
+      g.strokeStyle = '#efe6cf'; g.lineWidth = .8; g.beginPath(); g.moveTo(x - 1 + Math.cos(-1.1) * 3.2, y + Math.sin(-1.1) * 3.2); g.lineTo(x - 1 + Math.cos(1.1) * 3.2, y + Math.sin(1.1) * 3.2); g.stroke(); }
+    for (const i of T.corners) tower(hx(i), hy(i), S * 1.3);
+    if (T.cgate >= 0) { const gx = hx(T.cgate), gy = hy(T.cgate), a = Math.atan2(gy - hy(T.keep), gx - hx(T.keep)); // castle gate: open oak doors
+      g.save(); g.translate(gx, gy); g.rotate(a); g.fillStyle = '#6b4423'; g.fillRect(-1, -S * .9, 4, 3.5); g.fillRect(-1, S * .9 - 3.5, 4, 3.5); g.restore(); }
     const x = hx(T.keep), y = hy(T.keep);
-    g.fillStyle = '#0006'; g.fillRect(x - 11, y - 9, 26, 26);
-    g.fillStyle = '#3b3631'; g.fillRect(x - 14, y - 14, 28, 28); g.fillStyle = '#aaa498'; g.fillRect(x - 12, y - 12, 24, 24);
-    g.fillStyle = '#d6d0c2'; for (const [a, b] of [[-14, -14], [9, -14], [-14, 9], [9, 9]]) g.fillRect(x + a, y + b, 5, 5);
-    g.fillStyle = col; g.fillRect(x - 7, y - 7, 14, 14);
+    g.strokeStyle = '#0006'; g.lineWidth = 2; g.beginPath(); hexPath(g, x, y, S * 2.6); g.stroke();
     g.strokeStyle = '#2b2622'; g.lineWidth = 2; g.beginPath(); g.moveTo(x, y); g.lineTo(x, y - 26); g.stroke();
     g.fillStyle = col; g.beginPath(); g.moveTo(x, y - 26); g.quadraticCurveTo(x + 10, y - 24, x + 18, y - 20); g.lineTo(x, y - 15); g.fill();
     g.fillStyle = '#fff'; g.font = '900 10px system-ui'; g.textAlign = 'center'; g.fillText(T.t + 1, x + 7, y - 18);
@@ -304,7 +324,7 @@ function render(M, cv) {
     g.fillStyle = '#5f8a3c'; g.fillRect(x - 5, y - 5, 10, 10); g.fillStyle = '#e8e0cc'; g.fillRect(x - 1, y - 4, 2, 8); g.fillRect(x - 3, y - 2, 6, 2); }
   for (const o of M.objs) drawObj(g, o);
   // a few soldiers to show the scale: a head is one hex
-  for (const T of M.towns) for (let k = 0; k < 6; k++) { const a = k * 1.05 + T.t, x = hx(T.keep) + Math.cos(a) * 22, y = hy(T.keep) + Math.sin(a) * 22 + 34;
+  for (const T of M.towns) for (let k = 0; k < 6; k++) { const a = k * 1.05 + T.t, x = hx(T.keep) + Math.cos(a) * 64, y = hy(T.keep) + Math.sin(a) * 64;
     g.fillStyle = '#0006'; g.beginPath(); g.ellipse(x + 2, y + 3, 4, 2.6, 0, 0, 7); g.fill();
     g.fillStyle = TEAMS[T.t]; g.beginPath(); g.arc(x, y, 4, 0, 7); g.fill(); g.strokeStyle = '#0009'; g.lineWidth = 1; g.stroke();
     g.fillStyle = '#9a9a9a'; g.beginPath(); g.arc(x, y - 1, 2, 0, 7); g.fill(); }
@@ -344,7 +364,7 @@ function build() {
     const f = document.createElement('figure'), cv = document.createElement('canvas'); cv.width = W; cv.height = H;
     // a map that breaks a rule (wall in pieces, < 5 hexes between walls, a territory under its share) is rerolled
     const minShare = n <= 4 ? .149 : .109; let M, tries = 0;
-    do { M = gen(n, (Math.random() * 1e9) | 0); tries++; } while (tries < 8 && !(M.pieces.every(p => p === 1) && M.minGap >= 5 && M.gateGap >= 20 && M.got.every(c => c / N >= minShare)));
+    do { M = gen(n, (Math.random() * 1e9) | 0); tries++; } while (tries < 8 && !(M.pieces.every(p => p === 1) && M.minGap >= 5 && M.gateGap >= 20 && M.towns.every(T => T.hexes.length === 61 && T.room >= 6) && M.got.every(c => c / N >= minShare)));
     render(M, cv);
     const cap = document.createElement('figcaption'); cap.textContent = `№${M.seed % 10000} · куски границ: ${M.pieces.join('/')} · мин. зазор: ${M.minGap} сот · между воротами ≥ ${M.gateGap} · ` + M.got.map(c => Math.round(c / N * 100) + '%').join(' ');
     f.append(cv, cap); maps.append(f);
