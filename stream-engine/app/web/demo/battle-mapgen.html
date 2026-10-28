@@ -93,14 +93,19 @@ function gen(n, seed) {
   const anchors = { 2: ['T', 'B'], 3: ['TL', 'TR', 'B'], 4: ['TL', 'TR', 'BL', 'BR'], 5: ['TL', 'TR', 'BL', 'BR', 'L'], 6: ['TL', 'TR', 'L', 'R', 'BL', 'BR'] }[n];
   const ri = (a, b) => a + R() * (b - a), vb = n >= 5 ? [26, 30] : [35, 40];
   const shareR = n <= 3 ? [.18, .26] : n === 4 ? [.15, .20] : [.11, .14];
-  const geom = k => { const a = ri(20, 25) * HW, b = ri(vb[0], vb[1]) * RS, h = ri(16, 20) * HW, v = ri(13, 16) * RS;
+  const geom = k => { const a = ri(20, 23.5) * HW, b = ri(vb[0], vb[1]) * RS, h = ri(16, 20) * HW, v = ri(13, 16) * RS;
     return { TL: [[0, 0], [a, 0], [0, b]], TR: [[W, 0], [W - a, 0], [W, b]], BL: [[0, H], [a, H], [0, H - b]], BR: [[W, H], [W - a, H], [W, H - b]],
       T: [[W / 2, 0], [W / 2 - h, 0], [W / 2 + h, 0]], B: [[W / 2, H], [W / 2 - h, H], [W / 2 + h, H]],
       L: [[0, H / 2], [0, H / 2 - v], [0, H / 2 + v]], R: [[W, H / 2], [W, H / 2 - v], [W, H / 2 + v]] }[k]; };
   const inPoly = (x, y, P) => { let c = false; for (let i = 0, j = P.length - 1; i < P.length; j = i++) { const [xi, yi] = P[i], [xj, yj] = P[j];
     if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) c = !c; } return c; };
+  const segD = (px, py, ax, ay, bx, by) => { const dx = bx - ax, dy = by - ay, l = dx * dx + dy * dy || 1, u = clamp(((px - ax) * dx + (py - ay) * dy) / l, 0, 1);
+    return Math.hypot(px - ax - dx * u, py - ay - dy * u); };
+  const lineD = (x, y, pts) => { let d = Infinity; for (let j = 1; j < pts.length; j++) d = Math.min(d, segD(x, y, pts[j - 1][0], pts[j - 1][1], pts[j][0], pts[j][1])); return d; };
+  const GAP = 3 * HW, done = []; // neighbours keep at least 3 hexes of neutral land between their walls
+  const blocked = (x, y) => done.some(D => inPoly(x, y, D.P) || lineD(x, y, D.pts) < GAP);
   const got = [], walls = [];
-  anchors.forEach((k, t) => {
+  [...anchors.keys()].sort(() => R() - .5).forEach(t => { const k = anchors[t];
     const [O, P1, P2] = geom(k), r1 = Math.hypot(P1[0] - O[0], P1[1] - O[1]), r2 = Math.hypot(P2[0] - O[0], P2[1] - O[1]);
     let a1 = Math.atan2(P1[1] - O[1], P1[0] - O[0]), a2 = Math.atan2(P2[1] - O[1], P2[0] - O[0]);
     const into = a => { const x = O[0] + Math.cos(a) * 30, y = O[1] + Math.sin(a) * 30; return x > 0 && x < W && y > 0 && y < H; };
@@ -114,8 +119,15 @@ function gen(n, seed) {
         const tt = j / 80, env = Math.sin(Math.PI * tt);
         const wob = (vnoise(tt * f1, 1, ns) - .5) * .7 + (vnoise(tt * f2, 2, ns) - .5) * .3;
         const a = a1 + (a2 - a1) * (tt + (vnoise(tt * f1, 3, ns) - .5) * .18 * env);
-        const r = (r1 + (r2 - r1) * tt) * (1 + bulge * env) * (1 + wob * env);
-        pts.push(j === 0 ? P1 : j === 80 ? P2 : [clamp(O[0] + Math.cos(a) * r, 12, W - 12), clamp(O[1] + Math.sin(a) * r, 12, H - 12)]);
+        let r = (r1 + (r2 - r1) * tt) * (1 + bulge * env) * (1 + wob * env), p;
+        if (j === 0 || j === 80) { // the ends stay on the map edge; slide them towards our corner if a neighbour is there
+          const E = j ? P2 : P1; let s = 1;
+          do { p = [O[0] + (E[0] - O[0]) * s, O[1] + (E[1] - O[1]) * s]; s *= .95; } while (s > .3 && blocked(p[0], p[1]));
+        } else for (;;) { // pull the point back towards our corner until it is clear of every neighbour
+          p = [clamp(O[0] + Math.cos(a) * r, 12, W - 12), clamp(O[1] + Math.sin(a) * r, 12, H - 12)];
+          if (r < 25 || !blocked(p[0], p[1])) break; r *= .95;
+        }
+        pts.push(p);
       }
       return pts;
     };
@@ -124,7 +136,7 @@ function gen(n, seed) {
     let lo = -.4, hi = 2.6; for (let it = 0; it < 14; it++) { const mid = (lo + hi) / 2; if (area(line(mid)) < want) lo = mid; else hi = mid; }
     const pts = line((lo + hi) / 2), P = [O, ...pts];
     let c = 0; for (let i = 0; i < N; i++) if (own[i] < 0 && inPoly(hx(i), hy(i), P)) { own[i] = t; c++; }
-    got.push(c); walls.push(pts);
+    got[t] = c; walls[t] = pts; done.push({ P, pts });
   });
   const land = N;
   // depth inside each territory (distance to its border) → keep at the deepest hex, town around it
@@ -143,7 +155,8 @@ function gen(n, seed) {
   }
   // walls: every territory hex that touches another owner (not water); the map edge needs no wall
   for (const i of border) { if (terr[i] === 3) continue;
-    for (let k = 0; k < 6; k++) { const v = nbrs[i * 6 + k]; if (v >= 0 && own[v] !== own[i] && terr[v] !== 3) { kind[i] = 1; break; } } }
+    for (let k = 0; k < 6; k++) { const v = nbrs[i * 6 + k];
+      if (v >= 0 && own[v] !== own[i] && terr[v] !== 3 && hx(v) < W - 2 && hy(v) < H - 2) { kind[i] = 1; break; } } } // off-screen hexes are the map edge
   // fields: voronoi patches, farmland mostly inside territories and around holdings
   for (let i = 0; i < N; i++) {
     const x = hx(i), y = hy(i); let b = 0, bd = Infinity;
@@ -219,7 +232,7 @@ function render(M, cv) {
   // wall shadow on the outer side, towers, keeps
   g.fillStyle = '#0004'; g.beginPath();
   for (let i = 0; i < N; i++) if (kind[i] === 1 || kind[i] === 4) hexPath(g, hx(i) + 1.6, hy(i) + 2, S * .9); g.fill();
-  for (let i = 0; i < N; i++) if (kind[i] === 1 || kind[i] === 4) { g.fillStyle = kind[i] === 4 ? '#7a4d24' : '#aaa498'; g.beginPath(); hexPath(g, hx(i), hy(i), S * .95); g.fill(); }
+  for (let i = 0; i < N; i++) if (kind[i] === 1 || kind[i] === 4) { g.fillStyle = kind[i] === 4 ? '#7a4d24' : '#39ff14' /* border hexes in bright green (debug view) */; g.beginPath(); hexPath(g, hx(i), hy(i), S * .95); g.fill(); }
   for (const tr of M.trees) {
     g.fillStyle = '#0006'; g.beginPath(); g.ellipse(tr.x + 1.5, tr.y + 2, tr.r, tr.r * .8, 0, 0, 7); g.fill();
     g.fillStyle = `hsl(${tr.h},40%,${tr.l}%)`; g.beginPath(); g.arc(tr.x, tr.y, tr.r, 0, 7); g.fill();
@@ -248,9 +261,6 @@ function render(M, cv) {
     g.fillStyle = '#0006'; g.beginPath(); g.ellipse(x + 2, y + 3, 4, 2.6, 0, 0, 7); g.fill();
     g.fillStyle = TEAMS[T.t]; g.beginPath(); g.arc(x, y, 4, 0, 7); g.fill(); g.strokeStyle = '#0009'; g.lineWidth = 1; g.stroke();
     g.fillStyle = '#9a9a9a'; g.beginPath(); g.arc(x, y - 1, 2, 0, 7); g.fill(); }
-  // debug overlay: the generated border lines in bright green (as in the owner's sketch)
-  g.strokeStyle = '#39ff14'; g.lineWidth = 5; g.lineCap = g.lineJoin = 'round';
-  for (const pts of M.walls) { g.beginPath(); pts.forEach(([x, y], j) => j ? g.lineTo(x, y) : g.moveTo(x, y)); g.stroke(); }
   const vg = g.createRadialGradient(W / 2, H / 2, 260, W / 2, H / 2, 660); vg.addColorStop(0, '#0000'); vg.addColorStop(1, '#0007'); g.fillStyle = vg; g.fillRect(0, 0, W, H);
   g.fillStyle = '#000a'; g.fillRect(0, 0, W, TOP - 10); g.fillRect(0, BOT + 6, W, H - BOT);
   g.fillStyle = '#f4e6c2'; g.font = '900 22px Georgia, serif'; g.textAlign = 'center'; g.fillText(`⚔ КРЕПОСТИ · ${M.n} команды`, W / 2, 34);
