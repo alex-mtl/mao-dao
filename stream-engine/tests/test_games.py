@@ -747,6 +747,26 @@ class CakeTest(unittest.TestCase):
         self.assertEqual(len(cakes()), 2)
         self.assertEqual([p["action"] for p in hub.gift_promos()][:2], ["hint", "cake"])
 
+    def test_cake_by_likes(self):
+        from app.hub import Hub
+        saved = config.CAKE_LIKES
+        try:
+            config.CAKE_LIKES = 5000
+            hub = Hub(JsonStore(tempfile.mkdtemp()))
+            d = Viewer("ded", "DED", "https://x/ava.png")
+            cakes = lambda: [e for e in hub.feed if e["type"] == "cake"]
+            hub.like(d, 4990)
+            self.assertEqual(cakes(), [])
+            hub.like(d, 20)                                      # 5010 -> the cake, with a seed
+            hub.like(d, 4000)                                    # 9010: the next one only at 10000
+            self.assertEqual([(c["name"], c["total"]) for c in cakes()], [("DED", 5010)])
+            self.assertTrue(cakes()[0]["seed"])
+            hub.global_settings.set("cake", 0)                   # off on the likes tab
+            hub.like(d, 2000)
+            self.assertEqual(len(cakes()), 1)
+        finally:
+            config.CAKE_LIKES = saved
+
 
 class GlobalSettingsTest(unittest.TestCase):
     def test_set_and_validate(self):

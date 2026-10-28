@@ -72,6 +72,13 @@ class LikeBalloons:
             return None
         return {"id": viewer.id, "name": u["name"], "avatar": u["avatar"], "total": u["total"], "big": False}
 
+    def auto_cake(self, viewer, before):
+        """The firecracker cake for the viewer when they cross 5000, 10000, ... likes this stream (CAKE_LIKES)."""
+        u = self.likes.get(viewer.id)
+        if not u or not crossed(u["total"], before, self._s("CAKE_LIKES")):
+            return None
+        return {"id": viewer.id, "name": u["name"], "avatar": u["avatar"], "total": u["total"]}
+
     def _s(self, attr):
         return self.settings.get(attr) if self.settings else getattr(config, attr)
 

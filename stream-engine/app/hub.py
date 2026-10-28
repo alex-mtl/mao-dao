@@ -325,6 +325,10 @@ class Hub:
         if snow:
             print(f"[snowball] {v.name}: {snow['total']} likes -> snowball")
             self._feed(type="snowball", **snow)
+        cake = self.balloons.auto_cake(v, before)      # every CAKE_LIKES likes -> the cake show for them
+        if cake:
+            print(f"[cake] {v.name}: {cake['total']} likes -> cake")
+            self._feed(type="cake", **cake)
         self.game.on_like(v, count)
 
     # ---- state for overlays ----

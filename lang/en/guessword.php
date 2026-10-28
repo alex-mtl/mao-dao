@@ -98,6 +98,7 @@ return [
     'plane_d' => 'every N likes of one viewer this stream',
     'bomber' => '🦋 Plane with butterflies',
     'snowball' => '❄️ Snowball at the streamer',
+    'cake' => '🎂 Cake with fireworks',
     'greet' => '👋 Greet viewers who join',
     'settings_offline' => 'Settings are unavailable: the game server does not answer.',
     'tab_toasts' => 'Toasts and voice',

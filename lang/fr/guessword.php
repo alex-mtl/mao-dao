@@ -98,6 +98,7 @@ return [
     'plane_d' => 'tous les N likes d’un spectateur pendant le live',
     'bomber' => '🦋 Avion à papillons',
     'snowball' => '❄️ Boule de neige sur le streamer',
+    'cake' => '🎂 Gâteau feu d’artifice',
     'greet' => '👋 Saluer les nouveaux spectateurs',
     'settings_offline' => 'Réglages indisponibles : le serveur de jeu ne répond pas.',
     'tab_toasts' => 'Bulles et voix',
