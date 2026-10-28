@@ -40,7 +40,8 @@
 <div id="side">
   <div class="panel">
     <h3>Симуляция</h3>
-    <div class="row">
+    <div class="row"><label>Команд</label>
+      <select id="teams" style="background:#0d0d14;color:#eee;border:1px solid #333;border-radius:6px;padding:4px"><option>2</option><option>3</option><option selected>4</option><option>5</option><option>6</option></select>
       <button id="restart">🗺 Новая карта</button>
       <button id="pause">⏸</button>
       <button id="speed">×1</button>
@@ -498,7 +499,7 @@ function hud() {
     const x0 = t.i * cw + 4, w = cw - 8, y0 = 33, [ws, wm] = wallsOf(t.i);
     g.globalAlpha = t.dead ? .4 : 1;
     g.fillStyle = '#ffffff10'; g.fillRect(x0, y0, w, 58); g.fillStyle = t.color; g.fillRect(x0, y0, 3, 58);
-    g.fillStyle = t.color; g.font = '800 12px system-ui'; g.textAlign = 'left'; g.fillText(`${t.i + 1} ${t.name}`, x0 + 7, y0 + 13);
+    g.fillStyle = t.color; g.font = `800 ${B.n > 4 ? 10 : 12}px system-ui`; g.textAlign = 'left'; g.fillText(B.n > 4 ? `${t.i + 1} ${t.emoji}` : `${t.i + 1} ${t.name}`, x0 + 7, y0 + 13);
     g.fillStyle = '#ffffff22'; g.fillRect(x0 + 7, y0 + 18, w - 13, 6); g.fillStyle = t.color; g.fillRect(x0 + 7, y0 + 18, (w - 13) * Math.max(0, t.don) / CFG.donHp, 6);
     g.fillStyle = '#ffffff22'; g.fillRect(x0 + 7, y0 + 26, w - 13, 3); g.fillStyle = '#c8c2b4'; g.fillRect(x0 + 7, y0 + 26, (w - 13) * ws / wm, 3);
     g.fillStyle = '#ffffff22'; g.fillRect(x0 + 7, y0 + 31, w - 13, 2); g.fillStyle = t.frenzy > 0 ? '#ffb03d' : '#f8a'; g.fillRect(x0 + 7, y0 + 31, (w - 13) * (t.frenzy > 0 ? 1 : t.likes / CFG.likeFrenzy), 2);
@@ -567,7 +568,8 @@ function botTick(dt) {
 
 // ================= controls =================
 const $ = id => document.getElementById(id);
-$('restart').onclick = () => { bots.forEach(b => b.said = 0); newRound(); };
+$('restart').onclick = () => { CFG.teams = +$('teams').value; bots.forEach(b => b.said = 0); newRound(); };
+$('teams').onchange = $('restart').onclick;
 $('pause').onclick = e => { paused = !paused; e.target.textContent = paused ? '▶' : '⏸'; e.target.classList.toggle('on', paused); };
 $('speed').onclick = e => { speed = speed === 1 ? 2 : speed === 2 ? 4 : 1; e.target.textContent = '×' + speed; };
 $('voice').onclick = e => { voiceOn = !voiceOn; e.target.classList.toggle('on', voiceOn); e.target.textContent = voiceOn ? '🔊' : '🔇'; if (!voiceOn) speechSynthesis.cancel(); };
