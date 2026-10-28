@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Крепости — генератор карт</title>
+<style>
+  /* map generator v4 for docs/games/battle.md: the whole field is a mosaic of tiny hexes (one hex = a soldier's
+     head, ~4.8 px). Territories grow from the corners as noisy fronts to 15–20% of the hexes each; the border
+     of a territory IS its wall. The middle stays neutral, with holdings to fight over. */
+  * { box-sizing: border-box; }
+  html, body { margin: 0; min-height: 100%; background: #0d0d14; color: #eee; font-family: 'Segoe UI', system-ui, sans-serif; }
+  header { display: flex; gap: 10px; align-items: center; padding: 10px 14px; flex-wrap: wrap; }
+  header h1 { font-size: 15px; margin: 0 10px 0 0; color: #f4e6c2; }
+  button, select { font: 700 12px system-ui; padding: 7px 11px; border-radius: 7px; border: 0; cursor: pointer; background: #2c2c44; color: #eee; }
+  button:hover { background: #3a3a5a; }
+  #info { font-size: 12px; color: #99a; }
+  #maps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; padding: 0 14px 14px; }
+  figure { margin: 0; }
+  figure canvas { width: 100%; aspect-ratio: 9 / 16; display: block; border-radius: 8px; box-shadow: 0 0 0 1px #2a2a3a; cursor: zoom-in; }
+  figcaption { font-size: 12px; color: #aab; padding: 4px 2px; }
+  #big { position: fixed; inset: 0; background: #000d; display: none; place-items: center; cursor: zoom-out; }
+  #big canvas { height: 96vh; aspect-ratio: 9 / 16; border-radius: 10px; }
+  @media (max-width: 700px) { #maps { grid-template-columns: repeat(2, 1fr); } }
+</style>
+</head>
+<body>
+<header>
+  <h1>⚔ Крепости — гекс-генератор</h1>
+  <label>Команд <select id="n"><option>2</option><option>3</option><option selected>4</option><option>5</option><option>6</option></select></label>
+  <button id="again">🗺 Новые карты</button>
+  <span id="info"></span>
+</header>
+<div id="maps"></div>
+<div id="big"></div>
+<script>
+'use strict';
+const W = 540, H = 960, TOP = 104, BOT = 930;
+const S = 540 / 50 / Math.sqrt(3), HW = Math.sqrt(3) * S, RS = 1.5 * S; // pointy-top hex, 50 across (~5 000 on the map)
+const COLS = Math.ceil(W / HW) + 1, ROWS = Math.ceil(H / RS) + 1, N = COLS * ROWS;
+const TEAMS = ['#ff4d5e', '#3d8bff', '#3ddc84', '#ffd23d', '#b46bff', '#3de0e0'];
+const hx = i => (i % COLS) * HW + ((i / COLS | 0) & 1 ? HW / 2 : 0), hy = i => (i / COLS | 0) * RS;
+const NB_E = [[-1, 0], [1, 0], [-1, -1], [0, -1], [-1, 1], [0, 1]], NB_O = [[-1, 0], [1, 0], [0, -1], [1, -1], [0, 1], [1, 1]];
+const nbrs = new Int32Array(N * 6).fill(-1);
+for (let i = 0; i < N; i++) { const c = i % COLS, r = i / COLS | 0, tb = r & 1 ? NB_O : NB_E;
+  tb.forEach(([dc, dr], k) => { const nc = c + dc, nr = r + dr; if (nc >= 0 && nr >= 0 && nc < COLS && nr < ROWS) nbrs[i * 6 + k] = nr * COLS + nc; }); }
+const hexAt = (x, y) => { const r = Math.max(0, Math.min(ROWS - 1, Math.round(y / RS))), c = Math.max(0, Math.min(COLS - 1, Math.round((x - (r & 1 ? HW / 2 : 0)) / HW))); return r * COLS + c; };
+function mulberry(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function hash(x, y, s) { let h = Math.imul(x, 374761393) + Math.imul(y, 668265263) + Math.imul(s, 1442695041) | 0; h = Math.imul(h ^ (h >>> 13), 1274126177); h ^= h >>> 16; return (h >>> 0) / 4294967296; }
+function vnoise(x, y, s) { const xi = Math.floor(x), yi = Math.floor(y), xf = x - xi, yf = y - yi, u = xf * xf * (3 - 2 * xf), v = yf * yf * (3 - 2 * yf);
+  const a = hash(xi, yi, s), b = hash(xi + 1, yi, s), c = hash(xi, yi + 1, s), d = hash(xi + 1, yi + 1, s); return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v; }
+const fbm = (x, y, s) => vnoise(x, y, s) * .55 + vnoise(x * 2.1, y * 2.1, s + 7) * .3 + vnoise(x * 4.3, y * 4.3, s + 13) * .15;
+const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+class Heap { constructor() { this.a = []; } get size() { return this.a.length; }
+  push(p, v) { const a = this.a; a.push([p, v]); let i = a.length - 1; while (i) { const q = i - 1 >> 1; if (a[q][0] <= a[i][0]) break; [a[q], a[i]] = [a[i], a[q]]; i = q; } }
+  pop() { const a = this.a, top = a[0], last = a.pop(); if (a.length) { a[0] = last; let i = 0; for (;;) { const l = 2 * i + 1, r = l + 1; let m = i;
+    if (l < a.length && a[l][0] < a[m][0]) m = l; if (r < a.length && a[r][0] < a[m][0]) m = r; if (m === i) break; [a[m], a[i]] = [a[i], a[m]]; i = m; } } return top; } }
+function dijkstra(src, cost, stop) { // cost(i) per hex entered; returns {d, par}
+  const d = new Float32Array(N).fill(Infinity), par = new Int32Array(N).fill(-1), h = new Heap();
+  for (const s of src) { d[s] = 0; h.push(0, s); }
+  while (h.size) { const [du, u] = h.pop(); if (du > d[u]) continue; if (u === stop) break;
+    for (let k = 0; k < 6; k++) { const v = nbrs[u * 6 + k]; if (v < 0) continue; const w = cost(v); if (w === Infinity) continue;
+      if (du + w < d[v]) { d[v] = du + w; par[v] = u; h.push(d[v], v); } } }
+  return { d, par };
+}
+const trace = (par, t) => { const p = []; for (let v = t; v >= 0; v = par[v]) p.push(v); return p; };
+
+// ================= generation =================
+// terr: 0 meadow, 1 forest, 2 field, 3 water, 4 hills
+function gen(n, seed) {
+  const R = mulberry(seed);
+  const terr = new Uint8Array(N), elev = new Float32Array(N), own = new Int8Array(N).fill(-1);
+  const kind = new Uint8Array(N); // 0 land, 1 wall, 2 town, 3 road, 4 gate, 5 bridge, 6 keep
+  const pat = new Int16Array(N);
+  const fseeds = Array.from({ length: 140 }, () => ({ x: R() * W, y: R() * H, ang: R() * Math.PI, f: R(), col: R() * 6 | 0 }));
+  for (let i = 0; i < N; i++) {
+    const x = hx(i), y = hy(i), e = fbm(x / 150, y / 150, seed), m = fbm(x / 110 + 40, y / 110, seed + 3);
+    elev[i] = e;
+    terr[i] = e < .2 ? 3 : e > .74 ? 4 : m > .6 ? 1 : 0;
+  }
+  // river: random-weight path between two opposite edges, crossing the neutral middle
+  let river = [];
+  if (R() < .75) {
+    const horiz = n === 4 || n === 2 ? R() < .5 || n === 2 : R() < .5;
+    const rw = new Float32Array(N); for (let i = 0; i < N; i++) rw[i] = .4 + vnoise(hx(i) / 30, hy(i) / 30, seed + 77) * 3;
+    const a = horiz ? hexAt(0, H * (.38 + R() * .24)) : hexAt(W * (.3 + R() * .4), 0), b = horiz ? hexAt(W - 1, H * (.38 + R() * .24)) : hexAt(W * (.3 + R() * .4), H - 1);
+    const { par } = dijkstra([a], i => rw[i], b); river = trace(par, b);
+    for (const i of river) { terr[i] = 3; for (let k = 0; k < 6; k++) { const v = nbrs[i * 6 + k]; if (v >= 0 && R() < .55) terr[v] = 3; } }
+  }
+  // territories: the wall is a broken line from one map edge to the other (corner: 20–25 hexes along the top/bottom,
+  // 35–40 down the side), 4–6 straight legs with occasional right-angle elbows. Its bulge is searched so the
+  // enclosed area hits the target share of the whole map.
+  const anchors = { 2: ['T', 'B'], 3: ['TL', 'TR', 'B'], 4: ['TL', 'TR', 'BL', 'BR'], 5: ['TL', 'TR', 'BL', 'BR', 'L'], 6: ['TL', 'TR', 'L', 'R', 'BL', 'BR'] }[n];
+  const ri = (a, b) => a + R() * (b - a), vb = n >= 5 ? [26, 30] : [35, 40];
+  const shareR = n <= 3 ? [.18, .26] : n === 4 ? [.15, .20] : [.11, .14];
+  const geom = k => { const a = ri(20, 25) * HW, b = ri(vb[0], vb[1]) * RS, h = ri(16, 20) * HW, v = ri(13, 16) * RS;
+    return { TL: [[0, 0], [a, 0], [0, b]], TR: [[W, 0], [W - a, 0], [W, b]], BL: [[0, H], [a, H], [0, H - b]], BR: [[W, H], [W - a, H], [W, H - b]],
+      T: [[W / 2, 0], [W / 2 - h, 0], [W / 2 + h, 0]], B: [[W / 2, H], [W / 2 - h, H], [W / 2 + h, H]],
+      L: [[0, H / 2], [0, H / 2 - v], [0, H / 2 + v]], R: [[W, H / 2], [W, H / 2 - v], [W, H / 2 + v]] }[k]; };
+  const inPoly = (x, y, P) => { let c = false; for (let i = 0, j = P.length - 1; i < P.length; j = i++) { const [xi, yi] = P[i], [xj, yj] = P[j];
+    if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) c = !c; } return c; };
+  const got = [], walls = [];
+  anchors.forEach((k, t) => {
+    const [O, P1, P2] = geom(k), r1 = Math.hypot(P1[0] - O[0], P1[1] - O[1]), r2 = Math.hypot(P2[0] - O[0], P2[1] - O[1]);
+    let a1 = Math.atan2(P1[1] - O[1], P1[0] - O[0]), a2 = Math.atan2(P2[1] - O[1], P2[0] - O[0]);
+    const into = a => { const x = O[0] + Math.cos(a) * 30, y = O[1] + Math.sin(a) * 30; return x > 0 && x < W && y > 0 && y < H; };
+    if (a2 - a1 > Math.PI) a2 -= Math.PI * 2; else if (a1 - a2 > Math.PI) a2 += Math.PI * 2;
+    if (!into((a1 + a2) / 2)) a2 += a2 > a1 ? -Math.PI * 2 : Math.PI * 2;
+    const m = 3 + (R() * 3 | 0), ts = [], fs = [], elbow = [];
+    for (let j = 1; j <= m; j++) { ts.push((j + (R() - .5) * .6) / (m + 1)); fs.push(.75 + R() * .5); }
+    for (let j = 0; j <= m; j++) elbow.push(R() < .45 ? (R() < .5 ? 1 : 2) : 0);
+    const line = bulge => {
+      const pts = [P1];
+      ts.forEach((tt, j) => { const a = a1 + (a2 - a1) * tt, r = (r1 + (r2 - r1) * tt) * (1 + bulge * Math.sin(Math.PI * tt)) * fs[j];
+        pts.push([clamp(O[0] + Math.cos(a) * r, 12, W - 12), clamp(O[1] + Math.sin(a) * r, 12, H - 12)]); });
+      pts.push(P2);
+      const out = [pts[0]];
+      for (let j = 1; j < pts.length; j++) { const p = pts[j - 1], q = pts[j];
+        if (elbow[j - 1] && Math.hypot(q[0] - p[0], q[1] - p[1]) > 50) out.push(elbow[j - 1] === 1 ? [q[0], p[1]] : [p[0], q[1]]);
+        out.push(q); }
+      return out;
+    };
+    const area = pts => { const P = [O, ...pts]; let c = 0; for (let i = 0; i < N; i++) if (own[i] < 0 && inPoly(hx(i), hy(i), P)) c++; return c; };
+    const want = N * ri(shareR[0], shareR[1]);
+    let lo = -.4, hi = 2.6; for (let it = 0; it < 14; it++) { const mid = (lo + hi) / 2; if (area(line(mid)) < want) lo = mid; else hi = mid; }
+    const pts = line((lo + hi) / 2), P = [O, ...pts];
+    let c = 0; for (let i = 0; i < N; i++) if (own[i] < 0 && inPoly(hx(i), hy(i), P)) { own[i] = t; c++; }
+    got.push(c); walls.push(pts);
+  });
+  const land = N;
+  // depth inside each territory (distance to its border) → keep at the deepest hex, town around it
+  const depth = new Float32Array(N).fill(Infinity), border = [];
+  for (let i = 0; i < N; i++) { if (own[i] < 0) continue;
+    for (let k = 0; k < 6; k++) { const v = nbrs[i * 6 + k]; if (v >= 0 && own[v] !== own[i]) { border.push(i); break; } } }
+  { const { d } = dijkstra(border, i => own[i] >= 0 ? 1 : Infinity); for (let i = 0; i < N; i++) if (own[i] >= 0) depth[i] = d[i]; }
+  const towns = anchors.map((_, t) => ({ t, keep: -1, hexes: [], gates: [], towers: [] }));
+  for (let i = 0; i < N; i++) { const t = own[i]; if (t < 0 || terr[i] === 3) continue; const T = towns[t];
+    if (T.keep < 0 || depth[i] + hash(i, t, 3) * .5 > depth[T.keep]) T.keep = i; }
+  for (const T of towns) {
+    const kx = hx(T.keep), ky = hy(T.keep), rad = 30 + R() * 10;
+    for (let i = 0; i < N; i++) if (own[i] === T.t && terr[i] !== 3) { const d = Math.hypot(hx(i) - kx, hy(i) - ky);
+      if (d < rad * (.75 + vnoise(hx(i) / 14, hy(i) / 14, seed + T.t) * .5)) { kind[i] = 2; T.hexes.push(i); } }
+    kind[T.keep] = 6;
+  }
+  // walls: every territory hex that touches another owner (not water); the map edge needs no wall
+  for (const i of border) { if (terr[i] === 3) continue;
+    for (let k = 0; k < 6; k++) { const v = nbrs[i * 6 + k]; if (v >= 0 && own[v] !== own[i] && terr[v] !== 3) { kind[i] = 1; break; } } }
+  // fields: voronoi patches, farmland mostly inside territories and around holdings
+  for (let i = 0; i < N; i++) {
+    const x = hx(i), y = hy(i); let b = 0, bd = Infinity;
+    for (let k = 0; k < fseeds.length; k++) { const s = fseeds[k], d = (x - s.x) ** 2 + (y - s.y) ** 2; if (d < bd) { bd = d; b = k; } }
+    pat[i] = b;
+    if (terr[i] === 0 || terr[i] === 1) { const f = fseeds[b].f; if ((own[i] >= 0 && depth[i] > 3 && f < .62) || (own[i] < 0 && f < .22)) terr[i] = 2; }
+  }
+  // roads: keep → crossroads, keep → neighbouring keeps, crossroads → off the map; gates where they cross walls
+  const hub = hexAt(W / 2 + (R() - .5) * 40, (TOP + BOT) / 2 + (R() - .5) * 60);
+  const rcost = i => kind[i] === 3 || kind[i] === 4 || kind[i] === 5 ? .3 : kind[i] === 1 ? 4 : terr[i] === 3 ? 9 : terr[i] === 1 ? 2.5 : terr[i] === 4 ? 2 : 1;
+  const roads = [];
+  const lay = (a, b) => { const { par } = dijkstra([a], rcost, b); const p = trace(par, b);
+    for (const i of p) { if (kind[i] === 1) kind[i] = 4; else if (terr[i] === 3) kind[i] = 5; else if (kind[i] === 0 || kind[i] === 2) kind[i] = kind[i] === 2 ? 2 : 3; }
+    roads.push(p); return p; };
+  for (const T of towns) lay(T.keep, hub);
+  const ord = [...towns].sort((a, b) => Math.atan2(hy(a.keep) - H / 2, hx(a.keep) - W / 2) - Math.atan2(hy(b.keep) - H / 2, hx(b.keep) - W / 2));
+  if (n > 2) ord.forEach((A, k) => { if (n === 3 || R() < .75) lay(A.keep, ord[(k + 1) % n].keep); });
+  for (const side of [0, 1]) { const e = hexAt(side ? W - 2 : 1, (TOP + BOT) / 2 + (R() - .5) * 300); if (own[e] < 0) lay(hub, e); }
+  kind[hub] = 3;
+  for (const T of towns) for (const [x, y] of walls[T.t].slice(1, -1)) { // a tower on every bend of the wall
+    let b = -1, bd = Infinity; for (let i = 0; i < N; i++) if (own[i] === T.t && kind[i] === 1) { const d = (hx(i) - x) ** 2 + (hy(i) - y) ** 2; if (d < bd) { bd = d; b = i; } }
+    if (b >= 0 && !T.towers.includes(b)) T.towers.push(b); }
+  // neutral holdings: farthest-point sampling over the neutral land
+  const objs = [], cand = []; for (let i = 0; i < N; i += 7) if (own[i] < 0 && terr[i] !== 3 && hy(i) > TOP + 30 && hy(i) < BOT - 30 && hx(i) > 20 && hx(i) < W - 20) cand.push(i);
+  const ownD = dijkstra([...Array(N).keys()].filter(i => own[i] >= 0), () => 1).d;
+  for (let k = 0; k < 5 + n && cand.length; k++) {
+    let best = -1, bs = -1;
+    for (const i of cand) { if (ownD[i] < 3) continue; let d = Math.hypot(hx(i) - hx(hub), hy(i) - hy(hub)); for (const o of objs) d = Math.min(d, Math.hypot(hx(i) - o.x, hy(i) - o.y));
+      d = Math.min(d, ownD[i] * HW * 1.3) + R() * 20; if (d > bs) { bs = d; best = i; } }
+    if (best < 0) break;
+    const near = j => { for (const r of river) if (Math.hypot(hx(r) - hx(best), hy(r) - hy(best)) < 45) return true; return false; };
+    const type = near() ? 'mill' : terr[best] === 4 ? 'quarry' : terr[best] === 2 ? 'farm' : ['farm', 'watch', 'quarry', 'watch'][k % 4];
+    objs.push({ i: best, x: hx(best), y: hy(best), type, water: type === 'mill' && near() });
+  }
+  const trees = []; const occ = new Set();
+  for (let i = 0; i < N; i++) { if (terr[i] !== 1 || kind[i] !== 0 || hash(i, 1, seed) > .6) continue; const k = (hx(i) / 7 | 0) + ',' + (hy(i) / 7 | 0); if (occ.has(k)) continue; occ.add(k);
+    trees.push({ x: hx(i), y: hy(i), r: 3.5 + hash(i, 2, seed) * 3, h: 95 + hash(i, 3, seed) * 30 | 0, l: 21 + hash(i, 4, seed) * 9 | 0 }); }
+  trees.sort((a, b) => a.y - b.y);
+  return { n, seed, terr, elev, own, kind, pat, fseeds, towns, roads, hub, objs, trees, got, land };
+}
+
+// ================= render =================
+function hexPath(g, x, y, s) { g.moveTo(x, y - s); g.lineTo(x + .866 * s, y - s / 2); g.lineTo(x + .866 * s, y + s / 2); g.lineTo(x, y + s); g.lineTo(x - .866 * s, y + s / 2); g.lineTo(x - .866 * s, y - s / 2); g.closePath(); }
+function mix(c, t, a) { return [c[0] + (t[0] - c[0]) * a, c[1] + (t[1] - c[1]) * a, c[2] + (t[2] - c[2]) * a]; }
+const rgb = h => { const v = parseInt(h.slice(1), 16); return [v >> 16, v >> 8 & 255, v & 255]; };
+const CROPS = [[205, 179, 90], [169, 185, 85], [201, 154, 74], [141, 108, 70], [185, 196, 106], [214, 191, 110]];
+const ROOFS = [[181, 82, 59], [160, 71, 47], [192, 102, 63], [143, 90, 58], [155, 61, 46], [184, 106, 60]];
+function render(M, cv) {
+  const g = cv.getContext('2d'), { terr, elev, own, kind, pat, fseeds, seed } = M, teamRGB = TEAMS.map(rgb);
+  g.fillStyle = '#151a0e'; g.fillRect(0, 0, W, H);
+  // group hexes by colour so each colour is one fill (fast); colours are quantised a little
+  const buckets = new Map();
+  for (let i = 0; i < N; i++) {
+    const x = hx(i), y = hy(i), t = terr[i], k = kind[i], e = elev[i], det = hash(i, 0, seed);
+    const e1 = elev[Math.max(0, i - COLS * 2 - 2)], e2 = elev[Math.min(N - 1, i + COLS * 2 + 2)];
+    let hs = clamp(1 + (e1 - e2) * 8, .75, 1.28), c;
+    if (k === 6) c = teamRGB[own[i]];
+    else if (k === 1) c = mix([168, 162, 150], [120, 115, 106], det * .5);
+    else if (k === 4) c = [122, 77, 36];
+    else if (k === 5) c = [123, 82, 48];
+    else if (k === 3) c = mix([211, 192, 139], [180, 160, 110], det * .5);
+    else if (k === 2) { const v = vnoise(x / 7, y / 7, seed + 9); c = v > .38 ? ROOFS[(vnoise(x / 9, y / 9, seed + 5) * 6) | 0] : [196, 182, 150]; if (v > .38) c = mix(c, [255, 255, 255], det * .12); hs = 1; }
+    else if (t === 3) c = mix([46, 104, 152], [70, 130, 180], vnoise(x / 12, y / 12, seed + 4) * .6);
+    else if (t === 2) { const s = fseeds[pat[i]], st = Math.sin((x * Math.cos(s.ang) + y * Math.sin(s.ang)) / 3); c = CROPS[s.col].map(v => v * (.9 + st * .08 + det * .06)); }
+    else if (t === 1) c = mix([40, 66, 30], [62, 94, 42], det * .7 + vnoise(x / 10, y / 10, seed + 2) * .3);
+    else if (t === 4) c = mix([128, 124, 98], [150, 144, 112], det);
+    else { const f = fbm(x / 45, y / 45, seed + 51); c = [84 + f * 30 + det * 10, 116 + f * 28 + det * 10, 48 + f * 14 + det * 4]; }
+    if (own[i] >= 0 && k !== 6 && k !== 1 && k !== 4) c = mix(c, teamRGB[own[i]], .13);
+    const q = c.map(v => clamp(Math.round(v * hs / 6) * 6, 0, 255)), key = `rgb(${q[0]},${q[1]},${q[2]})`;
+    let b = buckets.get(key); if (!b) { b = []; buckets.set(key, b); } b.push(i);
+  }
+  for (const [col, list] of buckets) { g.fillStyle = col; g.beginPath(); for (const i of list) hexPath(g, hx(i), hy(i), S * .93); g.fill(); }
+  // wall shadow on the outer side, towers, keeps
+  g.fillStyle = '#0004'; g.beginPath();
+  for (let i = 0; i < N; i++) if (kind[i] === 1 || kind[i] === 4) hexPath(g, hx(i) + 1.6, hy(i) + 2, S * .9); g.fill();
+  for (let i = 0; i < N; i++) if (kind[i] === 1 || kind[i] === 4) { g.fillStyle = kind[i] === 4 ? '#7a4d24' : '#aaa498'; g.beginPath(); hexPath(g, hx(i), hy(i), S * .95); g.fill(); }
+  for (const tr of M.trees) {
+    g.fillStyle = '#0006'; g.beginPath(); g.ellipse(tr.x + 1.5, tr.y + 2, tr.r, tr.r * .8, 0, 0, 7); g.fill();
+    g.fillStyle = `hsl(${tr.h},40%,${tr.l}%)`; g.beginPath(); g.arc(tr.x, tr.y, tr.r, 0, 7); g.fill();
+    g.fillStyle = `hsla(${tr.h - 10},45%,${tr.l + 14}%,.55)`; g.beginPath(); g.arc(tr.x - tr.r * .3, tr.y - tr.r * .3, tr.r * .5, 0, 7); g.fill();
+  }
+  for (const T of M.towns) {
+    const col = TEAMS[T.t];
+    for (const i of T.towers) { const x = hx(i), y = hy(i);
+      g.fillStyle = '#0006'; g.beginPath(); g.arc(x + 2, y + 2.5, 5.5, 0, 7); g.fill();
+      g.fillStyle = '#a19b90'; g.strokeStyle = '#3b3631'; g.lineWidth = 1.5; g.beginPath(); g.arc(x, y, 5, 0, 7); g.fill(); g.stroke();
+      g.fillStyle = col; g.beginPath(); g.arc(x, y, 2.6, 0, 7); g.fill(); }
+    const x = hx(T.keep), y = hy(T.keep);
+    g.fillStyle = '#0006'; g.fillRect(x - 11, y - 9, 26, 26);
+    g.fillStyle = '#3b3631'; g.fillRect(x - 14, y - 14, 28, 28); g.fillStyle = '#aaa498'; g.fillRect(x - 12, y - 12, 24, 24);
+    g.fillStyle = '#d6d0c2'; for (const [a, b] of [[-14, -14], [9, -14], [-14, 9], [9, 9]]) g.fillRect(x + a, y + b, 5, 5);
+    g.fillStyle = col; g.fillRect(x - 7, y - 7, 14, 14);
+    g.strokeStyle = '#2b2622'; g.lineWidth = 2; g.beginPath(); g.moveTo(x, y); g.lineTo(x, y - 26); g.stroke();
+    g.fillStyle = col; g.beginPath(); g.moveTo(x, y - 26); g.quadraticCurveTo(x + 10, y - 24, x + 18, y - 20); g.lineTo(x, y - 15); g.fill();
+    g.fillStyle = '#fff'; g.font = '900 10px system-ui'; g.textAlign = 'center'; g.fillText(T.t + 1, x + 7, y - 18);
+  }
+  { const x = hx(M.hub), y = hy(M.hub); g.fillStyle = '#0005'; g.fillRect(x - 10, y - 8, 24, 24); g.fillStyle = '#9a7b62'; g.fillRect(x - 12, y - 12, 24, 24);
+    g.fillStyle = '#5f8a3c'; g.fillRect(x - 5, y - 5, 10, 10); g.fillStyle = '#e8e0cc'; g.fillRect(x - 1, y - 4, 2, 8); g.fillRect(x - 3, y - 2, 6, 2); }
+  for (const o of M.objs) drawObj(g, o);
+  // a few soldiers to show the scale: a head is one hex
+  for (const T of M.towns) for (let k = 0; k < 6; k++) { const a = k * 1.05 + T.t, x = hx(T.keep) + Math.cos(a) * 22, y = hy(T.keep) + Math.sin(a) * 22 + 34;
+    g.fillStyle = '#0006'; g.beginPath(); g.ellipse(x + 2, y + 3, 4, 2.6, 0, 0, 7); g.fill();
+    g.fillStyle = TEAMS[T.t]; g.beginPath(); g.arc(x, y, 4, 0, 7); g.fill(); g.strokeStyle = '#0009'; g.lineWidth = 1; g.stroke();
+    g.fillStyle = '#9a9a9a'; g.beginPath(); g.arc(x, y - 1, 2, 0, 7); g.fill(); }
+  const vg = g.createRadialGradient(W / 2, H / 2, 260, W / 2, H / 2, 660); vg.addColorStop(0, '#0000'); vg.addColorStop(1, '#0007'); g.fillStyle = vg; g.fillRect(0, 0, W, H);
+  g.fillStyle = '#000a'; g.fillRect(0, 0, W, TOP - 10); g.fillRect(0, BOT + 6, W, H - BOT);
+  g.fillStyle = '#f4e6c2'; g.font = '900 22px Georgia, serif'; g.textAlign = 'center'; g.fillText(`⚔ КРЕПОСТИ · ${M.n} команды`, W / 2, 34);
+  g.font = '600 12px system-ui'; g.fillStyle = '#bbb';
+  g.fillText(M.got.map((c, t) => `${t + 1}: ${Math.round(c / M.land * 100)}%`).join('   ') + `   нейтр.: ${Math.round((1 - M.got.reduce((a, b) => a + b, 0) / M.land) * 100)}%`, W / 2, 62);
+  g.fillStyle = '#888'; g.fillText(`${N.toLocaleString('ru')} гексов · карта №${M.seed % 10000}`, W / 2, 82);
+}
+function drawObj(g, o) {
+  g.save(); g.translate(o.x, o.y);
+  g.strokeStyle = '#ffffffaa'; g.lineWidth = 1.5; g.setLineDash([3, 4]); g.beginPath(); g.arc(0, 0, 26, 0, 7); g.stroke(); g.setLineDash([]);
+  g.fillStyle = '#0005'; g.beginPath(); g.ellipse(3, 5, 14, 8, 0, 0, 7); g.fill();
+  if (o.type === 'farm') {
+    g.fillStyle = '#7a3a2a'; g.fillRect(-9, -8, 18, 13); g.fillStyle = '#a24c34'; g.fillRect(-9, -8, 18, 6); g.fillStyle = '#d9c27a'; g.beginPath(); g.arc(11, 7, 4, 0, 7); g.fill();
+  } else if (o.type === 'mill') {
+    if (o.water) { g.fillStyle = '#6b4a2b'; g.beginPath(); g.arc(-10, 6, 6, 0, 7); g.fill(); }
+    g.fillStyle = '#d9cdb0'; g.strokeStyle = '#5a4a36'; g.lineWidth = 1.5; g.beginPath(); g.arc(2, -2, 7, 0, 7); g.fill(); g.stroke();
+    g.strokeStyle = '#efe6cf'; g.lineWidth = 3; for (let a = 0; a < 4; a++) { const t = a * Math.PI / 2 + .4; g.beginPath(); g.moveTo(2, -2); g.lineTo(2 + Math.cos(t) * 15, -2 + Math.sin(t) * 15); g.stroke(); }
+  } else if (o.type === 'quarry') {
+    g.fillStyle = '#7d776d'; g.beginPath(); g.moveTo(-14, 0); g.lineTo(-7, -11); g.lineTo(9, -9); g.lineTo(14, 4); g.lineTo(3, 11); g.lineTo(-11, 9); g.closePath(); g.fill();
+    g.fillStyle = '#5a554d'; g.beginPath(); g.ellipse(0, 0, 8, 5, .3, 0, 7); g.fill();
+  } else {
+    g.fillStyle = '#5a3a1e'; g.fillRect(-7, -7, 14, 14); g.fillStyle = '#8a5a30'; g.fillRect(-5, -5, 10, 10);
+  }
+  g.strokeStyle = '#2b2622'; g.lineWidth = 1.5; g.beginPath(); g.moveTo(12, -6); g.lineTo(12, -22); g.stroke();
+  g.fillStyle = '#e9e4d8'; g.beginPath(); g.moveTo(12, -22); g.lineTo(23, -18); g.lineTo(12, -14); g.fill();
+  g.restore();
+}
+
+// ================= page =================
+const maps = document.getElementById('maps'), big = document.getElementById('big');
+function build() {
+  maps.innerHTML = ''; const t0 = performance.now(), n = +document.getElementById('n').value;
+  for (let k = 0; k < 4; k++) {
+    const f = document.createElement('figure'), cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+    const M = gen(n, (Math.random() * 1e9) | 0); render(M, cv);
+    const cap = document.createElement('figcaption'); cap.textContent = `№${M.seed % 10000} · ${M.objs.length} объектов в поле`;
+    f.append(cv, cap); maps.append(f);
+    cv.onclick = () => { const c = document.createElement('canvas'); c.width = W; c.height = H; c.getContext('2d').drawImage(cv, 0, 0); big.innerHTML = ''; big.append(c); big.style.display = 'grid'; };
+  }
+  document.getElementById('info').textContent = `4 карты за ${Math.round(performance.now() - t0)} мс · клик по карте — крупно`;
+}
+big.onclick = () => { big.style.display = 'none'; };
+document.getElementById('again').onclick = build;
+document.getElementById('n').onchange = build;
+build();
+</script>
+</body>
+</html>
