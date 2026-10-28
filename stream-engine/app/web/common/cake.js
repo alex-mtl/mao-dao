@@ -5,7 +5,7 @@
 // cake. Then every fuse sparkles like a tiny sparkler and one cracker takes off each second, bursting into small hearts
 // and butterflies in our colors; each "огонь" comment launches one more at once while the clock goes on - at most
 // 100 s for all of them, the faster the more the chat fires. A cracker takes its stick along. When all are gone the
-// cake turns its top to us, the avatar of the top fan (who fired most) printed over the whole top tier, and then
+// cake turns its top to us, the avatar of the one the cake is for printed over the whole top tier, and then
 // it falls apart into 18 slices flying off the screen.
 // The cake is drawn here (no Lottie): round tiers seen a bit from above, so the turning is visible on the cake itself.
 //   Cake.show(feedEvent, {sound, root}), Cake.start({root, sound, seed, hero, onEnd}), Cake.comment({name, text}), Cake.fire({name}), Cake.sound(on), Cake.info(), Cake.stop()
@@ -226,7 +226,7 @@ window.Cake = (() => {
 
   const t2h = () => TIERS[2].h * H;
 
-  // the finale's picture: the top fan's avatar printed over the whole top tier, the name on the ring below
+  // the finale's picture: the hero's avatar printed over the whole top tier, the name on the ring below
   function drawAvatar() {
     if (!hero || fin <= 0) return;
     const g = geo[2], a = Math.min(1, fin * 1.4);
@@ -249,11 +249,14 @@ window.Cake = (() => {
       <rect width="40" height="40" fill="hsl(${h} 70% 52%)"/><text x="20" y="27.5" font-family="Segoe UI,sans-serif"
       font-size="21" font-weight="800" text-anchor="middle" fill="#fff">${ch}</text></svg>`);
   }
-  // who gets printed: the one who fired most (the first of them on a tie), else the one the cake is for (start's hero)
+  // who gets printed: always the one the cake is for (start's hero, with his own "огонь" count); with no hero -
+  // the one who fired most (the first of them on a tie)
   function pickHero() {
+    const own = opts.hero && clean(opts.hero.name);
     let best = null;
-    for (const v of fans.values()) if (!best || v.n > best.n) best = v;
-    best = best || (opts.hero && { name: clean(opts.hero.name) || '?', avatar: opts.hero.avatar, n: 0 });
+    if (own) { const v = fans.get(own); best = { name: own, avatar: opts.hero.avatar || (v && v.avatar), n: v ? v.n : 0 }; }
+    else for (const v of fans.values()) if (!best || v.n > best.n) best = v;
+    best = best || (opts.hero && { name: '?', avatar: opts.hero.avatar, n: 0 });
     if (!best) return null;
     const img = new Image();
     img.onerror = () => { img.onerror = null; img.src = avatarUrl(best.name); };
