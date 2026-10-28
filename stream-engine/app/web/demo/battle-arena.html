@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Крепости — прототип</title>
+<style>
+  /* prototype of docs/games/battle.md: the 9:16 overlay on the left, a fake TikTok chat + controls on the right.
+     Everything (engine, bots, render) lives in this file; the real game splits it into engine + PixiJS overlay. */
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; font-family: 'Segoe UI', system-ui, sans-serif; color: #eee; background: #0d0d14; }
+  body { display: flex; gap: 1.2vh; padding: 1.2vh; }
+  #stage { height: min(calc(100vh - 2.4vh), calc((100vw - 260px - 3.6vh) * 16 / 9)); aspect-ratio: 9 / 16; border-radius: 1.2vh; overflow: hidden; flex: none;
+           box-shadow: 0 0 0 1px #2a2a3a, 0 1vh 4vh #0008; }
+  #stage canvas { width: 100%; height: 100%; display: block; }
+  #side { flex: 1; min-width: 250px; max-width: 460px; height: calc(100vh - 2.4vh); display: flex; flex-direction: column; gap: 1vh; }
+  .panel { background: #161622; border: 1px solid #2a2a3a; border-radius: 1vh; padding: 1vh 1.2vh; }
+  .panel h3 { margin: 0 0 .8vh; font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: #8a8aa8; }
+  .row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin: 4px 0; font-size: 13px; }
+  .row label { color: #aab; }
+  button { font: 700 12px system-ui; padding: 6px 9px; border-radius: 7px; border: 0; cursor: pointer;
+           background: #2c2c44; color: #eee; }
+  button:hover { background: #3a3a5a; }
+  button.on { background: #fe2c55; }
+  input[type=text] { background: #0d0d14; color: #eee; border: 1px solid #333; border-radius: 6px; padding: 5px 7px; font-size: 13px; }
+  input[type=range] { width: 120px; }
+  select { background: #0d0d14; color: #eee; border: 1px solid #333; border-radius: 6px; padding: 4px; }
+  #chat { flex: 1; overflow: hidden; display: flex; flex-direction: column; justify-content: flex-end; min-height: 0; }
+  #chatlog { overflow-y: auto; display: flex; flex-direction: column; gap: 3px; font-size: 13px; }
+  .msg { display: flex; gap: 6px; align-items: flex-start; padding: 2px 0; animation: in .25s; }
+  .msg .av { width: 22px; height: 22px; border-radius: 50%; flex: none; display: grid; place-items: center;
+             font-size: 11px; font-weight: 800; color: #000; }
+  .msg .nick { color: #9ad; font-weight: 700; margin-right: 4px; }
+  .msg.gift { background: linear-gradient(90deg, #fe2c5533, transparent); border-radius: 6px; padding: 3px 4px; }
+  .msg.sys .text { color: #8a8; font-style: italic; }
+  .msg.like .text { color: #f8a; }
+  @keyframes in { from { opacity: 0; transform: translateY(6px); } }
+  #stats { font-size: 12px; color: #99a; }
+</style>
+</head>
+<body>
+<div id="stage"><canvas id="cv" width="540" height="960"></canvas></div>
+<div id="side">
+  <div class="panel">
+    <h3>Симуляция</h3>
+    <div class="row"><label>Команд</label>
+      <select id="teams"><option>2</option><option>3</option><option selected>4</option><option>5</option><option>6</option></select>
+      <button id="restart">⟲ Новый раунд</button>
+      <button id="pause">⏸ Пауза</button>
+      <button id="speed">×1</button>
+      <button id="voice" class="on">🔊 Диктор</button>
+    </div>
+    <div class="row"><label>Зрителей-ботов</label><input type="range" id="bots" min="0" max="300" value="150"><span id="botsV">150</span></div>
+    <div class="row"><label>Активность чата</label><input type="range" id="rate" min="0" max="40" value="10"><span id="rateV">10</span>/с</div>
+    <div id="stats"></div>
+  </div>
+  <div class="panel">
+    <h3>Я зритель</h3>
+    <div class="row"><input type="text" id="nick" value="mao.montreal" size="12">
+      <input type="text" id="text" placeholder="1 · 🔵 · !атака 2 · привет" size="18"><button id="send">➤</button></div>
+    <div class="row">
+      <button data-act="small">🌹 Роза (1)</button>
+      <button data-act="medium">🍩 Пончик (30)</button>
+      <button data-act="big">🌌 Галактика (1000)</button>
+    </div>
+    <div class="row">
+      <button data-act="likes">❤ Лайки ×50</button>
+      <button data-act="sub">⭐ Подписка</button>
+      <button data-act="share">↗ Репост</button>
+    </div>
+  </div>
+  <div class="panel" id="chat"><h3>Чат стрима</h3><div id="chatlog"></div></div>
+</div>
+<script>
+'use strict';
+const cv = document.getElementById('cv'), g = cv.getContext('2d');
+const W = 540, H = 960, CX = 270, CY = 520;
+const TEAMS = [
+  { name: 'Красные',    color: '#ff4d5e', emoji: '🔴', stem: 'крас' },
+  { name: 'Синие',      color: '#3d8bff', emoji: '🔵', stem: 'син' },
+  { name: 'Зелёные',    color: '#3ddc84', emoji: '🟢', stem: 'зел' },
+  { name: 'Жёлтые',     color: '#ffd23d', emoji: '🟡', stem: 'жёл' },
+  { name: 'Фиолетовые', color: '#b46bff', emoji: '🟣', stem: 'фиол' },
+  { name: 'Бирюзовые',  color: '#3de0e0', emoji: '🩵', stem: 'бир' },
+];
+const CFG = {
+  roundSec: 180, baseHp: 1000, commentCooldown: 4, likeVolley: 300, maxUnits: 650,
+  soldier: { hp: 10, dps: 5, base: 2.2, speed: 34, r: 4 },
+  hero:    { hp: 70, dps: 14, base: 6, speed: 40, r: 7 },
+  siege:   { hp: 140, dps: 0, base: 28, speed: 16, r: 9 },
+  ghost:   { life: 9, base: 1.6, speed: 46 },
+  shield: 160, shieldSec: 20, meteorPct: .12, comeback: 1.25,
+};
+
+// ---------- state ----------
+let S, viewers = new Map(), paused = false, speed = 1, voiceOn = true;
+const rnd = (a, b) => a + Math.random() * (b - a), pick = a => a[Math.random() * a.length | 0];
+const dist2 = (a, b) => (a.x - b.x) ** 2 + (a.y - b.y) ** 2;
+
+function basePos(i, n) {
+  if (n === 2) return i === 0 ? { x: CX, y: 215 } : { x: CX, y: 835 };
+  const a = -Math.PI / 2 + i * 2 * Math.PI / n;
+  return { x: CX + Math.cos(a) * 195, y: CY + Math.sin(a) * 300 };
+}
+function newRound(n) {
+  S = { n, t: 0, over: false, overT: 0, teams: [], units: [], fx: [], arrows: [], meteors: [], texts: [], toasts: [], kills: new Map() };
+  for (let i = 0; i < n; i++) S.teams.push({ ...TEAMS[i], i, ...basePos(i, n), hp: CFG.baseHp, shield: 0, shieldT: 0,
+    likes: 0, members: 0, dead: false, coins: new Map() });
+  for (const v of viewers.values()) { v.team = null; v.target = null; v.lastUnit = -99; }
+  toast('Новый раунд! Пиши номер команды 1–' + n, '#fff');
+  say('Новый раунд. ' + n + ' команды. Пишите номер команды в чат!');
+}
+
+// ---------- viewers & chat events ----------
+function viewer(nick) {
+  let v = viewers.get(nick);
+  if (!v) { v = { nick, team: null, target: null, lastUnit: -99, hue: (Math.random() * 360) | 0 }; viewers.set(nick, v); }
+  return v;
+}
+function teamFromText(t) {
+  const m = t.match(/^\s*([1-6])\s*$/) || t.match(/(?:^|\s)(?:команда|за)\s*([1-6])/);
+  if (m && +m[1] <= S.n) return +m[1] - 1;
+  for (const tm of S.teams) if (t.includes(tm.emoji) || t.toLowerCase().includes(tm.stem)) return tm.i;
+  return null;
+}
+function ensureTeam(v, text) {
+  if (v.team != null && !S.teams[v.team].dead) return false;
+  if (v.team != null) return false; // eliminated members stay as ghosts
+  let ti = text != null ? teamFromText(text) : null;
+  if (ti == null) {
+    const alive = S.teams.filter(t => !t.dead);
+    ti = alive.reduce((a, b) => (b.members < a.members ? b : a)).i;
+  } else if (S.teams[ti].dead) return false;
+  v.team = ti; S.teams[ti].members++;
+  return true;
+}
+function onComment(nick, text) {
+  const v = viewer(nick);
+  chat(v, text);
+  if (S.over) return;
+  const joined = ensureTeam(v, text);
+  if (joined) sys(`${nick} вступает: ${S.teams[v.team].emoji} ${S.teams[v.team].name}`);
+  const a = text.match(/!?атака\s*([1-6])/i);
+  if (a) { const ti = +a[1] - 1; if (ti < S.n && ti !== v.team && !S.teams[ti].dead) v.target = ti; }
+  const tm = S.teams[v.team];
+  if (tm.dead) { spawn(v, 'ghost'); return; }
+  if (S.t - v.lastUnit >= CFG.commentCooldown) { v.lastUnit = S.t; spawn(v, 'soldier'); }
+}
+function onLikes(nick, count) {
+  const v = viewer(nick);
+  chat(v, `поставил(а) лайки ×${count}`, 'like');
+  if (S.over) return;
+  ensureTeam(v); const tm = S.teams[v.team]; if (tm.dead) return;
+  tm.likes += count;
+  if (tm.likes >= CFG.likeVolley) { tm.likes -= CFG.likeVolley; volley(tm, targetOf(v)); }
+}
+const GIFTS = { small: ['Роза', 1, '🌹'], medium: ['Пончик', 30, '🍩'], big: ['Галактика', 1000, '🌌'] };
+function onGift(nick, kind) {
+  const v = viewer(nick), [gname, coins, ico] = GIFTS[kind];
+  chat(v, `отправил(а) ${ico} ${gname}`, 'gift');
+  if (S.over) return;
+  ensureTeam(v); const tm = S.teams[v.team]; if (tm.dead) { spawn(v, 'ghost'); return; }
+  tm.coins.set(nick, (tm.coins.get(nick) || 0) + coins);
+  if (kind === 'small') spawn(v, 'hero');
+  if (kind === 'medium') { spawn(v, 'siege'); toast(`${nick}: осадная машина ${tm.emoji}`, tm.color); }
+  if (kind === 'big') meteor(tm, targetOf(v), nick);
+}
+function onSub(nick) {
+  const v = viewer(nick); chat(v, 'подписался(ась) ⭐', 'gift');
+  if (S.over) return;
+  ensureTeam(v); const tm = S.teams[v.team]; if (tm.dead) return;
+  tm.shield = CFG.shield; tm.shieldT = CFG.shieldSec;
+  toast(`${tm.emoji} щит от ${nick}`, tm.color);
+}
+function onShare(nick) {
+  const v = viewer(nick); chat(v, 'поделился(ась) эфиром ↗', 'gift');
+  if (S.over) return;
+  ensureTeam(v); const tm = S.teams[v.team]; if (tm.dead) return;
+  for (let k = 0; k < 5; k++) spawn(v, 'soldier');
+  toast(`${tm.emoji} подкрепление от ${nick}`, tm.color);
+}
+
+// ---------- engine ----------
+function leaderFor(ti) { // strongest alive enemy; the built-in comeback
+  let best = null;
+  for (const t of S.teams) if (!t.dead && t.i !== ti && (!best || t.hp + t.shield > best.hp + best.shield)) best = t;
+  return best;
+}
+function targetOf(v) {
+  if (v.target != null && !S.teams[v.target].dead && v.target !== v.team) return S.teams[v.target];
+  return leaderFor(v.team);
+}
+function spawn(v, kind) {
+  const tm = S.teams[v.team];
+  if (S.units.length >= CFG.maxUnits) { const k = S.units.findIndex(u => u.kind === 'soldier'); if (k >= 0) S.units.splice(k, 1); }
+  if (kind === 'ghost') {
+    const lead = leaderFor(-1); if (!lead) return;
+    const a = Math.random() * Math.PI * 2;
+    S.units.push({ kind, team: v.team, nick: v.nick, x: CX + Math.cos(a) * 320, y: CY + Math.sin(a) * 520, life: CFG.ghost.life,
+      tgt: lead.i, ox: 0, oy: 0, hp: 1 });
+    return;
+  }
+  const P = CFG[kind], tgt = targetOf(v); if (!tgt) return;
+  const a = Math.atan2(CY - tm.y, CX - tm.x) + rnd(-.9, .9);
+  S.units.push({ kind, team: v.team, nick: v.nick, x: tm.x + Math.cos(a) * 46, y: tm.y + Math.sin(a) * 46,
+    hp: P.hp, maxHp: P.hp, tgt: tgt.i, ox: rnd(-26, 26), oy: rnd(-26, 26), foe: null, scan: Math.random() * .25, step: Math.random() * 6 });
+}
+function hitBase(t, dmg, by) {
+  if (t.dead) return;
+  if (t.shield > 0) { const s = Math.min(t.shield, dmg); t.shield -= s; dmg -= s; }
+  t.hp -= dmg;
+  if (t.hp <= 0) eliminate(t, by);
+}
+function eliminate(t, by) {
+  t.hp = 0; t.dead = true; t.shield = 0;
+  for (const u of S.units) if (u.team === t.i && u.kind !== 'ghost') { u.hp = 0; burst(u.x, u.y, t.color, 4); }
+  burst(t.x, t.y, t.color, 40);
+  const killer = by != null ? S.teams[by] : null;
+  toast(`${t.emoji} ${t.name} потеряли крепость!`, t.color, 3.5);
+  say(`${t.name} потеряли крепость!` + (killer ? ` Добили ${killer.name}.` : ''));
+  sys(`${t.name} выбывают. Их бойцы теперь призраки и кусают лидера.`);
+  if (S.teams.filter(x => !x.dead).length <= 1) finish();
+}
+function volley(from, to) {
+  if (!to) return;
+  for (let k = 0; k < 26; k++) S.arrows.push({ x0: from.x + rnd(-20, 20), y0: from.y + rnd(-20, 20),
+    x1: to.x + rnd(-75, 75), y1: to.y + rnd(-75, 75), t: -k * .02, dur: .7, color: from.color });
+  setTimeout(() => {
+    if (S.over || to.dead) return;
+    for (const u of S.units) if (u.team === to.i && u.kind !== 'ghost' && dist2(u, to) < 85 ** 2 && Math.random() < .6) u.hp = 0;
+    hitBase(to, 30, from.i);
+  }, 700 / speed);
+  toast(`${from.emoji} залп лайков по ${to.emoji}!`, from.color);
+}
+function meteor(from, to, nick) {
+  if (!to) return;
+  S.meteors.push({ x: to.x + 260, y: to.y - 600, tx: to.x, ty: to.y, t: 0, dur: 1.1, from: from.i, to: to.i });
+  toast(`🌌 ${nick} обрушивает метеорит на ${to.emoji} ${to.name}!`, from.color, 3);
+  say(`${nick} обрушивает метеорит на ${to.name}!`);
+}
+function finish() {
+  if (S.over) return;
+  S.over = true; S.overT = 0;
+  const alive = S.teams.filter(t => !t.dead);
+  const win = (alive.length ? alive : S.teams).reduce((a, b) => (b.hp > a.hp ? b : a));
+  S.winner = win.i;
+  let cap = null; for (const [n, c] of win.coins) if (!cap || c > cap[1]) cap = [n, c];
+  let best = null; for (const [n, k] of S.kills) if (!best || k > best[1]) best = [n, k];
+  S.cap = cap; S.best = best;
+  say(`Победа! ${win.name} побеждают.` + (cap ? ` Капитан ${cap[0]}.` : ''));
+  sys(`🏆 Победа: ${win.emoji} ${win.name}`);
+}
+
+function step(dt) {
+  if (S.over) { S.overT += dt; if (S.overT > 12) newRound(S.n); fxStep(dt); return; }
+  S.t += dt;
+  if (S.t >= CFG.roundSec) { finish(); return; }
+  const weakest = S.teams.filter(t => !t.dead).reduce((a, b) => (b.hp < a.hp ? b : a), { hp: 1e9 });
+  for (const t of S.teams) if (t.shieldT > 0 && (t.shieldT -= dt) <= 0) t.shield = 0;
+  const live = S.units;
+  for (const u of live) {
+    if (u.hp <= 0) continue;
+    if (u.kind === 'ghost') {
+      u.life -= dt; if (u.life <= 0) { u.hp = 0; continue; }
+      const tg = S.teams[u.tgt]; if (tg.dead) { const l = leaderFor(-1); if (!l) { u.hp = 0; continue; } u.tgt = l.i; continue; }
+      if (move(u, tg.x, tg.y, CFG.ghost.speed, dt, 34)) hitBase(tg, CFG.ghost.base * dt, null);
+      continue;
+    }
+    const P = CFG[u.kind], mult = (u.team === weakest.i && S.teams.filter(t => !t.dead).length > 2) ? CFG.comeback : 1;
+    let tg = S.teams[u.tgt];
+    if (tg.dead) { const l = leaderFor(u.team); if (!l) continue; u.tgt = l.i; tg = l; }
+    if (u.kind !== 'siege') {
+      if (u.foe && (u.foe.hp <= 0 || dist2(u, u.foe) > 70 ** 2)) u.foe = null;
+      if ((u.scan -= dt) <= 0) { u.scan = .25; if (!u.foe) u.foe = nearestFoe(u, 60); }
+    }
+    if (u.foe) {
+      if (move(u, u.foe.x, u.foe.y, P.speed, dt, P.r + 5)) {
+        u.foe.hp -= P.dps * mult * dt;
+        if (Math.random() < dt * 6) spark(u.foe.x, u.foe.y, S.teams[u.team].color);
+        if (u.foe.hp <= 0) { S.kills.set(u.nick, (S.kills.get(u.nick) || 0) + 1); burst(u.foe.x, u.foe.y, S.teams[u.foe.team].color, 5); u.foe = null; }
+      }
+    } else if (move(u, tg.x + u.ox, tg.y + u.oy, P.speed, dt, 8)) {
+      hitBase(tg, P.base * mult * dt, u.team);
+      if (Math.random() < dt * 2) spark(tg.x + u.ox * .6, tg.y + u.oy * .6, S.teams[u.team].color);
+    }
+  }
+  S.units = live.filter(u => u.hp > 0);
+  fxStep(dt);
+}
+function move(u, x, y, sp, dt, reach) {
+  const dx = x - u.x, dy = y - u.y, d = Math.hypot(dx, dy);
+  if (d <= reach) return true;
+  const s = Math.min(d - reach, sp * dt); u.x += dx / d * s; u.y += dy / d * s; u.step += dt * 10;
+  return false;
+}
+function nearestFoe(u, r) {
+  let best = null, bd = r * r;
+  for (const o of S.units) if (o.team !== u.team && o.kind !== 'ghost' && o.hp > 0) { const d = dist2(u, o); if (d < bd) { bd = d; best = o; } }
+  return best;
+}
+// ---------- effects ----------
+function spark(x, y, c) { S.fx.push({ x, y, vx: rnd(-40, 40), vy: rnd(-40, 40), life: .3, max: .3, c, r: 2 }); }
+function burst(x, y, c, n) { for (let k = 0; k < n; k++) S.fx.push({ x, y, vx: rnd(-120, 120), vy: rnd(-120, 120), life: rnd(.4, .9), max: .9, c, r: rnd(2, 4) }); }
+function toast(text, c, life = 2.4) { S.toasts.push({ text, c, life, max: life }); if (S.toasts.length > 4) S.toasts.shift(); }
+function fxStep(dt) {
+  for (const p of S.fx) { p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= .92; p.vy *= .92; p.life -= dt; }
+  S.fx = S.fx.filter(p => p.life > 0);
+  for (const a of S.arrows) a.t += dt; S.arrows = S.arrows.filter(a => a.t < a.dur);
+  for (const m of S.meteors) {
+    m.t += dt;
+    if (m.t >= m.dur && !m.hit) {
+      m.hit = true; const to = S.teams[m.to];
+      burst(m.tx, m.ty, '#ffb03d', 70); burst(m.tx, m.ty, '#fff', 25);
+      if (!to.dead && !S.over) {
+        for (const u of S.units) if (u.kind !== 'ghost' && u.team !== m.from && dist2(u, to) < 110 ** 2) u.hp = 0;
+        hitBase(to, CFG.baseHp * CFG.meteorPct, m.from);
+        S.texts.push({ x: m.tx, y: m.ty - 50, text: '-' + Math.round(CFG.baseHp * CFG.meteorPct), life: 1.5, c: '#ffb03d' });
+      }
+      S.shake = .5;
+    }
+  }
+  S.meteors = S.meteors.filter(m => m.t < m.dur + .6);
+  for (const t of S.texts) { t.y -= 30 * dt; t.life -= dt; } S.texts = S.texts.filter(t => t.life > 0);
+  for (const t of S.toasts) t.life -= dt; S.toasts = S.toasts.filter(t => t.life > 0);
+  if (S.shake) S.shake = Math.max(0, S.shake - dt);
+}
+
+// ---------- render ----------
+function draw() {
+  g.save();
+  if (S.shake) g.translate(rnd(-8, 8) * S.shake, rnd(-8, 8) * S.shake);
+  const bg = g.createRadialGradient(CX, CY, 50, CX, CY, 620);
+  bg.addColorStop(0, '#2a2f22'); bg.addColorStop(1, '#0f120c');
+  g.fillStyle = bg; g.fillRect(-20, -20, W + 40, H + 40);
+  g.strokeStyle = '#ffffff08'; g.lineWidth = 1;
+  for (let y = 120; y < H; y += 40) { g.beginPath(); g.moveTo(0, y); g.lineTo(W, y); g.stroke(); }
+  for (const t of S.teams) castle(t);
+  const showNames = S.units.length < 140;
+  for (const u of S.units) unit(u, showNames);
+  for (const a of S.arrows) {
+    if (a.t < 0) continue; const k = a.t / a.dur, x = a.x0 + (a.x1 - a.x0) * k, y = a.y0 + (a.y1 - a.y0) * k - Math.sin(k * Math.PI) * 120;
+    g.strokeStyle = a.color; g.lineWidth = 2; g.beginPath(); g.moveTo(x, y); g.lineTo(x - (a.x1 - a.x0) * .04, y - (a.y1 - a.y0) * .04 + 6); g.stroke();
+  }
+  for (const m of S.meteors) {
+    if (m.t >= m.dur) { const k = (m.t - m.dur) / .6; g.strokeStyle = `rgba(255,176,61,${1 - k})`; g.lineWidth = 6;
+      g.beginPath(); g.arc(m.tx, m.ty, 30 + k * 120, 0, 7); g.stroke(); continue; }
+    const k = m.t / m.dur, x = m.x + (m.tx - m.x) * k, y = m.y + (m.ty - m.y) * k;
+    const gr = g.createLinearGradient(x, y, x + 80, y - 180); gr.addColorStop(0, '#ffe08a'); gr.addColorStop(1, 'transparent');
+    g.strokeStyle = gr; g.lineWidth = 14; g.beginPath(); g.moveTo(x, y); g.lineTo(x + 80, y - 180); g.stroke();
+    g.fillStyle = '#fff3c4'; g.beginPath(); g.arc(x, y, 13, 0, 7); g.fill();
+    g.strokeStyle = '#ffb03d88'; g.lineWidth = 2; g.beginPath(); g.arc(m.tx, m.ty, 60 * (1 - k) + 20, 0, 7); g.stroke();
+  }
+  for (const p of S.fx) { g.globalAlpha = Math.max(0, p.life / p.max); g.fillStyle = p.c; g.fillRect(p.x - p.r / 2, p.y - p.r / 2, p.r, p.r); }
+  g.globalAlpha = 1;
+  g.font = '900 22px system-ui'; g.textAlign = 'center';
+  for (const t of S.texts) { g.globalAlpha = Math.min(1, t.life); g.fillStyle = t.c; g.fillText(t.text, t.x, t.y); }
+  g.globalAlpha = 1;
+  g.restore();
+  hud();
+  if (S.over) results();
+}
+function castle(t) {
+  const { x, y } = t, r = 34;
+  g.save(); g.translate(x, y);
+  if (t.dead) {
+    g.fillStyle = '#444'; for (let k = 0; k < 7; k++) g.fillRect(-r + k * 10, 8 - (k % 3) * 6, 9, 9 + (k % 3) * 6);
+    g.font = '28px system-ui'; g.textAlign = 'center'; g.fillText('💀', 0, -10); g.restore(); return;
+  }
+  g.shadowColor = t.color; g.shadowBlur = 18;
+  g.fillStyle = shade(t.color, -.35); g.fillRect(-r, -r * .5, r * 2, r * 1.3);
+  g.fillStyle = t.color;
+  for (let k = 0; k < 4; k++) g.fillRect(-r + k * r * .66, -r * .78, r * .38, r * .32);
+  g.fillRect(-r * .25, -r * 1.25, r * .5, r * .8);
+  g.shadowBlur = 0;
+  g.fillStyle = '#000a'; g.beginPath(); g.arc(0, r * .8, r * .32, Math.PI, 0); g.rect(-r * .32, r * .5, r * .64, r * .3); g.fill();
+  g.fillStyle = '#fff'; g.font = '900 20px system-ui'; g.textAlign = 'center'; g.fillText(t.i + 1, 0, r * .2);
+  const f = t.hp / CFG.baseHp;
+  g.lineWidth = 5; g.strokeStyle = '#0008'; g.beginPath(); g.arc(0, 0, r + 14, 0, 7); g.stroke();
+  g.strokeStyle = t.color; g.beginPath(); g.arc(0, 0, r + 14, -Math.PI / 2, -Math.PI / 2 + f * Math.PI * 2); g.stroke();
+  if (t.shield > 0) {
+    g.strokeStyle = `rgba(140,220,255,${.4 + .3 * Math.sin(S.t * 6)})`; g.lineWidth = 3;
+    g.beginPath(); g.arc(0, 0, r + 24, 0, 7); g.stroke();
+  }
+  g.restore();
+}
+function unit(u, showNames) {
+  const tc = S.teams[u.team].color, bob = Math.sin(u.step || 0) * 1.2;
+  if (u.kind === 'ghost') {
+    g.globalAlpha = .35 + .2 * Math.sin(u.life * 8); g.fillStyle = '#dfe'; g.beginPath(); g.arc(u.x, u.y + bob, 6, 0, 7); g.fill();
+    g.fillStyle = tc; g.fillRect(u.x - 2, u.y - 1 + bob, 4, 2); g.globalAlpha = 1; return;
+  }
+  if (u.kind === 'siege') {
+    g.fillStyle = shade(tc, -.3); g.fillRect(u.x - 11, u.y - 7, 22, 12);
+    g.fillStyle = tc; g.fillRect(u.x - 3, u.y - 15, 6, 10);
+    g.fillStyle = '#222'; g.beginPath(); g.arc(u.x - 7, u.y + 6, 4, 0, 7); g.arc(u.x + 7, u.y + 6, 4, 0, 7); g.fill();
+    label(u.nick, u.x, u.y - 19, tc); hpBar(u, 14); return;
+  }
+  const r = CFG[u.kind].r;
+  g.fillStyle = tc; g.beginPath(); g.arc(u.x, u.y + bob, r, 0, 7); g.fill();
+  g.strokeStyle = u.kind === 'hero' ? '#fff' : '#0009'; g.lineWidth = u.kind === 'hero' ? 2 : 1; g.stroke();
+  if (u.kind === 'hero') {
+    g.font = '11px system-ui'; g.textAlign = 'center'; g.fillText('👑', u.x, u.y - 9 + bob);
+    label(u.nick, u.x, u.y - 21 + bob, tc); hpBar(u, 11);
+  } else if (showNames) {
+    g.font = '600 8px system-ui'; g.textAlign = 'center'; g.fillStyle = '#fff9'; g.fillText(u.nick.slice(0, 9), u.x, u.y - 7 + bob);
+  }
+}
+function label(text, x, y, c) {
+  g.font = '700 10px system-ui'; g.textAlign = 'center';
+  const w = g.measureText(text).width + 8;
+  g.fillStyle = '#000a'; g.fillRect(x - w / 2, y - 9, w, 12); g.fillStyle = c; g.fillText(text, x, y);
+}
+function hpBar(u, off) {
+  g.fillStyle = '#0009'; g.fillRect(u.x - 10, u.y + off, 20, 3);
+  g.fillStyle = '#7f7'; g.fillRect(u.x - 10, u.y + off, 20 * Math.max(0, u.hp / u.maxHp), 3);
+}
+function hud() {
+  g.fillStyle = '#000b'; g.fillRect(0, 0, W, 112);
+  const left = Math.max(0, CFG.roundSec - S.t), mm = (left / 60 | 0), ss = String(left % 60 | 0).padStart(2, '0');
+  g.fillStyle = left < 30 ? '#ff5d6c' : '#fff'; g.font = '900 24px system-ui'; g.textAlign = 'center';
+  g.fillText(`⚔ КРЕПОСТИ  ${mm}:${ss}`, CX, 30);
+  const n = S.n, cw = W / n;
+  for (const t of S.teams) {
+    const x0 = t.i * cw + 4, w = cw - 8, y0 = 42;
+    g.globalAlpha = t.dead ? .35 : 1;
+    g.fillStyle = shade(t.color, -.6); g.fillRect(x0, y0, w, 64);
+    g.fillStyle = t.color; g.font = `800 ${n > 4 ? 11 : 13}px system-ui`; g.textAlign = 'left';
+    g.fillText(`${t.i + 1} ${t.name}`, x0 + 5, y0 + 15);
+    g.fillStyle = '#0008'; g.fillRect(x0 + 5, y0 + 21, w - 10, 9);
+    g.fillStyle = t.color; g.fillRect(x0 + 5, y0 + 21, (w - 10) * t.hp / CFG.baseHp, 9);
+    if (t.shield > 0) { g.fillStyle = '#8cf'; g.fillRect(x0 + 5, y0 + 19, (w - 10) * t.shield / CFG.shield, 2); }
+    g.fillStyle = '#f8a'; g.fillRect(x0 + 5, y0 + 33, (w - 10) * t.likes / CFG.likeVolley, 3);
+    const cnt = S.units.filter(u => u.team === t.i && u.kind !== 'ghost').length;
+    g.fillStyle = '#ddd'; g.font = '600 10px system-ui';
+    g.fillText(`🗡${cnt}  👥${t.members}  ${Math.ceil(t.hp)}`, x0 + 5, y0 + 49);
+    let cap = null; for (const [nn, c] of t.coins) if (!cap || c > cap[1]) cap = [nn, c];
+    if (cap) g.fillText('👑 ' + cap[0].slice(0, 12), x0 + 5, y0 + 61);
+    g.globalAlpha = 1;
+  }
+  g.textAlign = 'center';
+  S.toasts.forEach((t, k) => {
+    g.globalAlpha = Math.min(1, t.life * 2);
+    g.font = '800 15px system-ui'; const w = g.measureText(t.text).width + 20;
+    g.fillStyle = '#000c'; g.fillRect(CX - w / 2, 122 + k * 26, w, 22);
+    g.fillStyle = t.c; g.fillText(t.text, CX, 138 + k * 26);
+  });
+  g.globalAlpha = 1;
+  g.fillStyle = '#000b'; g.fillRect(0, H - 34, W, 34);
+  g.fillStyle = '#ccc'; g.font = '600 12px system-ui';
+  g.fillText(`Пиши номер 1–${S.n} · !атака N · ❤ лайки = залп · 🌹 герой · 🍩 таран · 🌌 метеорит`, CX, H - 13);
+}
+function results() {
+  const k = Math.min(1, S.overT * 2), t = S.teams[S.winner];
+  g.fillStyle = `rgba(0,0,0,${.65 * k})`; g.fillRect(0, 0, W, H);
+  g.globalAlpha = k; g.textAlign = 'center';
+  g.font = '900 54px system-ui'; g.fillStyle = t.color; g.shadowColor = t.color; g.shadowBlur = 30;
+  g.fillText('ПОБЕДА', CX, 380); g.shadowBlur = 0;
+  g.font = '800 30px system-ui'; g.fillText(`${t.emoji} ${t.name}`, CX, 430);
+  g.font = '600 18px system-ui'; g.fillStyle = '#fff';
+  if (S.cap) g.fillText(`👑 Капитан: ${S.cap[0]} (${S.cap[1]} 💎)`, CX, 490);
+  if (S.best) g.fillText(`🗡 Лучший боец: ${S.best[0]} (${S.best[1]} побед)`, CX, 522);
+  g.fillStyle = '#aaa'; g.font = '14px system-ui';
+  g.fillText(`Новый раунд через ${Math.max(0, Math.ceil(12 - S.overT))} с`, CX, 580);
+  g.globalAlpha = 1;
+}
+function shade(hex, p) {
+  const n = parseInt(hex.slice(1), 16), f = c => Math.round(p < 0 ? c * (1 + p) : c + (255 - c) * p);
+  return `rgb(${f(n >> 16)},${f(n >> 8 & 255)},${f(n & 255)})`;
+}
+
+// ---------- chat panel & voice ----------
+const log = document.getElementById('chatlog');
+function chat(v, text, cls = '') {
+  const el = document.createElement('div'); el.className = 'msg ' + cls;
+  const tc = v.team != null && S.teams[v.team] ? S.teams[v.team].color : `hsl(${v.hue},60%,65%)`;
+  el.innerHTML = `<div class="av" style="background:${tc}">${v.nick[0].toUpperCase()}</div><div><span class="nick"></span><span class="text"></span></div>`;
+  el.querySelector('.nick').textContent = v.nick; el.querySelector('.text').textContent = text;
+  push(el);
+}
+function sys(text) {
+  const el = document.createElement('div'); el.className = 'msg sys';
+  el.innerHTML = '<div class="av" style="background:#8a8">⚔</div><div class="text"></div>';
+  el.querySelector('.text').textContent = text; push(el);
+}
+function push(el) { log.appendChild(el); while (log.children.length > 90) log.firstChild.remove(); log.scrollTop = log.scrollHeight; }
+function say(text) {
+  if (!voiceOn || !window.speechSynthesis) return;
+  const u = new SpeechSynthesisUtterance(text); u.lang = 'ru-RU'; u.rate = 1.1;
+  speechSynthesis.speak(u);
+}
+
+// ---------- bots ----------
+const P1 = ['dark', 'kot', 'lisa', 'max', 'nika', 'vovan', 'sasha', 'pro', 'zaya', 'tigr', 'baton', 'misha', 'ole4ka', 'den', 'ruslan', 'kira', 'gena', 'yulia', 'boss', 'shadow'];
+const P2 = ['_tt', '777', '.live', '_ru', '2008', '_kz', 'x', '_mtl', '99', '_official', '228', '.ok', ''];
+const SAY = ['го го го', 'вперёд!', 'держим базу', 'ахаха', 'давай!!', 'мы сильнее', 'кто за нас?', 'атакуем!', '🔥🔥🔥', 'ещё!', 'не сдаёмся', 'красава', 'жмите лайки', 'ура', 'помогите'];
+let bots = [];
+function makeBots(n) {
+  while (bots.length < n) bots.push({ nick: pick(P1) + pick(P2) + (Math.random() * 100 | 0), w: Math.random() ** 2 + .05, said: false });
+  bots.length = n;
+}
+let botAcc = 0;
+function botTick(dt) {
+  const rate = +document.getElementById('rate').value;
+  if (!bots.length || !rate || S.over) return;
+  botAcc += rate * dt;
+  while (botAcc >= 1) {
+    botAcc--;
+    let b; do b = pick(bots); while (Math.random() > b.w);
+    const r = Math.random();
+    if (!b.said) { b.said = true; onComment(b.nick, Math.random() < .6 ? String(1 + (Math.random() * S.n | 0)) : (Math.random() < .5 ? pick(S.teams).emoji : pick(SAY))); }
+    else if (r < .62) onComment(b.nick, Math.random() < .1 ? `!атака ${1 + (Math.random() * S.n | 0)}` : pick(SAY));
+    else if (r < .9) onLikes(b.nick, 5 + (Math.random() * 25 | 0));
+    else if (r < .945) onGift(b.nick, 'small');
+    else if (r < .96) onGift(b.nick, 'medium');
+    else if (r < .963) onGift(b.nick, 'big');
+    else if (r < .98) onShare(b.nick);
+    else onSub(b.nick);
+  }
+}
+
+// ---------- controls ----------
+const $ = id => document.getElementById(id);
+$('restart').onclick = () => { bots.forEach(b => b.said = false); newRound(+$('teams').value); };
+$('teams').onchange = $('restart').onclick;
+$('pause').onclick = e => { paused = !paused; e.target.textContent = paused ? '▶ Дальше' : '⏸ Пауза'; e.target.classList.toggle('on', paused); };
+$('speed').onclick = e => { speed = speed === 1 ? 2 : speed === 2 ? 4 : 1; e.target.textContent = '×' + speed; };
+$('voice').onclick = e => { voiceOn = !voiceOn; e.target.classList.toggle('on', voiceOn); e.target.textContent = voiceOn ? '🔊 Диктор' : '🔇 Диктор'; if (!voiceOn) speechSynthesis.cancel(); };
+$('bots').oninput = e => { $('botsV').textContent = e.target.value; makeBots(+e.target.value); };
+$('rate').oninput = e => { $('rateV').textContent = e.target.value; };
+const me = () => $('nick').value.trim() || 'viewer';
+$('send').onclick = () => { const t = $('text').value.trim(); if (t) { onComment(me(), t); $('text').value = ''; } };
+$('text').onkeydown = e => { if (e.key === 'Enter') $('send').onclick(); };
+document.querySelectorAll('[data-act]').forEach(b => b.onclick = () => {
+  const a = b.dataset.act;
+  if (a === 'likes') onLikes(me(), 50); else if (a === 'sub') onSub(me()); else if (a === 'share') onShare(me()); else onGift(me(), a);
+});
+
+makeBots(150);
+newRound(4);
+let last = performance.now(), fpsAcc = 0, fpsN = 0, fps = 0;
+function frame(now) {
+  const real = Math.min(.05, (now - last) / 1000); last = now;
+  fpsAcc += real; fpsN++; if (fpsAcc > .5) { fps = Math.round(fpsN / fpsAcc); fpsAcc = fpsN = 0;
+    $('stats').textContent = `юнитов ${S.units.length} · зрителей в игре ${[...viewers.values()].filter(v => v.team != null).length} · ${fps} fps`; }
+  if (!paused) { const dt = real * speed; botTick(dt); for (let k = 0; k < speed; k++) step(real); }
+  draw();
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
