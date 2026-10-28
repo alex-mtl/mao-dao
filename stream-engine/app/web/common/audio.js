@@ -44,6 +44,18 @@ window.AudioKit = (() => {
     if (!buffers[url]) buffers[url] = fetch(url).then(r => r.arrayBuffer()).then(a => ctx.decodeAudioData(a));
     return buffers[url];
   }
+  // a recorded one-shot (e.g. a firework whistle): vol, rate (pitch / speed), pan
+  async function shot(url, o = {}) {
+    if (!ctx || muted) return;
+    let buf;
+    try { buf = await loadBuffer(url); } catch (e) { delete buffers[url]; return; }
+    const s = ctx.createBufferSource(), g = ctx.createGain();
+    s.buffer = buf; s.playbackRate.value = o.rate || 1; g.gain.value = o.vol || 0.5;
+    let node = s.connect(g);
+    if (ctx.createStereoPanner && o.pan) { const p = ctx.createStereoPanner(); p.pan.value = Math.max(-1, Math.min(1, o.pan)); node = node.connect(p); }
+    node.connect(fxBus());
+    s.start();
+  }
   async function loop(url, dur, o = {}) {
     if (!ctx || muted) return;
     let buf;
@@ -315,7 +327,7 @@ window.AudioKit = (() => {
   }
 
   return {
-    tone, noise, loop, party, snow, say, spokenName, setVolumes, mount, enable, setLang, setRate,
+    tone, noise, shot, loop, party, snow, say, spokenName, setVolumes, mount, enable, setLang, setRate,
     get ready() { return !!ctx && !muted; },
     get speaking() { return !!synth && (synth.speaking || synth.pending); },
     get running() { return !!ctx && ctx.state === 'running'; },      // browser actually allows sound

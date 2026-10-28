@@ -938,6 +938,7 @@
                  if (e.type === 'balloon') Balloons.launch(e);
                  else if (e.type === 'plane') Plane.fly(e, { sound: true });
                  else if (e.type === 'snowball') Snowball.throw(e, { sound: true });
-                 else Greeter.push(e);
+                 else if (e.type === 'cake') Cake.show(e, { sound: true });
+                 else { if (e.type === 'chat') Cake.comment(e); Greeter.push(e); }   // "огонь" fires a cracker
                } });
 })();

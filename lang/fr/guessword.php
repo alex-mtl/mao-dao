@@ -135,6 +135,7 @@ return [
     'act_plane' => '✈️ Avion',
     'act_bomber' => '🦋 Avion à papillons',
     'act_snowball' => '❄️ Grosse boule de neige sur le streamer',
+    'act_cake' => '🎂 Gâteau feu d’artifice (les viewers écrivent « feu »)',
     'toast_leader' => '🔥 Nouveau leader',
     'toast_jump' => '🚀 Grand bond',
     'toast_so_close' => '😱 Si près !',

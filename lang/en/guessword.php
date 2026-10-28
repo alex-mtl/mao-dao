@@ -135,6 +135,7 @@ return [
     'act_plane' => '✈️ Plane',
     'act_bomber' => '🦋 Plane with butterflies',
     'act_snowball' => '❄️ Big snowball at the streamer',
+    'act_cake' => '🎂 Cake with fireworks (viewers type "огонь" / "fire")',
     'toast_leader' => '🔥 New leader',
     'toast_jump' => '🚀 Big jump',
     'toast_so_close' => '😱 So close!',

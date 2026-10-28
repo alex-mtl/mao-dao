@@ -731,6 +731,23 @@ class SnowballTest(unittest.TestCase):
             config.SNOWBALL_LIKES = saved
 
 
+class CakeTest(unittest.TestCase):
+    def test_cake_by_gift_and_by_hand(self):
+        from app.hub import Hub
+        hub = Hub(JsonStore(tempfile.mkdtemp()))
+        d = Viewer("ded", "DED", "https://x/ava.png")
+        cakes = lambda: [e for e in hub.feed if e["type"] == "cake"]
+        hub.gift(d, "Rose", 1)
+        self.assertEqual(cakes(), [])                            # not bound: no cake
+        hub.gift_rules.set({"cake": "gift:Rose"})
+        hub.gift(d, "Rose", 5)                                   # a combo: one cake show, not five
+        self.assertEqual([(c["name"], c["avatar"]) for c in cakes()], [("DED", "https://x/ava.png")])
+        self.assertTrue(cakes()[0]["seed"])                      # the same show on the preview and the overlay
+        self.assertTrue(hub.manual_action("cake", "ded"))
+        self.assertEqual(len(cakes()), 2)
+        self.assertEqual([p["action"] for p in hub.gift_promos()][:2], ["hint", "cake"])
+
+
 class GlobalSettingsTest(unittest.TestCase):
     def test_set_and_validate(self):
         from app.settings import GlobalSettings

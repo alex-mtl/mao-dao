@@ -16,8 +16,8 @@ const TOASTS = {
 const VOICE_ONLY = ['winner', 'round', 'break', 'balloon', 'plane', 'b_score', 'b_lead', 'b_sum', 'b_win', 'b_round'];
 const SHOW_ONLY = ['gift', 'hint_wait', 'custom_word', 'tg_word', 'tg_linked', 'boost', 'promo'];
 // gift actions of each mode (the engine's room_prefs.GIFT_ACTIONS)
-const GIFT_ACTIONS = { guess: ['hint', 'multi', 'boost', 'steal', 'balloon', 'plane', 'bomber', 'snowball'], battle: ['balloon', 'plane', 'bomber'],
-                       streamer: ['balloon', 'plane', 'bomber', 'snowball'] };
+const GIFT_ACTIONS = { guess: ['hint', 'multi', 'boost', 'steal', 'balloon', 'plane', 'bomber', 'snowball', 'cake'], battle: ['balloon', 'plane', 'bomber'],
+                       streamer: ['balloon', 'plane', 'bomber', 'snowball', 'cake'] };
 
 /** One row per toast: show on/off, voice on/off and its own speech rate; a master switch for every voice. */
 export function ToastsTab({ s, mode }) {

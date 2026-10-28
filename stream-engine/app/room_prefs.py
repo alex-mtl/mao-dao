@@ -63,7 +63,7 @@ class Toasts:
 
 # actions a gift can trigger; the hub runs the animations, the game the game actions
 # steal: the gifter wins the round at once with the word; boost: 3 words in a comment till the stream ends
-GIFT_ACTIONS = ["hint", "multi", "boost", "steal", "balloon", "plane", "bomber", "snowball"]
+GIFT_ACTIONS = ["hint", "multi", "boost", "steal", "balloon", "plane", "bomber", "snowball", "cake"]
 GIFT_MIN_COINS = [5, 10, 30, 100]
 
 

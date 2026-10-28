@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cake demo</title>
+<style>
+  html, body { height: 100%; margin: 0; overflow: hidden; font-family: 'Segoe UI', system-ui, sans-serif; color: #fff; background: #07040f; }
+  body { display: flex; align-items: center; justify-content: center; gap: 18px; }
+  /* the live's 9:16 frame stand-in: the streamer in the top third, the cake show over it */
+  #frame { position: relative; height: 100vh; aspect-ratio: 9 / 16; max-width: 100vw; overflow: hidden;
+           background: linear-gradient(180deg, #3a3150 0%, #2a2340 34%, #120c22 36%, #0b0716 100%); }
+  #host { position: absolute; left: 50%; top: 4%; height: 32%; transform: translateX(-50%); opacity: .6; }
+  .side { width: 300px; display: flex; flex-direction: column; gap: 8px; }
+  .bar { display: flex; gap: 6px; flex-wrap: wrap; }
+  button { font: 800 13px system-ui; padding: 7px 10px; border-radius: 8px; border: 0; cursor: pointer; }
+  button.on { background: #8fd3ff; }
+  #info { font: 600 14px system-ui; line-height: 1.5; color: #ffd7ea; }
+  #chat { height: 300px; overflow: hidden; display: flex; flex-direction: column-reverse; gap: 3px; font-size: 13px;
+          background: rgba(255,255,255,.06); border-radius: 8px; padding: 8px; }
+  #chat b { color: #8fd3ff; }
+  form { display: flex; gap: 6px; }
+  input { flex: 1; font: 14px system-ui; padding: 7px; border-radius: 8px; border: 0; }
+  @media (max-aspect-ratio: 1/1) { .side { position: fixed; left: 8px; bottom: 8px; z-index: 2000; width: auto; } #chat { display: none; } }
+</style>
+</head>
+<body>
+<div id="frame">
+  <svg id="host" viewBox="0 0 200 260"><circle cx="100" cy="70" r="44" fill="#8a78ad"/>
+    <path d="M20 260 C 20 170, 60 128, 100 128 C 140 128, 180 170, 180 260 Z" fill="#8a78ad"/></svg>
+</div>
+<div class="side">
+  <div class="bar">
+    <button id="go">▶ торт</button>
+    <button id="one">🔥 огонь</button>
+    <button id="ten">🔥 ×10 зрителей</button>
+    <button id="fifty">🔥 ×50</button>
+    <button id="auto">▶ чат сам</button>
+    <button id="snd">🔇 звук</button>
+  </div>
+  <div id="info"></div>
+  <div id="chat"></div>
+  <form id="send"><input id="msg" placeholder="комментарий, например: огонь" autocomplete="off"><button>➤</button></form>
+</div>
+<script src="common/i18n.js"></script>
+<script src="common/live.js"></script>
+<script src="common/audio.js"></script>
+<script src="common/cake.js"></script>
+<script>
+  // the real module, as in the games: Cake.start({root}), then every chat comment goes to Cake.comment({name, text})
+  const frame = document.getElementById('frame'), chat = document.getElementById('chat'), info = document.getElementById('info');
+  const names = ['Masha', 'Олег', 'Mikaniri', 'снегурочка_77', 'ДЕД МОРОЗ', 'Ksu', 'Тимур', 'lena.k', 'Vova', 'Алиса'];
+  let i = 0, timer = null, sound = false, t0 = 0;
+  const start = () => { t0 = performance.now(); Cake.start({ root: frame, sound, seed: Math.floor(Math.random() * 2 ** 31) }); };
+  function say(text, name) {
+    name = name || names[i++ % names.length];
+    const fired = Cake.comment({ name, text });
+    const row = document.createElement('div');
+    row.innerHTML = `<b></b> <span></span>${fired ? ' ✅' : ''}`;
+    row.querySelector('b').textContent = name; row.querySelector('span').textContent = text;
+    chat.prepend(row); while (chat.children.length > 40) chat.lastChild.remove();
+  }
+  document.getElementById('go').onclick = start;
+  document.getElementById('one').onclick = () => say('огонь');
+  document.getElementById('ten').onclick = () => { for (let k = 0; k < 10; k++) setTimeout(() => say('огонь!'), k * 90); };
+  document.getElementById('fifty').onclick = () => { for (let k = 0; k < 50; k++) setTimeout(() => say('ОГОНЬ 🔥', names[k % names.length] + (k >= 10 ? k : '')), k * 40); };
+  document.getElementById('auto').onclick = e => {
+    if (timer) { clearInterval(timer); timer = null; e.target.classList.remove('on'); return; }
+    e.target.classList.add('on');
+    timer = setInterval(() => say(Math.random() < .5 ? 'огонь' : ['привет!', 'с днём рождения 🎂', 'вау', 'ура'][Math.floor(Math.random() * 4)]), 1300);
+  };
+  document.getElementById('snd').onclick = e => {
+    sound = !sound; if (sound) AudioKit.enable(); Cake.sound(sound);   // also for the show already playing
+    e.target.textContent = sound ? '🔊 звук' : '🔇 звук';
+  };
+  document.getElementById('send').onsubmit = e => {
+    e.preventDefault(); const m = document.getElementById('msg');
+    if (m.value.trim()) say(m.value.trim(), 'вы'); m.value = '';
+  };
+  addEventListener('resize', () => Cake.resize());
+  setInterval(() => {
+    const s = Cake.info(), phase = { off: 'выключено', pour: 'петарды сыплются', lit: 'фитили горят', fire: 'салют', final: 'финал' }[s.phase];
+    info.innerHTML = `${phase} · осталось петард: <b>${s.left}</b>` + (s.phase === 'fire' ? ` · до конца ≤ ${s.left} с` : '') +
+      (s.waiting ? ` · ждут фитилей: ${s.waiting}` : '') + (t0 && s.running ? ` · идёт ${Math.round((performance.now() - t0) / 1000)} с` : '');
+  }, 250);
+  setTimeout(start, 400);
+</script>
+</body>
+</html>

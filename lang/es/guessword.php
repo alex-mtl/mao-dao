@@ -135,6 +135,7 @@ return [
     'act_plane' => '✈️ Avión',
     'act_bomber' => '🦋 Avión con mariposas',
     'act_snowball' => '❄️ Bola de nieve grande al streamer',
+    'act_cake' => '🎂 Pastel con fuegos (los espectadores escriben «fuego»)',
     'toast_leader' => '🔥 Nuevo líder',
     'toast_jump' => '🚀 Gran salto',
     'toast_so_close' => '😱 ¡Muy cerca!',

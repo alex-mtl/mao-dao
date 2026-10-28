@@ -160,7 +160,7 @@ class Hub:
             e["y_frac"] = round(random.uniform(0.12, 0.45) if e.get("bomber")
                                 else random.uniform(0.2, 0.8), 3)
             e["deg"] = round(random.uniform(-15, 15), 1)
-        if e.get("type") == "snowball" and "seed" not in e:
+        if e.get("type") in ("snowball", "cake") and "seed" not in e:
             e["seed"] = random.randrange(1, 2 ** 31)      # where it hits and how it bursts: the same on every page
         self.feed_seq += 1
         e.update(seq=self.feed_seq, t=time.time())
@@ -183,7 +183,7 @@ class Hub:
 
     def manual_action(self, action, viewer_id):
         """The streamer acts for a viewer from the room page, as if their gift came: a hint, 3 words, the boost,
-        steal the win, a balloon, a plane, butterflies, a snowball."""
+        steal the win, a balloon, a plane, butterflies, a snowball, the cake."""
         u = self.recent.get(viewer_id)
         if not u:
             return False
@@ -240,8 +240,8 @@ class Hub:
 
     GIFT_ANIMATIONS_MAX = 50                          # one batch of a combo: a sane upper bound (the feed keeps 100)
 
-    PROMO_ORDER = ["hint", "bomber", "multi", "boost", "steal", "snowball", "balloon", "plane"]
-    ANIMATIONS = {"balloon", "plane", "bomber", "snowball"}   # gift actions the hub shows itself, on every page
+    PROMO_ORDER = ["hint", "cake", "bomber", "multi", "boost", "steal", "snowball", "balloon", "plane"]
+    ANIMATIONS = {"balloon", "plane", "bomber", "snowball", "cake"}   # gift actions the hub shows itself, on every page
 
     def gift_promos(self):
         """What the stream's gifts do, for the promo line above the bot's name (TT mode): one item per action
@@ -274,7 +274,8 @@ class Hub:
 
     def _gift_animations(self, v, gift, actions, count):
         """Balloon / plane / butterfly plane / big snowball for a gift bound to them (the streamer's gift rules),
-        on every page: one per gift, no pause - 10 gifts = 10 planes (combo parts included)."""
+        on every page: one per gift, no pause - 10 gifts = 10 planes (combo parts included). The cake is a show of
+        its own (up to 100 s, the chat fires its crackers with "огонь"): one per gift batch, the pages queue them."""
         anim = actions & self.ANIMATIONS
         if not anim:
             return
@@ -288,6 +289,8 @@ class Hub:
                            bomber="bomber" in anim, gift=gift)
             if "snowball" in anim:
                 self._feed(type="snowball", id=v.id, name=v.name, avatar=v.avatar, total=total, big=True, gift=gift)
+        if "cake" in anim:
+            self._feed(type="cake", id=v.id, name=v.name, avatar=v.avatar, gift=gift)
         print(f"[gift] {v.name}: {gift} x{n} -> {sorted(anim)}")
 
     def _journal_gift(self, v, gift, count, to):

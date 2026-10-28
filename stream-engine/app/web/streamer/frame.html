@@ -29,6 +29,7 @@
 <script src="common/plane.js"></script>
 <script src="common/vendor/lottie_light.min.js"></script>
 <script src="common/snowball.js"></script>
+<script src="common/cake.js"></script>
 <script>
 (() => {
   const qs = new URLSearchParams(location.search);
@@ -51,7 +52,8 @@
       if (e.type === 'balloon') Balloons.launch(e);
       else if (e.type === 'plane') Plane.fly(e, { sound });
       else if (e.type === 'snowball') Snowball.throw(e, { sound });
-      else Greeter.push(e);
+      else if (e.type === 'cake') Cake.show(e, { sound });
+      else { if (e.type === 'chat') Cake.comment(e); Greeter.push(e); }   // "огонь" fires a cracker
     },
   });
 })();

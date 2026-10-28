@@ -2,3 +2,8 @@ an2-loop.mp3 - a 6 s seamless loop cut from 10-16.6 s of
 "Low passing aeroplane, An-2R (HA-MEN), a bit farther" by ycbcr
 https://freesound.org/s/350574/  -  licensed under CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/)
 Changes: cut, mixed to mono, crossfaded into a loop, normalized.
+
+whistle-1.mp3, whistle-2.mp3, whistle-3.mp3 - the whistle (without the bang) of
+"whistlingrocket_3.wav" https://freesound.org/s/140725/ , "whistlingrocket_2.wav" https://freesound.org/s/140723/ ,
+"whistlingrocket_4.wav" https://freesound.org/s/140721/ by j1987 - CC0 1.0 (public domain, no credit required)
+Changes: cut, mixed to mono, faded out, normalized to -1 dBFS peak.
