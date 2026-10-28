@@ -65,6 +65,13 @@ class LikeBalloons:
         return {"id": viewer.id, "name": u["name"], "avatar": u["avatar"], "total": u["total"], "auto": True,
                 "bomber": bombs}
 
+    def auto_snowball(self, viewer, before):
+        """A snowball at the streamer when the viewer crosses 500, 1000, ... likes this stream (SNOWBALL_LIKES)."""
+        u = self.likes.get(viewer.id)
+        if not u or not crossed(u["total"], before, self._s("SNOWBALL_LIKES")):
+            return None
+        return {"id": viewer.id, "name": u["name"], "avatar": u["avatar"], "total": u["total"], "big": False}
+
     def _s(self, attr):
         return self.settings.get(attr) if self.settings else getattr(config, attr)
 

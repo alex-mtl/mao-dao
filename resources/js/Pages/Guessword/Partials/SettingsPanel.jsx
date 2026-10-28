@@ -17,6 +17,7 @@ const TAB_KEY = { game: 'guessword.tab_game', frame: 'guessword.tab_frame', gift
 const BALLOON_STEPS = [100, 500, 1000, 2000, 5000, 10000];
 const PLANE_STEPS = [1000, 5000, 10000, 20000, 50000, 100000];
 const BOMBER_STEPS = [20000, 50000, 100000, 500000];
+const SNOWBALL_STEPS = [100, 200, 300, 500, 1000, 2000, 5000];
 const kilo = (n) => (n >= 1000 ? n / 1000 + 'K' : String(n));
 
 export function Seg({ value, options, onChange, label = String }) {
@@ -255,6 +256,8 @@ export default function SettingsPanel({ s, mode, setMode, footer }) {
                                           value={gl.plane_auto} onChange={(v) => s.set('global', 'plane_auto', v)} />
                                 <LikesRow title={t('guessword.bomber')} sub={t('guessword.plane_d')} steps={BOMBER_STEPS}
                                           value={gl.bomber} onChange={(v) => s.set('global', 'bomber', v)} />
+                                <LikesRow title={t('guessword.snowball')} sub={t('guessword.plane_d')} steps={SNOWBALL_STEPS}
+                                          value={gl.snowball} onChange={(v) => s.set('global', 'snowball', v)} />
                             </tbody>
                         </table>
                     </>

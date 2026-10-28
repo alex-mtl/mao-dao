@@ -45,6 +45,7 @@ WIN_PAUSE_SEC = _f("WIN_PAUSE_SEC", 15)
 # ---- streamer overlay ----
 LIKES_PER_BALLOON = _i("LIKES_PER_BALLOON", 100)        # likes from one viewer -> their balloon takes off
 PLANE_AUTO_LIKES = _i("PLANE_AUTO_LIKES", 1000)          # the plane flies by itself at 1000, 2000, ... likes (0 = off)
+SNOWBALL_LIKES = _i("SNOWBALL_LIKES", 500)              # a snowball at the streamer every 500, 1000, ... likes (0 = off)
 PLANE_BOMBER_LIKES = 10000      # every 10 000, 20 000, ... likes the plane drops bombs -> butterflies (0 = off; menu setting)
 
 # ---- guess the word ----

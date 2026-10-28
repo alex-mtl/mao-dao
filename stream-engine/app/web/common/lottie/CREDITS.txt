@@ -1,0 +1,5 @@
+snowflake.json - one flake of "Snowflake loader" by Ilya Tsuprun, LottieFiles free animation
+  https://lottiefiles.com/free-animation/snowflake-loader-MDxPOSrp1J  (Lottie Simple License)
+  kept: the layer "snowflake 1", pinned to the middle; the falling path, the other flakes and the shine bar removed
+
+../vendor/lottie_light.min.js - lottie-web 5.12.2 (MIT), the light build: SVG renderer, no expressions

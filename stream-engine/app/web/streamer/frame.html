@@ -27,6 +27,8 @@
 <script src="common/greet.js"></script>
 <script src="common/balloons.js"></script>
 <script src="common/plane.js"></script>
+<script src="common/vendor/lottie_light.min.js"></script>
+<script src="common/snowball.js"></script>
 <script>
 (() => {
   const qs = new URLSearchParams(location.search);
@@ -48,6 +50,7 @@
     onFeed: e => {
       if (e.type === 'balloon') Balloons.launch(e);
       else if (e.type === 'plane') Plane.fly(e, { sound });
+      else if (e.type === 'snowball') Snowball.throw(e, { sound });
       else Greeter.push(e);
     },
   });

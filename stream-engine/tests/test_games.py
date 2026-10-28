@@ -707,6 +707,30 @@ class AutoPlaneTest(unittest.TestCase):
         self.assertEqual(len(planes()), 2)
 
 
+class SnowballTest(unittest.TestCase):
+    def test_snowball_by_likes_and_by_gift(self):
+        from app.hub import Hub
+        saved = config.SNOWBALL_LIKES
+        try:
+            config.SNOWBALL_LIKES = 500
+            hub = Hub(JsonStore(tempfile.mkdtemp()))
+            d = Viewer("ded", "DED", "https://x/ava.png")
+            balls = lambda: [e for e in hub.feed if e["type"] == "snowball"]
+            hub.like(d, 490)
+            self.assertEqual(balls(), [])
+            hub.like(d, 15)                                      # 505 -> a small snowball
+            hub.like(d, 400)                                     # 905: the next one only at 1000
+            self.assertEqual([(b["name"], b["avatar"], b["big"]) for b in balls()], [("DED", "https://x/ava.png", False)])
+            self.assertTrue(balls()[0]["seed"])                  # the same flight on the preview and the overlay
+            hub.gift_rules.set({"snowball": "any"})
+            hub.gift(d, "Rose", 2)                               # a gift bound to it: big ones, one per gift
+            self.assertEqual([b["big"] for b in balls()], [False, True, True])
+            self.assertTrue(hub.manual_action("snowball", "ded"))
+            self.assertEqual(len(balls()), 4)
+        finally:
+            config.SNOWBALL_LIKES = saved
+
+
 class GlobalSettingsTest(unittest.TestCase):
     def test_set_and_validate(self):
         from app.settings import GlobalSettings

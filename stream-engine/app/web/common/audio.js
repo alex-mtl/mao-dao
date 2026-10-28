@@ -119,6 +119,49 @@ window.AudioKit = (() => {
       });
     });
   }
+  // ---------- "snow": a snowball hits the screen - a hand-clap pop (3 quick transients + a low thump + a little
+  // crunch), then a thin shimmering chime: tiny high bells (inharmonic partials) on a pentatonic, scattered over
+  // ~1.2 s in random order, each its own pan and decay, all into the soft reverb - not one glass "ding"
+  function snow(pan = 0, big = false, vol = 0.55) {
+    if (!ctx || muted) return;
+    const t0 = ctx.currentTime + 0.01, out = ctx.createGain(), p = ctx.createStereoPanner ? ctx.createStereoPanner() : null;
+    out.gain.value = vol;
+    if (p) { p.pan.value = Math.max(-0.8, Math.min(0.8, pan)); out.connect(p).connect(fxBus()); }
+    else out.connect(fxBus());
+    out.connect(room());
+    const burst = (at, dur, type, freq, q, v) => {
+      const b = ctx.createBuffer(1, Math.ceil(ctx.sampleRate * dur), ctx.sampleRate), d = b.getChannelData(0);
+      for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+      const s = ctx.createBufferSource(), f = ctx.createBiquadFilter(), g = ctx.createGain();
+      f.type = type; f.frequency.value = freq; f.Q.value = q;
+      g.gain.setValueAtTime(v, t0 + at); g.gain.exponentialRampToValueAtTime(0.0001, t0 + at + dur);
+      s.buffer = b; s.connect(f).connect(g).connect(out); s.start(t0 + at);
+    };
+    [0, 0.011, 0.023].forEach((at, i) => burst(at, i < 2 ? 0.03 : 0.11, 'bandpass', 1150, 0.9, i < 2 ? 0.7 : 0.95));  // clap
+    burst(0, 0.025, 'highpass', 2600, 0.7, 0.6);                                                              // its crack
+    burst(0.02, 0.14, 'bandpass', 4200, 1.5, 0.14);                                                           // snow crunch
+    const th = ctx.createOscillator(), tg = ctx.createGain();                                                 // thump
+    th.frequency.setValueAtTime(150, t0); th.frequency.exponentialRampToValueAtTime(48, t0 + 0.13);
+    tg.gain.setValueAtTime(0.55, t0); tg.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.16);
+    th.connect(tg).connect(out); th.start(t0); th.stop(t0 + 0.2);
+    // the chime: C7 major pentatonic over two octaves, a bell = f + 2.76 f + 5.4 f (quiet), slight detune twin
+    const base = 2093 * Math.pow(2, (Math.floor(Math.random() * 3) - 1) / 12), steps = [0, 2, 4, 7, 9, 12, 14, 16, 19, 21];
+    const n = big ? 22 : 14, span = big ? 1.4 : 1.1;
+    for (let i = 0; i < n; i++) {
+      const at = t0 + 0.04 + span * Math.pow(i / n, 1.35) + Math.random() * 0.03;   // dense at first, then thinning out
+      const f = base * Math.pow(2, steps[Math.floor(Math.random() * steps.length)] / 12);
+      const dec = 0.35 + Math.random() * 0.45, g = ctx.createGain();
+      g.gain.setValueAtTime(0.0001, at); g.gain.exponentialRampToValueAtTime(0.05 + Math.random() * 0.03, at + 0.004);
+      g.gain.exponentialRampToValueAtTime(0.0001, at + dec);
+      if (ctx.createStereoPanner) { const np = ctx.createStereoPanner(); np.pan.value = Math.random() * 1.6 - 0.8; g.connect(np).connect(out); }
+      else g.connect(out);
+      [[f, 1], [f * 1.003, 0.5], [f * 2.76, 0.22], [f * 5.4, 0.06]].forEach(([fr, v]) => {
+        const o = ctx.createOscillator(), og = ctx.createGain();
+        o.type = 'sine'; o.frequency.value = fr; og.gain.value = v;
+        o.connect(og).connect(g); o.start(at); o.stop(at + dec + 0.05);
+      });
+    }
+  }
   function noise(delay, dur, vol, hp) {
     if (!ctx || muted) return;
     const t0 = ctx.currentTime + (delay || 0);
@@ -272,7 +315,7 @@ window.AudioKit = (() => {
   }
 
   return {
-    tone, noise, loop, party, say, spokenName, setVolumes, mount, enable, setLang, setRate,
+    tone, noise, loop, party, snow, say, spokenName, setVolumes, mount, enable, setLang, setRate,
     get ready() { return !!ctx && !muted; },
     get speaking() { return !!synth && (synth.speaking || synth.pending); },
     get running() { return !!ctx && ctx.state === 'running'; },      // browser actually allows sound

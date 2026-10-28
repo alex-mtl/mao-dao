@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Snowball demo</title>
+<style>
+  /* the live's 9:16 frame stand-in: the streamer in the top third, the game below */
+  html, body { height: 100%; margin: 0; overflow: hidden; font-family: 'Segoe UI', system-ui, sans-serif; color: #fff;
+               background: linear-gradient(180deg, #3a3150 0%, #2a2340 34%, #120c22 36%, #0b0716 100%); }
+  #host { position: fixed; left: 50%; top: 4%; height: 32%; transform: translateX(-50%); opacity: .6; }
+  .game { position: fixed; left: 6%; right: 6%; border-radius: 1.2vh; background: rgba(255,255,255,.07); }
+  .bar { position: fixed; left: 8px; bottom: 8px; z-index: 2000; display: flex; gap: 6px; flex-wrap: wrap; }
+  button { font: 800 13px system-ui; padding: 7px 10px; border-radius: 8px; border: 0; cursor: pointer; }
+  button.on { background: #8fd3ff; }
+</style>
+</head>
+<body>
+<svg id="host" viewBox="0 0 200 260"><circle cx="100" cy="70" r="44" fill="#8a78ad"/>
+  <path d="M20 260 C 20 170, 60 128, 100 128 C 140 128, 180 170, 180 260 Z" fill="#8a78ad"/></svg>
+<div class="game" style="top:39%;height:7%"></div>
+<div class="game" style="top:48%;height:30%"></div>
+<div class="game" style="top:80%;height:12%"></div>
+<div class="bar">
+  <button id="like">❄ likes</button>
+  <button id="gift">🎁 gift</button>
+  <button id="auto">▶ auto</button>
+  <button id="snd">🔇 sound</button>
+</div>
+<script src="common/i18n.js"></script>
+<script src="common/audio.js"></script>
+<script src="common/vendor/lottie_light.min.js"></script>
+<script src="common/snowball.js"></script>
+<script>
+  // the real module, as in the games: Snowball.throw(feed event, {sound}); open it at 9:16 (e.g. 405 x 720)
+  const names = ['ДЕД МОРОЗ', 'Mikaniri', 'Masha', 'снегурочка_77', 'Олег'];
+  let i = 0, timer = null, sound = false;
+  const go = big => Snowball.throw({ name: names[i++ % names.length], avatar: '', big, seed: Math.floor(Math.random() * 2 ** 31) }, { sound });
+  document.getElementById('like').onclick = () => go(false);
+  document.getElementById('gift').onclick = () => go(true);
+  document.getElementById('auto').onclick = e => {
+    if (timer) { clearInterval(timer); timer = null; e.target.classList.remove('on'); return; }
+    e.target.classList.add('on'); timer = setInterval(() => go(Math.random() < .2), 1400);
+  };
+  document.getElementById('snd').onclick = e => {
+    sound = !sound; if (sound) AudioKit.enable();
+    e.target.textContent = sound ? '🔊 sound' : '🔇 sound';
+  };
+  setTimeout(() => go(false), 600);
+</script>
+</body>
+</html>
