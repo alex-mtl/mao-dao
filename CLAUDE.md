@@ -506,6 +506,39 @@ PM2 processes (`quiz-*`) and the `mao-dao.com` nginx server blocks.
 The Node app that used to answer on this domain (PM2 `mao-dao-vc`, files in
 `/var/www/mao-dao`) was stopped on 2026-10-15 and is intentionally not deleted.
 
+### A finished feature is a deployed feature (owner's rule, 2026-10-28)
+
+When a feature the owner asked for is done and its tests pass, **ship it
+without asking**: commit to `main` (no feature branches), push, deploy the
+Laravel part and the engine part below, smoke-check, report. Do not stop at a
+local commit and do not ask "deploy?" — the owner expects to see it on
+mao-dao.com. Deploys still replace only specific code files, each batch backed
+up first (`/home/ubuntu/quiz-<timestamp>-pre-<what>.tgz`); never data
+(`/var/lib/guessword-engine`, `storage/`, the DB).
+
+### Deploying the Guess the Word engine (`stream-engine/`)
+
+- systemd service `guessword-engine` (user `guessword`), code in
+  `/var/www/quiz/stream-engine` (files owned `ubuntu:ubuntu`), venv `.venv`,
+  listens on `127.0.0.1:8770`, nginx serves it at `/guessword/engine/`; data in
+  `/var/lib/guessword-engine` (never touch).
+- Before replacing, check the server copies equal the previous commit
+  (`md5sum` vs `git show HEAD~1:<file>`), so nobody's hot-fix is overwritten.
+- Copy the changed files (tar → `scp` → extract into `/var/www/quiz`, then
+  `chown ubuntu:ubuntu`). Page files (`app/web/**`) are read from disk; Python
+  changes need a restart.
+- **Restart ~2 s after a round starts** (standing OK from the owner, even if a
+  streamer is live): background `ssh aws-dev "journalctl -u guessword-engine
+  -f -n0 | grep -m1 -E 'round [0-9]+ \('"`, then `sleep 2`, extract,
+  `sudo systemctl restart guessword-engine`. If no room has played a round
+  in the last ~15 min (check `journalctl --since '-15 min'`), restart at once.
+- Check: `systemctl is-active`, the log shows `[engine] N rooms, listening`
+  and `restored round ...`, no traceback. Overlays reload themselves (the
+  pages' version changes).
+- Engine tests locally: `stream-engine` unittest in a `python:3.12-slim`
+  container; without the word assets ~67 Guess-the-Word tests fail anyway —
+  compare the counts with and without the change.
+
 ### Server specifics (bare metal, no Docker on this host)
 
 - PHP 8.3.23 / nginx / MySQL 8.0. App code: `/var/www/quiz`.
