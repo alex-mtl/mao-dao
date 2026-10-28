@@ -454,9 +454,11 @@ html.chroma #recent > .title { display: none; }
 .giftpromo .gi { font-size: calc(var(--u) * 6); }
 .giftpromo small { display: block; font: 600 calc(var(--u) * 2.6) var(--font-text); opacity: .8; }
 
-/* the other place for what the gifts do: bottom right of the chat zone (TikTok's chat is on the left) */
+/* the other place for what the gifts do: bottom right of the chat zone (TikTok's chat is on the left), the lowest
+   layer - under the balloons, the table and the call to action */
 #giftsBottom { display: none; }
-html.chroma #giftsBottom { display: flex; position: absolute; right: calc(var(--u) * 2.8); bottom: calc(var(--u) * 8); z-index: 33;
+html.chroma #stage { isolation: isolate; }   /* own layers, so the bottom gift list can sit right on the background */
+html.chroma #giftsBottom { display: flex; position: absolute; right: calc(var(--u) * 2.8); bottom: calc(var(--u) * 8); z-index: -1;
                            max-width: 52%; flex-direction: column; align-items: flex-end; pointer-events: none; }
 /* what the gifts do, every gift at once: tiles, a column, a ticker - the colours of the one-at-a-time pill */
 .giftsbox { background: linear-gradient(90deg, rgba(255,216,74,.95), rgba(255,140,40,.95)); color: #1a0b00;

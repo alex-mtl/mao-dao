@@ -488,7 +488,7 @@
   }
   // stream champions (chroma / TT mode): one line per place - avatar + nick when alone, overlapping
   // avatars when tied (like TikTok's viewers), wins, medal
-  let tgBot = '', champGroups = [], likersData = null, sidesKey = '';
+  let tgBot = '', champGroups = [], likersData = null, sidesKey = {};
   // what the overlay shows besides the game (the panel's "On screen" tab, state.screen): each element always,
   // never, or periodically (every N min for N s, on the wall clock); tops may also take turns in a carousel
   const SCREEN_DEFAULT = {
@@ -637,16 +637,28 @@
     const boxOn = gifts && scr.gifts_view !== 'line' && promos.length > 0 && onAir(scr.gifts, scr.gifts_every, scr.gifts_dur);
     const place = scr.gifts_place === 'bottom' && TT && S && S.chatZone ? 'bottom' : 'host';
     if (boxOn) renderGiftsBox();
-    const key = JSON.stringify([champGroups, likersData, tops, bot, tgBot, gifts, boxOn, place, scr.gifts_view, giftsBoxKey]);
-    if (key === sidesKey) return;
-    sidesKey = key;
     const gift = !gifts ? null : scr.gifts_view === 'line' ? promoEl : boxOn ? giftsBox : null;
-    const right = $('champs'), left = $('likers'), bottom = $('giftsBottom');
-    right.replaceChildren(); left.replaceChildren(); bottom.replaceChildren();
-    if (gift) (place === 'bottom' ? bottom : right).append(gift);
-    if (bot) right.append(el('div', 'tgbot', '📲 @' + tgBot));     // the bot's name, readable above the champions
-    TOPS.forEach(k => { if (tops[k]) (tops[k] === 'r' ? right : left).append(...topRows(k)); });
-    sideColumns();
+    const giftKey = gift ? [scr.gifts_view, giftsBoxKey] : null;
+    const topData = { stream: champGroups, planes: likersData && likersData.planes, balloons: likersData && likersData.balloon };
+    const side = (s) => TOPS.filter(k => tops[k] === s).map(k => [k, topData[k]]);
+    // each box is rebuilt only when its own content changes: a likes count must not re-insert (and blink) the gifts
+    const keys = {
+      champs: JSON.stringify([place === 'host' && giftKey, bot && tgBot, side('r')]),
+      likers: JSON.stringify(side('l')),
+      giftsBottom: JSON.stringify(place === 'bottom' && giftKey),
+    };
+    let changed = false;
+    Object.entries(keys).forEach(([id, key]) => {
+      if (sidesKey[id] === key) return;
+      sidesKey[id] = key;
+      changed = true;
+      const box = $(id);
+      box.replaceChildren();
+      if (gift && (id === 'giftsBottom') === (place === 'bottom') && id !== 'likers') box.append(gift);
+      if (id === 'champs' && bot) box.append(el('div', 'tgbot', '📲 @' + tgBot));   // the bot's name, above the champions
+      TOPS.forEach(k => { if (tops[k] && (tops[k] === 'r') === (id === 'champs') && id !== 'giftsBottom') box.append(...topRows(k)); });
+    });
+    if (changed) sideColumns();
   }
   setInterval(renderSides, 500);
   // popups at the bottom of the camera zone go above both side columns (champions, likers)
