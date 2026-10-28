@@ -8,7 +8,7 @@
 // cake turns its top to us, the avatar of the one the cake is for printed over the whole top tier, and then
 // it falls apart into 18 slices flying off the screen.
 // The cake is drawn here (no Lottie): round tiers seen a bit from above, so the turning is visible on the cake itself.
-//   Cake.show(feedEvent, {sound, root}), Cake.start({root, sound, seed, hero, onEnd}), Cake.comment({name, text}), Cake.fire({name}), Cake.sound(on), Cake.info(), Cake.stop()
+//   Cake.show(feedEvent, {sound, root}), Cake.start({root, sound, seed, hero, scale, ground, skyBottom, onBurst, onEnd}), Cake.comment({name, text}), Cake.fire({name}), Cake.sound(on), Cake.info(), Cake.stop()
 window.Cake = (() => {
   // per tier: crackers, width (share of the frame), side height (share of the height), turn direction and speed, rows
   // of sticks on the top (share of the radius - the lower tiers keep the middle for the tier above), the hearts and
@@ -33,6 +33,7 @@ window.Cake = (() => {
 
   let css = false, gen = 0;
   let root, stage, cv, x, W = 0, H = 0, dpr = 1, S = 1;
+  let SC = 1;                                                // opts.scale: the cake's size (1 = 90/60/30% of the width)
   const W0 = 400;                                            // sprites are drawn for a 400 px wide frame, S scales them
   let r = Math.random, geo = [], phi = [0, 0, 0], omega = 0, pre = [1, 0, 0], tilt = TILT, lift = 0;
   let finAt = 0, fin = 0, fans = new Map(), hero = null, slices = null, cut = null;
@@ -121,7 +122,7 @@ window.Cake = (() => {
   function layout() {
     const rc = root.getBoundingClientRect();
     if (!rc.width || !rc.height) return;                     // hidden: lay out when it shows
-    W = rc.width; H = rc.height; S = W / W0; dpr = Math.min(2, devicePixelRatio || 1);
+    W = rc.width; H = rc.height; SC = opts.scale || 1; S = W * SC / W0; dpr = Math.min(2, devicePixelRatio || 1);
     cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
     place();
   }
@@ -131,9 +132,13 @@ window.Cake = (() => {
     const sk = Math.sqrt(Math.max(0, 1 - tilt * tilt));
     let cy = 0;
     TIERS.forEach((t, k) => {
-      const R = t.w * W / 2, ry = R * tilt, hh = t.h * H * sk;
+      const R = t.w * W * SC / 2, ry = R * tilt, hh = t.h * H * SC * sk;
       // the bottom tier stands on the frame's bottom edge, every other one on the middle of the tier below
-      if (k) cy -= hh; else { const c0 = H - hh - ry - H * .004; cy = c0 + (H * .5 - c0) * lift; }
+      if (k) cy -= hh;
+      else {                                                 // ground: where the bottom tier stands (share of the height)
+        const G = H * (opts.ground || 1), c0 = G - hh - ry - H * .004, mid = opts.ground < 1 ? G / 2 : H * .5;
+        cy = c0 + (mid - c0) * lift;
+      }
       geo[k] = { cx: W / 2, cy, R, rx: R, ry, hh, capH: hh * .26 };
     });
   }
@@ -224,7 +229,7 @@ window.Cake = (() => {
     return m;
   }
 
-  const t2h = () => TIERS[2].h * H;
+  const t2h = () => TIERS[2].h * H * SC;
 
   // the finale's picture: the hero's avatar printed over the whole top tier, the name on the ring below
   function drawAvatar() {
@@ -409,7 +414,9 @@ window.Cake = (() => {
     const p = pool[Math.floor(r() * pool.length)], q = at(p), ls = PET.stick * W0 * q.sc;
     p.st = 'gone';
     rockets.push({ p, x: q.x + Math.sin(q.rot) * ls, y: q.y - Math.cos(q.rot) * ls, head: q.rot, v: H * rnd(.3, .45), sc: q.sc,
-                   back: q.d < 0, yEx: H * rnd(.06, .42), t: 0, name: name || '' });
+                   back: q.d < 0, t: 0, name: name || '',
+                   // where it bursts: inside the frame, not lower than opts.skyBottom (the camera zone's upper 85%)
+                   tx: Math.max(W * .1, Math.min(W * .9, q.x + W * rnd(-.25, .25))), yEx: H * rnd(.06, opts.skyBottom || .42) });
     if (opts.sound && window.AudioKit && AudioKit.ready && performance.now() - whistleAt > 90) {   // a real whistle, common/sounds
       whistleAt = performance.now();
       AudioKit.shot(new URL(`common/sounds/whistle-${1 + Math.floor(r() * 3)}.mp3`, document.baseURI).href,
@@ -422,6 +429,7 @@ window.Cake = (() => {
     sparks.push({ x: px, y: py, vx, vy, t: 0, life, c: h == null ? '255,214,140' : null, h, s: size, back });
   }
   function burst(px, py, name) {
+    if (opts.onBurst) opts.onBurst(px, py);
     const room = Math.max(0, MAX_PARTS - parts.length);
     const n = Math.min(room, Math.max(8, Math.round(rnd(18, 30) * Math.min(1, room / 700))));
     const shape = r() < .35, h0 = hue(), h1 = hue(), spd = H * rnd(.3, .42), size = W * .045;
@@ -469,13 +477,18 @@ window.Cake = (() => {
 
     for (let i = rockets.length - 1; i >= 0; i--) {
       const k = rockets[i];
-      k.t += dt; k.v += H * 1.1 * dt; k.head += (0 - k.head) * Math.min(1, dt * 2.6) + Math.sin(k.t * 20) * .01;
+      k.t += dt; k.v += H * 1.1 * dt;
+      const aim = Math.atan2(k.tx - k.x, Math.max(1, k.y - k.yEx));   // turns towards its burst point
+      k.head += (aim - k.head) * Math.min(1, dt * 4) + Math.sin(k.t * 20) * .01;
       k.x += Math.sin(k.head) * k.v * dt; k.y -= Math.cos(k.head) * k.v * dt;
       if (k.back && k.y < geo[2].cy - t2h()) k.back = false;
       for (let j = 0; j < 2; j++)
         spark(k.x + rnd(-1, 1) * S, k.y, rnd(-.03, .03) * H - Math.sin(k.head) * H * .1, Math.cos(k.head) * H * .1 + rnd(0, .05) * H,
               rnd(.25, .55), null, rnd(.8, 1.8) * S, k.back);
-      if (k.y <= k.yEx || k.t > 2.2) { rockets.splice(i, 1); burst(k.x, k.y, k.name); }
+      if (k.y <= k.yEx || k.t > 2.2) {                  // never outside the frame or below the burst line
+        rockets.splice(i, 1);
+        burst(Math.max(W * .05, Math.min(W * .95, k.x)), Math.max(H * .04, Math.min(k.y, H * (opts.skyBottom || .42))), k.name);
+      }
     }
     for (let i = sparks.length - 1; i >= 0; i--) {
       const s = sparks[i]; s.t += dt;
@@ -637,7 +650,7 @@ window.Cake = (() => {
     // a feed event {type: 'cake', name, avatar, seed} (a gift or the room page's "now"): the show for that viewer;
     // while one plays the next ones wait (at most QUEUE)
     show(e, o = {}) {
-      const go = () => api.start({ root: o.root, sound: o.sound, seed: e.seed, hero: { name: e.name, avatar: e.avatar },
+      const go = () => api.start({ root: o.root, sound: o.sound, scale: o.scale, ground: o.ground, skyBottom: o.skyBottom, seed: e.seed, hero: { name: e.name, avatar: e.avatar },
                                    onEnd: () => { const n = shows.shift(); if (n) n(); } });
       if (!running) go(); else if (shows.length < QUEUE) shows.push(go);
     },

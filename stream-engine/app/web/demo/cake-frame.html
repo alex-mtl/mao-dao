@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cake in the game frame</title>
+<style>
+  /* the game page in TikTok LIVE Studio: a 9:16 frame, the camera zone on top (33% by default), the game below */
+  html, body { height: 100%; margin: 0; overflow: hidden; font-family: 'Segoe UI', system-ui, sans-serif; color: #fff; background: #07040f; }
+  body { display: flex; align-items: center; justify-content: center; gap: 18px; }
+  #frame { position: relative; height: 100vh; aspect-ratio: 9 / 16; max-width: 100vw; overflow: hidden; background: #0b0716;
+           outline: 2px dashed rgba(0, 229, 255, .85); outline-offset: -2px; }
+  #cam { position: absolute; left: 0; right: 0; top: 0; height: 33%; overflow: hidden;
+         background: linear-gradient(180deg, #4a3d66, #2a2340); }
+  #cam svg { position: absolute; left: 50%; bottom: 0; height: 88%; transform: translateX(-50%); opacity: .7; }
+  #cam span, #game > span { position: absolute; left: 6px; top: 4px; font: 700 11px system-ui; color: rgba(255,255,255,.6); }
+  #game { position: absolute; left: 0; right: 0; top: 33%; bottom: 0; padding: 2.5% 3%; box-sizing: border-box;
+          display: flex; flex-direction: column; gap: 1.2%; border-top: 2px solid rgba(0, 229, 255, .6); }
+  #game > span { position: static; margin-bottom: 1%; }
+  .bar { height: 4.5%; border-radius: 8px; background: rgba(255,255,255,.14); }
+  .card { height: 14%; border-radius: 10px; background: rgba(255, 64, 160, .28); }
+  .row { flex: 1; max-height: 4.6%; border-radius: 6px; background: rgba(255,255,255,.08); }
+  .cta { height: 5%; border-radius: 8px; background: rgba(0, 229, 255, .25); margin-top: auto; }
+  .side { width: 300px; display: flex; flex-direction: column; gap: 10px; font: 600 14px system-ui; color: #ffd7ea; }
+  .side .row2 { display: flex; gap: 6px; flex-wrap: wrap; }
+  button { font: 800 13px system-ui; padding: 7px 10px; border-radius: 8px; border: 0; cursor: pointer; }
+  button.on { background: #8fd3ff; }
+  input[type=range] { width: 100%; }
+  @media (max-aspect-ratio: 1/1) { .side { position: fixed; left: 8px; bottom: 8px; z-index: 2000; width: 260px; } }
+</style>
+</head>
+<body>
+<div id="frame">
+  <div id="cam"><span>зона камеры (33%)</span>
+    <svg viewBox="0 0 200 260"><circle cx="100" cy="70" r="44" fill="#8a78ad"/>
+      <path d="M20 260 C 20 170, 60 128, 100 128 C 140 128, 180 170, 180 260 Z" fill="#8a78ad"/></svg></div>
+  <div id="game"><span>игра</span>
+    <div class="bar"></div><div class="card"></div>
+    <div class="row"></div><div class="row"></div><div class="row"></div><div class="row"></div><div class="row"></div>
+    <div class="row"></div><div class="row"></div><div class="row"></div><div class="row"></div><div class="row"></div>
+    <div class="cta"></div></div>
+</div>
+<div class="side">
+  <div>Жёлтая пунктирная линия: ниже неё петарды не взрываются (низ 15% зоны камеры). Точки: где были взрывы.</div>
+  <div>Где стоит торт:</div>
+  <div class="row2">
+    <button data-v="seam">на стыке камеры и игры</button>
+    <button data-v="full" class="on">на нижнем краю рамки</button>
+  </div>
+  <div>Размер торта: <b id="sv"></b></div>
+  <input id="scale" type="range" min="0.3" max="1" step="0.05">
+  <div class="row2">
+    <button id="go">▶ заново</button>
+    <button id="fire">🔥 огонь ×10</button>
+    <button id="all">🔥 все сразу (к финалу)</button>
+  </div>
+  <div id="info"></div>
+</div>
+<script src="common/i18n.js"></script>
+<script src="common/live.js"></script>
+<script src="common/audio.js"></script>
+<script src="common/cake.js"></script>
+<script>
+  // the real module inside the game frame: ground = where the bottom tier stands (share of the frame height),
+  // scale = its size (1 = the bottom tier 90% of the frame width)
+  const frame = document.getElementById('frame'), sc = document.getElementById('scale');
+  const V = { seam: { ground: .33, scale: .55 }, full: { ground: 1, scale: 1 } };
+  let v = 'full', n = 0;
+  // bursts: inside the frame, not lower than the camera zone's upper 85% (the dashed line); dots show where they were
+  const SKY = .33 * .85, line = document.createElement('div');
+  line.style.cssText = `position:absolute;left:0;right:0;top:${SKY * 100}%;border-top:2px dashed #ffd84a;z-index:1500`;
+  frame.appendChild(line);
+  window.bursts = [];
+  const dot = (x, y) => { bursts.push([x / frame.clientWidth, y / frame.clientHeight]);
+    const d = document.createElement('i'); d.style.cssText = `position:absolute;left:${x - 3}px;top:${y - 3}px;width:6px;height:6px;border-radius:50%;background:#ffd84a;z-index:1500`;
+    frame.appendChild(d); setTimeout(() => d.remove(), 4000); };
+  const start = () => Cake.start({ root: frame, ground: V[v].ground, scale: +sc.value, hero: { name: 'Masha' }, skyBottom: SKY, onBurst: dot,
+                                   seed: Math.floor(Math.random() * 2 ** 31) });
+  const pick = k => {
+    v = k; sc.value = V[k].scale; document.getElementById('sv').textContent = Math.round(sc.value * 100) + '%';
+    document.querySelectorAll('[data-v]').forEach(b => b.classList.toggle('on', b.dataset.v === k)); start();
+  };
+  document.querySelectorAll('[data-v]').forEach(b => { b.onclick = () => pick(b.dataset.v); });
+  sc.oninput = () => { V[v].scale = +sc.value; document.getElementById('sv').textContent = Math.round(sc.value * 100) + '%'; };
+  sc.onchange = start;
+  document.getElementById('go').onclick = start;
+  document.getElementById('fire').onclick = () => { for (let i = 0; i < 10; i++) Cake.comment({ name: 'v' + n++, text: 'огонь' }); };
+  document.getElementById('all').onclick = () => { for (let i = 0; i < 100; i++) Cake.comment({ name: i % 3 ? 'v' + n++ : 'Masha', text: 'огонь' }); };
+  setInterval(() => {
+    const s = Cake.info();
+    document.getElementById('info').textContent = `${s.phase} · осталось петард: ${s.left}`;
+  }, 300);
+  pick('full');
+</script>
+</body>
+</html>

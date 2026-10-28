@@ -932,13 +932,19 @@
   // (above the hint / call to action) and lifts off at 100 likes
   Balloons.mount({ ground: true, area: $('stage'), bottom: 'calc(var(--u) * 26)',
                    width: 'calc(var(--u) * 20)', sound: true });
+  // the cake lives in the game frame, standing on its bottom edge; its crackers burst inside the frame, in the
+  // camera zone's upper 85% (the whole upper part when there is no camera zone)
+  const cakeAt = () => {
+    const cam = document.documentElement.classList.contains('chroma') && $('chromaZone').offsetHeight / $('stage').offsetHeight;
+    return { sound: true, root: $('stage'), skyBottom: cam ? cam * .85 : undefined };
+  };
   Live.start({ game: 'guess', onState: (s, msg) => { tgBot = msg.tgBot || ''; promos = msg.giftPromos || []; render(s); Balloons.render(msg.balloons);
                                                     renderLikers((msg.balloons || {}).likers); }, onEvent,
                onFeed: e => {
                  if (e.type === 'balloon') Balloons.launch(e);
                  else if (e.type === 'plane') Plane.fly(e, { sound: true });
                  else if (e.type === 'snowball') Snowball.throw(e, { sound: true });
-                 else if (e.type === 'cake') Cake.show(e, { sound: true });
+                 else if (e.type === 'cake') Cake.show(e, cakeAt());
                  else { if (e.type === 'chat') Cake.comment(e); Greeter.push(e); }   // "огонь" fires a cracker
                } });
 })();
