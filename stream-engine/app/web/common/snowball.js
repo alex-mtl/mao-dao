@@ -7,10 +7,15 @@ window.Snowball = (() => {
   const clean = n => (n || '').replace(/[^\p{L}\p{N} ._'-]/gu, '').trim() || '?';
   // where the streamer is: the top third of the frame (fractions of the window)
   const ZONE = { x0: .2, x1: .8, y0: .04, y1: .36 }, HEAD = { x: .5, y: .15 };
-  // several at once (a combo of gifts): up to MAX_AIR in the air, GAP_MS apart, the rest wait
-  const MAX_AIR = 4, GAP_MS = 350, MAX_QUEUE = 40, MAX_FLAKES = 140;
-  let ready = false, sky = null, flakeJson = '', inAir = 0, lastStart = 0, flakes = 0;
-  const queue = [], items = [];
+  // a series (a combo of gifts, several viewers at once): up to MAX_AIR in the air, GAP_MS apart, the rest wait;
+  // at most MAX_FLAKES on the screen and fewer per snowball the longer the queue, so the streamer stays visible
+  const MAX_AIR = 2, GAP_MS = 600, MAX_QUEUE = 40, MAX_FLAKES = 50, MIN_FLAKES = 8;
+  // names: one viewer's series shows the name once, at its last snowball, with "×N"; names of different viewers
+  // follow each other, NAME_GAP_MS apart, never on top of each other
+  const NAME_GAP_MS = 900;
+  let ready = false, sky = null, flakeJson = '', inAir = 0, lastStart = 0, flakes = 0, nameFree = 0;
+  const queue = [], items = [], series = new Map(), flying = new Map();   // viewer -> snowballs in the air
+  const keyOf = e => e.id || clean(e.name);
 
   const CSS = `
   .sb-sky { position: fixed; inset: 0; pointer-events: none; overflow: hidden; z-index: 1000; }
@@ -27,7 +32,7 @@ window.Snowball = (() => {
   .sb-flake { position: absolute; left: 0; top: 0; will-change: transform, opacity; filter: drop-shadow(0 0 .12em rgba(255,255,255,.9)); }
   .sb-flake svg { display: block; }
   .sb-row { position: absolute; left: 0; top: 0; white-space: pre; visibility: hidden; }
-  .sb-letter { position: absolute; left: 0; top: 0; will-change: transform, opacity; white-space: pre;
+  .sb-letter { position: absolute; left: 0; top: 0; z-index: 2; will-change: transform, opacity; white-space: pre;   /* above the flakes */
                -webkit-text-stroke: .07em #fff; paint-order: stroke fill; text-shadow: 0 .06em .14em rgba(0,0,0,.45); }
   .sb-row, .sb-letter { font: 900 var(--fs) 'Segoe UI', system-ui, sans-serif; line-height: 1; }`;
 
@@ -65,6 +70,7 @@ window.Snowball = (() => {
     return [f(0), f(8), f(4)].map(v => +v.toFixed(3));
   }
   const BLACK = '"c":{"a":0,"k":[0,0,0,1]';                   // the file's only color
+  const WHITE = .25;                                         // this share of the flakes is pure white, the rest colored
   const flakeData = c => JSON.parse(flakeJson.split(BLACK).join(`"c":{"a":0,"k":[${c.join(',')},1]`));
 
   function avatarUrl(name) {                                 // no avatar: the first letter on a color of the name
@@ -92,6 +98,7 @@ window.Snowball = (() => {
     img.onerror = () => { img.onerror = null; img.src = avatarUrl(name); };
     img.src = e.avatar || avatarUrl(name);
     sky.appendChild(el);
+    flying.set(keyOf(e), (flying.get(keyOf(e)) || 0) + 1);
     if (sound) AudioKit.noise(0, .35, .06, 1800);            // whoosh
     let t = 0;
     items.push(dt => {
@@ -101,7 +108,16 @@ window.Snowball = (() => {
       if (p < 1) return true;
       el.remove(); inAir--; next();
       if (sound) AudioKit.snow((tx / W) * 1.2 - .6, big);    // the clap and the chime, as the flakes burst
-      burst(tx, ty, size * .85, big, r, W, H); letters(tx, ty, name, r, W, H);
+      burst(tx, ty, size * .85, big, r, W, H);
+      const key = keyOf(e), n = (series.get(key) || 0) + 1;
+      flying.set(key, flying.get(key) - 1);
+      if (flying.get(key) > 0 || queue.some(([q]) => keyOf(q) === key)) series.set(key, n);   // more of theirs coming
+      else {
+        series.delete(key);
+        const wait = Math.max(0, nameFree - Date.now());
+        nameFree = Math.max(nameFree, Date.now()) + NAME_GAP_MS;
+        setTimeout(() => letters(tx, ty, n > 1 ? `${name} ×${n}` : name, r, W, H), wait);
+      }
       return false;
     });
   }
@@ -117,17 +133,20 @@ window.Snowball = (() => {
       if (p < 1) return true; puff.remove(); return false;
     });
     if (!flakeJson || !window.lottie) return;
-    const n = Math.min(big ? 26 : 14, MAX_FLAKES - flakes), base = H * 2.5 / 16;   // a size-1 flake: 2.5/16 of the height
+    const load = queue.length + inAir;                       // snowballs still to come in this series
+    const want = Math.max(MIN_FLAKES, Math.round((big ? 26 : 14) / (1 + load * .5)));
+    const n = Math.min(want, MAX_FLAKES - flakes), base = H * 2.5 / 16;     // a size-1 flake: 2.5/16 of the height
     for (let i = 0; i < n; i++) {
       const w = base * rnd(.5, 1.3);                         // 0.5 - 1.3 of the normal size
       const el = document.createElement('div'); el.className = 'sb-flake';
       el.style.width = el.style.height = w + 'px'; sky.appendChild(el); flakes++;
       const anim = lottie.loadAnimation({ container: el, renderer: 'svg', loop: false, autoplay: false,
-                                          animationData: flakeData(rgb(...pick(r))) });
+                                          animationData: flakeData(r() < WHITE ? [1, 1, 1] : rgb(...pick(r))) });
       // the flake grows 0 -> full in frames 0-86 of the file: a fast pop-in out of the snowball, then still (we spin it)
       anim.setSpeed(4); anim.playSegments([15, 86], true);
       // straight rays, the speed falls off (drag): pos = v0 / k * (1 - e^-kt); an even spin
-      const a = (i / n) * Math.PI * 2 + rnd(-.25, .25), v0 = rnd(.5, 1.1) * H * (big ? .95 : .7), drag = rnd(1.6, 2.2);
+      const a = (i / n) * Math.PI * 2 + rnd(-.25, .25), v0 = rnd(.45, 1) * H * (big ? .4 : .3), drag = rnd(1.6, 2.2);
+      // (stops at v0 / drag: at most ~1/4 of the height for a big one - the swarm stays around the streamer)
       const spin = rnd(120, 260) * (r() < .5 ? -1 : 1), life = rnd(2.4, 3.2), rot0 = rnd(0, 360);
       let t = 0;
       items.push(dt => {

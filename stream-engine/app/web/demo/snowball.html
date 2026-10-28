@@ -24,6 +24,8 @@
 <div class="bar">
   <button id="like">❄ likes</button>
   <button id="gift">🎁 gift</button>
+  <button id="combo">🎁×10 one viewer</button>
+  <button id="mix">🎁 5 viewers</button>
   <button id="auto">▶ auto</button>
   <button id="snd">🔇 sound</button>
 </div>
@@ -35,9 +37,12 @@
   // the real module, as in the games: Snowball.throw(feed event, {sound}); open it at 9:16 (e.g. 405 x 720)
   const names = ['ДЕД МОРОЗ', 'Mikaniri', 'Masha', 'снегурочка_77', 'Олег'];
   let i = 0, timer = null, sound = false;
-  const go = big => Snowball.throw({ name: names[i++ % names.length], avatar: '', big, seed: Math.floor(Math.random() * 2 ** 31) }, { sound });
+  const go = (big, name) => Snowball.throw({ name: name || names[i++ % names.length], avatar: '', big, seed: Math.floor(Math.random() * 2 ** 31) }, { sound });
   document.getElementById('like').onclick = () => go(false);
   document.getElementById('gift').onclick = () => go(true);
+  // a combo of 10 gifts at once: the engine sends 10 events in one go, the module queues them
+  document.getElementById('combo').onclick = () => { const n = names[i++ % names.length]; for (let k = 0; k < 10; k++) go(true, n); };
+  document.getElementById('mix').onclick = () => names.forEach(n => go(true, n));
   document.getElementById('auto').onclick = e => {
     if (timer) { clearInterval(timer); timer = null; e.target.classList.remove('on'); return; }
     e.target.classList.add('on'); timer = setInterval(() => go(Math.random() < .2), 1400);
