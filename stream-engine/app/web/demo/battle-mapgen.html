@@ -185,7 +185,35 @@ function gen(n, seed) {
   const ownD = dijkstra([...Array(N).keys()].filter(i => own[i] >= 0), () => 1).d;
   const hc = [W / 2 + (R() - .5) * 40, (TOP + BOT) / 2 + (R() - .5) * 60];
   let hub = -1; for (let i = 0, bd = Infinity; i < N; i++) { if (ownD[i] < 3 || terr[i] === 3) continue; const d = Math.hypot(hx(i) - hc[0], hy(i) - hc[1]); if (d < bd) { bd = d; hub = i; } }
-  const roads = []; // no roads for now (owner's call), so no gates either: the wall is solid
+  const roads = []; // no roads for now (owner's call)
+  // gates: two per wall, each 4 wall hexes in a row along the wall, ≥ 5 hexes from every map edge, ≥ 20 hexes from the other gate
+  const cube = i => { const c = i % COLS, r = i / COLS | 0, x = c - (r - (r & 1)) / 2; return [x, r, -x - r]; };
+  const hdist = (a, b) => { const p = cube(a), q = cube(b); return Math.max(Math.abs(p[0] - q[0]), Math.abs(p[1] - q[1]), Math.abs(p[2] - q[2])); };
+  const visC = Math.floor((W - HW / 2) / HW), visR = Math.floor((H - 1) / RS); // last on-screen column / row
+  const offEdge = i => { const c = i % COLS, r = i / COLS | 0; return c >= 5 && r >= 5 && c <= visC - 5 && r <= visR - 5; };
+  for (const T of towns) {
+    const wall = []; for (let i = 0; i < N; i++) if (own[i] === T.t && kind[i] === 1 && offEdge(i)) wall.push(i);
+    const ok = v => v >= 0 && own[v] === T.t && kind[v] === 1 && offEdge(v);
+    const pair = i => { // walk along the wall from i (both directions) until the gate is 4 hexes wide
+      const path = [i];
+      for (let guard = 0; path.length < 4 && guard < 8; guard++) {
+        for (const end of [path.length - 1, 0]) {
+          const u = path[end], m = [];
+          for (let k = 0; k < 6; k++) { const v = nbrs[u * 6 + k]; if (ok(v) && !path.includes(v)) m.push(v); }
+          if (m.length && path.length < 4) { const v = m[R() * m.length | 0]; end ? path.push(v) : path.unshift(v); }
+        }
+      }
+      return path.length === 4 ? path : null;
+    };
+    for (let tries = 0; tries < 60 && T.gates.length < 2; tries++) {
+      T.gates = [];
+      const a = pair(wall[R() * wall.length | 0]); if (!a) continue;
+      const far = wall.filter(i => a.every(g => hdist(i, g) >= 20)); if (!far.length) continue;
+      const b = pair(far[R() * far.length | 0]); if (!b || !a.every(g => b.every(h => hdist(g, h) >= 20))) continue;
+      T.gates = [a, b];
+    }
+    for (const gt of T.gates) for (const i of gt) kind[i] = 4;
+  }
   for (const T of towns) for (const [x, y] of walls[T.t].filter((_, j) => j % 10 === 5)) { // towers spaced along the wall
     let b = -1, bd = Infinity; for (let i = 0; i < N; i++) if (own[i] === T.t && kind[i] === 1) { const d = (hx(i) - x) ** 2 + (hy(i) - y) ** 2; if (d < bd) { bd = d; b = i; } }
     if (b >= 0 && !T.towers.includes(b)) T.towers.push(b); }
@@ -213,7 +241,8 @@ function gen(n, seed) {
   let minGap = Infinity;
   anchors.forEach((_, t) => { const src = []; for (let i = 0; i < N; i++) if (isWall(i, t)) src.push(i);
     const { d } = dijkstra(src, () => 1); for (let i = 0; i < N; i++) if ((kind[i] === 1 || kind[i] === 4) && own[i] !== t) minGap = Math.min(minGap, d[i] - 1); });
-  return { n, seed, terr, elev, own, kind, pat, fseeds, towns, roads, hub, objs, trees, got, land, walls, pieces, minGap };
+  const gateGap = Math.min(...towns.map(T => T.gates.length === 2 ? Math.min(...T.gates[0].flatMap(g => T.gates[1].map(h => hdist(g, h)))) : 0));
+  return { n, seed, terr, elev, own, kind, pat, fseeds, towns, roads, hub, objs, trees, got, land, walls, pieces, minGap, gateGap };
 }
 
 // ================= render =================
@@ -250,7 +279,7 @@ function render(M, cv) {
   // wall shadow on the outer side, towers, keeps
   g.fillStyle = '#0004'; g.beginPath();
   for (let i = 0; i < N; i++) if (kind[i] === 1 || kind[i] === 4) hexPath(g, hx(i) + 1.6, hy(i) + 2, S * .9); g.fill();
-  for (let i = 0; i < N; i++) if (kind[i] === 1 || kind[i] === 4) { g.fillStyle = kind[i] === 4 ? '#1f8f0a' : '#39ff14' /* border hexes bright green, gates darker green (debug view) */; g.beginPath(); hexPath(g, hx(i), hy(i), S * .95); g.fill(); }
+  for (let i = 0; i < N; i++) if (kind[i] === 1 || kind[i] === 4) { g.fillStyle = kind[i] === 4 ? '#ff9f1a' : '#39ff14' /* border hexes bright green, gates orange (debug view) */; g.beginPath(); hexPath(g, hx(i), hy(i), S * .95); g.fill(); }
   for (const tr of M.trees) {
     g.fillStyle = '#0006'; g.beginPath(); g.ellipse(tr.x + 1.5, tr.y + 2, tr.r, tr.r * .8, 0, 0, 7); g.fill();
     g.fillStyle = `hsl(${tr.h},40%,${tr.l}%)`; g.beginPath(); g.arc(tr.x, tr.y, tr.r, 0, 7); g.fill();
@@ -315,9 +344,9 @@ function build() {
     const f = document.createElement('figure'), cv = document.createElement('canvas'); cv.width = W; cv.height = H;
     // a map that breaks a rule (wall in pieces, < 5 hexes between walls, a territory under its share) is rerolled
     const minShare = n <= 4 ? .149 : .109; let M, tries = 0;
-    do { M = gen(n, (Math.random() * 1e9) | 0); tries++; } while (tries < 8 && !(M.pieces.every(p => p === 1) && M.minGap >= 5 && M.got.every(c => c / N >= minShare)));
+    do { M = gen(n, (Math.random() * 1e9) | 0); tries++; } while (tries < 8 && !(M.pieces.every(p => p === 1) && M.minGap >= 5 && M.gateGap >= 20 && M.got.every(c => c / N >= minShare)));
     render(M, cv);
-    const cap = document.createElement('figcaption'); cap.textContent = `№${M.seed % 10000} · куски границ: ${M.pieces.join('/')} · мин. зазор: ${M.minGap} сот · ` + M.got.map(c => Math.round(c / N * 100) + '%').join(' ');
+    const cap = document.createElement('figcaption'); cap.textContent = `№${M.seed % 10000} · куски границ: ${M.pieces.join('/')} · мин. зазор: ${M.minGap} сот · между воротами ≥ ${M.gateGap} · ` + M.got.map(c => Math.round(c / N * 100) + '%').join(' ');
     f.append(cv, cap); maps.append(f);
     cv.onclick = () => { const c = document.createElement('canvas'); c.width = W; c.height = H; c.getContext('2d').drawImage(cv, 0, 0); big.innerHTML = ''; big.append(c); big.style.display = 'grid'; };
   }
