@@ -76,7 +76,7 @@ function gen(n, seed) {
   for (let i = 0; i < N; i++) {
     const x = hx(i), y = hy(i), e = fbm(x / 150, y / 150, seed), m = fbm(x / 110 + 40, y / 110, seed + 3);
     elev[i] = e;
-    terr[i] = e < .2 ? 3 : e > .74 ? 4 : m > .6 ? 1 : 0;
+    terr[i] = e > .74 ? 4 : m > .6 ? 1 : 0; // no water at all (owner's call): no lakes, no rivers
   }
   // river: random-weight path between two opposite edges, crossing the neutral middle
   let river = [];
@@ -185,16 +185,7 @@ function gen(n, seed) {
   const ownD = dijkstra([...Array(N).keys()].filter(i => own[i] >= 0), () => 1).d;
   const hc = [W / 2 + (R() - .5) * 40, (TOP + BOT) / 2 + (R() - .5) * 60];
   let hub = -1; for (let i = 0, bd = Infinity; i < N; i++) { if (ownD[i] < 3 || terr[i] === 3) continue; const d = Math.hypot(hx(i) - hc[0], hy(i) - hc[1]); if (d < bd) { bd = d; hub = i; } }
-  const rcost = i => kind[i] === 3 || kind[i] === 4 || kind[i] === 5 ? .3 : kind[i] === 1 ? 4 : terr[i] === 3 ? 9 : terr[i] === 1 ? 2.5 : terr[i] === 4 ? 2 : 1;
-  const roads = [];
-  const lay = (a, b) => { const { par } = dijkstra([a], rcost, b); const p = trace(par, b);
-    for (const i of p) { if (kind[i] === 1 || kind[i] === 4) kind[i] = 4; else if (terr[i] === 3) kind[i] = 5; else if (kind[i] === 0 || kind[i] === 2) kind[i] = kind[i] === 2 ? 2 : 3; }
-    roads.push(p); return p; };
-  for (const T of towns) lay(T.keep, hub);
-  const ord = [...towns].sort((a, b) => Math.atan2(hy(a.keep) - H / 2, hx(a.keep) - W / 2) - Math.atan2(hy(b.keep) - H / 2, hx(b.keep) - W / 2));
-  if (n > 2) ord.forEach((A, k) => { if (n === 3 || R() < .75) lay(A.keep, ord[(k + 1) % n].keep); });
-  for (const side of [0, 1]) { const e = hexAt(side ? W - 2 : 1, (TOP + BOT) / 2 + (R() - .5) * 300); if (own[e] < 0) lay(hub, e); }
-  kind[hub] = 3;
+  const roads = []; // no roads for now (owner's call), so no gates either: the wall is solid
   for (const T of towns) for (const [x, y] of walls[T.t].filter((_, j) => j % 10 === 5)) { // towers spaced along the wall
     let b = -1, bd = Infinity; for (let i = 0; i < N; i++) if (own[i] === T.t && kind[i] === 1) { const d = (hx(i) - x) ** 2 + (hy(i) - y) ** 2; if (d < bd) { bd = d; b = i; } }
     if (b >= 0 && !T.towers.includes(b)) T.towers.push(b); }
