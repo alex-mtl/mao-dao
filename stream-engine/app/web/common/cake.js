@@ -413,10 +413,13 @@ window.Cake = (() => {
     const seen = stuck.filter(p => at(p).d > 0), pool = seen.length && r() < .7 ? seen : stuck;
     const p = pool[Math.floor(r() * pool.length)], q = at(p), ls = PET.stick * W0 * q.sc;
     p.st = 'gone';
-    rockets.push({ p, x: q.x + Math.sin(q.rot) * ls, y: q.y - Math.cos(q.rot) * ls, head: q.rot, v: H * rnd(.3, .45), sc: q.sc,
-                   back: q.d < 0, t: 0, name: name || '',
-                   // where it bursts: inside the frame, not lower than opts.skyBottom (the camera zone's upper 85%)
-                   tx: Math.max(W * .1, Math.min(W * .9, q.x + W * rnd(-.25, .25))), yEx: H * rnd(.06, opts.skyBottom || .42) });
+    // the path is set at the start: a straight line from the cracker to its burst point, which lies on the line of
+    // its stick's lean, inside the frame and not lower than opts.skyBottom (the camera zone's upper 85%); a lean that
+    // would leave the frame is straightened for the take-off. No turning in the air.
+    const x0 = q.x + Math.sin(q.rot) * ls, y0 = q.y - Math.cos(q.rot) * ls, yEx = Math.min(y0 - H * .1, H * rnd(.06, opts.skyBottom || .42));
+    const tx = Math.max(W * .1, Math.min(W * .9, x0 + Math.tan(q.rot) * (y0 - yEx)));
+    rockets.push({ p, x: x0, y: y0, head: Math.atan2(tx - x0, y0 - yEx), v: H * rnd(.3, .45), sc: q.sc,
+                   back: q.d < 0, t: 0, name: name || '', yEx });
     if (opts.sound && window.AudioKit && AudioKit.ready && performance.now() - whistleAt > 90) {   // a real whistle, common/sounds
       whistleAt = performance.now();
       AudioKit.shot(new URL(`common/sounds/whistle-${1 + Math.floor(r() * 3)}.mp3`, document.baseURI).href,
@@ -478,9 +481,7 @@ window.Cake = (() => {
     for (let i = rockets.length - 1; i >= 0; i--) {
       const k = rockets[i];
       k.t += dt; k.v += H * 1.1 * dt;
-      const aim = Math.atan2(k.tx - k.x, Math.max(1, k.y - k.yEx));   // turns towards its burst point
-      k.head += (aim - k.head) * Math.min(1, dt * 4) + Math.sin(k.t * 20) * .01;
-      k.x += Math.sin(k.head) * k.v * dt; k.y -= Math.cos(k.head) * k.v * dt;
+      k.x +=Math.sin(k.head) * k.v * dt; k.y -= Math.cos(k.head) * k.v * dt;
       if (k.back && k.y < geo[2].cy - t2h()) k.back = false;
       for (let j = 0; j < 2; j++)
         spark(k.x + rnd(-1, 1) * S, k.y, rnd(-.03, .03) * H - Math.sin(k.head) * H * .1, Math.cos(k.head) * H * .1 + rnd(0, .05) * H,
