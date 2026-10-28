@@ -45,6 +45,15 @@ class SemanticIndex:
         self.categories = meta.get("categories", {})
         self.level = meta.get("level", "easy")
         self.zipf = meta.get("zipf", {})
+        # Valid secret words for custom (setter/host) words: nouns in nominative
+        # singular (plural-only nouns allowed), generated offline from OpenCorpora.
+        # Missing file = no restriction (fallback to the vocab-only check).
+        self.valid_nouns = set()
+        try:
+            with open(os.path.join(assets_dir, "valid_nouns.txt"), encoding="utf-8") as f:
+                self.valid_nouns = {w.strip() for w in f if w.strip()}
+        except OSError:
+            pass
         if self.lang == "ru" and self.level == "normal" and self.zipf:
             # Filter secret pools, not the vocabulary: guessing and hints
             # still use the full vocab; only secret picking is restricted.

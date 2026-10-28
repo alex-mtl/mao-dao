@@ -1118,6 +1118,9 @@ class GuessGame(BaseGame):
                 print(f"[guess] can't log a missing word: {e}")
             print(f"[guess] {item.get('name')}'s word '{item.get('word')}' isn't in the dictionary")
             return False, None
+        if sem.lang == "ru" and getattr(sem, "valid_nouns", None) and word not in sem.valid_nouns:
+            print(f"[guess] {item.get('name')}'s word '{word}' isn't a noun in nominative singular")
+            return False, None
         return True, word
 
     def queue_custom(self, item):
