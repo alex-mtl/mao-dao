@@ -19,9 +19,21 @@ class GlobalSettings:
         "fx_volume": ("FX_VOLUME", list(range(0, 101, 10))),
         "greet": ("GREET_JOINS", [1, 0]),
     }
+    # the shows that fire by themselves on likes: a room set up before one of them existed gets it off (0), not the
+    # config default - a new show must not start on someone's stream until the streamer turns it on
+    AUTO = ("balloon_likes", "plane_auto", "bomber", "snowball", "cake")
 
     def __init__(self):
         self._v = {attr: getattr(config, attr) for attr, _ in self.OPTIONS.values()}
+
+    def load(self, saved):
+        """the values saved for the room; a show from AUTO missing there (newer than the room's settings) is off"""
+        if not saved:
+            return                              # a new room: config defaults
+        for k in self.AUTO:
+            saved.setdefault(k, 0)
+        for k, v in saved.items():
+            self.set(k, v)
 
     def get(self, attr):
         """current value by its config name, e.g. get("LIKES_PER_BALLOON")"""

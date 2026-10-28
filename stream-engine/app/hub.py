@@ -33,8 +33,7 @@ class Hub:
         # per-game settings from the menu dialog: {game: {key: value}}
         self.global_settings = GlobalSettings()
         saved = s.get("options", {})
-        for k, v in (saved.pop("global", None) or {}).items():
-            self.global_settings.set(k, v)
+        self.global_settings.load(saved.pop("global", None))
         self.toasts = Toasts(saved.pop("toasts", None))           # each toast: show / voice / its speed
         self.gift_rules = GiftRules(saved.pop("gifts", None))     # which gift triggers which action
         if "break" in saved:                          # old single on/off switch for guess

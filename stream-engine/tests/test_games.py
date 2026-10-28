@@ -783,6 +783,20 @@ class GlobalSettingsTest(unittest.TestCase):
         self.assertEqual(gs.get("VOICE_RATE"), 1.25)
         self.assertEqual((other.get("PLANE_AUTO_LIKES"), config.PLANE_AUTO_LIKES), (default, default))  # isolated
 
+    def test_new_auto_show_off_for_an_old_room(self):
+        from app.hub import Hub
+        saved = config.CAKE_LIKES
+        try:
+            config.CAKE_LIKES = 5000
+            old = JsonStore(tempfile.mkdtemp())                  # set up before the cake existed: no "cake" saved
+            old.save(Hub.SESSION, {"options": {"global": {"balloon_likes": 100, "plane_auto": 1000}}})
+            hub = Hub(old)
+            self.assertEqual(hub.global_settings.values()["cake"], 0)
+            self.assertEqual(hub.global_settings.values()["plane_auto"], 1000)
+            self.assertEqual(Hub(JsonStore(tempfile.mkdtemp())).global_settings.values()["cake"], 5000)  # a new room
+        finally:
+            config.CAKE_LIKES = saved
+
 
 class BomberTest(unittest.TestCase):
     def test_bomber_every_10000_likes(self):
