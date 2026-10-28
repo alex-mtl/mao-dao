@@ -559,7 +559,8 @@
     if (key === giftsBoxKey) return;
     giftsBoxKey = key;
     giftsBox.className = 'giftsbox ' + scr.gifts_view;
-    const items = promos.map(p => {
+    // cheapest gift first ("any gift" counts as 0, "from N coins" as N); equal prices keep the rules' order
+    const items = [...promos].sort((a, b) => (a.coins || 0) - (b.coins || 0)).map(p => {
       const it = el('span', 'gitem');
       it.append(giftPic(p), el('span', 'tx', t('g.promo.' + p.action)));
       it.title = giftLabel(p);
