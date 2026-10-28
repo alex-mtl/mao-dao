@@ -79,7 +79,7 @@ function upload(tid, local) {
     for (const f of files) {
       const to = path.join(dest, f);
       fs.mkdirSync(path.dirname(to), { recursive: true });
-      execFileSync('scp', ['-q', `${HOST}:"${EX}/${tid}/druzhok/${f.slice(2)}"`, to]);
+      execFileSync('scp', ['-q', `${HOST}:${EX}/${tid}/druzhok/${f.slice(2)}`, to]);
       console.log(to, fs.statSync(to).size, 'B');
     }
     if (files.length) ssh(`sudo rm -rf ${EX}/${tid}/druzhok`);
