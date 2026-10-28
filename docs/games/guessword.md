@@ -75,6 +75,30 @@ On a room's first start `App\Games\Guessword\Services\BotClient` registers it in
 encrypted in `guessword_rooms.tg_key`; Laravel passes it to the engine with the room. The same key opens
 the word-ranker Lambdas. Registering the same id again rotates the key.
 
+## Load and scaling (measured 2026-10-28)
+
+Two live streams: ~190 guesses/min, ~140 chat messages/min, ~50 like events/min, <1 gift/min per room;
+the engine used ~8% of one core and 282 MB. Viewers do not open the overlay, so more viewers mean more
+events, not more web clients.
+
+**Already in place: delivery to overlays is batched.** Games only append events (`emit`); the hub's
+`broadcaster` loop (`stream-engine/app/hub.py`) sends the state plus all new events at most every 0.1 s,
+one message per tick to all clients of the room. A burst of likes or guesses never means a message per
+event. Keep it that way: never push to websockets straight from an event handler.
+
+What limits a room is the processing of each event in the single Python thread (TikTok client, guess
+lookup, game logic). Order of work when audiences grow, each step only when a measurement asks for it:
+
+1. **Measure peaks, not averages**: CPU per second (p95/p99) and the delay from a TikTok event to the
+   overlay message (p95/max) on a big stream, plus TikTok socket reconnects.
+2. **Collapse bursts inside a tick**: e.g. many like events of one tick → one balloons update, so the
+   per-tick message stays small whatever the chat does.
+3. **TikTok ingestion in its own process** (parsing, filtering to candidate guesses), the game logic gets
+   ready guesses → two cores for one stream.
+4. **Rooms in several engine processes** (sharding by room; rooms do not share state by design) and,
+   for a very large stream, its own instance. One room still lives in one process, so steps 2–3 matter
+   for a single huge stream, not just more servers.
+
 ## Tests
 
 `tests/Feature/Guessword/` (Pest, engine faked with `Http::fake`); the engine has its own unittest
