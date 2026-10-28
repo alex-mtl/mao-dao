@@ -326,6 +326,18 @@ class GiftHintTest(unittest.TestCase):
         self.assertEqual(len(g.hints), 2)
         self.assertEqual(g.get_options()["hint_cd"], 20)
 
+    def test_hint_cooldown_zero_is_no_limit(self):
+        g = GuessGame(JsonStore(tempfile.mkdtemp()))
+        g.tick(time.time()); g.tick(time.time() + 0.01)
+        g.set_option("hint_cd", 0)
+        self.assertEqual(g.get_options()["hint_cd"], 0)
+        eva = Viewer("eva", "Eva", "", 1)
+        g.on_gift(eva, "Rose", 3)                          # one hint now, 2 on the account
+        g.on_comment(eva, "подсказка")                     # no pause: spent at once
+        g.on_comment(eva, "подсказка")
+        self.assertEqual(len(g.hints), 3)
+        self.assertNotIn("eva", g.credits)
+
     def test_gift_hint_beats_best_guess(self):
         g = GuessGame(JsonStore(tempfile.mkdtemp()))
         g.tick(time.time()); g.tick(time.time() + 0.01)

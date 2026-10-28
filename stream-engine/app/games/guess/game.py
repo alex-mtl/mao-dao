@@ -105,7 +105,7 @@ class GuessGame(BaseGame):
                "fan_min": [1, 5, 10, 15, 20, 25, 30, 40],   # fans only: from this team level
                "grace": [15, 30, 60],              # seconds a non-follower gets to follow
                "level": [1, 2, 3],                 # dictionary: 1 easy (any word), 2 normal (nouns), 3 hard (ru only)
-               "hint_cd": [5, 10, 15, 20],         # seconds between two hints of the same viewer
+               "hint_cd": [0, 5, 10, 15, 20],      # seconds between two hints of the same viewer (0 = no limit)
                "chroma": [0, 1],                   # TikTok chroma key: green top for the streamer's camera
                "chroma_top": [25, 30, 32, 33, 35, 40, 45, 50],   # height of that green zone, % of the frame
                "frame": [16, 19.5, 20],            # frame 9:16 / 9:19.5 (phones) / 9:20
