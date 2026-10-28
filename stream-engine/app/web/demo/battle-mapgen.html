@@ -106,19 +106,18 @@ function gen(n, seed) {
     const into = a => { const x = O[0] + Math.cos(a) * 30, y = O[1] + Math.sin(a) * 30; return x > 0 && x < W && y > 0 && y < H; };
     if (a2 - a1 > Math.PI) a2 -= Math.PI * 2; else if (a1 - a2 > Math.PI) a2 += Math.PI * 2;
     if (!into((a1 + a2) / 2)) a2 += a2 > a1 ? -Math.PI * 2 : Math.PI * 2;
-    const m = 3 + (R() * 3 | 0), ts = [], fs = [], elbow = [];
-    for (let j = 1; j <= m; j++) { ts.push((j + (R() - .5) * .6) / (m + 1)); fs.push(.75 + R() * .5); }
-    for (let j = 0; j <= m; j++) elbow.push(R() < .45 ? (R() < .5 ? 1 : 2) : 0);
+    // a meandering line: radius and angle both wander with two octaves of noise (no straight legs)
+    const ns = seed + 100 + t * 17, f1 = 2.5 + R() * 1.5, f2 = 7 + R() * 4;
     const line = bulge => {
-      const pts = [P1];
-      ts.forEach((tt, j) => { const a = a1 + (a2 - a1) * tt, r = (r1 + (r2 - r1) * tt) * (1 + bulge * Math.sin(Math.PI * tt)) * fs[j];
-        pts.push([clamp(O[0] + Math.cos(a) * r, 12, W - 12), clamp(O[1] + Math.sin(a) * r, 12, H - 12)]); });
-      pts.push(P2);
-      const out = [pts[0]];
-      for (let j = 1; j < pts.length; j++) { const p = pts[j - 1], q = pts[j];
-        if (elbow[j - 1] && Math.hypot(q[0] - p[0], q[1] - p[1]) > 50) out.push(elbow[j - 1] === 1 ? [q[0], p[1]] : [p[0], q[1]]);
-        out.push(q); }
-      return out;
+      const pts = [];
+      for (let j = 0; j <= 80; j++) {
+        const tt = j / 80, env = Math.sin(Math.PI * tt);
+        const wob = (vnoise(tt * f1, 1, ns) - .5) * .7 + (vnoise(tt * f2, 2, ns) - .5) * .3;
+        const a = a1 + (a2 - a1) * (tt + (vnoise(tt * f1, 3, ns) - .5) * .18 * env);
+        const r = (r1 + (r2 - r1) * tt) * (1 + bulge * env) * (1 + wob * env);
+        pts.push(j === 0 ? P1 : j === 80 ? P2 : [clamp(O[0] + Math.cos(a) * r, 12, W - 12), clamp(O[1] + Math.sin(a) * r, 12, H - 12)]);
+      }
+      return pts;
     };
     const area = pts => { const P = [O, ...pts]; let c = 0; for (let i = 0; i < N; i++) if (own[i] < 0 && inPoly(hx(i), hy(i), P)) c++; return c; };
     const want = N * ri(shareR[0], shareR[1]);
@@ -164,7 +163,7 @@ function gen(n, seed) {
   if (n > 2) ord.forEach((A, k) => { if (n === 3 || R() < .75) lay(A.keep, ord[(k + 1) % n].keep); });
   for (const side of [0, 1]) { const e = hexAt(side ? W - 2 : 1, (TOP + BOT) / 2 + (R() - .5) * 300); if (own[e] < 0) lay(hub, e); }
   kind[hub] = 3;
-  for (const T of towns) for (const [x, y] of walls[T.t].slice(1, -1)) { // a tower on every bend of the wall
+  for (const T of towns) for (const [x, y] of walls[T.t].filter((_, j) => j % 10 === 5)) { // towers spaced along the wall
     let b = -1, bd = Infinity; for (let i = 0; i < N; i++) if (own[i] === T.t && kind[i] === 1) { const d = (hx(i) - x) ** 2 + (hy(i) - y) ** 2; if (d < bd) { bd = d; b = i; } }
     if (b >= 0 && !T.towers.includes(b)) T.towers.push(b); }
   // neutral holdings: farthest-point sampling over the neutral land
@@ -183,7 +182,7 @@ function gen(n, seed) {
   for (let i = 0; i < N; i++) { if (terr[i] !== 1 || kind[i] !== 0 || hash(i, 1, seed) > .6) continue; const k = (hx(i) / 7 | 0) + ',' + (hy(i) / 7 | 0); if (occ.has(k)) continue; occ.add(k);
     trees.push({ x: hx(i), y: hy(i), r: 3.5 + hash(i, 2, seed) * 3, h: 95 + hash(i, 3, seed) * 30 | 0, l: 21 + hash(i, 4, seed) * 9 | 0 }); }
   trees.sort((a, b) => a.y - b.y);
-  return { n, seed, terr, elev, own, kind, pat, fseeds, towns, roads, hub, objs, trees, got, land };
+  return { n, seed, terr, elev, own, kind, pat, fseeds, towns, roads, hub, objs, trees, got, land, walls };
 }
 
 // ================= render =================
@@ -249,6 +248,9 @@ function render(M, cv) {
     g.fillStyle = '#0006'; g.beginPath(); g.ellipse(x + 2, y + 3, 4, 2.6, 0, 0, 7); g.fill();
     g.fillStyle = TEAMS[T.t]; g.beginPath(); g.arc(x, y, 4, 0, 7); g.fill(); g.strokeStyle = '#0009'; g.lineWidth = 1; g.stroke();
     g.fillStyle = '#9a9a9a'; g.beginPath(); g.arc(x, y - 1, 2, 0, 7); g.fill(); }
+  // debug overlay: the generated border lines in bright green (as in the owner's sketch)
+  g.strokeStyle = '#39ff14'; g.lineWidth = 5; g.lineCap = g.lineJoin = 'round';
+  for (const pts of M.walls) { g.beginPath(); pts.forEach(([x, y], j) => j ? g.lineTo(x, y) : g.moveTo(x, y)); g.stroke(); }
   const vg = g.createRadialGradient(W / 2, H / 2, 260, W / 2, H / 2, 660); vg.addColorStop(0, '#0000'); vg.addColorStop(1, '#0007'); g.fillStyle = vg; g.fillRect(0, 0, W, H);
   g.fillStyle = '#000a'; g.fillRect(0, 0, W, TOP - 10); g.fillRect(0, BOT + 6, W, H - BOT);
   g.fillStyle = '#f4e6c2'; g.font = '900 22px Georgia, serif'; g.textAlign = 'center'; g.fillText(`⚔ КРЕПОСТИ · ${M.n} команды`, W / 2, 34);
