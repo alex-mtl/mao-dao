@@ -163,6 +163,8 @@ return [
     'balloon_d' => 'every N likes of one viewer',
     'plane' => '✈️ Plane',
     'plane_d' => 'every N likes of one viewer this stream',
+    'likes_custom' => 'Custom…',
+    'likes_custom_hint' => 'any whole number from :min to :max',
     'bomber' => '🦋 Butterfly rain',
     'snowball' => '❄️ Snowball at the streamer',
     'cake' => '🎂 Cake with fireworks',

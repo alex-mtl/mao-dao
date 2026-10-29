@@ -468,6 +468,17 @@ class BalloonsTest(unittest.TestCase):
         self.assertEqual(bl.snapshot()["inflating"], [])
         self.assertEqual(bl.total_of("mao"), 5000)                   # likes still count (planes)
 
+    def test_like_thresholds_take_any_whole_number(self):
+        from app.settings import GlobalSettings
+        s = GlobalSettings()
+        for v in (50, 250000, 1000000, 777, 0):              # a step, an old step, a typed-in value, off
+            self.assertTrue(s.set("bomber", v), v)
+            self.assertEqual(s.values()["bomber"], v)
+        for v in (5, 20_000_000, 12.5, "100", True, None):   # too small / too big / not a whole number
+            self.assertFalse(s.set("bomber", v), v)
+        self.assertEqual(s.values()["bomber"], 0)
+        self.assertFalse(s.set("voice_rate", 3))             # other settings keep their fixed choices
+
     def test_hub_sends_balloons_on_any_game(self):
         from app.hub import Hub
         config.LIKES_PER_BALLOON = 100
@@ -790,8 +801,9 @@ class GlobalSettingsTest(unittest.TestCase):
         default = config.PLANE_AUTO_LIKES
         self.assertTrue(gs.set("plane_auto", 2000))
         self.assertEqual(gs.get("PLANE_AUTO_LIKES"), 2000)
-        self.assertFalse(gs.set("plane_auto", 1234))             # not one of the choices
-        self.assertEqual(gs.get("PLANE_AUTO_LIKES"), 2000)
+        self.assertTrue(gs.set("plane_auto", 1234))              # like thresholds: any whole number
+        self.assertFalse(gs.set("plane_auto", 5))                # below LIKES_RANGE
+        self.assertEqual(gs.get("PLANE_AUTO_LIKES"), 1234)
         self.assertTrue(gs.set("greet", 0))
         self.assertEqual(gs.values()["greet"], 0)
         self.assertTrue(gs.set("voice_rate", 1.25))

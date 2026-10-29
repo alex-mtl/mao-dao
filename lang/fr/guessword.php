@@ -163,6 +163,8 @@ return [
     'balloon_d' => 'tous les N likes d’un spectateur',
     'plane' => '✈️ Avion',
     'plane_d' => 'tous les N likes d’un spectateur pendant le live',
+    'likes_custom' => 'Autre valeur…',
+    'likes_custom_hint' => 'n’importe quel nombre entier de :min à :max',
     'bomber' => '🦋 Pluie de papillons',
     'snowball' => '❄️ Boule de neige sur le streamer',
     'cake' => '🎂 Gâteau feu d’artifice',

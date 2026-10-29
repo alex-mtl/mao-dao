@@ -163,6 +163,8 @@ return [
     'balloon_d' => 'cada N likes de un espectador',
     'plane' => '✈️ Avión',
     'plane_d' => 'cada N likes de un espectador en el directo',
+    'likes_custom' => 'Otro valor…',
+    'likes_custom_hint' => 'cualquier número entero de :min a :max',
     'bomber' => '🦋 Lluvia de mariposas',
     'snowball' => '❄️ Bola de nieve al streamer',
     'cake' => '🎂 Pastel con fuegos',

@@ -15,13 +15,12 @@ const SECTIONS = {
 const LIVE_SECTIONS = ['screen'];            // applied at once, no Apply button
 const TAB_KEY = { game: 'guessword.tab_game', frame: 'guessword.tab_frame', screen: 'guessword.tab_screen', gifts: 'guessword.tab_gifts',
                   toasts: 'guessword.tab_toasts', likes: 'guessword.tab_likes', catalog: 'guessword.tab_catalog' };
-// like thresholds the streamer picks from (every N likes of one viewer); 0 = off
-const BALLOON_STEPS = [100, 500, 1000, 2000, 5000, 10000];
-const PLANE_STEPS = [1000, 5000, 10000, 20000, 50000, 100000];
-const BOMBER_STEPS = [20000, 50000, 100000, 500000];
-const SNOWBALL_STEPS = [100, 200, 300, 500, 1000, 2000, 5000];
-const CAKE_STEPS = [1000, 2000, 5000, 10000, 20000, 50000];
-const kilo = (n) => (n >= 1000 ? n / 1000 + 'K' : String(n));
+// like thresholds the streamer picks from (every N likes of one viewer), the same for every show; 0 = off.
+// Any other whole number in LIKES_MIN..LIKES_MAX can be typed in (the engine's LIKE_STEPS / LIKES_RANGE).
+const LIKE_STEPS = [100, 200, 300, 500, 1000, 2000, 5000, 10000, 20000, 50000, 100000, 250000, 500000, 1000000];
+const LIKES_MIN = 10;
+const LIKES_MAX = 10000000;
+const kilo = (n) => (n >= 1000000 ? n / 1000000 + 'M' : n >= 1000 ? n / 1000 + 'K' : String(n));
 
 export function Seg({ value, options, onChange, label = String }) {
     return (
@@ -66,11 +65,20 @@ function Field({ label, children }) {
 }
 
 /** One row "thing — on/off — every N likes": off = 0, on brings back the last threshold (or the first step). */
-function LikesRow({ title, sub, value, steps, onChange }) {
-    const [last, setLast] = useState(value || steps[0]);
+function LikesRow({ title, sub, value, onChange }) {
+    const { t } = useLaravelReactI18n();
+    const [last, setLast] = useState(value || LIKE_STEPS[0]);
+    // a value outside the list (typed in, or saved before the list changed) shows as the custom one
+    const [custom, setCustom] = useState(!!value && !LIKE_STEPS.includes(value));
+    const [text, setText] = useState(value ? String(value) : '');
     const on = !!value;
-    // a value saved before these steps existed (e.g. butterflies at 10K) stays visible and selected
-    if (value && !steps.includes(value)) steps = [...steps, value].sort((a, b) => a - b);
+    const pick = (v) => { setLast(v); onChange(v); };
+    const typed = (str) => {
+        setText(str);
+        const n = Number(str);
+        if (Number.isInteger(n) && n >= LIKES_MIN && n <= LIKES_MAX) pick(n);
+    };
+    const bad = custom && on && Number(text) !== value;
     return (
         <tr className="border-t border-warm-100 first:border-t-0">
             <td className="w-[40%] py-2.5 pr-3">
@@ -81,7 +89,38 @@ function LikesRow({ title, sub, value, steps, onChange }) {
                 <Switch on={on} onChange={(v) => onChange(v ? last : 0)} />
             </td>
             <td className={'py-2.5 ' + (on ? '' : 'pointer-events-none opacity-40')}>
-                <Seg value={value} options={steps} label={kilo} onChange={(v) => { setLast(v); onChange(v); }} />
+                <span className="flex flex-wrap items-center gap-2">
+                    <select
+                        className="h-9 rounded-lg border-warm-300 bg-surface py-0 text-sm font-semibold text-ink-900"
+                        value={custom ? 'custom' : (value || last)}
+                        disabled={!on}
+                        onChange={(e) => {
+                            if (e.target.value === 'custom') {
+                                setCustom(true);
+                                setText(String(value || last));
+                            } else {
+                                setCustom(false);
+                                pick(Number(e.target.value));
+                            }
+                        }}
+                    >
+                        {LIKE_STEPS.map((n) => <option key={n} value={n}>{kilo(n)}</option>)}
+                        <option value="custom">{t('guessword.likes_custom')}</option>
+                    </select>
+                    {custom && (
+                        <input
+                            type="number"
+                            min={LIKES_MIN}
+                            max={LIKES_MAX}
+                            step="1"
+                            className={'h-9 w-32 rounded-lg bg-surface py-0 text-sm text-ink-900 ' + (bad ? 'border-red-400' : 'border-warm-300')}
+                            value={text}
+                            disabled={!on}
+                            onChange={(e) => typed(e.target.value)}
+                            title={t('guessword.likes_custom_hint', { min: LIKES_MIN, max: kilo(LIKES_MAX) })}
+                        />
+                    )}
+                </span>
             </td>
         </tr>
     );
@@ -258,15 +297,15 @@ export default function SettingsPanel({ s, mode, setMode, footer }) {
                                 </tr>
                             </thead>
                             <tbody>
-                                <LikesRow title={t('guessword.balloon')} sub={t('guessword.balloon_d')} steps={BALLOON_STEPS}
+                                <LikesRow title={t('guessword.balloon')} sub={t('guessword.balloon_d')}
                                           value={gl.balloon_likes} onChange={(v) => s.set('global', 'balloon_likes', v)} />
-                                <LikesRow title={t('guessword.plane')} sub={t('guessword.plane_d')} steps={PLANE_STEPS}
+                                <LikesRow title={t('guessword.plane')} sub={t('guessword.plane_d')}
                                           value={gl.plane_auto} onChange={(v) => s.set('global', 'plane_auto', v)} />
-                                <LikesRow title={t('guessword.bomber')} sub={t('guessword.plane_d')} steps={BOMBER_STEPS}
+                                <LikesRow title={t('guessword.bomber')} sub={t('guessword.plane_d')}
                                           value={gl.bomber} onChange={(v) => s.set('global', 'bomber', v)} />
-                                <LikesRow title={t('guessword.snowball')} sub={t('guessword.plane_d')} steps={SNOWBALL_STEPS}
+                                <LikesRow title={t('guessword.snowball')} sub={t('guessword.plane_d')}
                                           value={gl.snowball} onChange={(v) => s.set('global', 'snowball', v)} />
-                                <LikesRow title={t('guessword.cake')} sub={t('guessword.plane_d')} steps={CAKE_STEPS}
+                                <LikesRow title={t('guessword.cake')} sub={t('guessword.plane_d')}
                                           value={gl.cake} onChange={(v) => s.set('global', 'cake', v)} />
                             </tbody>
                         </table>
