@@ -78,6 +78,45 @@ it('gives every streamer only their own room, never another one', function () {
         ->not->toContain($roomA->overlay_token);
 });
 
+it('lets a super admin into every room and nobody else', function () {
+    Http::fake([
+        'engine.test/*' => Http::response(engineRooms()),
+        'bot.test/platform/games' => Http::response(['id' => 'gw1', 'game_key' => 'key-1']),
+    ]);
+    $streamer = User::factory()->create(['email' => 'streamer@example.com']);
+    $this->actingAs($streamer)->post('/guessword/room', ['tiktok' => 'mao', 'lang' => 'ru']);
+    $room = GuesswordRoom::where('user_id', $streamer->id)->sole();
+    $admin = User::factory()->create();
+    $admin->role()->associate(Role::factory()->create(['slug' => Role::SUPER_ADMIN]))->save();
+
+    $this->actingAs($admin)->get('/guessword')->assertInertia(fn ($p) => $p->where('isAdmin', true));
+    $this->actingAs($admin)->get('/guessword/rooms')->assertInertia(fn ($p) => $p
+        ->component('Guessword/Rooms')->has('rooms', 1)->where('rooms.0.id', $room->id)->where('rooms.0.tiktok', 'mao'));
+    $this->actingAs($admin)->get('/guessword/rooms/'.$room->id)->assertInertia(fn ($p) => $p
+        ->component('Guessword/Room')->where('room.foreign', $streamer->name)
+        ->where('room.controlUrl', $room->controlUrl()));
+    $this->actingAs($admin)->post('/guessword/rooms/'.$room->id.'/start')->assertSessionHas('success');
+    Http::assertSent(fn ($r) => str_ends_with($r->url(), '/internal/rooms/'.$room->engineId().'/start'));
+    $this->actingAs($admin)->post('/guessword/rooms/'.$room->id, ['tiktok' => 'mao2', 'lang' => 'en']);
+    expect($room->fresh()->only('tiktok_username', 'lang'))->toBe(['tiktok_username' => 'mao2', 'lang' => 'en']);
+    expect(GuesswordRoom::count())->toBe(1);                                     // the admin's visit made no room of their own
+
+    // the streamer (with the streamer pack) and an ordinary user: not the list, not someone's room by id
+    $other = User::factory()->create(['email' => 'other@example.com']);
+    config(['guessword.streamers' => ['streamer@example.com', 'other@example.com']]);
+    foreach ([$streamer, $other, User::factory()->create()] as $u) {
+        $this->actingAs($u)->get('/guessword')->assertInertia(fn ($p) => $p->where('isAdmin', false));
+        $this->actingAs($u)->get('/guessword/rooms')->assertForbidden();
+        $this->actingAs($u)->get('/guessword/rooms/'.$room->id)->assertForbidden();
+        $this->actingAs($u)->post('/guessword/rooms/'.$room->id.'/stop')->assertForbidden();
+        $this->actingAs($u)->post('/guessword/rooms/'.$room->id.'/link')->assertForbidden();
+        $this->actingAs($u)->post('/guessword/rooms/'.$room->id, ['tiktok' => 'x', 'lang' => 'ru'])->assertForbidden();
+    }
+    auth()->logout();
+    $this->get('/guessword/rooms/'.$room->id)->assertRedirect(route('login'));
+    expect($room->fresh()->tiktok_username)->toBe('mao2');
+});
+
 it('keeps the room pages for streamers only', function () {
     Http::fake(['engine.test/*' => Http::response(engineRooms())]);
 

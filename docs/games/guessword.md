@@ -41,6 +41,10 @@ Who may run a room is answered by the platform service `App\Services\Capabilitie
 (`guessword.tiktok`): super admins and the e-mails in `GUESSWORD_STREAMERS` (pilot allowlist; the
 planned "streamer pack" replaces it there, not in the game).
 
+Every streamer reaches only their own room: `/guessword/room*` takes no room id, and the engine opens a
+room only by its secret tokens. Super admins alone also see every room: `/guessword/rooms` (list) and
+`/guessword/rooms/{room}` (the same room page and actions for that room; anyone else gets 403).
+
 ## Laravel ↔ engine
 
 `App\Games\Guessword\Services\EngineClient` calls the engine's `/internal/*` with header

@@ -6,12 +6,15 @@ import SecondaryButton from '@/Components/SecondaryButton';
 import TextInput from '@/Components/TextInput';
 import PlatformLayout from '@/Layouts/PlatformLayout';
 import { Cog6ToothIcon } from '@heroicons/react/24/outline';
-import { Head, router, useForm } from '@inertiajs/react';
+import { Head, Link, router, useForm } from '@inertiajs/react';
 import { useLaravelReactI18n } from 'laravel-react-i18n';
 import { useEffect, useRef, useState } from 'react';
 import SettingsPanel, { MODES } from './Partials/SettingsPanel';
 import qrcode from 'qrcode-generator';
 import useEngineSettings from './Partials/useEngineSettings';
+
+// where an action goes: the streamer's own room, or the room a super admin opened from the list
+const act = (room, name) => (room.foreign ? route('guessword.rooms.' + name, room.id) : route('guessword.room.' + name));
 
 /**
  * The streamer's room: one workspace. Left - the game as it looks in TikTok LIVE Studio (a silent
@@ -46,9 +49,9 @@ export default function Room({ room, languages, notice, problem }) {
         setMenu(false);
         try { await s.setActive(game); } catch (e) { /* the platform's start reports the engine problem */ }
         setMode(game);
-        if (!room.running) router.post(route('guessword.room.start'), {}, { preserveScroll: true });
+        if (!room.running) router.post(act(room, 'start'), {}, { preserveScroll: true });
     };
-    const stop = () => { setMenu(false); router.post(route('guessword.room.stop'), {}, { preserveScroll: true }); };
+    const stop = () => { setMenu(false); router.post(act(room, 'stop'), {}, { preserveScroll: true }); };
 
     const applyBtn = (cls = '') => (
         <PrimaryButton type="button" className={'justify-center ' + cls} onClick={apply} disabled={s.busy || !s.changes}>
@@ -61,7 +64,13 @@ export default function Room({ room, languages, notice, problem }) {
             <Head title={t('guessword.room_title')} />
 
             <div className="mx-auto max-w-7xl px-3 py-5 sm:px-5">
-                {notice && <p className="mb-3 rounded-lg bg-primary-50 px-4 py-2 text-sm text-primary-800">{notice}</p>}
+                {room.foreign && (
+                    <p className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-lg bg-warm-100 px-4 py-2 text-sm font-semibold text-ink-800">
+                        <span>{t('guessword.foreign_room', { name: room.foreign })}{room.tiktok && <span className="ml-2 text-ink-500">@{room.tiktok}</span>}</span>
+                        <Link href={route('guessword.rooms')} className="text-primary-700 hover:underline">{t('guessword.all_rooms')}</Link>
+                    </p>
+                )}
+                {notice &&<p className="mb-3 rounded-lg bg-primary-50 px-4 py-2 text-sm text-primary-800">{notice}</p>}
                 {problem && <p className="mb-3 rounded-lg bg-danger-50 px-4 py-2 text-sm text-danger-700">{problem}</p>}
                 {!room.running && room.stopReason === 'no_live' && (
                     <p className="mb-3 rounded-lg bg-warm-50 px-4 py-2 text-sm text-ink-700">{t('guessword.no_live_stopped', { nick: room.tiktok || '' })}</p>
@@ -195,7 +204,7 @@ function AccountModal({ show, onClose, room, languages }) {
 
     const save = (e) => {
         e.preventDefault();
-        form.post(route('guessword.room.update'), {
+        form.post(act(room, 'update'), {
             preserveScroll: true,
             onSuccess: () => { form.setData('euler_key', ''); onClose(); },
         });
@@ -222,7 +231,7 @@ function AccountModal({ show, onClose, room, languages }) {
                     <SecondaryButton
                         type="button"
                         onClick={() => window.confirm(t('guessword.regenerate_confirm')) &&
-                            router.post(route('guessword.room.link'), {}, { preserveScroll: true })}
+                            router.post(act(room, 'link'), {}, { preserveScroll: true })}
                     >
                         {t('guessword.regenerate')}
                     </SecondaryButton>

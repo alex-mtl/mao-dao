@@ -6,7 +6,7 @@ import { useLaravelReactI18n } from 'laravel-react-i18n';
  * Guess the Word for TikTok LIVE: the streams playing it right now and, for streamers with
  * access to the TikTok mode, the way into their own room. Public, like every section.
  */
-export default function Index({ games, engineOnline, canStart }) {
+export default function Index({ games, engineOnline, canStart, isAdmin }) {
     const { t } = useLaravelReactI18n();
     const time = (iso) => (iso ? new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '');
 
@@ -20,14 +20,24 @@ export default function Index({ games, engineOnline, canStart }) {
                         <h1 className="font-heading text-2xl font-bold text-ink-900">{t('guessword.title')}</h1>
                         <p className="mt-1 text-sm text-ink-500">{t('guessword.subtitle')}</p>
                     </div>
-                    {canStart && (
-                        <Link
-                            href={route('guessword.room')}
-                            className="shrink-0 rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white shadow-soft transition hover:bg-primary-700"
-                        >
-                            {t('guessword.start_game')}
-                        </Link>
-                    )}
+                    <div className="flex shrink-0 flex-wrap gap-2">
+                        {isAdmin && (
+                            <Link
+                                href={route('guessword.rooms')}
+                                className="rounded-lg border-2 border-primary-600 px-4 py-2 text-sm font-semibold text-primary-700 transition hover:bg-primary-50"
+                            >
+                                {t('guessword.all_rooms')}
+                            </Link>
+                        )}
+                        {canStart && (
+                            <Link
+                                href={route('guessword.room')}
+                                className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white shadow-soft transition hover:bg-primary-700"
+                            >
+                                {t('guessword.start_game')}
+                            </Link>
+                        )}
+                    </div>
                 </div>
 
                 <section aria-labelledby="gw-running" className="mt-8">
