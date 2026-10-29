@@ -49,6 +49,11 @@ separable later:
    answers "may this user do X?", games only ask. (For the Guess the Word
    pilot this is an allowlist; the streamer pack replaces it later without
    touching the game.)
+   **"Turn on the streamer pack for user X"** = today: add the user's e-mail
+   to `GUESSWORD_STREAMERS` (comma separated) in `/var/www/quiz/.env` on
+   `aws-dev`, then `php artisan config:cache`. Super admins have it anyway.
+   Find the user via a PHP script that bootstraps the app (`artisan tinker`
+   hangs over ssh); recent sign-ups are often spam bots with random names.
 4. **Sidecars and cloud services talk to Laravel only over HTTP** with a
    shared secret (`/internal/*`), as `media-sfu` already does.
 
