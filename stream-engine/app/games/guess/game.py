@@ -41,7 +41,7 @@ LAST_ROUND_SEC = 20                              # ... at most this often
 MAO_CALL_SEC = 30
 SETTER_TICKER_SEC = 120                          # "this word was picked by ..." on the ticker every 2 minutes
 LOG_EVENTS = {"round_start", "gift", "hint", "boost", "steal", "new_leader", "winner", "timeout", "mao_call"}
-LOG_KEYS = ("name", "gift", "count", "word", "by", "rank", "kind", "reason", "cmd", "n")
+LOG_KEYS = ("name", "uid", "gift", "count", "word", "by", "rank", "kind", "reason", "cmd", "n")
 STUCK_PAUSE_SEC = 120                          # the active game paused this long = a bug: drop the round, start anew
 LAST_NAMER_SEC = 20           # a row shows who named its word last this long, then the first namer again
 NEIGHBOURS_FROM_RANK = 10      # a boosted word gets its rank neighbours only when it is below this place
@@ -333,7 +333,7 @@ class GuessGame(BaseGame):
                            "best": player.best, "streak": streak}
         stolen = bool(player) and player.id == self.stolen_by          # won with a "steal the win" gift
         self.emit("winner", reason=reason, word=self._shown_word(), stolen=stolen,
-                  name=player.name if player else None,
+                  name=player.name if player else None, uid=player.id if player else None,
                   avatar=player.avatar if player else "", streak=streak)
         if player and streak >= 2:
             self.emit("streak", name=player.name, n=streak)
@@ -597,7 +597,7 @@ class GuessGame(BaseGame):
         new, prev = ranked[0], self.players.get(self.leader_id)
         self.leader_id = new.id
         if prev is not None and new.best > 1:
-            self.emit("new_leader", name=new.name, avatar=new.avatar, rank=new.best,
+            self.emit("new_leader", name=new.name, uid=new.id, avatar=new.avatar, rank=new.best,
                       prev=prev.name, comeback=new.id in self.past_leaders)
         self.past_leaders.add(new.id)
 
@@ -638,7 +638,7 @@ class GuessGame(BaseGame):
         actions: what this gift triggers by the streamer's gift rules ("hint", "multi", ...);
         None (no rules given) = the old behaviour: any gift gives a hint."""
         if not repeat:
-            self.emit("gift", name=viewer.name, avatar=viewer.avatar, gift=gift, count=count)
+            self.emit("gift", name=viewer.name, uid=viewer.id, avatar=viewer.avatar, gift=gift, count=count)
         print(f"[guess] gift {gift} x{count} from {viewer.name}" + (" (combo)" if repeat else "")
               + (f" -> {sorted(actions)}" if actions else ""))
         if actions is None:
@@ -652,7 +652,7 @@ class GuessGame(BaseGame):
         if "boost" in actions and viewer.id not in self.boost_ids:
             self.boost_ids.add(viewer.id)                # 3 words in one comment till the stream ends
             self.store.save(self.BOOSTS, sorted(self.boost_ids))
-            self.emit("boost", name=viewer.name, avatar=viewer.avatar)
+            self.emit("boost", name=viewer.name, uid=viewer.id, avatar=viewer.avatar)
             print(f"[guess] {viewer.name} may send 3 words till the stream ends (gift)")
         if "multi" in actions and self.phase == PLAYING and viewer.id not in self.multi_ids:
             self.multi_ids.add(viewer.id)                # 3 words in one comment until the round ends
@@ -685,7 +685,7 @@ class GuessGame(BaseGame):
             if viewer.id not in self.boost_ids:
                 self.boost_ids.add(viewer.id)
                 self.store.save(self.BOOSTS, sorted(self.boost_ids))
-                self.emit("boost", name=viewer.name, avatar=viewer.avatar)
+                self.emit("boost", name=viewer.name, uid=viewer.id, avatar=viewer.avatar)
             return True
         if action == "steal" and self.phase == PLAYING and not (self.setter and viewer.id.lower() == self.setter["id"]):
             self._steal(viewer)
@@ -699,7 +699,7 @@ class GuessGame(BaseGame):
         p = self.players.setdefault(viewer.id, RoundPlayer(viewer.id, viewer.name, viewer.avatar))
         p.name, p.avatar = viewer.name, viewer.avatar or p.avatar
         p.pending_until, p.dq = 0.0, False
-        self.emit("steal", name=p.name, avatar=p.avatar)
+        self.emit("steal", name=p.name, uid=p.id, avatar=p.avatar)
         print(f"[guess] {p.name} stole the win (gift): {self.secret}")
         p.words.discard(self.secret)
         self.stolen_by = p.id
@@ -1025,7 +1025,7 @@ class GuessGame(BaseGame):
             print(f"[guess] {viewer.name} calls Mao: too soon")
             return False
         self.mao_call_t = now
-        self.emit("mao_call", name=viewer.name, avatar=viewer.avatar)
+        self.emit("mao_call", name=viewer.name, uid=viewer.id, avatar=viewer.avatar)
         print(f"[guess] {viewer.name} calls Mao")
         return True
 

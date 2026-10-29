@@ -468,6 +468,14 @@ class BalloonsTest(unittest.TestCase):
         self.assertEqual(bl.snapshot()["inflating"], [])
         self.assertEqual(bl.total_of("mao"), 5000)                   # likes still count (planes)
 
+    def test_round_log_names_the_player(self):
+        from app.games.guess.game import GuessGame
+        g = GuessGame.__new__(GuessGame)
+        g.log, g.events, g.seq, g.dirty = [], [], 0, False
+        g.SAVE_NOW_EVENTS = ()
+        g.emit("gift", name="Mao", uid="mao.montreal", avatar="", gift="Rose", count=1)
+        self.assertEqual(g.log[-1]["uid"], "mao.montreal")
+
     def test_like_thresholds_take_any_whole_number(self):
         from app.settings import GlobalSettings
         s = GlobalSettings()
@@ -677,7 +685,7 @@ class MaoCallTest(unittest.TestCase):
         self.assertEqual(events, [])
         self.assertNotIn("nobody", g.players)                               # and not a guess
         g.on_comment(Viewer("champ", "Champ", "", 1), "Мао, ВНИМАНИЕ!")
-        self.assertEqual(events[-1], ("mao_call", {"name": "Champ", "avatar": ""}))
+        self.assertEqual(events[-1], ("mao_call", {"name": "Champ", "uid": "champ", "avatar": ""}))
         g.on_comment(Viewer("champ", "Champ", "", 1), "мао внимание")       # within 30 s: ignored
         self.assertEqual(len(events), 1)
         g.mao_call_t -= 31

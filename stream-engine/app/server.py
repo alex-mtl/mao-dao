@@ -216,6 +216,8 @@ def create_app(manager):
         links = hub.tg.links if hub.tg else {}
         for p in m["current"]["people"] + m["current"]["top"]:     # a player's Telegram, when they linked it in the bot
             p["tg"] = links.get((p.get("id") or "").lower())
+        m["current"]["log"] = [dict(e, tg=links.get(e["uid"].lower())) if e.get("uid") else e
+                               for e in m["current"]["log"]]
         return dict(m, active=hub.active)
 
     @app.post("/r/{token}/api/control")

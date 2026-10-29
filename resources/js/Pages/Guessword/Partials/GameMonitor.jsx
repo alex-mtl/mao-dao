@@ -31,6 +31,21 @@ function Links({ p }) {
     );
 }
 
+// a round-log line: the player's TikTok / Telegram links right after their name (the name is put in by mark)
+const NAME_MARK = '[[gw-name]]';
+function LogLine({ e, text }) {
+    const at = text.indexOf(NAME_MARK);
+    if (at < 0) return text;
+    return (
+        <>
+            {text.slice(0, at)}
+            {e.name}
+            <span className="align-middle"><Links p={{ id: e.uid, tg: e.tg }} /></span>
+            {text.slice(at + NAME_MARK.length)}
+        </>
+    );
+}
+
 function Kpi({ label, children, sub }) {
     return (
         <div className="min-w-0 flex-1 basis-36 rounded-xl border border-warm-200 bg-surface px-3 py-2.5">
@@ -212,10 +227,10 @@ function Now({ c, left, run, control, t }) {
                             {c.log.map((e, i) => (
                                 <div key={i} className="border-t border-warm-100 py-1 text-sm first:border-t-0">
                                     <span className="mr-1.5 text-[11px] text-ink-500">{hms(e.t)}</span>
-                                    {t('guessword.mon_ev_' + e.type, {
-                                        name: e.name || '', gift: e.gift || '', count: e.count || 1, word: (e.word || '').toLowerCase(),
+                                    <LogLine e={e} text={t('guessword.mon_ev_' + e.type, {
+                                        name: e.uid ? NAME_MARK : e.name || '', gift: e.gift || '', count: e.count || 1, word: (e.word || '').toLowerCase(),
                                         by: hintBy(e.by) || '', rank: e.rank || '', cmd: e.cmd ? t('guessword.mon_cmd_' + e.cmd) : '',
-                                    })}
+                                    })} />
                                 </div>
                             ))}
                             {!c.log.length && <p className="text-sm text-ink-500">{t('guessword.mon_empty')}</p>}
