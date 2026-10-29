@@ -53,6 +53,31 @@ it('says when the engine is down instead of failing', function () {
     $this->get('/guessword')->assertOk()->assertInertia(fn ($p) => $p->where('engineOnline', false));
 });
 
+it('gives every streamer only their own room, never another one', function () {
+    config(['guessword.streamers' => ['a@example.com', 'b@example.com']]);
+    Http::fake(['engine.test/*' => Http::response(engineRooms())]);
+    $a = User::factory()->create(['email' => 'a@example.com']);
+    $b = User::factory()->create(['email' => 'b@example.com']);
+
+    $this->actingAs($a)->get('/guessword/room')->assertOk();
+    $this->actingAs($b)->get('/guessword/room')->assertOk();
+    $roomA = GuesswordRoom::where('user_id', $a->id)->sole();
+    $roomB = GuesswordRoom::where('user_id', $b->id)->sole();
+
+    // the page carries the streamer's own engine links only; there is no route that takes a room id
+    $this->actingAs($b)->get('/guessword/room')->assertInertia(fn ($p) => $p
+        ->where('room.controlUrl', $roomB->controlUrl())
+        ->where('room.overlayUrl', $roomB->overlayUrl()));
+    $page = $this->actingAs($b)->get('/guessword/room')->getContent();
+    expect($page)->not->toContain($roomA->control_token)->not->toContain($roomA->overlay_token);
+    $this->actingAs($b)->get('/guessword/room?room='.$roomA->id)
+        ->assertInertia(fn ($p) => $p->where('room.controlUrl', $roomB->controlUrl()));
+
+    // the public section page lists running games without any room link
+    expect($this->get('/guessword')->getContent())->not->toContain($roomA->control_token)
+        ->not->toContain($roomA->overlay_token);
+});
+
 it('keeps the room pages for streamers only', function () {
     Http::fake(['engine.test/*' => Http::response(engineRooms())]);
 
