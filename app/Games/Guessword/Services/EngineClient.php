@@ -69,6 +69,12 @@ class EngineClient
         return $this->http()->get('/internal/lives', ['room' => $room->engineId()])->throw()->json('lives', []);
     }
 
+    /** every room's LIVE logs */
+    public function allLives(): array
+    {
+        return $this->http()->get('/internal/lives')->throw()->json('lives', []);
+    }
+
     /** one LIVE log (JSONL text) */
     public function live(GuesswordRoom $room, string $file): string
     {

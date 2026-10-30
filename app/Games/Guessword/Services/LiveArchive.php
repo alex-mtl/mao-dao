@@ -23,27 +23,50 @@ class LiveArchive
 
     public function __construct(private EngineClient $engine) {}
 
+    /** LIVE logs rebuilt from the engine journal (JournalLivesCommand): older LIVEs, nicknames only */
+    public static function journalDir(string $engineId): string
+    {
+        return storage_path('app/guessword/journal-lives/'.$engineId);
+    }
+
     /** every LIVE of the room, newest first: file, date, duration and the counts of the list */
     public function lives(GuesswordRoom $room): array
     {
-        return collect($this->engine->lives($room))
+        return collect($this->sources($room))
             ->sortByDesc('file')
-            ->map(fn (array $l) => ['file' => $l['file']] + $this->parsed($room, $l['file'], (int) $l['size'])['summary'])
+            ->map(fn (array $l) => ['file' => $l['file'], 'journal' => $l['journal']] + $this->parsed($room, $l)['summary'])
             ->values()->all();
     }
 
     /** the digest's events of one LIVE (JSONL objects of DIGEST_TYPES, users cut to uid / id / name) */
     public function events(GuesswordRoom $room, string $file): ?array
     {
-        $live = collect($this->engine->lives($room))->firstWhere('file', $file);
+        $live = collect($this->sources($room))->firstWhere('file', $file);
 
-        return $live ? $this->parsed($room, $file, (int) $live['size'])['events'] : null;
+        return $live ? $this->parsed($room, $live)['events'] : null;
     }
 
-    private function parsed(GuesswordRoom $room, string $file, int $size): array
+    /** the engine's logs, plus journal ones of LIVEs it has no log of (same TikTok LIVE id = same LIVE) */
+    private function sources(GuesswordRoom $room): array
     {
-        return Cache::remember("guessword:live:{$room->engineId()}:{$file}:{$size}", now()->addDays(30),
-            fn () => $this->parse($this->engine->live($room, $file)));
+        $tt = fn (string $file) => preg_replace('/^.*_(\d+)\.jsonl$/', '$1', $file);
+        $engine = collect($this->engine->lives($room))->map(fn ($l) => ['file' => $l['file'], 'size' => (int) $l['size'], 'journal' => false]);
+        $known = $engine->map(fn ($l) => $tt($l['file']))->flip();
+        $journal = collect(glob(self::journalDir($room->engineId()).'/*.jsonl') ?: [])
+            ->map(fn ($p) => ['file' => basename($p), 'size' => (int) filesize($p), 'journal' => true])
+            ->reject(fn ($l) => isset($known[$tt($l['file'])]));
+
+        return $engine->concat($journal)->values()->all();
+    }
+
+    private function parsed(GuesswordRoom $room, array $live): array
+    {
+        $source = $live['journal'] ? 'journal' : 'live';
+
+        return Cache::remember("guessword:{$source}:{$room->engineId()}:{$live['file']}:{$live['size']}", now()->addDays(30),
+            fn () => $this->parse($live['journal']
+                ? (string) file_get_contents(self::journalDir($room->engineId()).'/'.$live['file'])
+                : $this->engine->live($room, $live['file'])));
     }
 
     public function parse(string $jsonl): array

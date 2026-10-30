@@ -152,6 +152,13 @@ own recording (MP4 from TikTok LIVE Center): the file is never uploaded.
   `/internal/lives*`, only counts and filters (summary + activity per 5 min, `bins`; the digest's event
   types with users cut to uid / id / name); a parsed log is cached by its size. Avatars:
   `/guessword/avatars/{uid}` → engine `/internal/avatars`.
+- **LIVEs before the engine's own logs (21–29.10.2026)** are rebuilt from the journal archive in R2:
+  `php artisan guessword:journal-lives <days .log|.log.xz, oldest first> [--dry-run]`
+  (`Console/JournalLivesCommand`, `Services/JournalLives`). One LIVE = one TikTok LIVE id of a room, from
+  `[tiktok] connected` to "not live" (reconnects continue it); events: rounds, `exact` wins, auto planes,
+  balloons, cakes, `[manual]` balloon / plane / cake. Written to `storage/app/guessword/journal-lives/<room>/`
+  (new files only); the archive lists them with a note (nicknames only, no avatars) and hides one when the
+  engine has a log of the same LIVE id. Imported 30.10.2026 from the days 21–29.10.
 - **Browser, one logic for the site and the local pipeline** — `resources/js/Pages/Guessword/Digest/`:
   `model.js` (facts from a LIVE log or tiktok-clips' events.json, nick merging, races, clip time,
   temperature), `draw.js` (one 1080x1920 overlay frame on a canvas), `build.js` (WebCodecs: mediabunny

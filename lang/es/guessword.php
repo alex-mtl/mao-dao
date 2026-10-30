@@ -401,6 +401,7 @@ return [
     'archive_cakes' => 'pasteles',
     'archive_champion' => 'Campeón: :name (:n)',
     'archive_temperature' => 'Temperatura del directo',
+    'archive_journal' => 'Recuperado del registro del servidor del juego: sin avatares, apodos tal como eran entonces.',
     'digest_make' => 'Crear resumen',
     'digest_close' => 'Cerrar',
     'digest_intro' => 'Elige la grabación de este directo (MP4 de TikTok LIVE Center). Se queda en tu ordenador: el vídeo se crea en este navegador, no se sube nada.',

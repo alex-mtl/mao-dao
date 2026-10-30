@@ -401,6 +401,7 @@ return [
     'archive_cakes' => 'cakes',
     'archive_champion' => 'Champion: :name (:n)',
     'archive_temperature' => 'Temperature of the stream',
+    'archive_journal' => 'Restored from the game server log: no avatars, nicknames as they were then.',
     'digest_make' => 'Make a digest',
     'digest_close' => 'Close',
     'digest_intro' => 'Choose the recording of this stream (MP4 from TikTok LIVE Center). It stays on your computer: the video is built in this browser, nothing is uploaded.',

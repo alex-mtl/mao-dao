@@ -401,6 +401,7 @@ return [
     'archive_cakes' => 'gâteaux',
     'archive_champion' => 'Champion : :name (:n)',
     'archive_temperature' => 'Température du live',
+    'archive_journal' => 'Reconstitué depuis le journal du serveur de jeu : sans avatars, pseudos tels qu\'ils étaient alors.',
     'digest_make' => 'Créer un résumé',
     'digest_close' => 'Fermer',
     'digest_intro' => 'Choisissez l\'enregistrement de ce live (MP4 de TikTok LIVE Center). Il reste sur votre ordinateur : la vidéo est créée dans ce navigateur, rien n\'est envoyé.',

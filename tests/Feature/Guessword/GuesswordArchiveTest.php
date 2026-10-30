@@ -96,3 +96,69 @@ it('serves avatars from the engine and keeps the archive from non-streamers', fu
     $this->actingAs($admin)->get('/guessword/rooms/'.$room->id.'/archive')->assertOk()
         ->assertInertia(fn ($p) => $p->where('room.foreign', $user->name));
 });
+
+function journalDay(): array
+{
+    $l = fn ($time, $room, $msg) => "2026-10-25T{$time}+0000 ip-1 python[1]: <{$room}> {$msg}";
+
+    return [
+        $l('10:00:00', 'gw1', '[tiktok] connecting to @mao (room 111) ...'),
+        $l('10:00:01', 'gw1', '[tiktok] @mao is not live yet, retry in 15s'),
+        $l('10:00:20', 'gw1', '[tiktok] connecting to @mao (room 222) ...'),
+        $l('10:00:22', 'gw1', '[tiktok] connected to @mao LIVE'),
+        $l('10:00:30', 'gw1', '[guess] round 1 (normal, hard), secret has 7 letters, table: lambda'),
+        $l('10:01:00', 'gw1', '[balloons] #1 for Ann: x (105 likes)'),
+        $l('10:02:00', 'gw1', '[plane] Bob: 1002 likes -> auto plane'),
+        $l('10:03:00', 'gw1', '[tiktok] disconnected'),
+        $l('10:03:05', 'gw1', '[tiktok] connecting to @mao (room 222) ...'),
+        $l('10:03:07', 'gw1', '[tiktok] connected to @mao LIVE'),
+        $l('10:04:22', 'gw1', '[guess] round 1 exact: word=море winner=Ann: x'),
+        $l('10:05:00', 'gw1', '[manual] Bob: cake'),
+        $l('10:05:01', 'gw1', '[cake] тони: 5000 likes -> cake'),
+        $l('10:06:00', 'gw1', '[tiktok] @mao is not live yet, retry in 15s'),
+        $l('10:07:00', 'gw1', '[guess] round 2 timeout: word=x winner=-'),
+        $l('10:08:00', 'gw3', '[tiktok] connecting to @zed (room 333) ...'),
+        $l('10:08:02', 'gw3', '[tiktok] connected to @zed LIVE'),
+        $l('10:09:00', 'gw3', '[plane] Zed: 1000 likes -> auto plane'),
+    ];
+}
+
+it('rebuilds LIVE logs from the engine journal, one per TikTok LIVE, reconnects included', function () {
+    $lives = app(App\Games\Guessword\Services\JournalLives::class)->parse(journalDay());
+
+    expect(array_keys($lives))->toBe(['gw1', 'gw3'])
+        ->and(array_keys($lives['gw1']))->toBe(['2026-10-25_060022_222.jsonl']);
+    $events = $lives['gw1']['2026-10-25_060022_222.jsonl'];
+    expect(array_column($events, 'type'))->toBe(['live_start', 'round_start', 'balloon', 'plane', 'winner', 'cake', 'cake'])
+        ->and($events[0]['t'])->toBe('2026-10-25T06:00:22.000-04:00')
+        ->and($events[4])->toMatchArray(['s' => 240.0, 'word' => 'море', 'user' => ['uid' => '', 'id' => '', 'name' => 'Ann: x']])
+        ->and($events[2]['user']['name'])->toBe('Ann: x')
+        ->and($events[5])->toMatchArray(['manual' => true]);
+});
+
+it('shows journal LIVEs in the archive unless the engine logged the same LIVE', function () {
+    $user = User::factory()->create(['email' => 'streamer@example.com']);
+    $room = GuesswordRoom::create(['user_id' => $user->id, 'lang' => 'ru']);
+    $dir = App\Games\Guessword\Services\LiveArchive::journalDir($room->engineId());
+    @mkdir($dir, 0775, true);
+    $lives = app(App\Games\Guessword\Services\JournalLives::class)->parse(journalDay());
+    $events = $lives['gw1']['2026-10-25_060022_222.jsonl'];
+    file_put_contents($dir.'/2026-10-25_060022_222.jsonl', implode("\n", array_map('json_encode', $events))."\n");
+    file_put_contents($dir.'/2026-10-30_064810_7.jsonl', implode("\n", array_map('json_encode', $events))."\n");   // the engine has this one
+    fakeEngine();
+
+    try {
+        $this->actingAs($user)->get('/guessword/archive')->assertInertia(fn ($p) => $p
+            ->has('lives', 2)
+            ->where('lives.0.journal', false)
+            ->where('lives.1.file', '2026-10-25_060022_222.jsonl')
+            ->where('lives.1.journal', true)
+            ->where('lives.1.wins', 1)
+            ->where('lives.1.cakes', 2)
+            ->where('lives.1.champion.name', 'Ann: x'));
+        $this->actingAs($user)->getJson('/guessword/archive/lives/2026-10-25_060022_222.jsonl')->assertOk()->assertJsonCount(7);
+    } finally {
+        array_map('unlink', glob($dir.'/*'));
+        @rmdir($dir);
+    }
+});

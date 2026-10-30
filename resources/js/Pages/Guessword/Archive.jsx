@@ -175,6 +175,7 @@ export default function Archive({ room, lives, engineOnline }) {
                                         <p className="font-heading text-lg font-bold text-ink-900">
                                             {when(l.started)} <span className="ml-1 text-sm font-semibold text-ink-500">{hm(l.duration)}</span>
                                         </p>
+                                        {l.journal && <p className="text-xs text-ink-400">{t('guessword.archive_journal')}</p>}
                                         <p className="mt-0.5 text-xs text-ink-500">
                                             {[['rounds', l.rounds], ['wins', l.wins], ['planes', l.planes], ['balloons', l.balloons], ['cakes', l.cakes]]
                                                 .map(([k, n]) => `${n} ${t('guessword.archive_' + k)}`).join(' · ')}
