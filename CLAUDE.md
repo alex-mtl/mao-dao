@@ -51,7 +51,7 @@ separable later:
    touching the game.)
    **"Turn on the streamer pack for user X"** = one command, nothing else to
    look up: `ssh aws-dev "cd /var/www/quiz && php artisan streamer grant
-   <email>"` (`revoke <email>`, `list`). It checks the user exists (prints
+   <email>"` (`revoke`, `list`; e-mail or nickname = `users.name`, an ambiguous nickname is refused). It checks the user exists (prints
    id and name; `--force` for an e-mail not registered yet), edits
    `GUESSWORD_STREAMERS` in `.env` and rebuilds the config cache. Super
    admins have the pack anyway. All grants go through
