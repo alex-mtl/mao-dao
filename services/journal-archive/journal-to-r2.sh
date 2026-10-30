@@ -5,6 +5,7 @@
 # Only reads the journal; the temp file is removed. Credentials: ~/.config/r2-stream-logs.env (R2_ENDPOINT,
 # R2_BUCKET, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY). Cron: 30 0 * * * (see README.md).
 set -euo pipefail
+set -a
 . "$HOME/.config/r2-stream-logs.env"
 UNIT=guessword-engine
 days=("$@")
@@ -13,9 +14,8 @@ for d in "${days[@]}"; do
   tmp=$(mktemp)
   sudo journalctl -u "$UNIT" --since "$d 00:00:00 UTC" --until "$(date -u -d "$d +1 day" +%F) 00:00:00 UTC" \
     --no-pager -o short-iso | xz -9 > "$tmp"
-  code=$(curl -sS -o /dev/null -w '%{http_code}' --aws-sigv4 "aws:amz:auto:s3" \
-    --user "$R2_ACCESS_KEY_ID:$R2_SECRET_ACCESS_KEY" -T "$tmp" "$R2_ENDPOINT/$R2_BUCKET/$UNIT/${d:0:4}/$d.log.xz")
-  echo "$d $(stat -c %s "$tmp") bytes -> $code"
+  ok=0; python3 "$(dirname "$0")/r2.py" put "$tmp" "$UNIT/${d:0:4}/$d.log.xz" 2>/dev/null || ok=$?
+  echo "$d $(stat -c %s "$tmp") bytes -> $([ $ok = 0 ] && echo ok || echo FAILED)"
   rm -f "$tmp"
-  [ "$code" = 200 ] || exit 1
+  [ $ok = 0 ] || exit 1
 done

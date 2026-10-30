@@ -7,5 +7,6 @@
 - Скрипт: `journal-to-r2.sh [YYYY-MM-DD ...]`, без аргументов — вчерашний день. Журнал только читает.
 - На сервере: `/home/ubuntu/bin/journal-to-r2.sh`, cron пользователя ubuntu `30 0 * * *`, лог `~/journal-to-r2.log`.
 - Ключи: `~/.config/r2-stream-logs.env` (токен только на этот бакет, чтение/запись), в git не кладём.
-- Скачать день: `curl --aws-sigv4 aws:amz:auto:s3 --user "$R2_ACCESS_KEY_ID:$R2_SECRET_ACCESS_KEY" "$R2_ENDPOINT/$R2_BUCKET/guessword-engine/2026/2026-10-29.log.xz" -o day.log.xz`.
+- Клиент R2 — `r2.py` (stdlib; curl 7.81 на сервере подписывает SigV4 для R2 неверно): `set -a; . ~/.config/r2-stream-logs.env; python3 ~/bin/r2.py list guessword-engine/`, скачать день — `python3 ~/bin/r2.py get guessword-engine/2026/2026-10-29.log.xz day.log.xz`.
+- Выгружено 30.10.2026: 21–29.10 (6,2 МБ).
 - Бесплатно до 10 ГБ в R2 (~0,85 ГБ/год).
