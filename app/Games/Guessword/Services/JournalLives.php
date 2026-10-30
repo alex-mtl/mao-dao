@@ -76,6 +76,14 @@ class JournalLives
         return $out;
     }
 
+    /** the chat command of the cake show, in the game's 4 languages (stream-engine/app/reactions/cake.py WORDS) */
+    private function fires(string $text): bool
+    {
+        $t = str_replace('ё', 'е', mb_strtolower($text));
+
+        return (bool) preg_match('/огонь|fire|feu|fuego/u', $t);
+    }
+
     private function event(string $tag, string $msg): ?array
     {
         $user = fn (string $name) => ['uid' => '', 'id' => '', 'name' => $name];
@@ -89,6 +97,9 @@ class JournalLives
                 => ['type' => 'balloon', 'user' => $user($m[2]), 'likes' => (int) $m[3], 'n' => (int) $m[1]],
             $tag === 'cake' && (bool) preg_match('/^(.+): (\d+) likes -> cake$/u', $msg, $m) => ['type' => 'cake', 'user' => $user($m[1]), 'likes' => (int) $m[2]],
             $tag === 'manual' && (bool) preg_match('/^(.+): (balloon|plane|cake)$/u', $msg, $m) => ['type' => $m[2], 'user' => $user($m[1]), 'manual' => true, 'count' => 1],
+            // "огонь" in the chat fired a cracker of the cake show playing (the pages counted them themselves
+            // before 30.10.2026): the digest rebuilds the show's end from these
+            $tag === 'chat' && (bool) preg_match("/: '(.*)'$/su", $msg, $m) && $this->fires($m[1]) => ['type' => 'fire'],
             default => null,
         };
     }

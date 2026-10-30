@@ -14,16 +14,17 @@ use Throwable;
  * LIVE logs for the stream archive from days of the engine's journal (R2: guessword-engine/YYYY/*.log.xz,
  * services/journal-archive/README.md), for LIVEs the engine has no log of (before 29.10.2026):
  *
- *   php artisan guessword:journal-lives /tmp/jr/2026-10-2*.log [--dry-run]
+ *   php artisan guessword:journal-lives /tmp/jr/2026-10-2*.log [--dry-run] [--force]
  *
  * Files: plain or .xz, given oldest first (a LIVE can cross midnight UTC). Writes
  * storage/app/guessword/journal-lives/<room>/<file>.jsonl; a LIVE the engine logged itself is skipped,
- * an existing file is kept.
+ * an existing file is kept (--force: rewritten, e.g. when the rebuild learns more from the journal).
  */
 class JournalLivesCommand extends Command
 {
     protected $signature = 'guessword:journal-lives {files* : journal days (journalctl -o short-iso), .log or .log.xz}
-        {--dry-run : only list what would be written}';
+        {--dry-run : only list what would be written}
+        {--force : rewrite files this command wrote before}';
 
     protected $description = 'Rebuild LIVE logs of the stream archive from the engine journal';
 
@@ -60,7 +61,10 @@ class JournalLivesCommand extends Command
                 $state = isset($logged[$tt]) ? 'engine has it' : (is_file($path) ? 'exists' : 'new');
                 $wins = count(array_filter($events, fn ($e) => $e['type'] === 'winner'));
                 $this->line(sprintf('%s %s  %d events, %d wins, %s', $room, $file, count($events), $wins, $state));
-                if ($state !== 'new' || $this->option('dry-run')) {
+                if ($state === 'exists' && $this->option('force')) {
+                    $state = 'rewritten';
+                }
+                if (! in_array($state, ['new', 'rewritten'], true) || $this->option('dry-run')) {
                     continue;
                 }
                 @mkdir(dirname($path), 0775, true);

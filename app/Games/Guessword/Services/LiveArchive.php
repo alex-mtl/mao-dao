@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\Cache;
 class LiveArchive
 {
     /** event types the digest uses; the rest of a log (viewers, gifts) stays on the server */
-    public const DIGEST_TYPES = ['live_start', 'round_start', 'winner', 'plane', 'balloon', 'cake'];
+    public const DIGEST_TYPES = ['live_start', 'round_start', 'winner', 'plane', 'balloon', 'cake', 'cake_start', 'cake_last', 'cake_split', 'fire'];
 
     /** BIN of model.js: activity is counted per 5 stream minutes */
     public const BIN = 300;
@@ -63,8 +63,8 @@ class LiveArchive
     {
         $source = $live['journal'] ? 'journal' : 'live';
 
-        // v2: the summary got tiktokRoom / epoch (bump when the summary's shape changes)
-        return Cache::remember("guessword:v2:{$source}:{$room->engineId()}:{$live['file']}:{$live['size']}", now()->addDays(30),
+        // v3: + cake_start / cake_last / cake_split / fire events (bump when the summary or the events change)
+        return Cache::remember("guessword:v3:{$source}:{$room->engineId()}:{$live['file']}:{$live['size']}", now()->addDays(30),
             fn () => $this->parse($live['journal']
                 ? (string) file_get_contents(self::journalDir($room->engineId()).'/'.$live['file'])
                 : $this->engine->live($room, $live['file'])));

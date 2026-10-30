@@ -38,6 +38,57 @@ export function firstVideoFrame(b) {
     return null;
 }
 
+/**
+ * Every video access unit of a whole segment, in decode order: [{pts, key, data}] and the codec. For the stretches
+ * the digest plays slowly (the cake show): those need every frame, not only the segment's first one.
+ */
+export function videoFrames(b) {
+    let pmt = -1, video = -1, codec = null, cur = null;
+    const out = [];
+    const close = () => { if (cur) { const data = concat(cur.parts); out.push({ pts: cur.pts, key: isKey(codec, data), data }); } };
+    for (let i = 0; i + 188 <= b.length; i += 188) {
+        if (b[i] !== 0x47) break;
+        const pusi = b[i + 1] & 0x40, pid = ((b[i + 1] & 0x1f) << 8) | b[i + 2], afc = (b[i + 3] >> 4) & 3;
+        let p = i + 4;
+        if (afc & 2) p += 1 + b[p];
+        if (!(afc & 1) || p >= i + 188) continue;
+        if (pid === 0 && pusi) {
+            p += 1 + b[p];
+            pmt = ((b[p + 10] & 0x1f) << 8) | b[p + 11];
+        } else if (pid === pmt && pusi && video < 0) {
+            p += 1 + b[p];
+            const end = p + 3 + (((b[p + 1] & 0x0f) << 8) | b[p + 2]) - 4;
+            let q = p + 12 + (((b[p + 10] & 0x0f) << 8) | b[p + 11]);
+            while (q < end) {
+                if (STREAMS[b[q]]) { codec = STREAMS[b[q]]; video = ((b[q + 1] & 0x1f) << 8) | b[q + 2]; break; }
+                q += 5 + (((b[q + 3] & 0x0f) << 8) | b[q + 4]);
+            }
+        } else if (pid === video) {
+            if (pusi) {
+                close();
+                const flags = b[p + 7], hl = b[p + 8];
+                const pts = flags & 0x80 ? ((b[p + 9] & 0x0e) * 536870912 + b[p + 10] * 4194304 + (b[p + 11] & 0xfe) * 16384 + b[p + 12] * 128 + (b[p + 13] >> 1)) / 90000 : null;
+                cur = { pts, parts: [] };
+                p += 9 + hl;
+            }
+            if (cur) cur.parts.push(b.subarray(p, i + 188));
+        }
+    }
+    close();
+    return { codec, frames: out.filter((f) => f.pts !== null) };
+}
+
+// a random access picture: HEVC IRAP (NAL types 16-21), H.264 IDR (5)
+function isKey(codec, d) {
+    for (let i = 0; i + 3 < d.length; i++) {
+        if (d[i] !== 0 || d[i + 1] !== 0 || d[i + 2] !== 1) continue;
+        const t = codec === 'hevc' ? (d[i + 3] >> 1) & 0x3f : d[i + 3] & 0x1f;
+        if (codec === 'hevc' ? t >= 16 && t <= 21 : t === 5) return true;
+        if (codec === 'hevc' ? t < 32 : t >= 1 && t <= 5) return false;   // the picture's first slice decides
+    }
+    return false;
+}
+
 function concat(parts) {
     const out = new Uint8Array(parts.reduce((a, x) => a + x.length, 0));
     let o = 0;
@@ -54,8 +105,14 @@ export function codecString(codec, data) {
             return 'avc1.' + [data[n + 1], data[n + 2], data[n + 3]].map((x) => x.toString(16).padStart(2, '0')).join('');
         }
         if (codec === 'hevc' && ((data[n] >> 1) & 0x3f) === 33) {
-            // SPS: 2 header bytes, then 1 byte (vps id / max sub layers / nesting), then profile_tier_level
-            const ptl = n + 3, profile = data[ptl] & 0x1f, tier = (data[ptl] >> 5) & 1, level = data[ptl + 11];
+            // SPS without its emulation prevention bytes (00 00 03 -> 00 00): 2 header bytes, then 1 byte
+            // (vps id / max sub layers / nesting), then profile_tier_level, the level 11 bytes into it
+            const s = [];
+            for (let j = n; j < data.length && s.length < 16; j++) {
+                if (data[j] === 3 && s.length >= 2 && s[s.length - 1] === 0 && s[s.length - 2] === 0) continue;
+                s.push(data[j]);
+            }
+            const profile = s[3] & 0x1f, tier = (s[3] >> 5) & 1, level = s[14];
             return `hev1.${profile}.6.${tier ? 'H' : 'L'}${level}.90`;
         }
     }

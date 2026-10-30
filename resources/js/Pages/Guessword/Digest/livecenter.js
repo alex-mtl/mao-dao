@@ -36,7 +36,8 @@ export async function playlist(replay) {
     const segments = [];
     let at = null, dur = 0;
     for (const line of text.split('\n').map((l) => l.trim())) {
-        if (line.startsWith('#EXT-X-PROGRAM-DATE-TIME:')) at = Date.parse(line.slice(25)) / 1000;
+        // ISO time; an offset without the colon (-0400, as ffmpeg writes it) made ISO
+        if (line.startsWith('#EXT-X-PROGRAM-DATE-TIME:')) at = Date.parse(line.slice(25).replace(/([+-]\d\d)(\d\d)$/, '$1:$2')) / 1000;
         else if (line.startsWith('#EXTINF:')) dur = parseFloat(line.slice(8));
         else if (line && !line.startsWith('#')) {
             const prev = segments[segments.length - 1];
@@ -47,6 +48,11 @@ export async function playlist(replay) {
     if (!segments.length) throw new Error('empty playlist');
     const last = segments[segments.length - 1];
     return { segments, start: segments[0].at, end: last.at + last.dur };
+}
+
+/** a whole segment (~4 s, a few MB): for the stretches played slowly, which need every frame */
+export async function segment(url) {
+    return new Uint8Array(await call('range', { url, from: 0, to: 33554431 }));
 }
 
 /** the key frame a segment starts with: {codec (VideoDecoder string), data (Annex B)}; reads 512 KB, more if needed */

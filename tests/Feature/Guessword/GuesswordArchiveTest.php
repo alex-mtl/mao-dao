@@ -113,6 +113,8 @@ function journalDay(): array
         $l('10:03:05', 'gw1', '[tiktok] connecting to @mao (room 222) ...'),
         $l('10:03:07', 'gw1', '[tiktok] connected to @mao LIVE'),
         $l('10:04:22', 'gw1', '[guess] round 1 exact: word=море winner=Ann: x'),
+        $l('10:04:30', 'gw1', "[chat] Ann: x (@ann) follow=0 fan=0 +1s: 'ОГОНЬ!!'"),
+        $l('10:04:31', 'gw1', "[chat] Bob (@bob) follow=0 fan=0 +1s: 'привет'"),
         $l('10:05:00', 'gw1', '[manual] Bob: cake'),
         $l('10:05:01', 'gw1', '[cake] тони: 5000 likes -> cake'),
         $l('10:06:00', 'gw1', '[tiktok] @mao is not live yet, retry in 15s'),
@@ -129,11 +131,11 @@ it('rebuilds LIVE logs from the engine journal, one per TikTok LIVE, reconnects 
     expect(array_keys($lives))->toBe(['gw1'])      // gw3: two events, no win
         ->and(array_keys($lives['gw1']))->toBe(['2026-10-25_060022_222.jsonl']);
     $events = $lives['gw1']['2026-10-25_060022_222.jsonl'];
-    expect(array_column($events, 'type'))->toBe(['live_start', 'round_start', 'balloon', 'plane', 'winner', 'cake', 'cake'])
+    expect(array_column($events, 'type'))->toBe(['live_start', 'round_start', 'balloon', 'plane', 'winner', 'fire', 'cake', 'cake'])
         ->and($events[0]['t'])->toBe('2026-10-25T06:00:22.000-04:00')
         ->and($events[4])->toMatchArray(['s' => 240.0, 'word' => 'море', 'user' => ['uid' => '', 'id' => '', 'name' => 'Ann: x']])
         ->and($events[2]['user']['name'])->toBe('Ann: x')
-        ->and($events[5])->toMatchArray(['manual' => true]);
+        ->and($events[6])->toMatchArray(['manual' => true]);
 });
 
 it('shows journal LIVEs in the archive unless the engine logged the same LIVE', function () {
@@ -156,7 +158,7 @@ it('shows journal LIVEs in the archive unless the engine logged the same LIVE', 
             ->where('lives.1.wins', 1)
             ->where('lives.1.cakes', 2)
             ->where('lives.1.champion.name', 'Ann: x'));
-        $this->actingAs($user)->getJson('/guessword/archive/lives/2026-10-25_060022_222.jsonl')->assertOk()->assertJsonCount(7);
+        $this->actingAs($user)->getJson('/guessword/archive/lives/2026-10-25_060022_222.jsonl')->assertOk()->assertJsonCount(8);
     } finally {
         array_map('unlink', glob($dir.'/*'));
         @rmdir($dir);
