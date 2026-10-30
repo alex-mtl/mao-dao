@@ -8,6 +8,9 @@ Internal API for the platform (Laravel), header X-Internal-Secret = INTERNAL_SEC
   POST   /internal/rooms/{id}/settings       {game, options} and/or {lang}; {active} switches the game
   DELETE /internal/rooms/{id}                (its data folder stays)
   GET    /internal/rooms/{id}/options        games, their options and values (for the platform's form)
+  GET    /internal/lives[?room=]             every room's LIVE logs (clips / digests): room, file, size, mtime
+  GET    /internal/lives/{room}/{file}       one LIVE's log (JSONL, docs/games/guessword.md "Live logs")
+  GET    /internal/avatars/{uid or id}       a viewer's saved avatar picture
 
 A room's own pages, by token (the link is the key; nginx publishes the engine under BASE_PATH):
   /r/{control_token}/...   everything: the menu, settings, debug, the game pages
@@ -24,7 +27,7 @@ import secrets
 from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse, Response
 
-from . import config
+from . import config, live_log
 from .context import current_room
 from .games.base import Viewer
 from .room_prefs import GIFT_ACTIONS, GIFT_MIN_COINS, catalog
@@ -177,6 +180,42 @@ def create_app(manager):
         internal(req)
         await manager.delete(rid)
         return {"ok": True}
+
+    # ------------------------------------------------------------------ LIVE logs and avatars (clips, digests)
+    def lives_dir(rid):
+        return os.path.join(manager.root, "rooms", rid, "lives")
+
+    @app.get("/internal/lives")
+    def lives(req: Request, room: str | None = None):
+        internal(req)
+        out = []
+        for rid in sorted(manager.rooms):
+            if room and rid != room:
+                continue
+            d = lives_dir(rid)
+            for f in sorted(os.listdir(d)) if os.path.isdir(d) else []:
+                if f.endswith(".jsonl"):
+                    st = os.stat(os.path.join(d, f))
+                    out.append({"room": rid, "file": f, "size": st.st_size, "mtime": int(st.st_mtime)})
+        return {"lives": out}
+
+    @app.get("/internal/lives/{rid}/{name}")
+    def live_file(rid: str, name: str, req: Request):
+        internal(req)
+        if rid not in manager.rooms or not name.endswith(".jsonl") or "/" in name or "\\" in name or name.startswith("."):
+            raise HTTPException(404, "not found")
+        p = os.path.join(lives_dir(rid), name)
+        if not os.path.isfile(p):
+            raise HTTPException(404, "not found")
+        return FileResponse(p, media_type="application/x-ndjson")
+
+    @app.get("/internal/avatars/{key}")
+    def avatar(key: str, req: Request):
+        internal(req)
+        p = live_log.avatars().find(key) if live_log.avatars() else None
+        if not p:
+            raise HTTPException(404, "no avatar")
+        return FileResponse(p)
 
     # ------------------------------------------------------------------ a room's API (by token)
     @app.get("/r/{token}/api/games")

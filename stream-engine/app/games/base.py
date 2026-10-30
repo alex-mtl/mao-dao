@@ -13,6 +13,7 @@ class Viewer:
     avatar: str = ""     # https avatar url or ""
     follows: int = -1    # follow status towards the host: 0 no, 1 follower, 2 friends, -1 unknown
     fan: int = 0         # level in the host's team (fan club) by their badge, 0 = not in the team
+    uid: str = ""        # numeric TikTok user id (never changes, unlike the @unique_id), "" if unknown
 
 
 class BaseGame:
@@ -32,6 +33,8 @@ class BaseGame:
     # events after which the state goes to disk at once (the hub saves when the handler returns),
     # not with the next once-a-second save: a crash must not lose a round start, a winner, a gift
     SAVE_NOW_EVENTS = {"countdown", "round_start", "winner", "timeout", "reveal", "hint", "gift", "found_pending"}
+
+    live = None          # the hub's LiveLog: the game writes its rounds there (live.write(type, **fields))
 
     def emit(self, type, **data):
         self.seq += 1

@@ -13,7 +13,7 @@ import secrets
 import threading
 import time
 
-from . import config
+from . import config, live_log
 from .context import current_room
 from .hub import Hub
 from .storage import JsonStore
@@ -127,6 +127,7 @@ class RoomManager:
         self.root = data_root
         os.makedirs(data_root, exist_ok=True)
         self.path = os.path.join(data_root, self.FILE)
+        live_log.configure(data_root)                     # viewers' avatars of every room: data_root/avatars
         self.rooms = {}
         for rid, cfg in self._load().items():
             self.rooms[rid] = Room(rid, cfg, data_root)

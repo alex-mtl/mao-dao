@@ -287,6 +287,10 @@ class GuessGame(BaseGame):
         dur = config.SPEED_ROUND_DURATION if self.round_type == "speed" else self.round_sec
         self.started_at, self.ends_at = now, now + dur
         self.emit("round_start", round=self.round_id, roundType=self.round_type, duration=dur)
+        if self.live:
+            self.live.write("round_start", round=self.round_id, word=self.secret, lang=self.round_lang,
+                            tier=self.tier, round_type=self.round_type, duration=dur,
+                            setter=self.live.user(self.setter["id"], self.setter["name"]) if self.setter else None)
         if self.setter:
             self.setter_t = now
             self.emit("custom_word", name=self.setter["name"])
@@ -350,6 +354,16 @@ class GuessGame(BaseGame):
             "top": self._top_guesses(20),                 # for the host's /history in the bot
             "winner_words": self._words_of(player, 20) if player else []}])[-300:]
         self.store.save(self.ROUNDS, self.history)
+        if self.live:
+            who = self.live.user(player.id, player.name) if player else None
+            if who:
+                self.live.write("winner", round=self.round_id, user=who, word=self.secret,
+                                seconds=round(now - self.started_at, 1), guesses=player.guesses, streak=streak,
+                                stolen=stolen or None)
+            self.live.write("round_end", round=self.round_id, word=self.secret, reason=reason,
+                            winner=who, seconds=round(now - self.started_at, 1), players=len(self.players),
+                            guesses=sum(p.guesses for p in self.players.values()),
+                            podium=[dict(self.live.user(p["id"], p["name"]), rank=p["rank"]) for p in self.podium])
         # the next word, picked now: its table comes in the break
         self.next_pick = (self.lang, self.level) + tuple(self._pick_secret(self.sem_for(self.lang, self.level), self.lang))
         print(f"[guess] round {self.round_id} {reason}: word={self.secret} "

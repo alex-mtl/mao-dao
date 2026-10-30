@@ -11,6 +11,7 @@ from collections import OrderedDict, deque
 from . import config
 from .games import GAMES
 from .games.base import Viewer
+from .live_log import LiveLog
 from .reactions.balloons import LikeBalloons
 from .room_prefs import GiftRules, Toasts, catalog
 from .settings import GlobalSettings
@@ -61,8 +62,10 @@ class Hub:
         self.names = {}                           # viewer id -> their TikTok nickname as of their last event
         self.recent = OrderedDict((u["id"], {k: u.get(k, "") for k in ("name", "avatar", "t")})
                                   for u in s.get("viewers") or [] if u.get("id"))   # this stream's viewers, latest last
+        self.live = LiveLog(store.path("lives"))   # this LIVE's rounds, winners, planes... for clips
         for g in self.games.values():
             g.names = self.names
+            g.live = self.live
         self.balloons = LikeBalloons(store, self.global_settings)   # like balloons fly over every page
         self.closed = False                       # set on shutdown: incoming events are ignored
         self.game.on_activate()
@@ -144,6 +147,8 @@ class Hub:
             self.balloons.new_session()
             self.save_session()
             print(f"[hub] new LIVE (room {room_id}) -> all games reset")
+        if room_id:
+            self.live.open(room_id, self.username)
 
     def _save_if_needed(self):
         """An important event (round start, winner, gift, hint...) was just handled: to disk now."""
@@ -174,6 +179,7 @@ class Hub:
         """nicknames change: every event carries the current one; the stream's viewers, latest first (the room
         page picks one to act for)"""
         if v.id and v.name:
+            self.live.viewer(v)
             self.names[v.id.lower()] = v.name
             r = self.recent.pop(v.id, None) or {}
             self.recent[v.id] = {"name": v.name, "avatar": v.avatar or r.get("avatar", ""), "t": time.time()}
@@ -236,8 +242,10 @@ class Hub:
         self._journal_gift(v, gift, count, to)
         if to and to.lower() != self.username:
             print(f"[gift] {v.name}: {gift} went to @{to}, not to the host -> no game action")
+            self.live.gift(v, gift, count, coins, set(), to)
             return
         actions = self.gift_rules.actions_for(gift, coins)
+        self.live.gift(v, gift, count, coins, actions, to)
         self._gift_animations(v, gift, actions, count)
         self.game.on_gift(v, gift, count, repeat=repeat, actions=actions)
         self._save_if_needed()
@@ -296,6 +304,12 @@ class Hub:
         if "cake" in anim:
             self._feed(type="cake", id=v.id, name=v.name, avatar=v.avatar, gift=gift)
         print(f"[gift] {v.name}: {gift} x{n} -> {sorted(anim)}")
+        who = self.live.user(v.id, v.name)
+        for kind in sorted(anim):
+            if kind == "bomber" and "plane" in anim:
+                continue                                  # one flight, with butterflies
+            self.live.write("plane" if kind == "bomber" else kind, user=who, gift=gift or None, manual=not gift or None,
+                            count=1 if kind == "cake" else n, bomber=kind in ("plane", "bomber") and "bomber" in anim or None)
 
     def _journal_gift(self, v, gift, count, to):
         """Every gift, one JSON line in data/gifts.jsonl (kept across rebuilds: the data folder is mounted)."""
@@ -319,20 +333,27 @@ class Hub:
             return
         self._seen(v)
         before = self.balloons.total_of(v.id)
+        who = self.live.user(v.id, v.name)
         for b in self.balloons.on_like(v, count):  # 100 likes -> lift off, on whatever page is open
             self._feed(type="balloon", **b)
+            self.live.write("balloon", user=who, likes=b["total"], n=b["n"], per=b["per"])
         plane = self.balloons.auto_plane(v, before)  # every PLANE_AUTO_LIKES likes -> the plane flies by itself
         if plane:
             print(f"[plane] {v.name}: {plane['total']} likes -> auto plane")
             self._feed(type="plane", **plane)
+            step = self.global_settings.get("PLANE_BOMBER_LIKES" if plane["bomber"] else "PLANE_AUTO_LIKES")
+            self.live.write("plane", user=who, likes=plane["total"], threshold=plane["total"] // step * step if step else None,
+                            bomber=plane["bomber"] or None)
         snow = self.balloons.auto_snowball(v, before)  # every SNOWBALL_LIKES likes -> a snowball at the streamer
         if snow:
             print(f"[snowball] {v.name}: {snow['total']} likes -> snowball")
             self._feed(type="snowball", **snow)
+            self.live.write("snowball", user=who, likes=snow["total"])
         cake = self.balloons.auto_cake(v, before)      # every CAKE_LIKES likes -> the cake show for them
         if cake:
             print(f"[cake] {v.name}: {cake['total']} likes -> cake")
             self._feed(type="cake", **cake)
+            self.live.write("cake", user=who, likes=cake["total"])
         self.game.on_like(v, count)
 
     # ---- state for overlays ----

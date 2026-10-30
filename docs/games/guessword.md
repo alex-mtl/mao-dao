@@ -94,6 +94,53 @@ On a room's first start `App\Games\Guessword\Services\BotClient` registers it in
 encrypted in `guessword_rooms.tg_key`; Laravel passes it to the engine with the room. The same key opens
 the word-ranker Lambdas. Registering the same id again rotates the key.
 
+## Live logs and avatars (for clips and digests)
+
+The engine keeps what happened on every TikTok LIVE, so clips and digests can be cut later without
+recognising the game's voice in the recording (`stream-engine/app/live_log.py`).
+
+**Where** (on `aws-dev`, `DATA_DIR` = `/var/lib/guessword-engine`, owned by the service; read only):
+
+- `rooms/<room>/lives/<YYYY-MM-DD_HHMMSS>_<tiktok room id>.jsonl` — one file per LIVE (server local time
+  of its start). A new file opens when TikTok connects to a new LIVE; a reconnect or an engine restart
+  during the same LIVE goes on writing the same file. Nothing is written before the first TikTok
+  connection (simulated rooms have no log).
+- `avatars/<uid>.<jpg|webp|png>` — viewers' avatars (TikTok `avatar_thumb`, a small square), shared by all
+  rooms. Named by the numeric TikTok user id, or by the `@unique_id` (lower case) when the event had no
+  numeric id. Fetched in one background thread (10 s timeout, errors only in the engine log) when a
+  viewer first shows up in a LIVE, unless the saved picture is younger than 7 days. TikTok's links are
+  signed and expire after a few days, which is why the picture itself is kept.
+
+**Getting them**: over ssh (`sudo cat` / `sudo tar` of the paths above), or the engine's internal API with
+header `X-Internal-Secret` (= `GUESSWORD_ENGINE_SECRET` in Laravel's `.env`), on the server at
+`http://127.0.0.1:8770`:
+
+| Request | Answer |
+|---|---|
+| `GET /internal/lives[?room=gw1]` | `{lives: [{room, file, size, mtime}]}` |
+| `GET /internal/lives/{room}/{file}` | the JSONL file |
+| `GET /internal/avatars/{uid or unique_id}` | the picture, 404 if none |
+
+**Format**: one JSON object per line, `t` (ISO time with offset, ms), `s` (seconds since the LIVE started,
+0.1 s), `type`, then the fields below (absent = none). A *user* is `{"uid": numeric TikTok id or "",
+"id": "@unique_id without @", "name": nickname at that moment}`; `uid` is stable, `id` and `name` can change.
+
+| type | fields |
+|---|---|
+| `live_start` | `epoch` (unix time of the start), `tiktok_room`, `username` (the streamer) |
+| `viewer` | `user`, `first` (true: first event of this viewer in the LIVE; otherwise the nickname changed) |
+| `round_start` | `round`, `word`, `lang`, `tier`, `round_type`, `duration` (s), `setter` (user who picked the word) |
+| `winner` | `round`, `user`, `word`, `seconds`, `guesses`, `streak`, `stolen` ("steal the win" gift) |
+| `round_end` | `round`, `word`, `reason` (`exact` / `timeout` / `skip`), `winner` (user or absent), `seconds`, `players`, `guesses`, `podium` (users + `rank`) |
+| `plane` | `user`, `likes` + `threshold` (like plane) or `gift` / `manual` + `count` (gift plane), `bomber` |
+| `balloon` | `user`, `likes`, `n` (their balloon number), `per`; or `gift` / `manual` + `count` |
+| `snowball`, `cake` | `user`, `likes`; or `gift` / `manual` + `count` |
+| `gift` | `user`, `gift`, `count`, `coins` (one gift's price), `actions` (bound actions), `to` (a guest, not the host) |
+
+Gifts are logged from `LIVE_LOG_GIFT_COINS` coins per batch (engine env, default 100) and whenever the
+gift is bound to an action other than a hint (any gift gives a hint by default). Round numbers restart
+with every LIVE. A restart puts no second `round_start` for the restored round; its `round_end` comes.
+
 ## Load and scaling (measured 2026-10-28)
 
 Two live streams: ~190 guesses/min, ~140 chat messages/min, ~50 like events/min, <1 gift/min per room;

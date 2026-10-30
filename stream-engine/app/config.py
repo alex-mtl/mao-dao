@@ -34,6 +34,7 @@ RECONNECT_SEC = _f("RECONNECT_SEC", 15)
 LIVE_WAIT_SEC = _f("LIVE_WAIT_SEC", 300)       # a room with no TikTok LIVE this long stops itself
 DEBUG_CONTROLS = _b("DEBUG_CONTROLS", "1")     # /debug page + /api/debug/*
 LOG_CHAT = _b("LOG_CHAT")                      # log every incoming comment (diagnostics)
+LIVE_LOG_GIFT_COINS = _i("LIVE_LOG_GIFT_COINS", 100)   # the LIVE log keeps gifts from this many coins a batch
 DEFAULT_GAME = os.getenv("DEFAULT_GAME", "battle")
 
 # ---- battle (tug of war) ----

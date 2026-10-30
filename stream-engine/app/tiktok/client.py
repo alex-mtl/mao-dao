@@ -31,7 +31,12 @@ def viewer_of(user):
         fan = int(getattr(user, "member_level", None) or 0)   # the team (fan club) badge's level
     except Exception:
         pass
-    return Viewer(uid, name, avatar, follows, fan)
+    num = ""
+    try:
+        num = str(int(getattr(user, "id", 0) or 0) or "")             # the numeric user id: stable
+    except Exception:
+        pass
+    return Viewer(uid, name, avatar, follows, fan, num)
 
 
 def sent_at(event):
