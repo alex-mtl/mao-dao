@@ -7,6 +7,46 @@ import { useId, useRef, useState } from 'react';
 import { extension } from './Digest/livecenter.js';
 import { digestModel, factsFromLive, temperature, TEMPS } from './Digest/model.js';
 
+// the digest's caption tags: the LIVE's leaders first (the game's champion, then planes, gifts, balloons),
+// then the platform's set. A tag is the player's TikTok login (dots dropped; nicknames are often emoji or
+// "font" letters a tag can't hold), or their nickname's letters and digits when the log has no login.
+const DEFAULT_TAGS = ['#tiktoklive', '#гонкачемпионов', '#угадайслово', '#маодайджест', '#maodigest'];
+const LEADERS = ['wins', 'planes', 'gifts', 'balloons'];
+function hashtags(live) {
+    const own = LEADERS.map((k) => live.leaders?.[k]).filter(Boolean)
+        .map((p) => '#' + (p.id || p.name || '').replace(/[^\p{L}\p{N}_]/gu, ''))
+        .filter((t) => t.length > 1);
+    const seen = new Set();
+    return [...own, ...DEFAULT_TAGS].filter((t) => !seen.has(t.toLowerCase()) && seen.add(t.toLowerCase()));
+}
+
+function Tags({ live }) {
+    const { t } = useLaravelReactI18n();
+    const [copied, setCopied] = useState(false);
+    const tags = hashtags(live).join(' ');
+    const l = live.leaders || {};
+    const extra = [
+        l.planes && `✈ ${l.planes.name} (${l.planes.n})`,
+        l.gifts && `🎁 ${l.gifts.name} (${t('guessword.archive_coins', { n: l.gifts.n })})`,
+        l.balloons && `🎈 ${l.balloons.name} (${l.balloons.n})`,
+    ].filter(Boolean);
+    const copy = async () => {
+        try { await navigator.clipboard.writeText(tags); setCopied(true); setTimeout(() => setCopied(false), 1500); } catch { /* no clipboard */ }
+    };
+    return (
+        <div className="mt-2 space-y-1">
+            {extra.length > 0 && <p className="truncate text-xs text-ink-500">{extra.join(' · ')}</p>}
+            <div className="flex items-start gap-2">
+                <p className="min-w-0 flex-1 break-words text-xs font-semibold text-primary-700">{tags}</p>
+                <button type="button" onClick={copy}
+                        className="shrink-0 rounded-md border border-warm-300 px-2 py-0.5 text-xs font-semibold text-ink-700 hover:bg-warm-100">
+                    {copied ? t('guessword.archive_tags_copied') : t('guessword.archive_tags_copy')}
+                </button>
+            </div>
+        </div>
+    );
+}
+
 const hm = (s) => `${Math.floor(s / 3600)}:${String(Math.floor((s % 3600) / 60)).padStart(2, '0')}`;
 const hms = (s) => `${hm(s)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
 const eventsUrl = (room, file) => (room.foreign ? route('guessword.rooms.archive.events', [room.id, file]) : route('guessword.archive.events', file));
@@ -226,6 +266,7 @@ export default function Archive({ room, lives, engineOnline }) {
                                         {open === l.file ? t('guessword.digest_close') : t('guessword.digest_make')}
                                     </SecondaryButton>
                                 </div>
+                                <Tags live={l} />
                                 {open === l.file && <DigestBuilder room={room} live={l} />}
                             </li>
                         ))}

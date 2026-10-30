@@ -63,8 +63,8 @@ class LiveArchive
     {
         $source = $live['journal'] ? 'journal' : 'live';
 
-        // v3: + cake_start / cake_last / cake_split / fire events (bump when the summary or the events change)
-        return Cache::remember("guessword:v3:{$source}:{$room->engineId()}:{$live['file']}:{$live['size']}", now()->addDays(30),
+        // v4: + leaders (bump when the summary or the events change)
+        return Cache::remember("guessword:v4:{$source}:{$room->engineId()}:{$live['file']}:{$live['size']}", now()->addDays(30),
             fn () => $this->parse($live['journal']
                 ? (string) file_get_contents(self::journalDir($room->engineId()).'/'.$live['file'])
                 : $this->engine->live($room, $live['file'])));
@@ -72,7 +72,7 @@ class LiveArchive
 
     public function parse(string $jsonl): array
     {
-        $events = [];
+        $events = $gifts = [];
         $duration = 0.0;
         foreach (preg_split('/\r?\n/', $jsonl) as $line) {
             $e = $line === '' ? null : json_decode($line, true);
@@ -80,6 +80,10 @@ class LiveArchive
                 continue;
             }
             $duration = max($duration, (float) ($e['s'] ?? 0));
+            // gifts to the host stay on the server; only who gave the most coins goes into the summary
+            if (($e['type'] ?? null) === 'gift' && empty($e['to']) && isset($e['user'])) {
+                $gifts[] = ['user' => $e['user'], 'n' => (int) ($e['coins'] ?? 0) * (int) ($e['count'] ?? 1)];
+            }
             if (! in_array($e['type'] ?? null, self::DIGEST_TYPES, true)) {
                 continue;
             }
@@ -90,10 +94,31 @@ class LiveArchive
             $events[] = $e;
         }
 
-        return ['events' => $events, 'summary' => $this->summary($events, $duration)];
+        return ['events' => $events, 'summary' => $this->summary($events, $duration, $gifts)];
     }
 
-    private function summary(array $events, float $duration): array
+    /**
+     * The leader of [{user, n}]: one player = one TikTok user id; {name (latest), id (@unique_id, for a
+     * hashtag), avatar, n (summed)} or null
+     */
+    private function top(array $items): ?array
+    {
+        $by = [];
+        foreach ($items as $it) {
+            $u = (array) ($it['user'] ?? []);
+            $key = ($u['uid'] ?? '') ?: ($u['id'] ?? '') ?: ($u['name'] ?? '');
+            if ($key === '' || $it['n'] <= 0) {
+                continue;
+            }
+            $by[$key] = ['n' => ($by[$key]['n'] ?? 0) + $it['n'], 'name' => $u['name'] ?? $u['id'] ?? '?',
+                'id' => $u['id'] ?? '', 'avatar' => ($u['uid'] ?? '') ?: ($u['id'] ?? '')];
+        }
+        uasort($by, fn ($a, $b) => $b['n'] <=> $a['n']);
+
+        return $by ? reset($by) : null;
+    }
+
+    private function summary(array $events, float $duration, array $gifts = []): array
     {
         $of = fn (string $type) => array_values(array_filter($events, fn ($e) => $e['type'] === $type && isset($e['s'])));
         $start = $of('live_start')[0] ?? null;
@@ -111,15 +136,16 @@ class LiveArchive
             $bins[$at($e)]['b'] += $balloons($e);
         }
 
-        // the champion: most wins, one player = one TikTok user id; the name of their latest win
-        $wins = [];
-        foreach ($of('winner') as $e) {
-            $u = $e['user'] ?? [];
-            $key = ($u['uid'] ?? '') ?: ($u['id'] ?? '') ?: ($u['name'] ?? '?');
-            $wins[$key] = ['n' => ($wins[$key]['n'] ?? 0) + 1, 'name' => $u['name'] ?? $u['id'] ?? '?', 'avatar' => ($u['uid'] ?? '') ?: ($u['id'] ?? '')];
-        }
-        uasort($wins, fn ($a, $b) => $b['n'] <=> $a['n']);
-        $champion = $wins ? reset($wins) : null;
+        // the leaders of the LIVE (the archive's hashtags): the game's champion (most wins) first, then most
+        // planes, most gift coins, most balloons
+        $one = fn (array $e) => ['user' => $e['user'] ?? [], 'n' => 1];
+        $champion = $this->top(array_map($one, $of('winner')));
+        $leaders = array_filter([
+            'wins' => $champion,
+            'planes' => $this->top(array_map($one, $of('plane'))),
+            'gifts' => $this->top($gifts),
+            'balloons' => $this->top(array_map(fn ($e) => ['user' => $e['user'] ?? [], 'n' => $balloons($e)], $of('balloon'))),
+        ]);
 
         return [
             'started' => $start['t'] ?? null,
@@ -134,6 +160,7 @@ class LiveArchive
             'balloons' => array_sum(array_map($balloons, $of('balloon'))),
             'cakes' => count($of('cake')),
             'champion' => $champion ? ['name' => $champion['name'], 'avatar' => $champion['avatar'], 'wins' => $champion['n']] : null,
+            'leaders' => array_map(fn ($l) => ['name' => $l['name'], 'id' => $l['id'], 'n' => $l['n']], $leaders),
             'bins' => $bins,
         ];
     }

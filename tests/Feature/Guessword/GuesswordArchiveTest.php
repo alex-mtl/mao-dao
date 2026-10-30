@@ -62,6 +62,10 @@ it('lists the streamer\'s lives with counts, champion and activity bins', functi
         ->where('lives.0.cakes', 1)
         ->where('lives.0.champion.wins', 2)
         ->where('lives.0.champion.name', 'Ann 2')
+        ->where('lives.0.leaders.wins', ['name' => 'Ann 2', 'id' => 'id1', 'n' => 2])
+        ->where('lives.0.leaders.planes', ['name' => 'Bob', 'id' => 'id2', 'n' => 1])
+        ->where('lives.0.leaders.gifts', ['name' => 'Bob', 'id' => 'id2', 'n' => 1])
+        ->where('lives.0.leaders.balloons', ['name' => 'Bob', 'id' => 'id2', 'n' => 5])
         ->has('lives.0.bins', 4)
         ->where('lives.0.bins.0', ['w' => 1, 'b' => 6, 'p' => 0, 'c' => 0]));
 });
