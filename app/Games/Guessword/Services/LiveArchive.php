@@ -122,6 +122,9 @@ class LiveArchive
 
         return [
             'started' => $start['t'] ?? null,
+            // the LIVE Center recording of this LIVE has this id; epoch = unix time of second 0 of the log
+            'tiktokRoom' => isset($start['tiktok_room']) ? (string) $start['tiktok_room'] : null,
+            'epoch' => isset($start['epoch']) ? (float) $start['epoch'] : null,
             'date' => $start ? substr((string) $start['t'], 0, 10) : null,
             'duration' => (int) round($duration),
             'rounds' => count($of('round_start')),

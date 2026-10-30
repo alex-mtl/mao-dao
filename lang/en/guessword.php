@@ -423,5 +423,13 @@ return [
     'digest_no_decode' => 'This browser cannot read this recording\'s video. Try Chrome or Edge.',
     'digest_no_encode' => 'This browser cannot encode H.264 video.',
     'digest_bad_format' => 'This file is not a video this page can read.',
+    'digest_from_livecenter' => 'Build from LIVE Center',
+    'digest_or_file' => 'or choose the downloaded file',
+    'digest_lc_finding' => 'Looking for the recording in LIVE Center…',
+    'digest_lc_notfound' => 'This recording is not in your LIVE Center list. Open livecenter.tiktok.com in this browser, signed in to TikTok, and try again.',
+    'digest_lc_found' => 'LIVE Center recording: :duration',
+    'digest_mb' => 'read :mb MB',
+    'digest_install' => 'With the Mao Dao browser extension the digest is built straight from TikTok LIVE Center, without downloading the recording.',
+    'digest_install_link' => 'How to install',
     'digest_round_tag' => 'ROUND',
 ];

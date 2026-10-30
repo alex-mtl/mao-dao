@@ -423,5 +423,13 @@ return [
     'digest_no_decode' => 'Этот браузер не читает видео этой записи. Попробуйте Chrome или Edge.',
     'digest_no_encode' => 'Этот браузер не умеет кодировать видео H.264.',
     'digest_bad_format' => 'Этот файл не похож на видео, которое страница может прочитать.',
+    'digest_from_livecenter' => 'Собрать из LIVE Center',
+    'digest_or_file' => 'или выберите скачанный файл',
+    'digest_lc_finding' => 'Ищу запись в LIVE Center…',
+    'digest_lc_notfound' => 'Этой записи нет в вашем списке LIVE Center. Откройте livecenter.tiktok.com в этом браузере (с входом в TikTok) и попробуйте снова.',
+    'digest_lc_found' => 'Запись в LIVE Center: :duration',
+    'digest_mb' => 'прочитано :mb МБ',
+    'digest_install' => 'С расширением Mao Dao для браузера дайджест собирается прямо из TikTok LIVE Center, без скачивания записи.',
+    'digest_install_link' => 'Как установить',
     'digest_round_tag' => 'РАУНД',
 ];

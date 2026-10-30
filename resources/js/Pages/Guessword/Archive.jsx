@@ -4,6 +4,7 @@ import PlatformLayout from '@/Layouts/PlatformLayout';
 import { Head, Link } from '@inertiajs/react';
 import { useLaravelReactI18n } from 'laravel-react-i18n';
 import { useId, useRef, useState } from 'react';
+import { extension } from './Digest/livecenter.js';
 import { digestModel, factsFromLive, temperature, TEMPS } from './Digest/model.js';
 
 const hm = (s) => `${Math.floor(s / 3600)}:${String(Math.floor((s % 3600) / 60)).padStart(2, '0')}`;
@@ -36,7 +37,8 @@ function Curve({ bins, label }) {
 function DigestBuilder({ room, live }) {
     const { t } = useLaravelReactI18n();
     const [state, setState] = useState({ stage: 'pick' });
-    const fileRef = useRef(null), canvasRef = useRef(null), abortRef = useRef(null);
+    const srcRef = useRef(null), canvasRef = useRef(null), abortRef = useRef(null);
+    const why = (w) => t({ webcodecs: 'guessword.digest_no_webcodecs', decode: 'guessword.digest_no_decode', encode: 'guessword.digest_no_encode', format: 'guessword.digest_bad_format' }[w]);
 
     const pick = async (e) => {
         const file = e.target.files[0];
@@ -44,24 +46,43 @@ function DigestBuilder({ room, live }) {
         if (state.url) URL.revokeObjectURL(state.url);
         setState({ stage: 'checking' });
         const build = await import('./Digest/build.js');
-        const why = await build.unsupported(file);
-        if (why) { setState({ stage: 'error', message: t({ webcodecs: 'guessword.digest_no_webcodecs', decode: 'guessword.digest_no_decode', encode: 'guessword.digest_no_encode', format: 'guessword.digest_bad_format' }[why]) }); return; }
+        const w = await build.unsupported(file);
+        if (w) { setState({ stage: 'error', message: why(w) }); return; }
         const info = await build.probe(file);
-        fileRef.current = file;
+        srcRef.current = { file, stream: info.duration };
         const off = Math.abs(info.duration - live.duration) > Math.max(300, live.duration * 0.05);
         setState({ stage: off ? 'mismatch' : 'ready', duration: info.duration });
     };
 
+    // the recording straight from TikTok LIVE Center (browser extension): found by the LIVE's TikTok id,
+    // placed by the playlist's clock, so no length check is needed
+    const fromLiveCenter = async () => {
+        if (state.url) URL.revokeObjectURL(state.url);
+        setState({ stage: 'finding' });
+        try {
+            const lc = await import('./Digest/livecenter.js');
+            const replay = await lc.findReplay(live.tiktokRoom, live.epoch);
+            if (!replay?.m3u8) { setState({ stage: 'error', message: t('guessword.digest_lc_notfound') }); return; }
+            const hls = await lc.playlist(replay);
+            const w = await (await import('./Digest/build.js')).unsupportedHls(hls);
+            if (w) { setState({ stage: 'error', message: why(w) }); return; }
+            srcRef.current = { hls, liveStart: live.epoch, stream: hls.end - live.epoch };
+            setState({ stage: 'ready', lc: true, duration: hls.end - hls.start });
+        } catch (e) {
+            setState({ stage: 'error', message: t('guessword.digest_failed', { error: e.message }) });
+        }
+    };
+
     const run = async () => {
-        const file = fileRef.current, duration = state.duration;
+        const src = srcRef.current, duration = state.duration, lc = state.lc;
         const ac = new AbortController();
         abortRef.current = ac;
         const t0 = performance.now();
         try {
-            setState({ stage: 'avatars', duration });
+            setState({ stage: 'avatars', duration, lc });
             const lines = await (await fetch(eventsUrl(room, live.file), { headers: { Accept: 'application/json' } })).json();
             const facts = factsFromLive(lines);
-            const model = digestModel(facts, { stream: duration });
+            const model = digestModel(facts, { stream: src.stream });
             // avatars of everybody in the races, six at a time; a missing one is drawn as initials
             const ids = [...new Set(Object.values(model.people).map((p) => p.avatar).filter(Boolean))];
             const avatars = new Map();
@@ -76,30 +97,43 @@ function DigestBuilder({ room, live }) {
             const { buildDigest } = await import('./Digest/build.js');
             let lost = 0;
             const blob = await buildDigest({
-                file, model, avatars, canvas: canvasRef.current, signal: ac.signal,
+                file: src.file, hls: src.hls, liveStart: src.liveStart, model, avatars, canvas: canvasRef.current, signal: ac.signal,
                 labels: { round: t('guessword.digest_round_tag') },
-                onProgress: (p) => { lost = p.lost || 0; setState({ stage: p.stage === 'mux' ? 'mux' : 'building', duration, frame: p.frame, frames: p.frames }); },
+                onProgress: (p) => { lost = p.lost || 0; setState({ stage: p.stage === 'mux' ? 'mux' : 'building', duration, lc, frame: p.frame, frames: p.frames, mb: p.mb }); },
             });
-            setState({ stage: 'done', duration, url: URL.createObjectURL(blob), seconds: Math.round((performance.now() - t0) / 1000), lost });
+            setState({ stage: 'done', duration, lc, url: URL.createObjectURL(blob), seconds: Math.round((performance.now() - t0) / 1000), lost });
         } catch (e) {
-            setState(e.name === 'AbortError' ? { stage: 'ready', duration } : { stage: 'error', message: t('guessword.digest_failed', { error: e.message }) });
+            setState(e.name === 'AbortError' ? { stage: 'ready', duration, lc } : { stage: 'error', message: t('guessword.digest_failed', { error: e.message }) });
         }
     };
 
-    const busy = ['avatars', 'building', 'mux'].includes(state.stage);
+    const busy = ['avatars', 'building', 'mux', 'finding'].includes(state.stage);
+    const ext = extension();
     return (
         <div className="mt-3 rounded-xl border border-warm-200 bg-warm-50 p-4">
             <p className="text-sm text-ink-600">{t('guessword.digest_intro')}</p>
             <div className="mt-3 flex flex-wrap items-start gap-4">
                 <div className="min-w-0 flex-1 space-y-3">
+                    {ext && live.tiktokRoom ? (
+                        <PrimaryButton type="button" onClick={fromLiveCenter} disabled={busy}>{t('guessword.digest_from_livecenter')}</PrimaryButton>
+                    ) : (
+                        <p className="text-xs text-ink-500">
+                            {t('guessword.digest_install')}{' '}
+                            <a href="https://github.com/alex-mtl/mao-dao/tree/main/browser-extension#readme" target="_blank" rel="noreferrer"
+                               className="font-semibold text-primary-700 hover:underline">{t('guessword.digest_install_link')}</a>
+                        </p>
+                    )}
+                    {state.stage === 'finding' && <p className="text-sm text-ink-500">{t('guessword.digest_lc_finding')}</p>}
                     <label className="block text-sm font-semibold text-ink-800">
-                        {t('guessword.digest_pick')}
+                        {ext && live.tiktokRoom ? t('guessword.digest_or_file') : t('guessword.digest_pick')}
                         <input type="file" accept="video/mp4,.mp4" onChange={pick} disabled={busy}
                                className="mt-1 block w-full text-sm text-ink-700 file:mr-3 file:rounded-lg file:border-0 file:bg-primary-600 file:px-3 file:py-2 file:font-semibold file:text-white" />
                     </label>
                     {state.stage === 'checking' && <p className="text-sm text-ink-500">{t('guessword.digest_checking')}</p>}
                     {state.duration !== undefined && (
-                        <p className="text-sm text-ink-600">{t('guessword.digest_file_duration', { file: hms(state.duration), live: hms(live.duration) })}</p>
+                        <p className="text-sm text-ink-600">
+                            {state.lc ? t('guessword.digest_lc_found', { duration: hms(state.duration) }) : t('guessword.digest_file_duration', { file: hms(state.duration), live: hms(live.duration) })}
+                        </p>
                     )}
                     {state.stage === 'mismatch' && (
                         <div className="rounded-lg bg-warning-50 px-3 py-2 text-sm text-warning-800">
@@ -113,6 +147,7 @@ function DigestBuilder({ room, live }) {
                             <p className="text-sm text-ink-600">
                                 {state.stage === 'avatars' && t('guessword.digest_avatars')}
                                 {state.stage === 'building' && t('guessword.digest_progress', { n: state.frame, total: state.frames })}
+                                {state.stage === 'building' && state.lc && ` · ${t('guessword.digest_mb', { mb: state.mb || 0 })}`}
                                 {state.stage === 'mux' && t('guessword.digest_mux')}
                             </p>
                             <div className="mt-1 h-2 overflow-hidden rounded-full bg-warm-200">

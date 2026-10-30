@@ -1,0 +1,63 @@
+// MPEG-TS, only what the digest needs from a LIVE Center HLS segment: its first video access unit
+// (a segment starts with a key frame), as Annex B bytes + PTS. Works on the first bytes of a segment
+// (HTTP Range): returns null when the frame is not complete yet, so the caller asks for more bytes.
+
+const STREAMS = { 0x1b: 'avc', 0x24: 'hevc' };
+
+export function firstVideoFrame(b) {
+    let pmt = -1, video = -1, codec = null, pes = null, pts = null;
+    const parts = [];
+    for (let i = 0; i + 188 <= b.length; i += 188) {
+        if (b[i] !== 0x47) return null;                       // lost sync: not a TS start
+        const pusi = b[i + 1] & 0x40, pid = ((b[i + 1] & 0x1f) << 8) | b[i + 2], afc = (b[i + 3] >> 4) & 3;
+        let p = i + 4;
+        if (afc & 2) p += 1 + b[p];
+        if (!(afc & 1) || p >= i + 188) continue;
+        if (pid === 0 && pusi) {
+            p += 1 + b[p];
+            pmt = ((b[p + 10] & 0x1f) << 8) | b[p + 11];
+        } else if (pid === pmt && pusi && video < 0) {
+            p += 1 + b[p];
+            const end = p + 3 + (((b[p + 1] & 0x0f) << 8) | b[p + 2]) - 4;
+            let q = p + 12 + (((b[p + 10] & 0x0f) << 8) | b[p + 11]);
+            while (q < end) {
+                if (STREAMS[b[q]]) { codec = STREAMS[b[q]]; video = ((b[q + 1] & 0x1f) << 8) | b[q + 2]; break; }
+                q += 5 + (((b[q + 3] & 0x0f) << 8) | b[q + 4]);
+            }
+        } else if (pid === video) {
+            if (pusi) {
+                if (pes) return { codec, pts, data: concat(parts) };   // the next frame starts: the first one is whole
+                pes = true;
+                const flags = b[p + 7], hl = b[p + 8];
+                if (flags & 0x80) pts = ((b[p + 9] & 0x0e) * 536870912 + b[p + 10] * 4194304 + (b[p + 11] & 0xfe) * 16384 + b[p + 12] * 128 + (b[p + 13] >> 1)) / 90000;
+                p += 9 + hl;
+            }
+            if (pes) parts.push(b.subarray(p, i + 188));
+        }
+    }
+    return null;
+}
+
+function concat(parts) {
+    const out = new Uint8Array(parts.reduce((a, x) => a + x.length, 0));
+    let o = 0;
+    for (const x of parts) { out.set(x, o); o += x.length; }
+    return out;
+}
+
+/** codec string for VideoDecoder from the frame's SPS (Annex B, no description) */
+export function codecString(codec, data) {
+    for (let i = 0; i + 4 < data.length; i++) {
+        if (data[i] !== 0 || data[i + 1] !== 0 || data[i + 2] !== 1) continue;
+        const n = i + 3;
+        if (codec === 'avc' && (data[n] & 0x1f) === 7) {
+            return 'avc1.' + [data[n + 1], data[n + 2], data[n + 3]].map((x) => x.toString(16).padStart(2, '0')).join('');
+        }
+        if (codec === 'hevc' && ((data[n] >> 1) & 0x3f) === 33) {
+            // SPS: 2 header bytes, then 1 byte (vps id / max sub layers / nesting), then profile_tier_level
+            const ptl = n + 3, profile = data[ptl] & 0x1f, tier = (data[ptl] >> 5) & 1, level = data[ptl + 11];
+            return `hev1.${profile}.6.${tier ? 'H' : 'L'}${level}.90`;
+        }
+    }
+    return codec === 'avc' ? 'avc1.640028' : 'hev1.1.6.L120.90';
+}

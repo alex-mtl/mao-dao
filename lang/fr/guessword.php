@@ -423,5 +423,13 @@ return [
     'digest_no_decode' => 'Ce navigateur ne lit pas la vidéo de cet enregistrement. Essayez Chrome ou Edge.',
     'digest_no_encode' => 'Ce navigateur ne sait pas encoder la vidéo H.264.',
     'digest_bad_format' => 'Ce fichier n\'est pas une vidéo lisible par cette page.',
+    'digest_from_livecenter' => 'Créer depuis LIVE Center',
+    'digest_or_file' => 'ou choisissez le fichier téléchargé',
+    'digest_lc_finding' => 'Recherche de l\'enregistrement dans LIVE Center…',
+    'digest_lc_notfound' => 'Cet enregistrement n\'est pas dans votre liste LIVE Center. Ouvrez livecenter.tiktok.com dans ce navigateur, connecté à TikTok, puis réessayez.',
+    'digest_lc_found' => 'Enregistrement LIVE Center : :duration',
+    'digest_mb' => ':mb Mo lus',
+    'digest_install' => 'Avec l\'extension de navigateur Mao Dao, le résumé est créé directement depuis TikTok LIVE Center, sans télécharger l\'enregistrement.',
+    'digest_install_link' => 'Comment l\'installer',
     'digest_round_tag' => 'MANCHE',
 ];

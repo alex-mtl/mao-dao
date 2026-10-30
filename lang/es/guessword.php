@@ -423,5 +423,13 @@ return [
     'digest_no_decode' => 'Este navegador no puede leer el vídeo de esta grabación. Prueba Chrome o Edge.',
     'digest_no_encode' => 'Este navegador no puede codificar vídeo H.264.',
     'digest_bad_format' => 'Este archivo no es un vídeo que esta página pueda leer.',
+    'digest_from_livecenter' => 'Crear desde LIVE Center',
+    'digest_or_file' => 'o elige el archivo descargado',
+    'digest_lc_finding' => 'Buscando la grabación en LIVE Center…',
+    'digest_lc_notfound' => 'Esta grabación no está en tu lista de LIVE Center. Abre livecenter.tiktok.com en este navegador, con sesión en TikTok, e inténtalo de nuevo.',
+    'digest_lc_found' => 'Grabación de LIVE Center: :duration',
+    'digest_mb' => ':mb MB leídos',
+    'digest_install' => 'Con la extensión de navegador Mao Dao el resumen se crea directamente desde TikTok LIVE Center, sin descargar la grabación.',
+    'digest_install_link' => 'Cómo instalarla',
     'digest_round_tag' => 'RONDA',
 ];

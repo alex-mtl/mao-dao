@@ -159,6 +159,14 @@ own recording (MP4 from TikTok LIVE Center): the file is never uploaded.
   balloons, cakes, `[manual]` balloon / plane / cake. Written to `storage/app/guessword/journal-lives/<room>/`
   (new files only); the archive lists them with a note (nicknames only, no avatars) and hides one when the
   engine has a log of the same LIVE id. Imported 30.10.2026 from the days 21–29.10.
+- **Straight from TikTok LIVE Center** (browser extension `browser-extension/`, install: its README): LIVE
+  Center plays recordings as HLS (`.m3u8`, ~4 s MPEG-TS segments, HEVC, `#EXT-X-PROGRAM-DATE-TIME` on every
+  segment, links signed for ~1 year, CDN answers HTTP Range). The recording's id in LIVE Center = the TikTok
+  room id of the LIVE log (`live_start.tiktok_room`). The page asks the extension for the recording, the
+  playlist and the first 512 KB of each needed segment (`Digest/livecenter.js`; `Digest/ts.js` takes the
+  segment's first video frame, a key frame); the clock of the playlist places the log exactly (30.10: the
+  recording began 21 s before the log). ~0.5 MB per clip frame, so < 1 GB for any LIVE. Checked locally on
+  an HLS cut of the 19.10 recording: 1800 frames in ~14 s, 148 MB read.
 - **Browser, one logic for the site and the local pipeline** — `resources/js/Pages/Guessword/Digest/`:
   `model.js` (facts from a LIVE log or tiktok-clips' events.json, nick merging, races, clip time,
   temperature), `draw.js` (one 1080x1920 overlay frame on a canvas), `build.js` (WebCodecs: mediabunny
