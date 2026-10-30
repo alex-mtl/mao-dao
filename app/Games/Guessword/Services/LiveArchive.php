@@ -63,7 +63,8 @@ class LiveArchive
     {
         $source = $live['journal'] ? 'journal' : 'live';
 
-        return Cache::remember("guessword:{$source}:{$room->engineId()}:{$live['file']}:{$live['size']}", now()->addDays(30),
+        // v2: the summary got tiktokRoom / epoch (bump when the summary's shape changes)
+        return Cache::remember("guessword:v2:{$source}:{$room->engineId()}:{$live['file']}:{$live['size']}", now()->addDays(30),
             fn () => $this->parse($live['journal']
                 ? (string) file_get_contents(self::journalDir($room->engineId()).'/'.$live['file'])
                 : $this->engine->live($room, $live['file'])));
