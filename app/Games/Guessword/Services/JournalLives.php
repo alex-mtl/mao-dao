@@ -67,6 +67,11 @@ class JournalLives
             }
         }
 
+        // every login a room's chat showed on any day: for players who did not write in that LIVE
+        $roomLogins = [];
+        foreach ($lives as $live) {
+            $roomLogins[$live['room']] = ($live['logins'] ?? []) + ($roomLogins[$live['room']] ?? []);
+        }
         $out = [];
         foreach ($lives as $live) {
             // a reconnect blip or a LIVE without the game: under 10 events and no win
@@ -74,7 +79,7 @@ class JournalLives
                 continue;
             }
             // logins seen in this LIVE's chat (also after the event): players get their @login (the archive's mentions)
-            $logins = $live['logins'] ?? [];
+            $logins = ($live['logins'] ?? []) + $roomLogins[$live['room']];
             foreach ($live['events'] as &$e) {
                 if (isset($e['user']) && $e['user']['id'] === '' && isset($logins[$e['user']['name']])) {
                     $e['user']['id'] = $logins[$e['user']['name']];
