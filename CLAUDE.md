@@ -546,6 +546,24 @@ up first (`/home/ubuntu/quiz-<timestamp>-pre-<what>.tgz`); never data
   container; without the word assets ~67 Guess-the-Word tests fail anyway —
   compare the counts with and without the change.
 
+### Log archive — Cloudflare R2 (since 2026-10-30)
+
+The engine's systemd journal (`guessword-engine`: every event of every room —
+wins, planes, balloons, cakes, `[manual]` launches, likes, chat) is the only
+full history of the streams, and journald drops old entries by size. A cron
+job of user `ubuntu` (`30 0 * * *`, `/home/ubuntu/bin/journal-to-r2.sh`, log
+`~/journal-to-r2.log`) uploads each UTC day as
+`guessword-engine/YYYY/YYYY-MM-DD.log.xz` (~2.3 MB/day) to the R2 bucket
+`stream-logs`; back-filled from 2026-10-21. It only reads the journal. Code and
+usage: [`services/journal-archive/`](services/journal-archive/README.md).
+- Cloudflare account: the owner's (also DNS of doctorvet.md), for any project.
+  Account-wide Global API Key on the owner's PC (`~/.cloudflare/global-key`);
+  the server only has a key limited to this bucket (`~/.config/r2-stream-logs.env`).
+- Budget: e-mail alerts at $0.5 and $1 of monthly spend (Cloudflare has no hard
+  cap). R2 is free up to 10 GB; the archive grows ~0.85 GB/year.
+- New long-lived logs of the platform go to the same bucket, xz-compressed, one
+  object per day under their own prefix.
+
 ### Server specifics (bare metal, no Docker on this host)
 
 - PHP 8.3.23 / nginx / MySQL 8.0. App code: `/var/www/quiz`.
