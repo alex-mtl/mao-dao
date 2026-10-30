@@ -26,7 +26,7 @@ const same = (x, y) => {
 };
 
 /**
- * Facts from the old events.json of tiktok-clips: [{t, type: round|winner|plane|timeout, who, word, exact}]
+ * Facts from the old events.json of tiktok-clips: [{t, type: round|winner|plane|balloon|cake|timeout, who, word, exact, n}]
  * (t = stream second). exact = nick from a game log; otherwise recognised from the game's voice.
  */
 export function factsFromEvents(events, { duration = 0, date = '' } = {}) {
@@ -37,8 +37,8 @@ export function factsFromEvents(events, { duration = 0, date = '' } = {}) {
         rounds: by('round').length,
         wins: by('winner').map((e) => ({ t: e.t, key: '', name: clean(e.who), avatar: '', word: clean(e.word), exact: !!e.exact })),
         planes: by('plane').filter((e) => e.who).map((e) => ({ t: e.t, key: clean(e.who), name: clean(e.who), avatar: '' })),
-        balloons: [],
-        cakes: [],
+        balloons: by('balloon').map((e) => ({ t: e.t, n: e.n || 1, key: clean(e.who), name: clean(e.who), avatar: '' })),
+        cakes: by('cake').map((e) => ({ t: e.t, key: clean(e.who), name: clean(e.who), avatar: '' })),
     };
 }
 
@@ -57,8 +57,8 @@ export function factsFromLive(lines) {
         wins: of('winner').map((l) => ({ t: l.s, ...who(l.user), word: clean(l.word), exact: true })),
         planes: of('plane').map((l) => ({ t: l.s, ...who(l.user) })),
         // a gift / manual launch of N balloons counts N; cakes: automatic (likes) or [manual]
-        balloons: of('balloon').map((l) => ({ t: l.s, n: l.likes ? 1 : (l.count || 1) })),
-        cakes: of('cake').map((l) => ({ t: l.s, manual: !!l.manual })),
+        balloons: of('balloon').map((l) => ({ t: l.s, n: l.likes ? 1 : (l.count || 1), ...who(l.user) })),
+        cakes: of('cake').map((l) => ({ t: l.s, manual: !!l.manual, ...who(l.user) })),
     };
 }
 
@@ -85,14 +85,21 @@ function players(facts) {
         wins.push({ t: e.t, key, word: e.word });
     }
     const planes = facts.planes.map((e) => ({ t: e.t, key: add(e.key || e.name, e.name, e.avatar) }));
+    // the crowd of the bottom-right window: one balloon per balloon (a gift of N = N), cakes
+    const balloons = [];
+    for (const e of facts.balloons) {
+        const key = e.key ? add(e.key, e.name, e.avatar) : '';
+        for (let i = 0; i < (e.n || 1); i++) balloons.push({ t: e.t, key });
+    }
+    const cakes = facts.cakes.map((e) => ({ t: e.t, key: e.key ? add(e.key, e.name, e.avatar) : '' }));
     for (const p of Object.values(people)) p.name = Object.entries(p.variants).sort((a, b) => b[1] - a[1])[0][0];
-    return { people, wins, planes };
+    return { people, wins, planes, balloons, cakes };
 }
 
 // race state after each event: one row per count (players with equal counts share a row), bottom-anchored;
-// geometry in panel pixels (draw.js): PANEL tall, rows of ROW from the bottom, PAD inside
-export const PANEL = 796, ROW = 74, PAD = 24;
-function buildRace(events) {
+// geometry in panel pixels (draw.js): panel tall, rows of ROW from the bottom, PAD inside
+export const PANELS = [640, 600], ROW = 74, PAD = 24;
+function buildRace(events, PANEL) {
     const totals = {};
     events.forEach(([, n]) => { totals[n] = (totals[n] || 0) + 1; });
     const full = Math.max(1, ...Object.values(totals));       // 100% of a bar = the champion's final count
@@ -110,7 +117,7 @@ function buildRace(events) {
         });
         snaps.push(s);
     }
-    return { events, snaps, full };
+    return { events, snaps, full, panel: PANEL };
 }
 
 /**
@@ -119,7 +126,7 @@ function buildRace(events) {
  * slow = clip seconds of pause on each win (0: the clock never stops).
  */
 export function digestModel(facts, { stream = facts.duration, video = VIDEO, slow = 0 } = {}) {
-    const { people, wins, planes } = players(facts);
+    const { people, wins, planes, balloons, cakes } = players(facts);
     const scale = (video - wins.length * slow) / stream;
     // stream second -> clip second (each win adds a pause of slow)
     const clipOf = (t) => t * scale + wins.filter((w) => w.t < t).length * slow;
@@ -137,11 +144,15 @@ export function digestModel(facts, { stream = facts.duration, video = VIDEO, slo
         return { t: Math.min(stream, prev + (v - clip) / scale), k: wins.length, slow: false };
     }
     return {
-        stream, video, slow, date: facts.date, people, wins, planes,
+        stream, video, slow, date: facts.date, people, wins, planes, balloons, cakes,
+        // the stream's temperature per BIN seconds (the curve at the bottom, its dot runs with the clock)
+        temp: temperature(bins(facts)),
         speed: Math.round(stream / (video - wins.length * slow)),
-        race: buildRace(wins.map((w) => [w.t, w.key])),
-        planesRace: planes.length ? buildRace(planes.map((p) => [p.t, p.key])) : null,
+        race: buildRace(wins.map((w) => [w.t, w.key]), PANELS[0]),
+        planesRace: planes.length ? buildRace(planes.map((p) => [p.t, p.key]), PANELS[1]) : null,
         clipOf, streamAt,
+        // how many of a list (sorted by t) happened by stream second t
+        countAt: (list, t) => { let lo = 0, hi = list.length; while (lo < hi) { const m = (lo + hi) >> 1; if (list[m].t <= t) lo = m + 1; else hi = m; } return lo; },
     };
 }
 
