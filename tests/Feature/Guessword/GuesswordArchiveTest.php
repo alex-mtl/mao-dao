@@ -126,7 +126,7 @@ function journalDay(): array
 it('rebuilds LIVE logs from the engine journal, one per TikTok LIVE, reconnects included', function () {
     $lives = app(App\Games\Guessword\Services\JournalLives::class)->parse(journalDay());
 
-    expect(array_keys($lives))->toBe(['gw1', 'gw3'])
+    expect(array_keys($lives))->toBe(['gw1'])      // gw3: two events, no win
         ->and(array_keys($lives['gw1']))->toBe(['2026-10-25_060022_222.jsonl']);
     $events = $lives['gw1']['2026-10-25_060022_222.jsonl'];
     expect(array_column($events, 'type'))->toBe(['live_start', 'round_start', 'balloon', 'plane', 'winner', 'cake', 'cake'])

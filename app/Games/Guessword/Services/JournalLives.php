@@ -65,8 +65,9 @@ class JournalLives
 
         $out = [];
         foreach ($lives as $live) {
-            if (count($live['events']) < 2) {
-                continue;                                 // connected, nothing happened
+            // a reconnect blip or a LIVE without the game: under 10 events and no win
+            if (count($live['events']) < 10 && ! in_array('winner', array_column($live['events'], 'type'), true)) {
+                continue;
             }
             $start = (new DateTimeImmutable('@'.(int) $live['start']))->setTimezone($zone);
             $out[$live['room']][$start->format('Y-m-d_His').'_'.$live['tt'].'.jsonl'] = $live['events'];
