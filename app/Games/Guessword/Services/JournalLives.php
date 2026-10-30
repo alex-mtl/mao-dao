@@ -56,6 +56,10 @@ class JournalLives
                 continue;
             }
             $key = $current[$room] ?? null;
+            // the journal names players by nickname only, but a chat line also has the login: "Nick (@login) ..."
+            if ($key && $tag === 'chat' && preg_match('/^(.+?) \(@([A-Za-z0-9_.]+)\) follow=/u', $msg, $c)) {
+                $lives[$key]['logins'][$c[1]] = $c[2];
+            }
             $event = $key ? $this->event($tag, $msg) : null;
             if ($event) {
                 $s = round($epoch - $lives[$key]['start'], 1);
@@ -69,6 +73,14 @@ class JournalLives
             if (count($live['events']) < 10 && ! in_array('winner', array_column($live['events'], 'type'), true)) {
                 continue;
             }
+            // logins seen in this LIVE's chat (also after the event): players get their @login (the archive's mentions)
+            $logins = $live['logins'] ?? [];
+            foreach ($live['events'] as &$e) {
+                if (isset($e['user']) && $e['user']['id'] === '' && isset($logins[$e['user']['name']])) {
+                    $e['user']['id'] = $logins[$e['user']['name']];
+                }
+            }
+            unset($e);
             $start = (new DateTimeImmutable('@'.(int) $live['start']))->setTimezone($zone);
             $out[$live['room']][$start->format('Y-m-d_His').'_'.$live['tt'].'.jsonl'] = $live['events'];
         }

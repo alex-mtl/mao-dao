@@ -137,7 +137,7 @@ it('rebuilds LIVE logs from the engine journal, one per TikTok LIVE, reconnects 
     $events = $lives['gw1']['2026-10-25_060022_222.jsonl'];
     expect(array_column($events, 'type'))->toBe(['live_start', 'round_start', 'balloon', 'plane', 'winner', 'fire', 'cake', 'cake'])
         ->and($events[0]['t'])->toBe('2026-10-25T06:00:22.000-04:00')
-        ->and($events[4])->toMatchArray(['s' => 240.0, 'word' => 'море', 'user' => ['uid' => '', 'id' => '', 'name' => 'Ann: x']])
+        ->and($events[4])->toMatchArray(['s' => 240.0, 'word' => 'море', 'user' => ['uid' => '', 'id' => 'ann', 'name' => 'Ann: x']])
         ->and($events[2]['user']['name'])->toBe('Ann: x')
         ->and($events[6])->toMatchArray(['manual' => true]);
 });
