@@ -77,6 +77,13 @@ export default function Room({ room, languages, notice, problem }) {
                 )}
                 {!room.engineOnline && <p className="mb-3 rounded-lg bg-danger-50 px-4 py-2 text-sm text-danger-700">{t('guessword.engine_offline')}</p>}
 
+                <p className="mb-3 text-right">
+                    <Link href={room.foreign ? route('guessword.rooms.archive', room.id) : route('guessword.archive')}
+                          className="text-sm font-semibold text-primary-700 hover:underline">
+                        {t('guessword.archive_link')} →
+                    </Link>
+                </p>
+
                 <div className="grid items-start gap-5 lg:grid-cols-[340px_1fr]">
                     {/* left: buttons + the live preview */}
                     <div className="mx-auto w-full max-w-sm rounded-2xl border-2 border-warm-200 bg-surface p-3.5 shadow-soft lg:sticky lg:top-20 lg:max-w-none">

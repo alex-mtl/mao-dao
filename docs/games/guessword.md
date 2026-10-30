@@ -141,6 +141,33 @@ Gifts are logged from `LIVE_LOG_GIFT_COINS` coins per batch (engine env, default
 gift is bound to an action other than a hint (any gift gives a hint by default). Round numbers restart
 with every LIVE. A restart puts no second `round_start` for the restored round; its `round_end` comes.
 
+## Stream archive and the "champion race" digest (since 2026-10-30)
+
+`/guessword/archive` (streamers; super admins: `/guessword/rooms/{room}/archive`, link on the room page) lists
+the room's LIVE logs, newest first: start, length, rounds, wins, planes, balloons, cakes, the champion and a
+small temperature curve. "Make a digest" builds the 60-second clip **in the streamer's browser** from their
+own recording (MP4 from TikTok LIVE Center): the file is never uploaded.
+
+- **Server** (`ArchiveController`, `Services/LiveArchive.php`): gets the logs through the engine's
+  `/internal/lives*`, only counts and filters (summary + activity per 5 min, `bins`; the digest's event
+  types with users cut to uid / id / name); a parsed log is cached by its size. Avatars:
+  `/guessword/avatars/{uid}` → engine `/internal/avatars`.
+- **Browser, one logic for the site and the local pipeline** — `resources/js/Pages/Guessword/Digest/`:
+  `model.js` (facts from a LIVE log or tiktok-clips' events.json, nick merging, races, clip time,
+  temperature), `draw.js` (one 1080x1920 overlay frame on a canvas), `build.js` (WebCodecs: mediabunny
+  reads the MP4 index and only the key frame each clip frame needs via `File.slice`, overlay drawn on top,
+  H.264 by `VideoEncoder`, MP4 in memory). Damaged spots of a recording (a decoder error) open a new decoder
+  and keep the previous picture. Chrome / Edge only (HEVC recordings need the platform decoder).
+- **The local pipeline uses the same files**: `tiktok-clips/tools/digest-race.js` serves `runner.html` +
+  these modules (`serve.mjs`) to headless Chrome and gives it the local file. A change here changes both.
+- Recording ↔ log: second 0 of the log (`live_start`, the engine's first connection) is taken as second 0
+  of the recording; the page warns when the lengths differ by more than max(5 min, 5%).
+- **Measured** on the 19.10 recording (7 h 27 min, HEVC 1080x1920, 21.6 GB): 1800 frames built in ~19 s
+  (the old ffmpeg + screenshot pipeline: ~11.5 min); Chrome peak ~1.5 GB (all its processes), JS heap
+  ~360 MB (incl. the 59 MB result).
+- **Frame test**: `node tests/digest/frames.test.mjs` (host Node + Chrome; `--update` writes new references
+  after an intended change of the look). Synthetic nicks in `tests/digest/events.json`.
+
 ## Load and scaling (measured 2026-10-28)
 
 Two live streams: ~190 guesses/min, ~140 chat messages/min, ~50 like events/min, <1 gift/min per room;

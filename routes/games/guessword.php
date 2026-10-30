@@ -1,5 +1,6 @@
 <?php
 
+use App\Games\Guessword\Http\Controllers\ArchiveController;
 use App\Games\Guessword\Http\Controllers\GuesswordController;
 use Illuminate\Support\Facades\Route;
 
@@ -15,6 +16,11 @@ Route::middleware('auth')->group(function () {
     Route::post('/guessword/room/stop', [GuesswordController::class, 'stop'])->name('guessword.room.stop');
     Route::post('/guessword/room/link', [GuesswordController::class, 'regenerateLink'])->name('guessword.room.link');
 
+    // the archive of LIVEs and the digest built in the browser (ArchiveController)
+    Route::get('/guessword/archive', [ArchiveController::class, 'index'])->name('guessword.archive');
+    Route::get('/guessword/archive/lives/{file}', [ArchiveController::class, 'events'])->name('guessword.archive.events');
+    Route::get('/guessword/avatars/{key}', [ArchiveController::class, 'avatar'])->name('guessword.avatar');
+
     // super admins: every streamer's room (the same page and actions, for a room picked from the list)
     Route::get('/guessword/rooms', [GuesswordController::class, 'rooms'])->name('guessword.rooms');
     Route::get('/guessword/rooms/{room}', [GuesswordController::class, 'room'])->name('guessword.rooms.show');
@@ -22,6 +28,8 @@ Route::middleware('auth')->group(function () {
     Route::post('/guessword/rooms/{room}/start', [GuesswordController::class, 'start'])->name('guessword.rooms.start');
     Route::post('/guessword/rooms/{room}/stop', [GuesswordController::class, 'stop'])->name('guessword.rooms.stop');
     Route::post('/guessword/rooms/{room}/link', [GuesswordController::class, 'regenerateLink'])->name('guessword.rooms.link');
+    Route::get('/guessword/rooms/{room}/archive', [ArchiveController::class, 'index'])->name('guessword.rooms.archive');
+    Route::get('/guessword/rooms/{room}/archive/lives/{file}', [ArchiveController::class, 'roomEvents'])->name('guessword.rooms.archive.events');
 });
 
 Route::get('/guessword', [GuesswordController::class, 'index'])->name('guessword.index');

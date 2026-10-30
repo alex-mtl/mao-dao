@@ -62,4 +62,28 @@ class EngineClient
 
         return collect($rooms)->keyBy('id')->all();
     }
+
+    /** the room's LIVE logs: [{room, file, size, mtime}] (docs/games/guessword.md, "Live logs") */
+    public function lives(GuesswordRoom $room): array
+    {
+        return $this->http()->get('/internal/lives', ['room' => $room->engineId()])->throw()->json('lives', []);
+    }
+
+    /** one LIVE log (JSONL text) */
+    public function live(GuesswordRoom $room, string $file): string
+    {
+        return $this->http()->timeout(30)->get('/internal/lives/'.$room->engineId().'/'.rawurlencode($file))->throw()->body();
+    }
+
+    /** a viewer's saved avatar: [bytes, content type], null when the engine has none */
+    public function avatar(string $key): ?array
+    {
+        $res = $this->http()->get('/internal/avatars/'.rawurlencode($key));
+        if ($res->status() === 404) {
+            return null;
+        }
+        $res->throw();
+
+        return [$res->body(), $res->header('Content-Type') ?: 'image/jpeg'];
+    }
 }
