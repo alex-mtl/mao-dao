@@ -13,6 +13,7 @@ from .games import GAMES
 from .games.base import Viewer
 from .live_log import LiveLog
 from .reactions.balloons import LikeBalloons
+from .reactions.cake import CakeShows
 from .room_prefs import GiftRules, Toasts, catalog
 from .settings import GlobalSettings
 
@@ -63,6 +64,8 @@ class Hub:
         self.recent = OrderedDict((u["id"], {k: u.get(k, "") for k in ("name", "avatar", "t")})
                                   for u in s.get("viewers") or [] if u.get("id"))   # this stream's viewers, latest last
         self.live = LiveLog(store.path("lives"))   # this LIVE's rounds, winners, planes... for clips
+        # the cake show's clock (reactions/cake.py): the server fires the crackers, the pages draw
+        self.cakes = CakeShows(self._feed, lambda kind, **f: self.live.write(kind, **f))
         for g in self.games.values():
             g.names = self.names
             g.live = self.live
@@ -145,6 +148,7 @@ class Hub:
             self.greeted = set()
             self.recent.clear()
             self.balloons.new_session()
+            self.cakes.reset()
             self.save_session()
             print(f"[hub] new LIVE (room {room_id}) -> all games reset")
         if room_id:
@@ -212,6 +216,7 @@ class Hub:
         self._seen(v)
         self._feed(type="chat", name=v.name, avatar=v.avatar, text=text[:200], sent=ts,
                    host=v.id.lower() == self.username)
+        self.cakes.comment(v.name, text)              # "огонь" fires a cracker of the cake show playing
         if self.tg and self.tg.on_comment(v, text):  # "настроить связь" / a Telegram key: not a guess
             return
         self.game.on_comment(v, text, ts)
@@ -287,11 +292,12 @@ class Hub:
     def _gift_animations(self, v, gift, actions, count):
         """Balloon / plane / butterfly plane / big snowball for a gift bound to them (the streamer's gift rules),
         on every page: one per gift, no pause - 10 gifts = 10 planes (combo parts included). The cake is a show of
-        its own (up to 100 s, the chat fires its crackers with "огонь"): one per gift batch, the pages queue them."""
+        its own (up to 100 s, the chat fires its crackers with "огонь"): one per gift batch, the server queues them."""
         anim = actions & self.ANIMATIONS
         if not anim:
             return
         n = max(1, min(int(count or 1), self.GIFT_ANIMATIONS_MAX))
+        cake_seed = None
         total = self.balloons.total_of(v.id)
         for _ in range(n):
             if "balloon" in anim:
@@ -302,14 +308,15 @@ class Hub:
             if "snowball" in anim:
                 self._feed(type="snowball", id=v.id, name=v.name, avatar=v.avatar, total=total, big=True, gift=gift)
         if "cake" in anim:
-            self._feed(type="cake", id=v.id, name=v.name, avatar=v.avatar, gift=gift)
+            cake_seed = self.cakes.add({"id": v.id, "name": v.name, "avatar": v.avatar, "gift": gift})
         print(f"[gift] {v.name}: {gift} x{n} -> {sorted(anim)}")
         who = self.live.user(v.id, v.name)
         for kind in sorted(anim):
             if kind == "bomber" and "plane" in anim:
                 continue                                  # one flight, with butterflies
             self.live.write("plane" if kind == "bomber" else kind, user=who, gift=gift or None, manual=not gift or None,
-                            count=1 if kind == "cake" else n, bomber=kind in ("plane", "bomber") and "bomber" in anim or None)
+                            count=1 if kind == "cake" else n, bomber=kind in ("plane", "bomber") and "bomber" in anim or None,
+                            seed=cake_seed if kind == "cake" else None)
 
     def _journal_gift(self, v, gift, count, to):
         """Every gift, one JSON line in data/gifts.jsonl (kept across rebuilds: the data folder is mounted)."""
@@ -352,8 +359,8 @@ class Hub:
         cake = self.balloons.auto_cake(v, before)      # every CAKE_LIKES likes -> the cake show for them
         if cake:
             print(f"[cake] {v.name}: {cake['total']} likes -> cake")
-            self._feed(type="cake", **cake)
-            self.live.write("cake", user=who, likes=cake["total"])
+            seed = self.cakes.add(cake)
+            self.live.write("cake", user=who, likes=cake["total"], seed=seed)
         self.game.on_like(v, count)
 
     # ---- state for overlays ----
@@ -379,6 +386,7 @@ class Hub:
                 self.game.tick(time.time())
                 self._save_if_needed()
                 self.balloons.tick(time.time())
+                self.cakes.tick(time.time())
             except Exception as e:
                 print("[hub] tick error:", type(e).__name__, e)
             await asyncio.sleep(0.25)

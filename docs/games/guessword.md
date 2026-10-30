@@ -134,12 +134,22 @@ header `X-Internal-Secret` (= `GUESSWORD_ENGINE_SECRET` in Laravel's `.env`), on
 | `round_end` | `round`, `word`, `reason` (`exact` / `timeout` / `skip`), `winner` (user or absent), `seconds`, `players`, `guesses`, `podium` (users + `rank`) |
 | `plane` | `user`, `likes` + `threshold` (like plane) or `gift` / `manual` + `count` (gift plane), `bomber` |
 | `balloon` | `user`, `likes`, `n` (their balloon number), `per`; or `gift` / `manual` + `count` |
-| `snowball`, `cake` | `user`, `likes`; or `gift` / `manual` + `count` |
+| `snowball`, `cake` | `user`, `likes`; or `gift` / `manual` + `count`; a cake also `seed` (its show) |
+| `cake_start`, `cake_last`, `cake_split` | `seed`: the show begins (shows wait for each other), its last cracker takes off, the cake flies apart (since 30.10.2026) |
 | `gift` | `user`, `gift`, `count`, `coins` (one gift's price), `actions` (bound actions), `to` (a guest, not the host) |
 
 Gifts are logged from `LIVE_LOG_GIFT_COINS` coins per batch (engine env, default 100) and whenever the
 gift is bound to an action other than a hint (any gift gives a hint by default). Round numbers restart
 with every LIVE. A restart puts no second `round_start` for the restored round; its `round_end` comes.
+
+## The cake show runs on the server (since 2026-10-30)
+
+`stream-engine/app/reactions/cake.py` keeps the show's clock: the cake starts when the previous one ended (at most
+3 wait), the fuses are lit 10 s after the start, the first cracker goes 1.8 s later, then one a second and one at
+once for every "огонь" / fire / feu / fuego in the chat (asked before the fuses burn: .12 s apart once they do);
+3.2 s after the last one the finale (turn 1.2 s, the avatar 1.5 s, slices 1.3 s). The pages get `cake {server:
+true}`, `cake_fire`, `cake_final` and only draw (`common/cake.js`; without `server` it still runs its own clock,
+as the demo pages do). Before, every page ran the whole show itself and the engine only knew "a cake started".
 
 ## Stream archive and the "champion race" digest (since 2026-10-30)
 

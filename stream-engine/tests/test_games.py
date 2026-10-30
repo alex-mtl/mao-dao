@@ -788,13 +788,18 @@ class CakeTest(unittest.TestCase):
         d = Viewer("ded", "DED", "https://x/ava.png")
         cakes = lambda: [e for e in hub.feed if e["type"] == "cake"]
         hub.gift(d, "Rose", 1)
+        hub.cakes.tick(time.time())
         self.assertEqual(cakes(), [])                            # not bound: no cake
         hub.gift_rules.set({"cake": "gift:Rose"})
         hub.gift(d, "Rose", 5)                                   # a combo: one cake show, not five
+        hub.cakes.tick(time.time())                              # the server's show starts on its clock
         self.assertEqual([(c["name"], c["avatar"]) for c in cakes()], [("DED", "https://x/ava.png")])
         self.assertTrue(cakes()[0]["seed"])                      # the same show on the preview and the overlay
+        self.assertTrue(cakes()[0]["server"])
         self.assertTrue(hub.manual_action("cake", "ded"))
-        self.assertEqual(len(cakes()), 2)
+        hub.cakes.tick(time.time())
+        self.assertEqual(len(cakes()), 1)                        # one show at a time: the second one waits
+        self.assertEqual(len(hub.cakes.queue), 1)
         self.assertEqual([p["action"] for p in hub.gift_promos()][:2], ["hint", "cake"])
 
     def test_cake_by_likes(self):
@@ -809,11 +814,12 @@ class CakeTest(unittest.TestCase):
             self.assertEqual(cakes(), [])
             hub.like(d, 20)                                      # 5010 -> the cake, with a seed
             hub.like(d, 4000)                                    # 9010: the next one only at 10000
+            hub.cakes.tick(time.time())
             self.assertEqual([(c["name"], c["total"]) for c in cakes()], [("DED", 5010)])
             self.assertTrue(cakes()[0]["seed"])
             hub.global_settings.set("cake", 0)                   # off on the likes tab
             hub.like(d, 2000)
-            self.assertEqual(len(cakes()), 1)
+            self.assertEqual(len(hub.cakes.queue), 0)
         finally:
             config.CAKE_LIKES = saved
 

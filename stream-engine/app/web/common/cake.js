@@ -473,7 +473,8 @@ window.Cake = (() => {
     }
     if (litAt && T >= litAt && !nextAt) {
       for (const p of petards) p.fuse = litAt + rnd(0, 1.2);
-      nextAt = litAt + 1.8; waitAt = nextAt;
+      // the server's show: the crackers go when the server says (cake_fire, queued in waiting), never by our clock
+      if (opts.server) { nextAt = Infinity; waitAt = T; } else { nextAt = litAt + 1.8; waitAt = nextAt; }
     }
     if (nextAt && T >= nextAt) { if (launch()) nextAt += GAP; else nextAt = Infinity; }
     if (nextAt && waiting.length && T >= waitAt) { launch(waiting.shift()); waitAt = T + .12; }
@@ -509,7 +510,7 @@ window.Cake = (() => {
     for (let i = labels.length - 1; i >= 0; i--) if ((labels[i].t += dt) > 1.6) labels.splice(i, 1);
 
     // all gone: the finale - the cake turns its top to us and rises to the middle, the avatar shows, then slices fly
-    if (nextAt === Infinity && !rockets.length && !finAt) { finAt = T + 1; hero = pickHero(); }
+    if (!opts.server && nextAt === Infinity && !rockets.length && !finAt) { finAt = T + 1; hero = pickHero(); }
     if (finAt && T > finAt) {
       const tf = T - finAt, p = Math.min(1, tf / F_TURN), e = p * p * (3 - 2 * p);
       fin = e; tilt = TILT + (1 - TILT) * e; lift = e; place();
@@ -660,13 +661,33 @@ window.Cake = (() => {
     },
     // a feed event {type: 'cake', name, avatar, seed} (a gift or the room page's "now"): the show for that viewer;
     // while one plays the next ones wait (at most QUEUE)
+    // e.server (the engine's show, reactions/cake.py): the engine queues the shows, fires the crackers (cake_fire)
+    // and starts the finale (cake_final); a new one replaces whatever still plays here
     show(e, o = {}) {
       const go = () => api.start({ root: o.root, sound: o.sound, scale: o.scale, ground: o.ground, skyBottom: o.skyBottom, seed: e.seed, hero: { name: e.name, avatar: e.avatar },
-                                   onEnd: () => { const n = shows.shift(); if (n) n(); } });
-      if (!running) go(); else if (shows.length < QUEUE) shows.push(go);
+                                   server: !!e.server, onEnd: () => { const n = shows.shift(); if (n) n(); } });
+      if (e.server) { shows.length = 0; go(); } else if (!running) go(); else if (shows.length < QUEUE) shows.push(go);
     },
-    // a chat comment: "огонь" launches one cracker at once (one per comment, however many times it says it)
+    // the engine fired a cracker of its show (for the name's "огонь", or its clock): it goes as soon as they stand
+    serverFire(e) {
+      if (!running || !opts.server || e.seed !== opts.seed || finAt) return false;
+      const name = clean(e.name);
+      if (name) { const v = fans.get(name) || { name, n: 0 }; v.n++; fans.set(name, v); }
+      if (nextAt && !waiting.length) return launch(name);    // lit: at once, as a comment did before
+      waiting.push(name);                                    // not lit yet here: as soon as they stand
+      return true;
+    },
+    // the engine's finale: the cake turns its top to us, shows the avatar and flies apart (TO_SPLIT / TO_END there)
+    final(e) {
+      if (!running || !opts.server || e.seed !== opts.seed || finAt) return false;
+      waiting = [];
+      finAt = T; hero = pickHero();
+      return true;
+    },
+    // a chat comment: "огонь" launches one cracker at once (one per comment, however many times it says it);
+    // the engine's show counts the chat itself
     comment(e) {
+      if (running && opts.server) return false;
       const text = ((e && e.text) || '').toLowerCase().replace(/ё/g, 'е');
       if (WORDS.some(w => text.includes(w))) return api.fire(e);
       return false;
