@@ -488,7 +488,7 @@
   }
   // stream champions (chroma / TT mode): one line per place - avatar + nick when alone, overlapping
   // avatars when tied (like TikTok's viewers), wins, medal
-  let tgBot = '', champGroups = [], likersData = null, sidesKey = {};
+  let tgBot = '', champGroups = [], likersData = null, sidesKey = {}, boosts = [];
   // what the overlay shows besides the game (the panel's "On screen" tab, state.screen): each element always,
   // never, or periodically (every N min for N s, on the wall clock); tops may also take turns in a carousel
   const SCREEN_DEFAULT = {
@@ -628,6 +628,31 @@
       return row;
     });
   }
+  // this round's boosts, on top of the left column (above the top pilots when they are there): the round's gift -
+  // an orange dot, first; a high guess's boost - the nick turns into BOOST letter by letter now and then
+  function boostRows() {
+    return boosts.map(b => {
+      const row = el('div', 'champ boost ' + (b.round ? 'rnd' : 'dyn'));
+      const nk = el('span', 'cn nk');
+      nk.append(el('span', 'n', b.name));
+      if (!b.round) {
+        const w = el('span', 'b');
+        [...'BOOST'].forEach(c => w.append(el('i', '', c)));
+        nk.append(w);
+      }
+      row.append(avatar(b.name, b.avatar), nk);
+      return row;
+    });
+  }
+  // every row blinks in step, whenever its row was (re)built: the letters come one by one, then the nick is back
+  (function boostCycle() {
+    const STEP = 110, HOLD = 900, NICK = 1400, rows = () => document.querySelectorAll('.champ.boost.dyn');
+    rows().forEach(r => r.classList.add('on'));
+    for (let k = 0; k < 5; k++) setTimeout(() => rows().forEach(r => r.querySelectorAll('.b i')[k]?.classList.add('v')), 120 + k * STEP);
+    setTimeout(() => rows().forEach(r => { r.classList.remove('on'); r.querySelectorAll('.b i').forEach(i => i.classList.remove('v')); }),
+               120 + 5 * STEP + HOLD);
+    setTimeout(boostCycle, 120 + 5 * STEP + HOLD + NICK);
+  })();
   // chroma / TT mode: the side columns on the bottom edge of the camera zone - right: what the gifts do, the bot's
   // name, the stream champions; left: the top likers - and the bottom right of the chat zone. Re-checked twice a
   // second, so "periodically" and the carousel run on their own.
@@ -645,7 +670,7 @@
     // each box is rebuilt only when its own content changes: a likes count must not re-insert (and blink) the gifts
     const keys = {
       champs: JSON.stringify([place === 'host' && giftKey, bot && tgBot, side('r')]),
-      likers: JSON.stringify(side('l')),
+      likers: JSON.stringify([scr.screen && boosts, side('l')]),
       giftsBottom: JSON.stringify(place === 'bottom' && giftKey),
     };
     let changed = false;
@@ -657,6 +682,7 @@
       box.replaceChildren();
       if (gift && (id === 'giftsBottom') === (place === 'bottom') && id !== 'likers') box.append(gift);
       if (id === 'champs' && bot) box.append(el('div', 'tgbot', '📲 @' + tgBot));   // the bot's name, above the champions
+      if (id === 'likers' && scr.screen) box.append(...boostRows());                // the boosts, above the top pilots
       TOPS.forEach(k => { if (tops[k] && (tops[k] === 'r') === (id === 'champs') && id !== 'giftsBottom') box.append(...topRows(k)); });
     });
     if (changed) sideColumns();
@@ -852,6 +878,7 @@
       ? `calc(var(--u) * ${(100 * (s.frame || 16) / 9 * s.chatZone / 100).toFixed(2)})` : '0px');
     vocab = s.vocabSize || vocab;
     champGroups = s.champions || [];                       // the side columns and the gifts follow the screen settings
+    boosts = s.boosts || [];
     setScreen(s);
     renderSides();
     $('error').hidden = !s.error;

@@ -611,6 +611,22 @@ class ChampionWordsTest(unittest.TestCase):
         g.on_comment(copycat, r(40) + " " + r(50))                   # not a champion: ignored
         self.assertEqual(g.players["copy"].guesses, 1)
 
+    def test_overlay_boosts(self):
+        g = GuessGame(JsonStore(tempfile.mkdtemp()))
+        g.tick(time.time()); g.tick(time.time() + 0.01)
+        r = lambda k: g.sem.words[int(g.order[k])]
+        for pid, k in (("a", 10), ("b", 20), ("c", 30), ("d", 40)):
+            g.on_comment(Viewer(pid, pid.upper(), "", 1), r(k))
+        g.manual_action(Viewer("gift", "Gifter", "", 1), "multi")   # the round's gift, no guess yet
+        g.manual_action(Viewer("b", "B", "", 1), "multi")           # a round champion with the gift: the dot wins
+        g.boost_ids.add("c")                                        # the stream's boost: not shown
+        g.stats.get("a", "A", "")["wins"] = 1                       # a stream champion: not shown
+        self.assertEqual([(b["id"], b["round"]) for b in g.snapshot()["boosts"]], [("b", True), ("gift", True)])
+        self.assertEqual(g.snapshot()["boosts"][1]["name"], "Gifter")
+        g.boost_ids.discard("c"); g.stats.get("a", "A", "")["wins"] = 0
+        self.assertEqual([(b["id"], b["round"]) for b in g.snapshot()["boosts"]],
+                         [("b", True), ("gift", True), ("a", False), ("c", False)])
+
 
 class MyHintsTest(unittest.TestCase):
     def test_my_hints_command(self):

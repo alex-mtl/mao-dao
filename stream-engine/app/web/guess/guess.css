@@ -59,6 +59,21 @@ html.chroma #likers { display: flex; position: absolute; left: calc(var(--u) * 2
 .champ.liker { padding: calc(var(--u) * .25) calc(var(--u) * .25) calc(var(--u) * .25) calc(var(--u) * 2.2); }
 .champ.liker .cn { padding-right: calc(var(--u) * 1.6); }
 .champ.liker .cm { font-size: calc(var(--u) * 4.4); }
+/* this round's boosts on top of the left column: the round's gift - an orange dot; a high guess's boost -
+   the nick turns into a bold orange BOOST letter by letter (guess.js toggles .on and the letters' .v) */
+.champ.boost { position: relative; }
+.champ.boost .av { transition: border-color .3s; }
+.champ.boost.rnd::after { content: ''; position: absolute; top: 0; right: 0; width: calc(var(--u) * 2.4); height: calc(var(--u) * 2.4);
+                          border-radius: 50%; background: #ff8a00; border: calc(var(--u) * .4) solid rgb(10, 0, 25); }
+.champ.boost .nk { display: inline-grid; align-items: center; }
+.champ.boost .nk > * { grid-area: 1 / 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.champ.boost .n { transition: opacity .25s, filter .25s; }
+.champ.boost .b { font: 900 calc(var(--u) * 3.7) var(--font-display); color: #ff8a00; letter-spacing: .06em; white-space: nowrap; }
+.champ.boost .b i { font-style: normal; display: inline-block; opacity: 0; transform: translateY(30%) scale(.7); filter: blur(2px);
+                    transition: opacity .18s ease-out, transform .18s ease-out, filter .18s; }
+.champ.boost .b i.v { opacity: 1; transform: none; filter: none; }
+.champ.boost.on .n { opacity: 0; filter: blur(2px); }
+.champ.boost.on .av { border-color: #ff8a00; }
 html.chroma #champs { display: flex; position: absolute; right: calc(var(--u) * 2.8); z-index: 7;
                       bottom: calc(var(--above-game) + var(--u) * .6); flex-direction: column; align-items: flex-end;
                       gap: calc(var(--u) * .5); pointer-events: none; }

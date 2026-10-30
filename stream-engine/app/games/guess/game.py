@@ -230,6 +230,7 @@ class GuessGame(BaseGame):
         self.unknown_t = 0.0
         self._batch = None                               # collects the words of a several-words comment
         self.multi_ids = set()                           # viewers whose gift lets them send 3 words this round
+        self.multi_who = {}                              # their id -> (name, avatar), for the overlay
         self.stolen_by = None                            # the viewer winning with a "steal the win" gift, now
         self.setter = None            # {"id", "name"} of the viewer who picked this round's word
         self.word_hidden = False      # a viewer's word nobody found: never shown
@@ -670,6 +671,7 @@ class GuessGame(BaseGame):
             print(f"[guess] {viewer.name} may send 3 words till the stream ends (gift)")
         if "multi" in actions and self.phase == PLAYING and viewer.id not in self.multi_ids:
             self.multi_ids.add(viewer.id)                # 3 words in one comment until the round ends
+            self.multi_who[viewer.id] = (viewer.name, viewer.avatar)
             print(f"[guess] {viewer.name} may send 3 words this round (gift)")
         if "hint" in actions:
             # one hint now (unless this viewer had one less than hint_cd s ago), every other gift
@@ -694,6 +696,7 @@ class GuessGame(BaseGame):
             return True
         if action == "multi" and self.phase == PLAYING:
             self.multi_ids.add(viewer.id)
+            self.multi_who[viewer.id] = (viewer.name, viewer.avatar)
             return True
         if action == "boost":
             if viewer.id not in self.boost_ids:
@@ -1346,6 +1349,24 @@ class GuessGame(BaseGame):
                 break
         return set(out)
 
+    def _round_boosts(self):
+        """The overlay's BOOST column: this round's gift ("round": True) first, then the round champions
+        (the boost a high guess gives; it moves on with the table). Stream boosts and stream champions
+        have it for the whole stream: not shown."""
+        if self.phase != PLAYING:
+            return []
+        skip = self.boost_ids | self.stats.champion_ids()
+        out = []
+        for pid in sorted(self.multi_ids - skip):
+            p = self.players.get(pid)
+            name, avatar = (p.name, p.avatar) if p else self.multi_who.get(pid, (pid, None))
+            out.append({"id": pid, "name": name, "avatar": avatar, "round": True})
+        for pid in sorted(self._round_champion_ids() - skip - self.multi_ids):
+            p = self.players.get(pid)
+            if p:
+                out.append({"id": pid, "name": p.name, "avatar": p.avatar, "round": False})
+        return out
+
     def _visible(self, g):
         """Hide words only guessed by players removed for not following."""
         ids = g.get("ids")
@@ -1388,6 +1409,7 @@ class GuessGame(BaseGame):
                       "guesses": sum(p.guesses for p in self.players.values())},
             "streamLeaderboard": self.stats.leaderboard(),
             "champions": self.stats.champions(),                          # TT mode: medals block
+            "boosts": self._round_boosts(),                               # TT mode: the BOOST column
             "lastRound": self._last_round(),                             # for the ticker
             "chroma": self.chroma_top if self.chroma else 0,              # % of the screen, 0 = off
             "chromaTop": self.chroma_top,                                 # TT mode (?tt=1) always uses it
