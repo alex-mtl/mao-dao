@@ -49,11 +49,13 @@ separable later:
    answers "may this user do X?", games only ask. (For the Guess the Word
    pilot this is an allowlist; the streamer pack replaces it later without
    touching the game.)
-   **"Turn on the streamer pack for user X"** = today: add the user's e-mail
-   to `GUESSWORD_STREAMERS` (comma separated) in `/var/www/quiz/.env` on
-   `aws-dev`, then `php artisan config:cache`. Super admins have it anyway.
-   Find the user via a PHP script that bootstraps the app (`artisan tinker`
-   hangs over ssh); recent sign-ups are often spam bots with random names.
+   **"Turn on the streamer pack for user X"** = one command, nothing else to
+   look up: `ssh aws-dev "cd /var/www/quiz && php artisan streamer grant
+   <email>"` (`revoke <email>`, `list`). It checks the user exists (prints
+   id and name; `--force` for an e-mail not registered yet), edits
+   `GUESSWORD_STREAMERS` in `.env` and rebuilds the config cache. Super
+   admins have the pack anyway. All grants go through
+   `App\Services\StreamerPack` — the future on-site purchase calls it too.
 4. **Sidecars and cloud services talk to Laravel only over HTTP** with a
    shared secret (`/internal/*`), as `media-sfu` already does.
 
