@@ -36,7 +36,7 @@ def viewer_of(user):
         num = str(int(getattr(user, "id", 0) or 0) or "")             # the numeric user id: stable
     except Exception:
         pass
-    return Viewer(uid, name, avatar, follows, fan, num)
+    return Viewer(uid, name, avatar, follows, fan, num, str(getattr(user, "nickname", None) or ""))
 
 
 def sent_at(event):

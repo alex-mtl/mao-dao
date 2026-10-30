@@ -123,7 +123,7 @@ header `X-Internal-Secret` (= `GUESSWORD_ENGINE_SECRET` in Laravel's `.env`), on
 
 **Format**: one JSON object per line, `t` (ISO time with offset, ms), `s` (seconds since the LIVE started,
 0.1 s), `type`, then the fields below (absent = none). A *user* is `{"uid": numeric TikTok id or "",
-"id": "@unique_id without @", "name": nickname at that moment}`; `uid` is stable, `id` and `name` can change.
+"id": "@unique_id without @", "name": nickname at that moment}`; `uid` is stable, `id` and `name` can change. `name` is the raw string TikTok sent (UTF-8, not cut, not normalised: Unicode "font" letters, emoji stay as they are; the screen shows it cut to 40).
 
 | type | fields |
 |---|---|

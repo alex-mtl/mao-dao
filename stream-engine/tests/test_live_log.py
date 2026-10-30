@@ -116,6 +116,19 @@ class LiveLogTest(unittest.TestCase):
         ends = [x for x in lines(h) if x["type"] == "round_end"]
         self.assertEqual((ends[-1]["round"], ends[-1]["reason"], ends[-1].get("winner")), (2, "timeout", None))
 
+    def test_nickname_kept_exactly_as_tiktok_sent_it(self):
+        h = self.hub()
+        h.new_live("7006")
+        raw = "𝓛𝓮𝓷𝓪 ✅💋 " + "ﾟ" * 50                         # Unicode "fonts", emoji, longer than the screen's 40
+        h.join(Viewer("lena", raw[:40], "", 1, 0, "555", raw))
+        h.like(Viewer("lena", raw[:40], "", 1, 0, "555", raw), config.PLANE_AUTO_LIKES)
+        with open(h.live.path, encoding="utf-8") as f:
+            text = f.read()
+        self.assertIn(raw, text)                                   # raw UTF-8 in the file, not escapes
+        out = [json.loads(x) for x in text.splitlines()]
+        self.assertEqual({x["user"]["name"] for x in out if "user" in x}, {raw})
+        self.assertEqual(next(x for x in out if x["type"] == "plane")["user"], {"uid": "555", "id": "lena", "name": raw})
+
     def test_same_live_after_a_restart_goes_on_in_its_file(self):
         h = self.hub()
         h.new_live("7002")

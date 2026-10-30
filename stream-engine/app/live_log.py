@@ -124,7 +124,7 @@ class LiveLog:
         self.path = None
         self.started = 0.0
         self.tiktok_room = None
-        self.seen = {}                           # @unique_id (lower) -> (uid, name) seen this LIVE
+        self.seen = {}                           # @unique_id (lower) -> (uid, raw nickname) seen this LIVE
         self.uids = {}                           # @unique_id (lower) -> numeric id, from any event
 
     def open(self, tiktok_room, username=""):
@@ -153,8 +153,10 @@ class LiveLog:
             self.path = None
 
     def user(self, viewer_id, name=""):
+        """the nickname as TikTok sent it (no cut, no normalising) when the viewer was seen this LIVE"""
         vid = str(viewer_id or "")
-        return {"uid": self.uids.get(vid.lower(), ""), "id": vid, "name": name or vid}
+        raw = (self.seen.get(vid.lower()) or ("", ""))[1]
+        return {"uid": self.uids.get(vid.lower(), ""), "id": vid, "name": raw or name or vid}
 
     def write(self, kind, **fields):
         if not self.path:
@@ -181,13 +183,14 @@ class LiveLog:
             if len(self.uids) > 50000:
                 self.uids.clear()
         uid = self.uids.get(vid, "")
-        if self.seen.get(vid) == (uid, v.name):
+        nick = getattr(v, "nick", "") or v.name
+        if self.seen.get(vid) == (uid, nick):
             return
         first = vid not in self.seen
-        self.seen[vid] = (uid, v.name)
+        self.seen[vid] = (uid, nick)
         if not self.path:
             return
-        self.write("viewer", user=self.user(v.id, v.name), first=first or None)
+        self.write("viewer", user=self.user(v.id), first=first or None)
         if first and v.avatar and _avatars:
             _avatars.want(uid or vid, v.avatar)
 

@@ -14,6 +14,7 @@ class Viewer:
     follows: int = -1    # follow status towards the host: 0 no, 1 follower, 2 friends, -1 unknown
     fan: int = 0         # level in the host's team (fan club) by their badge, 0 = not in the team
     uid: str = ""        # numeric TikTok user id (never changes, unlike the @unique_id), "" if unknown
+    nick: str = ""       # the nickname exactly as TikTok sent it (name is cut for the screen), "" = same as name
 
 
 class BaseGame:
