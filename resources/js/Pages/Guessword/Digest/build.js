@@ -61,9 +61,11 @@ async function fileKeys(file, times) {
 
 // key frames of a LIVE Center recording: stream second t of the LIVE log = unix time start + t, placed
 // in the segment that covers it by the playlist's clock (exact, also when the recording began earlier).
-// Segments are read PREFETCH at a time: the network, not the decoder, is the slow part.
+// Segments are read PREFETCH at a time: the network, not the decoder, is the slow part. TikTok's CDN
+// serves each request slowly (~0.2 MB/s), so many at once (measured 30.10: 8 -> 3 segments/s,
+// 48 -> 13-15/s, more gives nothing on a ~60 Mbit/s line). 48 x 512 KB in memory at most.
 function hlsKeys(hls, times, start) {
-    const segs = hls.segments, PREFETCH = 8;
+    const segs = hls.segments, PREFETCH = 48;
     const at = (wall) => {
         let lo = 0, hi = segs.length - 1;
         while (lo < hi) { const mid = (lo + hi + 1) >> 1; if (segs[mid].at <= wall) lo = mid; else hi = mid - 1; }
