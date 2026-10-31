@@ -107,14 +107,18 @@ function DigestBuilder({ room, live }) {
             const w = await (await import('./Digest/build.js')).unsupportedHls(hls);
             if (w) { setState({ stage: 'error', message: why(w) }); return; }
             srcRef.current = { hls, liveStart: live.epoch, stream: hls.end - live.epoch };
-            setState({ stage: 'ready', lc: true, duration: hls.end - hls.start });
         } catch (e) {
             setState({ stage: 'error', message: t('guessword.digest_failed', { error: e.message }) });
+            return;
         }
+        // the recording is found: build at once, no second click
+        start({ duration: srcRef.current.hls.end - srcRef.current.hls.start, lc: true });
     };
 
-    const run = async () => {
-        const src = srcRef.current, duration = state.duration, lc = state.lc;
+    const run = () => start(state);
+
+    const start = async ({ duration, lc }) => {
+        const src = srcRef.current;
         const ac = new AbortController();
         abortRef.current = ac;
         const t0 = performance.now();
@@ -210,7 +214,7 @@ function DigestBuilder({ room, live }) {
                 </div>
                 {/* the frame being built (also the drawing surface of the encoder) */}
                 <canvas ref={canvasRef} width={1080} height={1920}
-                        className={(busy || state.stage === 'done' ? '' : 'hidden ') + 'w-28 shrink-0 rounded-lg bg-ink-900 sm:w-36'} />
+                        className={((busy && state.stage !== 'finding') || state.stage === 'done' ? '' : 'hidden ') +'w-28 shrink-0 rounded-lg bg-ink-900 sm:w-36'} />
             </div>
         </div>
     );
