@@ -212,12 +212,12 @@ export async function buildDevDigest({ data, T = 600, range = null, hlsOf = null
             const segOf = (wall) => { let lo = 0, hi = segs.length - 1; while (lo < hi) { const m = (lo + hi + 1) >> 1; if (segs[m].at <= wall) lo = m; else hi = m - 1; } return lo; };
             const seg = fs.map((f) => segOf(src[f].wall));
             const order = [...new Set(seg)], cache = new Map();
-            const load = (k) => { if (k < order.length && !cache.has(order[k])) cache.set(order[k], keyFrame(segs[order[k]].url).catch(() => null)); };
-            let k = -1, shown = -1;
+            const load = (k) => { if (k >= 0 && k < order.length && !cache.has(order[k])) cache.set(order[k], keyFrame(segs[order[k]].url).catch(() => null)); };
+            let shown = -1;
             for (let i = 0; i < fs.length; i++) {
                 if (fs[i] % FPS === 0) await silence(fs[i] / FPS);
                 if (seg[i] !== shown) {
-                    k = order.indexOf(seg[i], Math.max(0, k));
+                    const k = order.indexOf(seg[i]);            // a run's time may step back (two lines' stretches)
                     for (let j = k; j < k + PREFETCH; j++) load(j);
                     const kf = await cache.get(seg[i]);
                     cache.delete(seg[i]);
