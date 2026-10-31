@@ -54,5 +54,24 @@ export function schedule(data, T = 600) {
     return { T, STEP, SPEED, lines, heroes: heroList, sourceAt, frames: Math.round(T * FPS) };
 }
 
+/**
+ * The video cut into parts of about `size` seconds, each built and saved on its own (a failure costs one part,
+ * a rerun skips the finished ones). Cuts fall on whole seconds outside the 1x stretches, where the sound is
+ * silence, so the joins are not heard. [[from, to], ...]
+ */
+export function parts(plan, size = 30) {
+    const inHero = (v) => plan.heroes.some((h) => v > h.start - 0.5 && v < h.end + 0.5);
+    const cuts = [0];
+    for (let v = size; v < plan.T - size / 2;) {
+        let c = v;
+        while (c < plan.T && inHero(c)) c += 1;
+        if (c >= plan.T - 5) break;
+        cuts.push(c);
+        v = c + size;
+    }
+    cuts.push(plan.T);
+    return cuts.slice(1).map((to, i) => [cuts[i], to]);
+}
+
 const commitTime = (l) => { const [dd, mm] = l.date.split('.'); return Date.parse(`2026-${mm}-${dd}T${l.time}:00-04:00`) / 1000; };
 export const dayOf = (date) => { const [dd, mm] = date.split('.').map(Number); return Math.round((Date.UTC(2026, mm - 1, dd) - Date.UTC(2026, 9, 6)) / 864e5) + 1; };

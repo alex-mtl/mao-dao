@@ -21,7 +21,7 @@
   <div class="side">
     <h2 style="margin:0 0 8px">Дайджест разработки</h2>
     <div>
-      <label>Собрать <select id="len"><option value="600">всё (10 мин)</option><option value="90">первые 90 с (проба)</option><option value="200">1:50–3:20 (шарики, самолёты)</option></select></label>
+      <label>Собрать <select id="len"><option value="600">всё (10 мин, по частям с докачкой)</option><option value="90">первые 90 с (проба)</option><option value="200">1:50–3:20 (шарики, самолёты)</option></select></label>
       <button id="check">1. Найти записи в LIVE Center</button>
       <button id="build" disabled>2. Собрать MP4</button>
       <button id="test">Проба без записей</button>
@@ -33,7 +33,14 @@
 </div>
 <script type="module">
 import { buildDevDigest, recordings } from './build.js';
-import { extension } from '../Digest/livecenter.js';
+import { parts, schedule } from './schedule.js';
+import { extension, useStore } from '../Digest/livecenter.js';
+
+// what is read from LIVE Center stays on disk (tiktok-clips/work/dev-digest-cache): reruns read it from there
+useStore({
+    get: async (key) => { const r = await fetch(`/store?key=${encodeURIComponent(key)}`); return r.ok ? new Uint8Array(await r.arrayBuffer()) : null; },
+    put: (key, bytes) => fetch(`/store?key=${encodeURIComponent(key)}`, { method: 'POST', body: bytes }),
+});
 
 const $ = (id) => document.getElementById(id);
 const data = await (await fetch('/data/dev-log.json', { cache: 'no-store' })).json();
@@ -53,35 +60,67 @@ $('check').onclick = async () => {
     $('build').disabled = false; $('check').disabled = false;
 };
 
+// one piece of the video to the local server, piece by piece: tiktok-clips/out/dev-digest/<name>
+async function piece(name, range, onProgress) {
+    const post = (pos, body, first) => fetch(`/write?name=${name}&pos=${pos}${first ? '&first=1' : ''}`, { method: 'POST', body }).then((r) => { if (!r.ok) throw new Error(`write ${r.status}`); });
+    await post(0, new Uint8Array(0), true);
+    const writable = new WritableStream({ write: (c) => post(c.position, c.data) });
+    try {
+        await buildDevDigest({ data, range, hlsOf, writable, canvas: $('v'), signal: ctrl.signal, onProgress });
+        await writable.close().catch(() => {});   // StreamTarget may have closed it
+    } catch (e) {
+        await writable.abort().catch(() => {});
+        throw e;
+    }
+    await fetch(`/done?name=${name}`, { method: 'POST' });
+}
+
+// the whole video in parts of ~30 s: finished parts are skipped, a failed one is tried 3 times, then joined
+async function whole(t0) {
+    const list = parts(schedule(data, 600)), names = list.map((_, i) => `part-${String(i).padStart(2, '0')}.mp4`);
+    const have = new Set(await (await fetch(`/parts?names=${names.join(',')}`)).json());
+    const failed = [];
+    for (let i = 0; i < list.length; i++) {
+        if (have.has(names[i])) continue;
+        for (let attempt = 1; ; attempt++) {
+            try {
+                await piece(names[i], list[i], (p) => say(`Часть ${i + 1} из ${list.length} (готово до неё: ${have.size}), попытка ${attempt}: ` +
+                    `${Math.round((p.frame / 30 - list[i][0]) / (list[i][1] - list[i][0]) * 100)}%, прочитано ${p.mb} МБ, ${Math.round((performance.now() - t0) / 1000)} с`));
+                have.add(names[i]);
+                break;
+            } catch (e) {
+                if (e.name === 'AbortError') throw e;
+                if (attempt >= 3) { failed.push(`${names[i]}: ${e.message}`); break; }
+            }
+        }
+    }
+    if (failed.length) { say(`Не собраны ${failed.length} частей — нажмите «Собрать» ещё раз, готовые пропустятся:\n${failed.join('\n')}`); return; }
+    say('Все части готовы, склеиваю…');
+    const r = await fetch(`/concat?names=${names.join(',')}&out=dev-digest-10min.mp4`, { method: 'POST' });
+    say(r.ok ? `Готово за ${Math.round((performance.now() - t0) / 1000)} с: tiktok-clips/out/dev-digest/dev-digest-10min.mp4 (${list.length} частей).` : `Склейка не удалась: ${await r.text()}`);
+}
+
 async function run(test) {
     const pick = +$('len').value, range = pick === 600 ? null : pick === 90 ? [0, 90] : [110, 200];
-    let writable = null;
-    if (!test) {
-        // the MP4 goes to the local server piece by piece: tiktok-clips/out/dev-digest/<name>
-        const name = range ? `dev-digest-${range[0]}-${range[1]}s.mp4` : 'dev-digest-10min.mp4';
-        const post = (pos, body, first) => fetch(`/write?name=${name}&pos=${pos}${first ? '&first=1' : ''}`, { method: 'POST', body }).then((r) => { if (!r.ok) throw new Error(`write ${r.status}`); });
-        await post(0, new Uint8Array(0), true);
-        writable = new WritableStream({ write: (c) => post(c.position, c.data) });
-    }
     ctrl = new AbortController();
     $('stop').disabled = false; $('build').disabled = true; $('test').disabled = true;
     const t0 = performance.now();
+    const progress = (p) => say(`${p.stage === 'mux' ? 'Дописываю файл…' : 'Кадр'} ${p.frame} / ${p.frames} (${Math.round(p.frame / p.frames * 100)}%), ` +
+        `прочитано ${p.mb} МБ, со звуком ${Math.round(p.sound)} с, ${Math.round((performance.now() - t0) / 1000)} с`);
     try {
-        const blob = await buildDevDigest({
-            data, range, hlsOf: test ? null : hlsOf, writable, canvas: $('v'), signal: ctrl.signal,
-            onProgress: (p) => say(`${p.stage === 'mux' ? 'Дописываю файл…' : 'Кадр'} ${p.frame} / ${p.frames} (${Math.round(p.frame / p.frames * 100)}%), ` +
-                `прочитано ${p.mb} МБ, со звуком ${Math.round(p.sound)} с, ${Math.round((performance.now() - t0) / 1000)} с`),
-        });
-        if (writable) await writable.close().catch(() => {});   // StreamTarget may have closed it
-        if (blob) {
+        if (test) {
+            const blob = await buildDevDigest({ data, range, canvas: $('v'), signal: ctrl.signal, onProgress: progress });
             const a = document.createElement('a');
             a.href = URL.createObjectURL(blob); a.download = 'dev-digest-test.mp4'; a.textContent = 'скачать пробу';
             say(`Готово за ${Math.round((performance.now() - t0) / 1000)} с, ${(blob.size / 1048576).toFixed(1)} МБ. `); $('status').append(a);
             window.__clip = blob;
-        } else say(`Готово за ${Math.round((performance.now() - t0) / 1000)} с: файл в tiktok-clips/out/dev-digest/.`);
+        } else if (!range) await whole(t0);
+        else {
+            await piece(`dev-digest-${range[0]}-${range[1]}s.mp4`, range, progress);
+            say(`Готово за ${Math.round((performance.now() - t0) / 1000)} с: файл в tiktok-clips/out/dev-digest/.`);
+        }
     } catch (e) {
-        if (writable) await writable.abort().catch(() => {});
-        say(`Ошибка: ${e.message}`);
+        say(`${e.name === 'AbortError' ? 'Остановлено' : 'Ошибка: ' + e.message}. Готовые части сохранены, «Собрать» продолжит с места остановки.`);
     } finally {
         $('stop').disabled = true; $('build').disabled = !hlsOf; $('test').disabled = false;
     }
