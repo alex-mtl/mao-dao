@@ -21,6 +21,9 @@ class LiveArchive
     /** BIN of model.js: activity is counted per 5 stream minutes */
     public const BIN = 300;
 
+    /** seconds without a single event after which the LIVE is taken as ended */
+    public const END_GAP = 1800;
+
     public function __construct(private EngineClient $engine) {}
 
     /** LIVE logs rebuilt from the engine journal (JournalLivesCommand): older LIVEs, nicknames only */
@@ -63,8 +66,8 @@ class LiveArchive
     {
         $source = $live['journal'] ? 'journal' : 'live';
 
-        // v4: + leaders (bump when the summary or the events change)
-        return Cache::remember("guessword:v4:{$source}:{$room->engineId()}:{$live['file']}:{$live['size']}", now()->addDays(30),
+        // v5: the LIVE ends at a 30 min silence (bump when the summary or the events change)
+        return Cache::remember("guessword:v5:{$source}:{$room->engineId()}:{$live['file']}:{$live['size']}", now()->addDays(30),
             fn () => $this->parse($live['journal']
                 ? (string) file_get_contents(self::journalDir($room->engineId()).'/'.$live['file'])
                 : $this->engine->live($room, $live['file'])));
@@ -78,6 +81,11 @@ class LiveArchive
             $e = $line === '' ? null : json_decode($line, true);
             if (! is_array($e)) {
                 continue;
+            }
+            // a LIVE always has viewers / likes coming in: a long silence means it is over, and what the
+            // engine writes after it (a round ended the next morning) belongs to no LIVE
+            if ((float) ($e['s'] ?? 0) - $duration > self::END_GAP) {
+                break;
             }
             $duration = max($duration, (float) ($e['s'] ?? 0));
             // gifts to the host stay on the server; only who gave the most coins goes into the summary

@@ -31,6 +31,9 @@ function liveLog(): string
         ['s' => 710.0, 'type' => 'round_start', 'round' => 3, 'word' => 'лес'],
         ['s' => 880.0, 'type' => 'round_end', 'round' => 3, 'word' => 'лес', 'reason' => 'timeout', 'seconds' => 170],
         ['s' => 900.5, 'type' => 'gift', 'user' => $u('2', 'Bob'), 'gift' => 'Rose', 'count' => 1, 'coins' => 1],
+        // the LIVE is over: the engine ends a round the next morning, which counts for no LIVE
+        ['s' => 50000.0, 'type' => 'round_end', 'round' => 4, 'word' => 'дом', 'reason' => 'timeout', 'seconds' => 170],
+        ['s' => 50010.0, 'type' => 'round_start', 'round' => 5, 'word' => 'кот'],
     ];
 
     return implode("\n", array_map(fn ($l) => json_encode($l, JSON_UNESCAPED_UNICODE), $lines))."\n";
