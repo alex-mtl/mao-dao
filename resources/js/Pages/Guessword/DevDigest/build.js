@@ -12,6 +12,8 @@ import { FPS, schedule } from './schedule.js';
 
 const RATE = 48000, FADE = 0.25, PREFETCH = 48;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+// a promise, or null after ms (a CDN request or a decoder that hangs must not stop the whole build)
+const timeout = (p, ms) => Promise.race([p.catch(() => null), sleep(ms).then(() => null)]);
 
 /** the LIVE Center recordings the plan needs: {id: hls (playlist()) | null}; onStatus(id, found) per recording */
 export async function recordings(data, ids, onStatus = () => {}) {
@@ -49,7 +51,8 @@ function keyDecoder() {
         const got = new Promise((r) => { wait = r; });
         try {
             dec.decode(new EncodedVideoChunk({ type: 'key', timestamp: 0, data: kf.data }));
-            await dec.flush();
+            // a stalled hardware decoder never settles flush(): give it 5 s, then start a new one
+            if (!(await timeout(dec.flush().then(() => true), 5000))) { try { dec.close(); } catch { /* closed */ } dec = null; }
         } catch { dec = null; }
         const f = await Promise.race([got, sleep(3000).then(() => null)]);
         wait = null;
@@ -212,7 +215,7 @@ export async function buildDevDigest({ data, T = 600, range = null, hlsOf = null
             const segOf = (wall) => { let lo = 0, hi = segs.length - 1; while (lo < hi) { const m = (lo + hi + 1) >> 1; if (segs[m].at <= wall) lo = m; else hi = m - 1; } return lo; };
             const seg = fs.map((f) => segOf(src[f].wall));
             const order = [...new Set(seg)], cache = new Map();
-            const load = (k) => { if (k >= 0 && k < order.length && !cache.has(order[k])) cache.set(order[k], keyFrame(segs[order[k]].url).catch(() => null)); };
+            const load = (k) => { if (k >= 0 && k < order.length && !cache.has(order[k])) cache.set(order[k], timeout(keyFrame(segs[order[k]].url), 60000)); };
             let shown = -1;
             for (let i = 0; i < fs.length; i++) {
                 if (fs[i] % FPS === 0) await silence(fs[i] / FPS);

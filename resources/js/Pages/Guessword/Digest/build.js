@@ -116,7 +116,8 @@ export async function* hlsDense(hls, times, start, onSegment) {
     const segOf = (wall) => { let lo = 0, hi = segs.length - 1; while (lo < hi) { const m = (lo + hi + 1) >> 1; if (segs[m].at <= wall) lo = m; else hi = m - 1; } return lo; };
     const walls = times.map((t) => start + t), first = segOf(walls[0]), last = segOf(walls[walls.length - 1]);
     const loads = new Map();
-    const load = (i) => { if (i <= last && !loads.has(i)) loads.set(i, segment(segs[i].url).catch(() => null)); };
+    // a CDN request that never answers counts as a lost segment after 2 min (the picture stays)
+    const load = (i) => { if (i <= last && !loads.has(i)) loads.set(i, Promise.race([segment(segs[i].url).catch(() => null), new Promise((r) => setTimeout(() => r(null), 120000))])); };
     const us = (wall) => Math.round((wall - hls.start) * 1e6);
     // frames come out in presentation order; each one is kept only until the next one shows it is the newest
     // at or before a target, and a target gets a copy on a canvas: a hardware decoder stops while its frames
@@ -164,7 +165,7 @@ export async function* hlsDense(hls, times, start, onSegment) {
         }
         yield* give(false);
     }
-    if (codec && !broken) await decoder.flush().catch(() => {});
+    if (codec && !broken) await Promise.race([decoder.flush().catch(() => {}), new Promise((r) => setTimeout(r, 10000))]);
     yield* give(true);
     prev?.close();
     try { decoder.close(); } catch { /* closed */ }
