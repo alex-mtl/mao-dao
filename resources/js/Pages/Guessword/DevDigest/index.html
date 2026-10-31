@@ -1,0 +1,90 @@
+<!doctype html>
+<!-- The development digest generator: opened in the owner's Chrome (with the LIVE Center extension) from the
+     local server of tiktok-clips/tools/dev-digest.js, which maps /DevDigest/ and /Digest/ to these folders,
+     /mediabunny.mjs to the npm bundle and /data/dev-log.json to tiktok-clips/docs/dev-digest/dev-log.json. -->
+<html lang="ru"><head><meta charset="utf-8"><title>Дайджест разработки</title>
+<script type="importmap">{ "imports": { "mediabunny": "/mediabunny.mjs" } }</script>
+<style>
+  body { margin: 0; background: #0e0f13; color: #e8eaf0; font: 15px/1.5 system-ui, sans-serif; }
+  .wrap { display: flex; gap: 20px; padding: 16px; flex-wrap: wrap; }
+  canvas { height: min(84vh, 960px); aspect-ratio: 9/16; background: #000; border: 1px solid #2a2f3a; border-radius: 8px; }
+  .side { flex: 1 1 360px; max-width: 560px; }
+  button, select { background: #171a21; color: #e8eaf0; border: 1px solid #2a2f3a; border-radius: 6px; padding: 6px 12px; font: inherit; cursor: pointer; }
+  button:disabled { opacity: .5; cursor: default; }
+  #status { white-space: pre-wrap; font-variant-numeric: tabular-nums; color: #c9cede; margin-top: 10px; }
+  table { border-collapse: collapse; font-size: 13px; margin-top: 10px; }
+  td { padding: 2px 8px 2px 0; }
+  .ok { color: #7ee787; } .no { color: #ff7b72; }
+</style></head>
+<body><div class="wrap">
+  <canvas id="v" width="1080" height="1920"></canvas>
+  <div class="side">
+    <h2 style="margin:0 0 8px">Дайджест разработки</h2>
+    <div>
+      <label>Собрать <select id="len"><option value="600">всё (10 мин)</option><option value="90">первые 90 с (проба)</option><option value="200">1:50–3:20 (шарики, самолёты)</option></select></label>
+      <button id="check">1. Найти записи в LIVE Center</button>
+      <button id="build" disabled>2. Собрать MP4</button>
+      <button id="test">Проба без записей</button>
+      <button id="stop" disabled>Стоп</button>
+    </div>
+    <div id="status">Загружаю данные…</div>
+    <table id="recs"></table>
+  </div>
+</div>
+<script type="module">
+import { buildDevDigest, recordings } from './build.js';
+import { extension } from '../Digest/livecenter.js';
+
+const $ = (id) => document.getElementById(id);
+const data = await (await fetch('/data/dev-log.json', { cache: 'no-store' })).json();
+let hlsOf = null, ctrl = null;
+const say = (s) => { $('status').textContent = s; };
+say(`Строк: ${data.lines.length}, анимаций: ${Object.keys(data.heroes).length}, записей: ${Object.keys(data.streams).length}.\n` +
+    (extension() ? `Расширение ${extension()} на месте.` : 'Расширение не видно: перезагрузите его в chrome://extensions (нужна версия 0.2.0) и обновите страницу.'));
+
+$('check').onclick = async () => {
+    $('check').disabled = true;
+    const list = Object.keys(data.streams);
+    $('recs').innerHTML = list.map((id) => `<tr><td>${id}</td><td id="r-${id}">…</td></tr>`).join('');
+    say('Ищу записи (LIVE Center откроется в фоновой вкладке, если нужно)…');
+    hlsOf = await recordings(data, list, (id, ok) => { $(`r-${id}`).innerHTML = ok ? '<span class="ok">есть</span>' : '<span class="no">нет</span>'; });
+    const miss = list.filter((id) => !hlsOf[id]);
+    say(miss.length ? `Не найдено ${miss.length} из ${list.length}: их куски будут повтором предыдущего кадра.` : `Все ${list.length} записей найдены.`);
+    $('build').disabled = false; $('check').disabled = false;
+};
+
+async function run(test) {
+    const pick = +$('len').value, range = pick === 600 ? null : pick === 90 ? [0, 90] : [110, 200];
+    let writable = null;
+    if (!test) {
+        const h = await showSaveFilePicker({ suggestedName: range ? `dev-digest-${range[0]}-${range[1]}s.mp4` : 'dev-digest-10min.mp4', types: [{ description: 'MP4', accept: { 'video/mp4': ['.mp4'] } }] });
+        writable = await h.createWritable();
+    }
+    ctrl = new AbortController();
+    $('stop').disabled = false; $('build').disabled = true; $('test').disabled = true;
+    const t0 = performance.now();
+    try {
+        const blob = await buildDevDigest({
+            data, range, hlsOf: test ? null : hlsOf, writable, canvas: $('v'), signal: ctrl.signal,
+            onProgress: (p) => say(`${p.stage === 'mux' ? 'Дописываю файл…' : 'Кадр'} ${p.frame} / ${p.frames} (${Math.round(p.frame / p.frames * 100)}%), ` +
+                `прочитано ${p.mb} МБ, со звуком ${Math.round(p.sound)} с, ${Math.round((performance.now() - t0) / 1000)} с`),
+        });
+        if (writable) await writable.close();
+        if (blob) {
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob); a.download = 'dev-digest-test.mp4'; a.textContent = 'скачать пробу';
+            say(`Готово за ${Math.round((performance.now() - t0) / 1000)} с, ${(blob.size / 1048576).toFixed(1)} МБ. `); $('status').append(a);
+            window.__clip = blob;
+        } else say(`Готово за ${Math.round((performance.now() - t0) / 1000)} с: файл сохранён.`);
+    } catch (e) {
+        if (writable) await writable.abort().catch(() => {});
+        say(`Ошибка: ${e.message}`);
+    } finally {
+        $('stop').disabled = true; $('build').disabled = !hlsOf; $('test').disabled = false;
+    }
+}
+$('build').onclick = () => run(false);
+$('test').onclick = () => run(true);
+$('stop').onclick = () => ctrl?.abort();
+window.ready = true;
+</script></body></html>

@@ -197,6 +197,19 @@ own recording (MP4 from TikTok LIVE Center): the file is never uploaded.
 - **Frame test**: `node tests/digest/frames.test.mjs` (host Node + Chrome; `--update` writes new references
   after an intended change of the look). Synthetic nicks in `tests/digest/events.json`.
 
+## Development digest (since 2026-10-31)
+
+A 10-minute video of how the game was made, 06.10–30.10, built in the owner's Chrome straight from LIVE
+Center with the same reading as the champion race (`resources/js/Pages/Guessword/DevDigest/`: `schedule.js`
+timing, `draw.js` overlay — date, crawling log of changes, development "temperature", "No. 1-3" cards;
+`build.js` video). The log crawls at one speed; recordings run as a timelapse (one key frame per segment) and
+at 1x **with their sound** on each new animation (`hlsDense` + AAC from the same segments, `ts.js audioFrames`);
+the line after an animation waits for it to end, so they stay in sync. Output written straight to disk
+(`showSaveFilePicker`). Data (lines, animation moments, recordings) lives in `tiktok-clips/docs/dev-digest/`;
+`node tiktok-clips/tools/dev-digest.js` builds `dev-log.json` and serves the page at
+`http://localhost:8791/DevDigest/`. Recordings without a known room id are found by their start time
+(extension 0.2.0: `replay` with an empty room id and a start, nearest within 3 min; matches `localhost:*`).
+
 ## Load and scaling (measured 2026-10-28)
 
 Two live streams: ~190 guesses/min, ~140 chat messages/min, ~50 like events/min, <1 gift/min per room;

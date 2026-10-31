@@ -110,7 +110,8 @@ async function* fileDense(file, times) {
 // The same from LIVE Center: whole segments of the stretch (read a few ahead), every access unit decoded in
 // order; a frame's stream time = its segment's clock (#EXT-X-PROGRAM-DATE-TIME) + its PTS offset in the segment.
 // A decoder error (a reconnect with new parameters) starts a new decoder at the next segment.
-async function* hlsDense(hls, times, start) {
+// onSegment(bytes, clock, pts0): each segment as it is read (the development digest takes its sound from it).
+export async function* hlsDense(hls, times, start, onSegment) {
     const segs = hls.segments, AHEAD = 4;
     const segOf = (wall) => { let lo = 0, hi = segs.length - 1; while (lo < hi) { const m = (lo + hi + 1) >> 1; if (segs[m].at <= wall) lo = m; else hi = m - 1; } return lo; };
     const walls = times.map((t) => start + t), first = segOf(walls[0]), last = segOf(walls[walls.length - 1]);
@@ -151,6 +152,7 @@ async function* hlsDense(hls, times, start) {
         const v = bytes && videoFrames(bytes);
         if (v && v.frames.length) {
             const pts0 = Math.min(...v.frames.map((f) => f.pts));
+            onSegment?.(bytes, segs[i].at, pts0);
             for (const f of v.frames) {
                 if (!codec) {
                     if (!f.key) continue;               // a new decoder starts at a key frame

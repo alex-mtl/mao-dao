@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Mao Dao: LIVE Center recordings",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Lets the mao-dao.com stream archive build digests straight from your TikTok LIVE Center recordings, without downloading them.",
   "permissions": ["storage", "tabs"],
   "host_permissions": [
@@ -14,6 +14,6 @@
   "content_scripts": [
     { "matches": ["https://livecenter.tiktok.com/*"], "js": ["livecenter-hook.js"], "world": "MAIN", "run_at": "document_start" },
     { "matches": ["https://livecenter.tiktok.com/*"], "js": ["livecenter.js"], "run_at": "document_start" },
-    { "matches": ["https://mao-dao.com/*", "http://localhost/*"], "js": ["maodao.js"], "run_at": "document_start" }
+    { "matches": ["https://mao-dao.com/*", "http://localhost/*", "http://localhost:*/*"], "js": ["maodao.js"], "run_at": "document_start" }
   ]
 }

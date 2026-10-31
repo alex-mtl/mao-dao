@@ -18,24 +18,35 @@ async function save(list, hasMore) {
 }
 const changed = (ms) => new Promise((r) => { waiters.push(r); setTimeout(r, ms); });
 
-// the recording of a TikTok LIVE (its room id): from what LIVE Center showed; if not there, LIVE Center is
-// opened in a background tab and its list scrolled down until the recording (or its start date) shows up
+// the recording of a TikTok LIVE: by its room id, or without one by its start (unix s; the nearest within
+// 3 min, as the LIVE Center list shows it to the minute). From what LIVE Center showed; if not there, LIVE
+// Center is opened in a background tab and its list scrolled down until the recording (or its start date) shows up
+const NEAR = 180;
+function find(all, roomId, start) {
+    if (roomId) return all[roomId]?.m3u8 ? all[roomId] : null;
+    let best = null;
+    for (const r of Object.values(all)) {
+        if (r.m3u8 && Math.abs(r.start - start) <= NEAR && (!best || Math.abs(r.start - start) < Math.abs(best.start - start))) best = r;
+    }
+    return best;
+}
 async function replay(roomId, start) {
     let all = await stored();
-    if (all[roomId]?.m3u8) return all[roomId];
+    let r = find(all, roomId, start);
+    if (r) return r;
     const tab = await chrome.tabs.create({ url: LIVECENTER, active: false });
     try {
-        const until = Date.now() + 90000;
+        const until = Date.now() + 180000;
         await changed(20000);
         while (Date.now() < until) {
             all = await stored();
-            if (all[roomId]?.m3u8) return all[roomId];
-            const oldest = Math.min(...Object.values(all).map((r) => r.start));
-            if (!more || (start && oldest < start - 86400)) break;
+            if ((r = find(all, roomId, start))) return r;
+            const oldest = Math.min(...Object.values(all).map((x) => x.start));
+            if (!more || (start && oldest < start - (roomId ? 86400 : NEAR))) break;
             await chrome.tabs.sendMessage(tab.id, { type: 'scroll' }).catch(() => {});
             await changed(4000);
         }
-        return (await stored())[roomId] || null;
+        return find(await stored(), roomId, start);
     } finally {
         chrome.tabs.remove(tab.id).catch(() => {});
     }
@@ -54,7 +65,7 @@ async function handle(msg, sender) {
         return { ok: true };
     }
     if (msg.type === 'ping') return { ok: true, result: { version: chrome.runtime.getManifest().version } };
-    if (msg.type === 'replay') return { ok: true, result: await replay(String(msg.roomId), Number(msg.start) || 0) };
+    if (msg.type === 'replay') return { ok: true, result: await replay(msg.roomId ? String(msg.roomId) : '', Number(msg.start) || 0) };
     if (msg.type === 'text' || msg.type === 'range') {
         if (!CDN.test(msg.url)) return { ok: false, error: 'not a TikTok CDN address' };
         const headers = msg.type === 'range' ? { Range: `bytes=${msg.from}-${msg.to}` } : {};

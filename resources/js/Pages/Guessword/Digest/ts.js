@@ -78,6 +78,68 @@ export function videoFrames(b) {
     return { codec, frames: out.filter((f) => f.pts !== null) };
 }
 
+/**
+ * The AAC audio of a whole segment (ADTS in PES, stream type 0x0f): {sampleRate, channels, description (the
+ * AudioSpecificConfig for AudioDecoder), frames: [{pts, data (raw AAC, ADTS header cut)}]} or null.
+ * For the stretches the development digest plays at 1x with their sound.
+ */
+const RATES = [96000, 88200, 64000, 48000, 44100, 32000, 24000, 22050, 16000, 12000, 11025, 8000, 7350];
+export function audioFrames(b) {
+    let pmt = -1, audio = -1, cur = null;
+    const pes = [];
+    for (let i = 0; i + 188 <= b.length; i += 188) {
+        if (b[i] !== 0x47) break;
+        const pusi = b[i + 1] & 0x40, pid = ((b[i + 1] & 0x1f) << 8) | b[i + 2], afc = (b[i + 3] >> 4) & 3;
+        let p = i + 4;
+        if (afc & 2) p += 1 + b[p];
+        if (!(afc & 1) || p >= i + 188) continue;
+        if (pid === 0 && pusi) {
+            p += 1 + b[p];
+            pmt = ((b[p + 10] & 0x1f) << 8) | b[p + 11];
+        } else if (pid === pmt && pusi && audio < 0) {
+            p += 1 + b[p];
+            const end = p + 3 + (((b[p + 1] & 0x0f) << 8) | b[p + 2]) - 4;
+            let q = p + 12 + (((b[p + 10] & 0x0f) << 8) | b[p + 11]);
+            while (q < end) {
+                if (b[q] === 0x0f) { audio = ((b[q + 1] & 0x1f) << 8) | b[q + 2]; break; }
+                q += 5 + (((b[q + 3] & 0x0f) << 8) | b[q + 4]);
+            }
+        } else if (pid === audio) {
+            if (pusi) {
+                if (cur) pes.push(cur);
+                const flags = b[p + 7], hl = b[p + 8];
+                const pts = flags & 0x80 ? ((b[p + 9] & 0x0e) * 536870912 + b[p + 10] * 4194304 + (b[p + 11] & 0xfe) * 16384 + b[p + 12] * 128 + (b[p + 13] >> 1)) / 90000 : null;
+                cur = { pts, parts: [] };
+                p += 9 + hl;
+            }
+            if (cur) cur.parts.push(b.subarray(p, i + 188));
+        }
+    }
+    if (cur) pes.push(cur);
+    let sampleRate = 0, channels = 0, profile = 1;
+    const frames = [];
+    for (const x of pes) {
+        if (x.pts === null) continue;
+        const d = concat(x.parts);
+        let k = 0;
+        for (let o = 0; o + 7 <= d.length;) {
+            if (d[o] !== 0xff || (d[o + 1] & 0xf0) !== 0xf0) { o++; continue; }   // ADTS sync word
+            const len = ((d[o + 3] & 3) << 11) | (d[o + 4] << 3) | (d[o + 5] >> 5);
+            const head = d[o + 1] & 1 ? 7 : 9;
+            if (len < head || o + len > d.length) break;
+            profile = (d[o + 2] >> 6) & 3;
+            sampleRate = RATES[(d[o + 2] >> 2) & 0xf] || sampleRate;
+            channels = ((d[o + 2] & 1) << 2) | (d[o + 3] >> 6) || channels;
+            frames.push({ pts: x.pts + (k++ * 1024) / (sampleRate || 48000), data: d.slice(o + head, o + len) });
+            o += len;
+        }
+    }
+    if (!frames.length || !sampleRate) return null;
+    const object = profile + 1, sri = RATES.indexOf(sampleRate);
+    const description = new Uint8Array([(object << 3) | (sri >> 1), ((sri & 1) << 7) | (channels << 3)]);
+    return { sampleRate, channels, description, frames };
+}
+
 // a random access picture: HEVC IRAP (NAL types 16-21), H.264 IDR (5)
 function isKey(codec, d) {
     for (let i = 0; i + 3 < d.length; i++) {
