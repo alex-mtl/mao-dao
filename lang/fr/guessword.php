@@ -420,6 +420,7 @@ return [
     'digest_cancel' => 'Annuler',
     'digest_done' => 'Prêt en :s s.',
     'digest_download' => 'Télécharger le résumé',
+    'digest_saved' => 'Le fichier est enregistré automatiquement dans vos Téléchargements. Si le navigateur ne l’a pas fait, utilisez le bouton ci-dessous.',
     'digest_lost' => 'Passages abîmés de l\'enregistrement ignorés : :n',
     'digest_failed' => 'Impossible de créer le résumé : :error',
     'digest_no_webcodecs' => 'Ce navigateur ne sait pas créer de vidéo. Utilisez Chrome ou Edge sur un ordinateur.',

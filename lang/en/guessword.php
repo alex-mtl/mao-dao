@@ -420,6 +420,7 @@ return [
     'digest_cancel' => 'Cancel',
     'digest_done' => 'Ready in :s s.',
     'digest_download' => 'Download the digest',
+    'digest_saved' => 'The file is saved to your Downloads automatically. If your browser did not save it, use the button below.',
     'digest_lost' => 'Damaged spots in the recording skipped: :n',
     'digest_failed' => 'Could not build the digest: :error',
     'digest_no_webcodecs' => 'This browser cannot build video. Use Chrome or Edge on a computer.',

@@ -3,7 +3,7 @@ import SecondaryButton from '@/Components/SecondaryButton';
 import PlatformLayout from '@/Layouts/PlatformLayout';
 import { Head, Link } from '@inertiajs/react';
 import { useLaravelReactI18n } from 'laravel-react-i18n';
-import { useId, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { extension } from './Digest/livecenter.js';
 import { digestModel, factsFromLive, temperature, TEMPS } from './Digest/model.js';
 
@@ -78,6 +78,7 @@ function DigestBuilder({ room, live }) {
     const { t } = useLaravelReactI18n();
     const [state, setState] = useState({ stage: 'pick' });
     const srcRef = useRef(null), canvasRef = useRef(null), abortRef = useRef(null);
+    const fileName = `digest-${live.date || live.file.slice(0, 10)}.mp4`;
     const why = (w) => t({ webcodecs: 'guessword.digest_no_webcodecs', decode: 'guessword.digest_no_decode', encode: 'guessword.digest_no_encode', format: 'guessword.digest_bad_format' }[w]);
 
     const pick = async (e) => {
@@ -145,13 +146,26 @@ function DigestBuilder({ room, live }) {
                 labels: { round: t('guessword.digest_round_tag') },
                 onProgress: (p) => { lost = p.lost || 0; setState({ stage: p.stage === 'mux' ? 'mux' : 'building', duration, lc, frame: p.frame, frames: p.frames, mb: p.mb }); },
             });
-            setState({ stage: 'done', duration, lc, url: URL.createObjectURL(blob), seconds: Math.round((performance.now() - t0) / 1000), lost });
+            const url = URL.createObjectURL(blob);
+            setState({ stage: 'done', duration, lc, url, seconds: Math.round((performance.now() - t0) / 1000), lost });
+            // saved at once: the video lives only in this tab's memory until then
+            const a = Object.assign(document.createElement('a'), { href: url, download: fileName });
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
         } catch (e) {
             setState(e.name === 'AbortError' ? { stage: 'ready', duration, lc } : { stage: 'error', message: t('guessword.digest_failed', { error: e.message }) });
         }
     };
 
     const busy = ['avatars', 'building', 'mux', 'finding'].includes(state.stage);
+    // closing the tab mid-build loses the work: let the browser ask first
+    useEffect(() => {
+        if (!busy) return undefined;
+        const stay = (e) => { e.preventDefault(); e.returnValue = ''; };
+        window.addEventListener('beforeunload', stay);
+        return () => window.removeEventListener('beforeunload', stay);
+    }, [busy]);
     const ext = extension();
     return (
         <div className="mt-3 rounded-xl border border-warm-200 bg-warm-50 p-4">
@@ -204,7 +218,8 @@ function DigestBuilder({ room, live }) {
                         <div className="space-y-2">
                             <p className="text-sm font-semibold text-success-700">{t('guessword.digest_done', { s: state.seconds })}</p>
                             {state.lost > 0 && <p className="text-xs text-ink-500">{t('guessword.digest_lost', { n: state.lost })}</p>}
-                            <a href={state.url} download={`digest-${live.date || live.file.slice(0, 10)}.mp4`}
+                            <p className="text-xs text-ink-500">{t('guessword.digest_saved')}</p>
+                            <a href={state.url} download={fileName}
                                className="inline-flex rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-700">
                                 {t('guessword.digest_download')}
                             </a>

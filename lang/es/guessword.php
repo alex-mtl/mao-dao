@@ -420,6 +420,7 @@ return [
     'digest_cancel' => 'Cancelar',
     'digest_done' => 'Listo en :s s.',
     'digest_download' => 'Descargar el resumen',
+    'digest_saved' => 'El archivo se guarda solo en Descargas. Si el navegador no lo guardó, usa el botón de abajo.',
     'digest_lost' => 'Partes dañadas de la grabación omitidas: :n',
     'digest_failed' => 'No se pudo crear el resumen: :error',
     'digest_no_webcodecs' => 'Este navegador no puede crear vídeo. Usa Chrome o Edge en un ordenador.',
