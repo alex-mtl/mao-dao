@@ -6,6 +6,7 @@ Internal API for the platform (Laravel), header X-Internal-Secret = INTERNAL_SEC
                                              control_token, simulate, tg_key  -> status + tokens + links
   POST   /internal/rooms/{id}/start|stop
   POST   /internal/rooms/{id}/settings       {game, options} and/or {lang}; {active} switches the game
+  POST   /internal/rooms/{id}/credits        {id: TikTok login, n} hints on a viewer's account -> {id, credits}
   DELETE /internal/rooms/{id}                (its data folder stays)
   GET    /internal/rooms/{id}/options        games, their options and values (for the platform's form)
   GET    /internal/lives[?room=]             every room's LIVE logs (clips / digests): room, file, size, mtime
@@ -30,6 +31,7 @@ from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Redirect
 from . import config, live_log
 from .context import current_room
 from .games.base import Viewer
+from .games.guess.game import account_id
 from .room_prefs import GIFT_ACTIONS, GIFT_MIN_COINS, catalog
 
 WEB = os.path.join(os.path.dirname(__file__), "web")
@@ -171,6 +173,19 @@ def create_app(manager):
             await manager.stop(rid)
         elif action == "settings":
             apply_settings(room.ensure_hub(), await req.json())
+        elif action == "credits":                      # hints on a viewer's account: {id, n} (n < 0 takes away)
+            body = await req.json()
+            g = room.ensure_hub().games.get("guess")
+            try:
+                n = int(body.get("n", 1))
+            except (TypeError, ValueError):
+                raise HTTPException(400, "n must be an integer")
+            vid = account_id(str(body.get("id") or ""))
+            if not g or not vid or not n:
+                raise HTTPException(400, "need a viewer id and n != 0")
+            left = g.add_credits(vid, n)
+            print(f"[internal] hint credits {n:+d} -> {vid}: {left}")
+            return {"id": vid, "credits": left}
         else:
             raise HTTPException(404, "unknown action")
         return info(room)

@@ -52,6 +52,10 @@ room only by its secret tokens. Super admins alone also see every room: `/guessw
 room is `gw<id>`. Laravel sends the whole room each time (`PUT /internal/rooms/{id}`); the engine
 keeps its own copy in `rooms.json` so rooms come back after a restart.
 
+**Hints on a viewer's account by hand**: `php artisan guessword:hints <tiktok login> [n=1] [--room=<id |
+gw<id> | streamer's login>]` (`Console/AddHintsCommand`; `--room` not needed with one room, negative n takes
+away) → engine `POST /internal/rooms/{id}/credits {id, n}`; the engine changes its account file itself.
+
 Browser / Studio addresses go through nginx: `GUESSWORD_ENGINE_PUBLIC_PATH` (default
 `/guessword/engine`) → the engine (its `BASE_PATH`). Two links per room:
 
