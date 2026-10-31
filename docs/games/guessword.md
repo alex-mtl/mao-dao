@@ -204,8 +204,10 @@ Center with the same reading as the champion race (`resources/js/Pages/Guessword
 timing, `draw.js` overlay — date, crawling log of changes, development "temperature", "No. 1-3" cards;
 `build.js` video). The log crawls at one speed; recordings run as a timelapse (one key frame per segment) and
 at 1x **with their sound** on each new animation (`hlsDense` + AAC from the same segments, `ts.js audioFrames`);
-the line after an animation waits for it to end, so they stay in sync. Output written straight to disk
-(`showSaveFilePicker`). Data (lines, animation moments, recordings) lives in `tiktok-clips/docs/dev-digest/`;
+the line after an animation waits for it to end, so they stay in sync. The MP4 goes piece by piece to the local
+server (`POST /write`) into `tiktok-clips/out/dev-digest/`. Before the first build, scroll the LIVE Center list
+down to the oldest recording once (the extension remembers what the page loaded; its own background-tab scroll
+did not reach 06.10 in 3 min). Measured 31.10: 90 s of the digest in 280 s, 767 MB read. Data (lines, animation moments, recordings) lives in `tiktok-clips/docs/dev-digest/`;
 `node tiktok-clips/tools/dev-digest.js` builds `dev-log.json` and serves the page at
 `http://localhost:8791/DevDigest/`. Recordings without a known room id are found by their start time
 (extension 0.2.0: `replay` with an empty room id and a start, nearest within 3 min; matches `localhost:*`).

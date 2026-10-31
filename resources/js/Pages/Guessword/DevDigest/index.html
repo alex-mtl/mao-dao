@@ -57,8 +57,11 @@ async function run(test) {
     const pick = +$('len').value, range = pick === 600 ? null : pick === 90 ? [0, 90] : [110, 200];
     let writable = null;
     if (!test) {
-        const h = await showSaveFilePicker({ suggestedName: range ? `dev-digest-${range[0]}-${range[1]}s.mp4` : 'dev-digest-10min.mp4', types: [{ description: 'MP4', accept: { 'video/mp4': ['.mp4'] } }] });
-        writable = await h.createWritable();
+        // the MP4 goes to the local server piece by piece: tiktok-clips/out/dev-digest/<name>
+        const name = range ? `dev-digest-${range[0]}-${range[1]}s.mp4` : 'dev-digest-10min.mp4';
+        const post = (pos, body, first) => fetch(`/write?name=${name}&pos=${pos}${first ? '&first=1' : ''}`, { method: 'POST', body }).then((r) => { if (!r.ok) throw new Error(`write ${r.status}`); });
+        await post(0, new Uint8Array(0), true);
+        writable = new WritableStream({ write: (c) => post(c.position, c.data) });
     }
     ctrl = new AbortController();
     $('stop').disabled = false; $('build').disabled = true; $('test').disabled = true;
@@ -69,13 +72,13 @@ async function run(test) {
             onProgress: (p) => say(`${p.stage === 'mux' ? 'Дописываю файл…' : 'Кадр'} ${p.frame} / ${p.frames} (${Math.round(p.frame / p.frames * 100)}%), ` +
                 `прочитано ${p.mb} МБ, со звуком ${Math.round(p.sound)} с, ${Math.round((performance.now() - t0) / 1000)} с`),
         });
-        if (writable) await writable.close();
+        if (writable) await writable.close().catch(() => {});   // StreamTarget may have closed it
         if (blob) {
             const a = document.createElement('a');
             a.href = URL.createObjectURL(blob); a.download = 'dev-digest-test.mp4'; a.textContent = 'скачать пробу';
             say(`Готово за ${Math.round((performance.now() - t0) / 1000)} с, ${(blob.size / 1048576).toFixed(1)} МБ. `); $('status').append(a);
             window.__clip = blob;
-        } else say(`Готово за ${Math.round((performance.now() - t0) / 1000)} с: файл сохранён.`);
+        } else say(`Готово за ${Math.round((performance.now() - t0) / 1000)} с: файл в tiktok-clips/out/dev-digest/.`);
     } catch (e) {
         if (writable) await writable.abort().catch(() => {});
         say(`Ошибка: ${e.message}`);
