@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\Cache;
 class LiveArchive
 {
     /** event types the digest uses; the rest of a log (viewers, gifts) stays on the server */
-    public const DIGEST_TYPES = ['live_start', 'round_start', 'winner', 'plane', 'balloon', 'cake', 'cake_start', 'cake_last', 'cake_split', 'fire'];
+    public const DIGEST_TYPES = ['live_start', 'round_start', 'round_end', 'winner', 'plane', 'balloon', 'cake', 'cake_start', 'cake_last', 'cake_split', 'fire'];
 
     /** BIN of model.js: activity is counted per 5 stream minutes */
     public const BIN = 300;

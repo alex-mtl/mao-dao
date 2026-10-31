@@ -28,6 +28,8 @@ function liveLog(): string
         ['s' => 400.0, 'type' => 'plane', 'user' => $u('2', 'Bob'), 'likes' => 1000],
         ['s' => 500.0, 'type' => 'cake', 'user' => $u('2', 'Bob'), 'manual' => true, 'count' => 1],
         ['s' => 700.0, 'type' => 'winner', 'round' => 2, 'user' => $u('1', 'Ann 2'), 'word' => 'море'],
+        ['s' => 710.0, 'type' => 'round_start', 'round' => 3, 'word' => 'лес'],
+        ['s' => 880.0, 'type' => 'round_end', 'round' => 3, 'word' => 'лес', 'reason' => 'timeout', 'seconds' => 170],
         ['s' => 900.5, 'type' => 'gift', 'user' => $u('2', 'Bob'), 'gift' => 'Rose', 'count' => 1, 'coins' => 1],
     ];
 
@@ -55,7 +57,7 @@ it('lists the streamer\'s lives with counts, champion and activity bins', functi
         ->where('lives.0.file', '2026-10-30_064810_7.jsonl')
         ->where('lives.0.date', '2026-10-30')
         ->where('lives.0.duration', 901)
-        ->where('lives.0.rounds', 2)
+        ->where('lives.0.rounds', 3)
         ->where('lives.0.wins', 2)
         ->where('lives.0.planes', 1)
         ->where('lives.0.balloons', 6)
@@ -76,7 +78,7 @@ it('gives the digest only its event types, users cut to uid / id / name', functi
 
     $events = $this->actingAs($user)->getJson('/guessword/archive/lives/2026-10-30_064810_7.jsonl')->assertOk()->json();
     expect(collect($events)->pluck('type')->unique()->values()->all())
-        ->toBe(['live_start', 'round_start', 'balloon', 'winner', 'plane', 'cake'])
+        ->toBe(['live_start', 'round_start', 'balloon', 'winner', 'plane', 'cake', 'round_end'])
         ->and($events[2])->not->toHaveKey('setter');
 
     $this->actingAs($user)->getJson('/guessword/archive/lives/other.jsonl')->assertNotFound();

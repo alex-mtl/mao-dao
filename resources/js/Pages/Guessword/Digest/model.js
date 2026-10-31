@@ -41,6 +41,8 @@ export function factsFromEvents(events, { duration = 0, date = '' } = {}) {
         date,
         duration: duration || Math.max(0, ...events.map((e) => e.t)),
         rounds: by('round').length,
+        starts: by('round').map((e) => e.t),
+        timeouts: by('timeout').map((e) => ({ t: e.t, word: clean(e.word) })),
         wins: by('winner').map((e) => ({ t: e.t, key: '', name: clean(e.who), avatar: '', word: clean(e.word), exact: !!e.exact })),
         planes: by('plane').filter((e) => e.who).map((e) => ({ t: e.t, key: clean(e.who), name: clean(e.who), avatar: '' })),
         balloons: by('balloon').map((e) => ({ t: e.t, n: e.n || 1, key: clean(e.who), name: clean(e.who), avatar: '' })),
@@ -63,6 +65,8 @@ export function factsFromLive(lines) {
         date: start ? String(start.t).slice(0, 10) : '',
         duration: Math.max(0, ...lines.map((l) => l.s || 0)),
         rounds: of('round_start').length,
+        starts: of('round_start').map((l) => l.s),
+        timeouts: of('round_end').filter((l) => l.reason && l.reason !== 'exact').map((l) => ({ t: l.s, word: clean(l.word) })),
         wins: of('winner').map((l) => ({ t: l.s, ...who(l.user), word: clean(l.word), exact: true })),
         planes: of('plane').map((l) => ({ t: l.s, ...who(l.user) })),
         // a gift / manual launch of N balloons counts N; cakes: automatic (likes) or [manual]
@@ -217,13 +221,23 @@ export function digestModel(facts, { stream = facts.duration, video = VIDEO, slo
         ...(slow ? wins.map((w) => ({ t: w.t, dur: slow, kind: 'win' })) : []),
     ];
     const tl = timeline(stream, scale, shows, stops);
+    // rounds: start, end (the win or the timeout; null while it runs), word, winner key (null = nobody guessed)
+    const starts = (facts.starts || []).length ? [...facts.starts].sort((a, b) => a - b) : wins.map((w, i) => (i ? wins[i - 1].t : 0));
+    const rounds = starts.map((t, i) => {
+        const next = i + 1 < starts.length ? starts[i + 1] : Infinity;
+        const w = wins.find((x) => x.t >= t && x.t < next), to = (facts.timeouts || []).find((x) => x.t >= t && x.t < next);
+        const end = w ? w.t : to ? to.t : null;
+        return { n: i + 1, start: t, end, word: w ? w.word : to ? to.word : '', key: w ? w.key : null };
+    });
+    const lost = rounds.filter((r) => r.end !== null && !r.key).map((r) => ({ t: r.end }));
     // clip second -> {t: stream second, k: wins shown, slow: inside a win's pause}
     function streamAt(v) {
         const { t, piece } = tl.at(v);
         return { t, k: countAt(wins, t), slow: piece.kind === 'win' };
     }
     return {
-        stream, video: tl.total, slow, date: facts.date, people, wins, planes, balloons, cakes, shows,
+        stream, video: tl.total, slow, date: facts.date, people, wins, planes, balloons, cakes, shows, rounds, lost,
+        roundAt: (t) => countAt(starts.map((x) => ({ t: x })), t),
         // the stream's temperature per BIN seconds (the curve at the bottom, its dot runs with the clock)
         temp: temperature(bins(facts)),
         speed: Math.round(1 / scale),

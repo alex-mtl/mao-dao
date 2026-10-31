@@ -1,21 +1,29 @@
 // "Champion race" digest, part 2 of 3: one overlay frame of the 1080x1920 clip on a 2D canvas.
 // Deterministic: draw(v) paints clip second v from the model (model.js) and nothing else, so the
 // archive page and the local pipeline get the same picture. Layout (the owner's mockup of 30.10):
-// top 15% clock, round and date; two race panels (wins, planes); at the bottom the stream's temperature
+// top 15% clock, round and date; two race panels (wins, planes), the wins race with a rounds window (each round
+// rises, turns into its word, green guessed / red not, then flies to the host zone as a sticker under the panels,
+// mockup of 31.10); at the bottom the stream's temperature
 // curve with a dot running along it, and a window where every balloon rises, every plane flies by and
 // cakes pop, with running counters.
 import { BIN, TEMPS } from './model.js';
 
 export const W = 1080, H = 1920;
-const ANIM = 0.45, STEP = 40, MAXAV = 12, FLASH = 1.0;
+const ANIM = 0.45, STEP = 40, MAXAV = 12;
 const BLACK = '"Arial Black", Arial, sans-serif', BOLD = 'bold {px}px Arial, sans-serif';
 const RACES = [304, 956];                       // panel tops; panels: x 20..1060, race.panel tall
 const CURVE = { x: 20, y: 1572, w: 700, h: 250 }, WIN = { x: 744, y: 1572, w: 316, h: 250 };
+// the rounds window (bottom right of the wins race); a round's word sits there SHOW clip s, flies FLYW to its sticker;
+// the host's zone keeps the last KEEP stickers, the clock stays free
+const RWIN = { x: 724, y: 304 + 640 - 16 - 250, w: 316, h: 250 }, RISE = 0.35, SHOW = 0.3, FLYW = 0.55, POPB = 0.2, KEEP = 10;
+const HOST = { x0: 120, x1: 960, y0: 120, y1: 600 }, CLOCK = { x0: 250, x1: 830, y0: 100, y1: 250 };
+const GREEN = '#7CFF4F', RED = '#ff2d55';
 const LIFE = 1.6, FLY = 1.4, POP = 1.0, CROWD = 80;   // clip s a balloon rises / a plane flies / a cake shows; most balloons at once
 // a stable pseudo-random 0..1 per event, so the same frame always looks the same
 const rnd = (i, salt) => ((Math.imul(i + 1, 2654435761) ^ Math.imul(salt + 7, 40503)) >>> 0) / 4294967296;
 const DARK = '#1A0B2E';
 
+const dur = (s) => { s = Math.max(0, Math.floor(s)); const h = Math.floor(s / 3600), mm = Math.floor(s % 3600 / 60), ss = String(s % 60).padStart(2, '0'); return h ? h + ':' + String(mm).padStart(2, '0') + ':' + ss : mm + ':' + ss; };
 const fmt = (s) => { s = Math.floor(s); return `${Math.floor(s / 3600)}:${String(Math.floor(s % 3600 / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`; };
 const ini = (n) => (n.match(/[A-Za-zА-Яа-яЁё0-9]/g) || [n[0] || '?']).slice(0, 2).join('').toUpperCase();
 const black = (px) => `${px}px ${BLACK}`;
@@ -56,22 +64,10 @@ export function renderer(ctx, m, { avatars = new Map(), labels = {} } = {}) {
     }
 
     function top(t, k, v, slow) {
-        tag(`${roundLabel} ${k + 1}`, 28, false, 'rgba(0,0,0,.55)', '#22E5FF');
+        tag(`${roundLabel} ${m.roundAt(t) || k + 1}`, 28, false, 'rgba(0,0,0,.55)', '#22E5FF');
         tag(m.date, 28, true, '#FF3EA5', '#fff');
         ctx.font = black(96); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#fff';
         shadowed(ctx, [[0, 4, 18, '#000'], [0, 0, 6, '#000']], () => ctx.fillText(fmt(t), W / 2, 176));
-        // the round's word stays on screen for FLASH clip seconds after the win (time keeps running when slow = 0)
-        if (k && (slow || v - m.clipOf(m.wins[k - 1].t) < FLASH)) {
-            const w = m.wins[k - 1], word = `«${w.word.toUpperCase()}»`, name = m.people[w.key].name;
-            ctx.font = black(44); const a = ctx.measureText(word).width;
-            ctx.font = bold(28); const b = ctx.measureText(name).width;
-            const bw = Math.max(a, b) + 60;
-            ctx.fillStyle = '#7CFF4F';
-            ctx.beginPath(); ctx.roundRect(W / 2 - bw / 2, 210, bw, 111, 22); ctx.fill();
-            ctx.fillStyle = DARK;
-            ctx.font = black(44); ctx.fillText(word, W / 2, 210 + 14 + 36);
-            ctx.font = bold(28); ctx.fillText(name, W / 2, 210 + 14 + 51 + 27);
-        }
     }
 
     function avatar(x, y, col, key, text) {
@@ -99,7 +95,7 @@ export function renderer(ctx, m, { avatars = new Map(), labels = {} } = {}) {
         const gap = k && k < r.events.length ? m.clipOf(r.events[k][0]) - m.clipOf(r.events[k - 1][0]) : ANIM;
         const anim = Math.max(0.1, Math.min(ANIM, gap));
         const p = k ? Math.min(1, (v - m.clipOf(r.events[k - 1][0])) / anim) : 1, e = p * p * (3 - 2 * p);
-        const BW = W - 40 - 48, x0 = 44;
+        const x0 = 44, BW = r === m.race ? RWIN.x - 16 - x0 : W - 40 - 48;
         for (const key of Object.keys(cur)) {
             const b = cur[key];
             // rows are keyed by count: a player moving up starts from the row he left, so the bar grows instead of popping in
@@ -248,12 +244,166 @@ export function renderer(ctx, m, { avatars = new Map(), labels = {} } = {}) {
         ctx.restore();
     }
 
+    // --- rounds: the window, the flying word, the stickers ---
+    const fit = (text, font, px, max) => { let p = px; do { ctx.font = font(p); } while (ctx.measureText(text).width > max && --p > 10); return p; };
+    const nick = (key) => { const n = m.people[key]?.name || ''; return n.length > 11 ? n.slice(0, 10) + '…' : n; };
+    // a well mixed 0..1 per (i, salt): rnd() above is fine for one value, but its x and y of neighbouring rounds
+    // move together (the stickers lined up on a diagonal)
+    const mix = (i, s) => {
+        let x = Math.imul(i + 1, 0x9E3779B1) ^ Math.imul(s + 1, 0x85EBCA77);
+        x ^= x >>> 16; x = Math.imul(x, 0x7FEB352D); x ^= x >>> 15; x = Math.imul(x, 0x846CA68B); x ^= x >>> 16;
+        return (x >>> 0) / 4294967296;
+    };
+    // every round's spot in the host's zone, fixed up front: of 12 random places off the clock, the one farthest
+    // from the stickers still on screen (the last KEEP)
+    const spots = {};
+    m.rounds.forEach((rd, j) => {
+        const near = m.rounds.slice(Math.max(0, j - KEEP), j).map((x) => spots[x.n]);
+        let best = null, bestD = -1;
+        for (let s = 0; s < 12; s++) {
+            const x = HOST.x0 + mix(rd.n, 2 * s) * (HOST.x1 - HOST.x0), y = HOST.y0 + mix(rd.n, 2 * s + 1) * (HOST.y1 - HOST.y0);
+            if (x > CLOCK.x0 && x < CLOCK.x1 && y > CLOCK.y0 && y < CLOCK.y1) continue;
+            const d = Math.min(1e9, ...near.map(([a, b]) => Math.hypot((a - x) / 1.6, b - y)));
+            if (d > bestD) { bestD = d; best = [x, y]; }
+        }
+        // a long word moves in from the edge so the whole sticker (and its badges) stays in the frame
+        const half = ((Math.min(300, rd.word.length * 24) + 44) * 0.85) / 2 + 30;
+        const [bx, by] = best || [HOST.x0, HOST.y1];
+        spots[rd.n] = [Math.min(W - half, Math.max(half, bx)), by, (mix(rd.n, 99) - 0.5) * 22];
+    });
+    const spot = (n) => spots[n];
+    // the word box (sticker look) centered at (0, 0) of the current transform; returns its size
+    function wordBox(rd) {
+        const word = rd.word.toUpperCase();
+        const p = fit(word, black, 34, 300);
+        const bw = Math.max(150, ctx.measureText(word).width + 44), bh = 74;
+        ctx.save();
+        Object.assign(ctx, { shadowOffsetY: 5, shadowBlur: 12, shadowColor: 'rgba(0,0,0,.55)' });
+        ctx.fillStyle = rd.key ? GREEN : RED;
+        ctx.beginPath(); ctx.roundRect(-bw / 2, -bh / 2, bw, bh, 14); ctx.fill();
+        ctx.restore();
+        ctx.lineWidth = 4; ctx.strokeStyle = '#fff'; ctx.stroke();
+        ctx.fillStyle = DARK; ctx.font = black(p); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(word, 0, 8);
+        return [bw, bh];
+    }
+    // a stuck word: badges on its border, avatar + nick top left, the round's time top right
+    function sticker(rd, alpha, badge) {
+        const [x, y, a] = spot(rd.n);
+        ctx.save(); ctx.globalAlpha = alpha;
+        ctx.translate(x, y); ctx.rotate(a * Math.PI / 180); ctx.scale(0.85, 0.85);
+        const [bw, bh] = wordBox(rd);
+        if (badge > 0) {
+            const name = rd.key ? nick(rd.key) : 'никто';
+            ctx.save(); ctx.translate(-bw / 2 - 6, -bh / 2); ctx.scale(badge, badge);
+            ctx.font = bold(17); const nw = ctx.measureText(name).width;
+            ctx.fillStyle = DARK; ctx.beginPath(); ctx.roundRect(-10, -20, 56 + nw, 40, 20); ctx.fill();
+            if (rd.key) face(rd.key, 10, 0, 20, TEMPS[rd.n % TEMPS.length]);
+            else {
+                ctx.fillStyle = '#333'; ctx.beginPath(); ctx.arc(10, 0, 20, 0, 2 * Math.PI); ctx.fill();
+                ctx.font = '20px "Segoe UI Emoji", "Noto Color Emoji", sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('🖤', 10, 1);
+            }
+            ctx.fillStyle = '#fff'; ctx.font = bold(17); ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillText(name, 36, 1);
+            ctx.restore();
+            const tx = dur(rd.end - rd.start);
+            ctx.save(); ctx.translate(bw / 2 + 6, -bh / 2 + 2); ctx.scale(badge, badge);
+            ctx.font = bold(18); const tw = ctx.measureText(tx).width + 20;
+            ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.roundRect(-tw, -16, tw, 32, 12); ctx.fill();
+            ctx.fillStyle = DARK; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(tx, -tw / 2, 1);
+            ctx.restore();
+        }
+        ctx.restore();
+    }
+    const ended = m.rounds.filter((rd) => rd.end !== null);
+    const third = RWIN.y + RWIN.h / 3 + 20, bottom = RWIN.y + RWIN.h + 30;
+    // where a round's card is in the window at clip second v: it rises once the word before it starts to leave
+    function cardY(i, v) {
+        const rd = m.rounds[i], prev = m.rounds[i - 1];
+        const from = Math.max(m.clipOf(rd.start), prev && prev.end !== null ? m.clipOf(prev.end) + SHOW * 0.6 : 0);
+        const p = Math.min(1, Math.max(0, (v - from) / RISE));
+        return bottom - (bottom - third) * (1 - (1 - p) ** 3);
+    }
+    // stickers that landed by v (under the race panels): the last KEEP, the one pushed out fades
+    function stickers(v) {
+        const landed = ended.filter((rd) => v >= m.clipOf(rd.end) + SHOW + FLYW);
+        const last = landed.length ? m.clipOf(landed[landed.length - 1].end) + SHOW + FLYW : 0;
+        landed.slice(Math.max(0, landed.length - KEEP - 1)).forEach((rd, j) => {
+            const alpha = landed.length > KEEP && j === 0 ? Math.max(0, 1 - (v - last) / 0.3) : 1;
+            if (alpha > 0) sticker(rd, alpha, Math.min(1, (v - m.clipOf(rd.end) - SHOW - FLYW) / POPB));
+        });
+    }
+    // a counter swells for a moment when it ticks
+    function bumpOf(list, t, v) {
+        const n = m.countAt(list, t);
+        if (!n) return 1;
+        const a = v - m.clipOf(list[n - 1].t);
+        return a < 0.25 ? 1.35 - a * 1.4 : 1;
+    }
+    function roundsWindow(t, v) {
+        ctx.save();
+        ctx.fillStyle = 'rgba(18,8,34,.72)';
+        ctx.beginPath(); ctx.roundRect(RWIN.x, RWIN.y, RWIN.w, RWIN.h, 24); ctx.fill(); ctx.clip();
+        const cur = m.roundAt(t) - 1;
+        // the running round: "Round N · time · ???"
+        if (cur >= 0 && (m.rounds[cur].end === null || m.rounds[cur].end > t)) {
+            const rd = m.rounds[cur], y = cardY(cur, v), text = `Раунд ${rd.n} · ${dur(t - rd.start)} · ???`;
+            const p = fit(text, black, 22, RWIN.w - 56), w = ctx.measureText(text).width + 32;
+            ctx.fillStyle = 'rgba(255,255,255,.16)'; ctx.beginPath(); ctx.roundRect(RWIN.x + RWIN.w / 2 - w / 2, y - 22, w, 44, 14); ctx.fill();
+            ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = black(p);
+            ctx.fillText(text, RWIN.x + RWIN.w / 2, y + 2);
+        }
+        // a just finished round: its word where its card was (green guessed, red not), the winner and the time under it
+        m.rounds.forEach((rd, i) => {
+            if (rd.end === null) return;
+            const a = v - m.clipOf(rd.end);
+            if (a < 0 || a >= SHOW) return;
+            const y = cardY(i, m.clipOf(rd.end)), s = 1 + 0.2 * Math.max(0, 1 - a / 0.12);
+            const word = `«${rd.word.toUpperCase()}»`, sub = (rd.key ? nick(rd.key) + ' · ' : '') + dur(rd.end - rd.start);
+            const p = fit(word, black, 32, RWIN.w - 60), w = Math.min(RWIN.w - 20, ctx.measureText(word).width + 36);
+            ctx.save(); ctx.translate(RWIN.x + RWIN.w / 2, y); ctx.scale(s, s);
+            ctx.fillStyle = rd.key ? GREEN : RED; ctx.beginPath(); ctx.roundRect(-w / 2, -38, w, 76, 14); ctx.fill();
+            ctx.fillStyle = DARK; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.font = black(p); ctx.fillText(word, 0, -10);
+            ctx.font = bold(18); ctx.fillText(sub, 0, 22);
+            ctx.restore();
+        });
+        // counters: missed rounds on the left, guessed (= the race's wins) on the right
+        const pill = (text, right, bg, b) => {
+            ctx.font = black(28);
+            const w = ctx.measureText(text).width + 28, x = right ? RWIN.x + RWIN.w - 10 - w : RWIN.x + 10;
+            ctx.save(); ctx.translate(x + w / 2, RWIN.y + 34); ctx.scale(b, b);
+            ctx.fillStyle = bg; ctx.beginPath(); ctx.roundRect(-w / 2, -24, w, 48, 14); ctx.fill();
+            ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(text, 0, 2);
+            ctx.restore();
+        };
+        pill(`🖤 ${m.countAt(m.lost, t)}`, false, 'rgba(255,45,85,.2)', bumpOf(m.lost, t, v));
+        pill(`❤️ ${m.countAt(m.wins, t)}`, true, 'rgba(124,255,79,.2)', bumpOf(m.wins, t, v));
+        ctx.restore();
+    }
+    // words on their way from the window to their spot, over everything
+    function flying(v) {
+        m.rounds.forEach((rd, i) => {
+            if (rd.end === null) return;
+            const a = v - m.clipOf(rd.end) - SHOW;
+            if (a < 0 || a >= FLYW) return;
+            const p = 1 - (1 - a / FLYW) ** 2, sx = RWIN.x + RWIN.w / 2, sy = cardY(i, m.clipOf(rd.end)), [x, y, ang] = spot(rd.n);
+            const cx = (sx + x) / 2 + 80, cy = Math.min(sy, y) - 220;
+            const fx = (1 - p) ** 2 * sx + 2 * (1 - p) * p * cx + p * p * x, fy = (1 - p) ** 2 * sy + 2 * (1 - p) * p * cy + p * p * y;
+            ctx.save(); ctx.translate(fx, fy); ctx.rotate((ang * p + 25 * (1 - p)) * Math.PI / 180); ctx.scale(1.2 - 0.2 * p, 1.2 - 0.2 * p);
+            wordBox(rd);
+            ctx.restore();
+        });
+    }
+
     return function draw(v) {
         const { t, k, slow } = m.streamAt(v);
+        stickers(v);
         top(t, k, v, slow);
         race(RACES[0], m.race, k, v);
         if (m.planesRace) race(RACES[1], m.planesRace, m.countAt(m.planes, t), v);
         curve(t);
         crowd(t, v);
+        roundsWindow(t, v);
+        flying(v);
     };
 }
