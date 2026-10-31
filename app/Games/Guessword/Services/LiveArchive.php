@@ -66,7 +66,7 @@ class LiveArchive
     {
         $source = $live['journal'] ? 'journal' : 'live';
 
-        // v5: the LIVE ends at a 30 min silence (bump when the summary or the events change)
+        // v6: + podiums; v5: the LIVE ends at a 30 min silence (bump when the summary or the events change)
         return Cache::remember("guessword:v5:{$source}:{$room->engineId()}:{$live['file']}:{$live['size']}", now()->addDays(30),
             fn () => $this->parse($live['journal']
                 ? (string) file_get_contents(self::journalDir($room->engineId()).'/'.$live['file'])
@@ -105,11 +105,26 @@ class LiveArchive
         return ['events' => $events, 'summary' => $this->summary($events, $duration, $gifts)];
     }
 
-    /**
-     * The leader of [{user, n}]: one player = one TikTok user id; {name (latest), id (@unique_id, for a
-     * hashtag), avatar, n (summed)} or null
-     */
+    /** The leader of [{user, n}] (see ranked) or null */
     private function top(array $items): ?array
+    {
+        return $this->ranked($items)[0] ?? null;
+    }
+
+    /** Places 1-3 of [{user, n}] (see ranked); a tie shares the place, so a podium can hold more than three */
+    private function podium(array $items): array
+    {
+        $all = $this->ranked($items);
+        $third = $all ? $all[min(2, count($all) - 1)]['n'] : 0;
+
+        return array_values(array_filter($all, fn ($p) => $p['n'] >= $third));
+    }
+
+    /**
+     * [{user, n}] summed per player, most first: one player = one TikTok user id; [{name (latest),
+     * id (@unique_id, for a hashtag), avatar, n (summed)}]
+     */
+    private function ranked(array $items): array
     {
         $by = [];
         foreach ($items as $it) {
@@ -123,7 +138,7 @@ class LiveArchive
         }
         uasort($by, fn ($a, $b) => $b['n'] <=> $a['n']);
 
-        return $by ? reset($by) : null;
+        return array_values($by);
     }
 
     private function summary(array $events, float $duration, array $gifts = []): array
@@ -169,6 +184,11 @@ class LiveArchive
             'cakes' => count($of('cake')),
             'champion' => $champion ? ['name' => $champion['name'], 'avatar' => $champion['avatar'], 'wins' => $champion['n']] : null,
             'leaders' => array_map(fn ($l) => ['name' => $l['name'], 'id' => $l['id'], 'n' => $l['n']], $leaders),
+            // places 1-3 of the word race and of the planes: all of them are mentioned in the digest's caption
+            'podiums' => array_map(fn (array $p) => array_map(fn ($l) => ['name' => $l['name'], 'id' => $l['id'], 'n' => $l['n']], $p), [
+                'wins' => $this->podium(array_map($one, $of('winner'))),
+                'planes' => $this->podium(array_map($one, $of('plane'))),
+            ]),
             'bins' => $bins,
         ];
     }

@@ -7,13 +7,14 @@ import { useEffect, useId, useRef, useState } from 'react';
 import { extension } from './Digest/livecenter.js';
 import { digestModel, factsFromLive, temperature, TEMPS } from './Digest/model.js';
 
-// the digest's caption: the LIVE's leaders first (the game's champion, then planes, gifts, balloons) as
-// mentions - @their TikTok login, so TikTok tells them they are in the video - then the platform's tags.
-// No login known (a journal-rebuilt LIVE where they never chatted): @ and the nickname's letters and digits.
+// the digest's caption: the LIVE's leaders first (places 1-3 of the word race and of the planes, then the
+// top gift giver and balloon launcher) as mentions - @their TikTok login, so TikTok tells them they are in
+// the video - then the platform's tags. No login known (a journal-rebuilt LIVE where they never chatted):
+// @ and the nickname's letters and digits.
 const DEFAULT_TAGS = ['#tiktoklive', '#гонкачемпионов', '#угадайслово', '#маодайджест', '#maodigest'];
 const LEADERS = ['wins', 'planes', 'gifts', 'balloons'];
 function hashtags(live) {
-    const own = LEADERS.map((k) => live.leaders?.[k]).filter(Boolean)
+    const own = LEADERS.flatMap((k) => live.podiums?.[k] || [live.leaders?.[k]]).filter(Boolean)
         .map((p) => '@' + (p.id || (p.name || '').replace(/[^\p{L}\p{N}_]/gu, '')))
         .filter((t) => t.length > 1);
     const seen = new Set();
