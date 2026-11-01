@@ -26,11 +26,18 @@ const plural = (lang, n, forms) => {
     return k === 'one' ? one : k === 'few' ? few : many;
 };
 
-/** the podium: up to three players by wins; equal counts: who got there first */
+/** the podium: up to three places by wins; players with equal wins share a place (who got there first goes first) */
 export function podium(m) {
     const n = {}, at = {};
     for (const w of m.wins) { n[w.key] = (n[w.key] || 0) + 1; at[w.key] = w.t; }
-    return Object.keys(n).sort((a, b) => n[b] - n[a] || at[a] - at[b]).slice(0, 3).map((key) => ({ key, wins: n[key], name: m.people[key].name }));
+    const places = [];
+    for (const key of Object.keys(n).sort((a, b) => n[b] - n[a] || at[a] - at[b])) {
+        const pl = { key, wins: n[key], name: m.people[key].name }, last = places[places.length - 1];
+        if (last && last.wins === pl.wins) last.players.push(pl);
+        else if (places.length < 3) places.push({ wins: pl.wins, players: [pl] });
+        else break;
+    }
+    return places;
 }
 
 /** the hardest guessed words: the longest rounds somebody won */
@@ -98,34 +105,7 @@ export function drawCover(ctx, m, { avatars = new Map(), labels = {} } = {}) {
         ctx.fillStyle = g; ctx.beginPath(); ctx.roundRect(p.x, p.top, p.w, BOTTOM - p.top, [28, 28, 0, 0]); ctx.fill();
         ctx.fillStyle = 'rgba(40,10,10,.75)'; ctx.font = black(p.place === 1 ? 66 : 60); ctx.textAlign = 'center';
         ctx.fillText(String(p.place), p.x + p.w / 2, p.top + 58);
-        if (!who) continue;
-        const cx = p.x + p.w / 2;
-        // from the pedestal up: "N побед", the name (two lines at most), the medal, the avatar
-        let y = p.top - 44;
-        ctx.textAlign = 'left';
-        ctx.font = black(50); const nw = ctx.measureText(String(who.wins)).width;
-        const word = plural(L.lang, who.wins, L.wins);
-        ctx.font = bold(30); const ww = ctx.measureText(word).width;
-        const sx = cx - (nw + 18 + ww) / 2;
-        ctx.fillStyle = p.col[2];
-        ctx.font = black(50); ctx.fillText(String(who.wins), sx, y);
-        ctx.font = bold(30); ctx.fillText(word, sx + nw + 18, y + 5);
-        const lines = nameLines(ctx, who.name, p.w + 24);
-        ctx.fillStyle = '#fff'; ctx.textAlign = 'center';
-        y -= 60 + (lines.length - 1) * 48;
-        lines.forEach((ln, i) => { ctx.font = bold(lines.size); ctx.fillText(ln, cx, y + i * 48); });
-        y -= 72;
-        ctx.font = `56px ${EMOJI}`; ctx.fillText(p.medal, cx, y);
-        const ay = y - 48 - p.r;
-        ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(cx, ay, p.r + 6, 0, 2 * Math.PI); ctx.fill();
-        ctx.fillStyle = p.col[1]; ctx.beginPath(); ctx.arc(cx, ay, p.r, 0, 2 * Math.PI); ctx.fill();
-        const img = avatars.get(m.people[who.key]?.avatar);
-        if (img) {
-            ctx.save(); ctx.clip(); ctx.drawImage(img, cx - p.r, ay - p.r, 2 * p.r, 2 * p.r); ctx.restore();
-        } else {
-            ctx.fillStyle = '#fff'; ctx.font = black(Math.round(p.r * 0.75));
-            ctx.fillText(ini(who.name), cx, ay + 4);
-        }
+        if (who) drawPlace(ctx, m, p, who, plural(L.lang, who.wins, L.wins), avatars);
     }
 
     // the stream's totals
@@ -147,6 +127,65 @@ export function drawCover(ctx, m, { avatars = new Map(), labels = {} } = {}) {
     ctx.textAlign = 'center';
     if (handle) { ctx.fillStyle = '#fff'; ctx.font = bold(42); ctx.fillText(handle, W / 2, 1350); }
     if (L.footer) { ctx.fillStyle = '#9a9a9a'; fit(L.footer, (p) => `${p}px Arial, sans-serif`, 30, W - 100); ctx.fillText(L.footer, W / 2, 1398); }
+}
+
+const AV_MIN = 34, TOP = 430; // the smallest avatar radius; nothing of a place goes above TOP (the word stickers)
+
+// one place from its pedestal up: "N побед", the names (one under another), the medal, the avatars side by side
+function drawPlace(ctx, m, p, place, word, avatars) {
+    const cx = p.x + p.w / 2, k = place.players.length, row = p.w + 24;
+    let y = p.top - 44;
+    ctx.textAlign = 'left';
+    ctx.font = black(50); const nw = ctx.measureText(String(place.wins)).width;
+    ctx.font = bold(30); const ww = ctx.measureText(word).width;
+    const sx = cx - (nw + 18 + ww) / 2;
+    ctx.fillStyle = p.col[2];
+    ctx.font = black(50); ctx.fillText(String(place.wins), sx, y);
+    ctx.font = bold(30); ctx.fillText(word, sx + nw + 18, y + 5);
+
+    // avatars: as large as fit in one row over the pedestal; too many = the first ones and "+N"
+    let r = Math.min(p.r, Math.floor((row / k - 16) / 2)), shown = k;
+    if (r < AV_MIN) { r = AV_MIN; shown = Math.max(1, Math.floor(row / (2 * r + 16)) - 1); }
+    // names: one player = up to two lines; several = one line each, the list shrinking to the room left
+    // gaps: under the names (to "N побед") and over them (to the medal) follow the line height
+    let lines, lh = 48, below = 60, above = 72;
+    if (k === 1) lines = nameLines(ctx, place.players[0].name, row);
+    else {
+        let px = 36, names = place.players.map((pl) => pl.name);
+        const roomAt = (h) => y - (30 + h / 2) - (40 + h / 2) - 48 - 2 * r - 6 - TOP + h;
+        while (px > 22 && names.length * Math.round(px * 1.2) > roomAt(Math.round(px * 1.2))) px -= 2;
+        lh = Math.round(px * 1.2); below = 30 + lh / 2; above = 40 + lh / 2;
+        const room = roomAt(lh);
+        const fits = Math.max(1, Math.floor(room / lh));
+        if (names.length > fits) names = [...names.slice(0, fits - 1), `+${names.length - fits + 1}`];
+        ctx.font = bold(px);
+        lines = Object.assign(names.map((nm) => cut(ctx, nm, p.w + 16)), { size: px });
+    }
+    ctx.fillStyle = '#fff'; ctx.textAlign = 'center';
+    y -= below + (lines.length - 1) * lh;
+    lines.forEach((ln, i) => { ctx.font = bold(lines.size); ctx.fillText(ln, cx, y + i * lh); });
+    y -= above;
+    ctx.font = `56px ${EMOJI}`; ctx.fillText(p.medal, cx, y);
+    const ay = y - 48 - r, n = shown < k ? shown + 1 : k, step = Math.min(2 * r + 16, row / n);
+    for (let i = 0; i < n; i++) {
+        const ax = cx + (i - (n - 1) / 2) * step;
+        ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(ax, ay, r + 6, 0, 2 * Math.PI); ctx.fill();
+        ctx.fillStyle = p.col[1]; ctx.beginPath(); ctx.arc(ax, ay, r, 0, 2 * Math.PI); ctx.fill();
+        const who = place.players[i], img = i < shown && avatars.get(m.people[who.key]?.avatar);
+        if (img) {
+            ctx.save(); ctx.clip(); ctx.drawImage(img, ax - r, ay - r, 2 * r, 2 * r); ctx.restore();
+        } else {
+            ctx.fillStyle = '#fff'; ctx.font = black(Math.round(r * (i < shown ? 0.75 : 0.6)));
+            ctx.fillText(i < shown ? ini(who.name) : `+${k - shown}`, ax, ay + 4);
+        }
+    }
+}
+
+// a name cut with "…" to the width (the current font)
+function cut(ctx, name, max) {
+    let c = name;
+    while (c.length > 1 && ctx.measureText(c + '…').width > max) c = c.slice(0, -1);
+    return c === name ? name : c + '…';
 }
 
 // a name in at most two lines of the width, the font shrinking until it fits; lines.size = the font's px

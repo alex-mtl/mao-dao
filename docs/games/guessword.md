@@ -209,7 +209,7 @@ own recording (MP4 from TikTok LIVE Center): the file is never uploaded.
   ~360 MB (incl. the 59 MB result).
 - **TikTok cover** (since 2026-10-31, the owner's mockup): `Digest/cover.js` draws one 1080x1440 PNG (3:4, what TikTok keeps of a cover) from the
   same model — date, the three hardest guessed words (the longest won rounds), the podium of the wins race
-  (equal wins: who got there first; avatars or initials), rounds / length / balloons / planes, the streamer's
+  (places by win count: equal wins share one pedestal, avatars side by side and the nicks listed under them, "+N" when they do not fit; avatars or initials), rounds / length / balloons / planes, the streamer's
   `@username` from `live_start`. The archive page saves it next to the clip (`digest-<date>-cover.png`, strings
   `digest_cover_*`); `tiktok-clips/tools/digest-race.js` writes `<out>-cover.png`, and
   `tiktok-clips/tools/digest-cover.js <live.jsonl> <out.png> [--avatars <dir>]` makes only the cover.
