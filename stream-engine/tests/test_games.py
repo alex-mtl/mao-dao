@@ -1024,7 +1024,8 @@ class CustomWordTest(unittest.TestCase):
         g.queue_custom({"id": "h1", "word": "огурец", "name": "воробей", "tiktok_id": "vorobey"})
         self.assertIsNone(g.setter_status())
         g.tick(time.time()); g.tick(time.time() + 0.01)
-        self.assertEqual(g.setter_status(), {"id": "h1", "hints": 0})
+        self.assertEqual(g.setter_status(), {"id": "h1", "hints": 0, "tiktok_id": "vorobey", "word": "огурец",
+                                             "round": g.round_id})
         self.assertIsNone(g.snapshot()["setterHints"])
         g.add_setter_hints("other", ["салат"])                            # another round's id: ignored
         g.add_setter_hints("h1", ["салат"])

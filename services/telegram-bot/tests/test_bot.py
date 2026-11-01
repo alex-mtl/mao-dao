@@ -338,6 +338,20 @@ class BotTest(unittest.TestCase):
         call("/tg", msg("/podskazka"))
         self.assertIn("только когда", tg.sent[-1][1])
 
+    def test_setter_round_rebuilt_when_played_is_lost(self):
+        self.host_and_viewer()                                         # the game restarted at the round's start
+        cur = {"id": "zz", "hints": 0, "tiktok_id": "Vorobey", "word": "огурец", "round": 9}
+        self.poll({"setter": dict(cur, tiktok_id="sova")})             # not linked: nothing to rebuild
+        self.assertIsNone(store.get("SROUND#mao"))
+        self.poll({"setter": cur})
+        self.assertEqual({k: store.get("SROUND#mao")[k] for k in ("id", "tg", "word")},
+                         {"id": "zz", "tg": "7", "word": "огурец"})
+        call("/tg", msg("/podskazka салат"))
+        self.assertIn("«<b>САЛАТ</b>» появится", tg.sent[-1][1])
+        self.assertEqual(self.poll({"setter": cur})["setter_hints"], {"id": "zz", "words": ["салат"]})
+        self.poll({"setter": None})
+        self.assertIsNone(store.get("SROUND#mao"))
+
     def test_sponsor_photo(self):
         self.host_and_viewer()
         handler.admin({"action": "set_sponsor", "command": "podskazka", "tiktok_id": "vorobey"})

@@ -57,6 +57,7 @@ class TelegramLink:
         self.links = {}               # TikTok id -> {tg, id, full}: the viewer's Telegram (the room page links it)
         self.links_t = 0.0            # last time the bot sent them (asked every LINKS_SEC)
         self.sent_avatars = {}        # TikTok id -> (picture, time) of their avatar the bot last got
+        self.setter_sent = True       # the bot last got a viewer's word's round (True at start: a stale one ends)
 
     async def api(self, path, **body):
         import httpx
@@ -155,9 +156,13 @@ class TelegramLink:
         names = dict(list((k, v) for k, v in self.hub.names.items() if self.sent_names.get(k) != v)[:500])
         avatars = self._avatars()
         want_links = time.time() - self.links_t > LINKS_SEC
+        setter = g.setter_status()            # every poll in a viewer's word's round, once (null) when it is over
+        extra = {"setter": setter} if setter or self.setter_sent else {}
         r = await self.api("/game/poll", v=2, instance=self.instance, results=self.results, played=played, unguessed=unguessed,
                            credits=credits, names=names, queue_ids=[c["id"] for c in g.custom], want_links=want_links,
-                           setter=g.setter_status(), avatars=avatars)
+                           avatars=avatars, **extra)
+        if "error" not in r and extra:
+            self.setter_sent = bool(setter)
         if "error" in r:
             g.played_custom = played + g.played_custom          # retry next time
             g.unguessed_custom = unguessed + g.unguessed_custom

@@ -533,7 +533,14 @@ def game_poll(game, body):
         sr = store.get("SROUND#" + gid)
         if sr and sr["id"] != cur.get("id"):              # that round is over: no more hints
             store.delete("SROUND#" + gid)
-        elif sr and len(sr["hints"]) > int(cur.get("hints") or 0):
+            sr = None
+        if not sr and cur.get("id") and cur.get("tiktok_id"):   # "played" lost (a restart at the round's start)
+            link = store.get("TT#" + cur["tiktok_id"].lower())
+            if link and link.get("game") == gid:
+                sr = {"id": cur["id"], "tg": link["tg"], "chat": link["chat"], "tt": link["tiktok_id"],
+                      "word": cur.get("word", ""), "round": cur.get("round"), "hints": []}
+                store.put("SROUND#" + gid, sr, ttl=now + SROUND_TTL)
+        if sr and len(sr["hints"]) > int(cur.get("hints") or 0):
             out["setter_hints"] = {"id": sr["id"], "words": sr["hints"]}
     if body.get("want_links"):                            # the room page: a player's Telegram next to their TikTok
         users = (store.get("GAMEUSERS#" + gid) or {}).get("users", {})

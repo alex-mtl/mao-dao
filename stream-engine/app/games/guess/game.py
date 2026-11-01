@@ -1177,7 +1177,8 @@ class GuessGame(BaseGame):
         """for the bot: the round with a viewer's word now (its id and how many of their hints are shown), or None"""
         if not self.setter or self.phase not in (COUNTDOWN, PLAYING):
             return None
-        return {"id": self.setter.get("cid", ""), "hints": len(self.setter_hints)}
+        return {"id": self.setter.get("cid", ""), "hints": len(self.setter_hints), "tiktok_id": self.setter["id"],
+                "word": self.secret, "round": self.round_id}   # the bot rebuilds its record if "played" was lost
 
     def add_setter_hints(self, cid, words):
         """the setter's hint words from the bot (all of them so far): the new ones go on screen"""
