@@ -144,7 +144,7 @@ class BotTest(unittest.TestCase):
         call("/tg", msg("загадывает", uid=5))
         self.assertIn("только для ведущего", tg.sent[-1][1])
         self.host_and_viewer()
-        self.assertIn((5, {"commands": ["start", "help", "zagadka", "hints", "game", "pick", "queue", "round", "history"]}),
+        self.assertIn((5, {"commands": ["start", "help", "zagadka", "hints", "podskazka", "game", "pick", "queue", "round", "history"]}),
                       tg.markups)
         for q in ("Загадывает вороб", "загадывает @Vasya", "/pick вороб"):   # nick, messenger nick, menu synonym
             tg.markups.clear()
@@ -285,6 +285,49 @@ class BotTest(unittest.TestCase):
         with mock.patch.object(riddle.time, "time", return_value=t):
             self.assertEqual(self.poll({"queue_ids": [wid]})["words"], [])   # it's in the game's queue: kept
         self.assertEqual(store.get("PEND#mao")["items"][0]["state"], "queued")
+
+    def test_setter_hints(self):
+        self.host_and_viewer()
+        call("/tg", msg("/podskazka"))
+        self.assertIn("только когда на стриме идёт раунд с твоим словом", tg.sent[-1][1])
+        call("/tg", msg("/zagadka"))
+        call("/tg", msg("санки"))
+        wid = self.poll()["words"][0]["id"]
+        self.poll({"results": [{"id": wid, "stage": "check", "ok": True, "word": "санки"}]})
+        self.cb("ok:" + wid)
+        self.poll()
+        self.poll({"results": [{"id": wid, "stage": "queue", "ok": True, "round": 4}]})
+        r = self.poll({"played": [wid], "setter": {"id": wid, "hints": 0}})
+        self.assertIn("/podskazka", tg.sent[-1][1])
+        self.assertNotIn("setter_hints", r)
+        call("/tg", msg("/podskazka", uid=5))                          # the host: not linked as a viewer
+        self.assertIn("/start", tg.sent[-1][1])
+        call("/tg", msg("/podskazka"))
+        self.assertIn("«<b>САНКИ</b>». Осталось подсказок: 3 из 3", tg.sent[-1][1])
+        call("/tg", msg("снежная горка"))
+        self.assertIn("одно слово", tg.sent[-1][1])
+        call("/tg", msg("Санка"))
+        self.assertIn("почти само слово", tg.sent[-1][1])
+        call("/tg", msg("Зима"))
+        self.assertIn("«<b>ЗИМА</b>» появится", tg.sent[-1][1])
+        call("/tg", msg("горка"))                                      # no "/podskazka" first: not a hint
+        self.assertEqual(store.get("SROUND#mao")["hints"], ["зима"])
+        call("/tg", msg("подсказка горка"))                             # the word right in the command
+        call("/tg", msg("/podskazka зима"))
+        self.assertIn("уже есть", tg.sent[-1][1])
+        call("/tg", msg("/podskazka дети"))
+        self.assertIn("Осталось: 0", tg.sent[-1][1])
+        call("/tg", msg("/podskazka"))
+        self.assertIn("Все 3", tg.sent[-1][1])
+        r = self.poll({"setter": {"id": wid, "hints": 1}})
+        self.assertEqual(r["setter_hints"], {"id": wid, "words": ["зима", "горка", "дети"]})
+        self.assertNotIn("setter_hints", self.poll({"setter": {"id": wid, "hints": 3}}))
+        self.assertNotIn("setter_hints", self.poll())                  # an old game: no "setter", nothing changes
+        self.assertTrue(store.get("SROUND#mao"))
+        self.poll({"setter": None})                                    # the round is over
+        self.assertIsNone(store.get("SROUND#mao"))
+        call("/tg", msg("/podskazka"))
+        self.assertIn("только когда", tg.sent[-1][1])
 
     def test_unguessed_word_saved_and_hints(self):
         call("/tg", msg("/hints", uid=8))

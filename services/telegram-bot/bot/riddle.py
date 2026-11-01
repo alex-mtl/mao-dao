@@ -21,6 +21,7 @@ PEND#<game> -> words on their way, state:
 
 import base64
 import os
+import re
 import time
 from html import escape as e
 
@@ -59,7 +60,17 @@ TEXT = {
     "pop_accepted": "✅ Принято: {w}",
     "pop_rejected": "❌ Отклонено: {w}",
     "too_late": "Это слово уже не отменить.",
-    "played": "🎯 Твоё слово «<b>{w}</b>» загадано прямо сейчас в раунде {round}!",
+    "played": "🎯 Твоё слово «<b>{w}</b>» загадано прямо сейчас в раунде {round}!\n\n"
+              "💡 Можешь помочь игрокам: до 3 слов-подсказок на экран — /podskazka",
+    "hint_ask": "💡 Напиши одно слово-подсказку к своему слову «<b>{w}</b>». Осталось подсказок: {n} из 3.",
+    "hint_shown": "💡 Подсказка «<b>{h}</b>» появится на экране через пару секунд. Осталось: {n}.",
+    "hint_none_left": "Все 3 подсказки уже на экране.",
+    "hint_not_now": "Подсказку можно дать, только когда на стриме идёт раунд с твоим словом. "
+                    "Загадать слово — /zagadka",
+    "hint_over": "Раунд с твоим словом уже закончился — подсказка не нужна.",
+    "hint_one_word": "Подсказка — это одно слово из букв, без пробелов и цифр. Пришли другое.",
+    "hint_same": "Это почти само слово «<b>{w}</b>» — так нельзя. Пришли другое.",
+    "hint_repeat": "Такая подсказка уже есть. Пришли другое слово.",
     "not_host": "Эта команда только для ведущего игры.",
     "choose": "🎯 Выбери слово из сохранённых или пришли новое (существительное). Ведущий решит, брать ли его в игру. "
               "Пока раунд с твоим словом идёт, твои догадки не принимаются.",
@@ -76,6 +87,11 @@ HOST_COMMANDS = ("загадывает", "pick")      # "/pick" is the same comm
 QUEUE_COMMANDS = ("очередь", "queue")       # "/queue" in the host's menu
 HINTS_COMMANDS = ("подсказки", "hints", "мои подсказки")   # "/hints" in everyone's menu
 VIEWER_COMMANDS = ("загадка", "zagadka")    # "/zagadka" in everyone's menu
+SETTER_HINT_COMMANDS = ("подсказка", "podskazka")   # "/podskazka" in everyone's menu: works in the own word's round
+MAX_SETTER_HINTS = 3
+HINT_ASK_TTL = 5 * 60
+SROUND_TTL = 2 * 3600            # SROUND#<game>: the round with a viewer's word now (the game reports its end)
+HINT_RE = re.compile(r"[^\W\d_]+(-[^\W\d_]+)?")
 
 
 def first_word(text):
@@ -195,6 +211,64 @@ def viewer_command(chat, tg_id, now=None):
         rows = [[(w["word"].upper(), "use:" + w["word"])] for w in saved[:MAX_BUTTONS]]
         return [(chat, TEXT["choose"], tg.buttons(rows + [[(TEXT["new_word"], "new")]]), True)]   # transient
     return [(chat, TEXT["ask_self"], None, True)]
+
+
+def is_setter_hint_command(text):
+    return first_word(text) in SETTER_HINT_COMMANDS
+
+
+def _setter_round(tg_id):
+    """(link, the round with this viewer's word if it is on now)"""
+    link = store.get("TG#" + tg_id)
+    sr = store.get("SROUND#" + link["game"]) if link else None
+    return link, (sr if sr and sr.get("tg") == tg_id else None)
+
+
+def _same_root(a, b):
+    """the hint gives the word away: the word itself or the same start ("санка" for "санки", "кот" - "котёнок")"""
+    return len(os.path.commonprefix([a, b])) >= min(4, len(a), len(b))
+
+
+def setter_hint_command(chat, tg_id, text, now=None):
+    """the viewer whose word is played now: "/podskazka" -> asks for the word, "/podskazka зима" -> takes it"""
+    now = now or time.time()
+    link, sr = _setter_round(tg_id)
+    if not link:
+        return [(chat, TEXT["need_link"])]
+    if not sr:
+        return [(chat, TEXT["hint_not_now"])]
+    if len(sr["hints"]) >= MAX_SETTER_HINTS:
+        return [(chat, TEXT["hint_none_left"])]
+    rest = (text.strip().split(None, 1) + [""])[1].strip()
+    if rest:
+        return setter_hint_word(chat, tg_id, rest, now)
+    store.put("HINTASK#" + tg_id, {"game": link["game"]}, ttl=now + HINT_ASK_TTL)
+    return [(chat, TEXT["hint_ask"].format(w=e(sr["word"].upper()), n=MAX_SETTER_HINTS - len(sr["hints"])))]
+
+
+def setter_hint_word(chat, tg_id, text, now=None):
+    """one hint word: checked, kept in SROUND#<game>; the game gets it on its next poll"""
+    now = now or time.time()
+    link, sr = _setter_round(tg_id)
+    if not sr:
+        store.delete("HINTASK#" + tg_id)
+        return [(chat, TEXT["hint_over" if link else "need_link"])]
+    if len(sr["hints"]) >= MAX_SETTER_HINTS:
+        store.delete("HINTASK#" + tg_id)
+        return [(chat, TEXT["hint_none_left"])]
+    words = text.strip().lower().split()
+    if len(words) != 1 or len(words[0]) > 24 or not HINT_RE.fullmatch(words[0]):
+        return [(chat, TEXT["hint_one_word"])]
+    h = words[0]
+    if _same_root(norm(h), norm(sr["word"])):
+        return [(chat, TEXT["hint_same"].format(w=e(sr["word"].upper())))]
+    if norm(h) in [norm(x) for x in sr["hints"]]:
+        return [(chat, TEXT["hint_repeat"])]
+    sr["hints"].append(h)
+    store.put("SROUND#" + link["game"], sr, ttl=now + SROUND_TTL)
+    store.delete("HINTASK#" + tg_id)
+    events.log(link["game"], "setter_hint", tt=sr["tt"], word=h)
+    return [(chat, TEXT["hint_shown"].format(h=e(h.upper()), n=MAX_SETTER_HINTS - len(sr["hints"])))]
 
 
 def add_game_user(game, link):
@@ -407,6 +481,8 @@ def game_poll(game, body):
             changed = True
             tg.send(it["chat"], TEXT["played"].format(w=e(it["word"].upper()), round=it.get("round", "")))
             events.log(gid, "word_played", tt=it["tt"], word=it["word"], round=it.get("round"))
+            store.put("SROUND#" + gid, {"id": pid, "tg": it["tg"], "chat": it["chat"], "tt": it["tt"],
+                                        "word": it["word"], "round": it.get("round"), "hints": []}, ttl=now + SROUND_TTL)
     if "queue_ids" in body:                               # the game's real queue: what isn't there is done
         real = set(body["queue_ids"])                     # (played or lost, e.g. a report lost in a restart)
         for i in [i for i in items.values() if i["state"] == "queued" and i["id"] not in real]:
@@ -433,6 +509,13 @@ def game_poll(game, body):
     if changed or words or cancel:
         store.put("PEND#" + gid, {"items": list(items.values())})
     out = {"words": words, "cancel": cancel, "requests": pending(gid)}
+    if "setter" in body:                                  # the round with a viewer's word: {id, hints shown} or null
+        cur = body["setter"] or {}
+        sr = store.get("SROUND#" + gid)
+        if sr and sr["id"] != cur.get("id"):              # that round is over: no more hints
+            store.delete("SROUND#" + gid)
+        elif sr and len(sr["hints"]) > int(cur.get("hints") or 0):
+            out["setter_hints"] = {"id": sr["id"], "words": sr["hints"]}
     if body.get("want_links"):                            # the room page: a player's Telegram next to their TikTok
         users = (store.get("GAMEUSERS#" + gid) or {}).get("users", {})
         out["links"] = {tt: {"tg": u.get("tg_name", ""), "id": u.get("tg", ""), "full": u.get("tg_full", "")}

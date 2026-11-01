@@ -68,6 +68,7 @@ class Hub:
         self.cakes = CakeShows(self._feed, lambda kind, **f: self.live.write(kind, **f))
         for g in self.games.values():
             g.names = self.names
+            g.viewers = self.recent               # avatars (the setter's, for their hints on screen)
             g.live = self.live
         self.balloons = LikeBalloons(store, self.global_settings)   # like balloons fly over every page
         self.closed = False                       # set on shutdown: incoming events are ignored

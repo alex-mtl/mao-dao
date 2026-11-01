@@ -688,6 +688,20 @@
     if (changed) sideColumns();
   }
   setInterval(renderSides, 500);
+  // the setter's hint words (through the bot), top right of the camera zone; a new one slides in
+  let setterKey = '', setterShown = [];
+  function renderSetterHints(h) {
+    const key = JSON.stringify(h || null);
+    if (key === setterKey) return;
+    setterKey = key;
+    const box = $('setterHints');
+    box.replaceChildren(...(h ? h.words : []).map(w => {
+      const row = el('div', 'champ shint' + (setterShown.includes(w) ? '' : ' new'));
+      row.append(avatar(h.name, h.avatar), el('span', 'sw', w.toUpperCase()));
+      return row;
+    }));
+    setterShown = h ? h.words.slice() : [];
+  }
   // popups at the bottom of the camera zone go above both side columns (champions, likers)
   function sideColumns() {
     const h = Math.max($('champs').offsetHeight, $('likers').offsetHeight);
@@ -881,6 +895,7 @@
     boosts = s.boosts || [];
     setScreen(s);
     renderSides();
+    renderSetterHints(s.setterHints);
     $('error').hidden = !s.error;
     if (s.error) { $('errText').textContent = t('g.err') + s.error; return; }
 

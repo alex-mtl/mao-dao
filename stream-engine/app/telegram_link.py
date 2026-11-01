@@ -23,6 +23,7 @@ OFFLINE_STOP_SEC = 10 * 60         # LIVE offline that long -> the stream word i
 LINK_COOLDOWN_SEC = 60            # "настроить связь": after anyone calls it, nobody can for a minute
 SWITCH_COOLDOWN_SEC = 30          # ... a linked viewer: their own toast, at most this often
 POLL_SEC = 10                     # asking the bot for words viewers picked (only while LIVE)
+POLL_FAST_SEC = 3                 # ... while a viewer's word is played and they may still send hints
 
 
 def norm(text):
@@ -110,7 +111,12 @@ class TelegramLink:
                     self.word = ""
             if self.word and not self.hub.closed:
                 await self.poll()
-            await asyncio.sleep(POLL_SEC)
+            await asyncio.sleep(POLL_FAST_SEC if self.word and self._setter_waits() else POLL_SEC)
+
+    def _setter_waits(self):
+        g = self.hub.games.get("guess")
+        s = g.setter_status() if g else None
+        return bool(s) and s["hints"] < 3
 
     async def poll(self):
         """Words viewers offer for the guess game (via the bot): check new ones in the dictionary, queue the
@@ -125,7 +131,8 @@ class TelegramLink:
         names = dict(list((k, v) for k, v in self.hub.names.items() if self.sent_names.get(k) != v)[:500])
         want_links = time.time() - self.links_t > LINKS_SEC
         r = await self.api("/game/poll", v=2, instance=self.instance, results=self.results, played=played, unguessed=unguessed,
-                           credits=credits, names=names, queue_ids=[c["id"] for c in g.custom], want_links=want_links)
+                           credits=credits, names=names, queue_ids=[c["id"] for c in g.custom], want_links=want_links,
+                           setter=g.setter_status())
         if "error" in r:
             g.played_custom = played + g.played_custom          # retry next time
             g.unguessed_custom = unguessed + g.unguessed_custom
@@ -135,6 +142,9 @@ class TelegramLink:
         if isinstance(r.get("links"), dict):
             self.links, self.links_t = r["links"], time.time()
         self.results = []
+        sh = r.get("setter_hints")
+        if isinstance(sh, dict):                                 # the setter's hint words: new ones on screen
+            g.add_setter_hints(sh.get("id"), sh.get("words"))
         for cid in r.get("cancel") or []:
             g.cancel_custom(cid)
         for w in r.get("words") or []:

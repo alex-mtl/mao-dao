@@ -40,7 +40,9 @@ LAST_ROUND_WORDS = {"что было", "прошлый раунд", "last round"
 LAST_ROUND_SEC = 20                              # ... at most this often
 MAO_CALL_SEC = 30
 SETTER_TICKER_SEC = 120                          # "this word was picked by ..." on the ticker every 2 minutes
-LOG_EVENTS = {"round_start", "gift", "hint", "boost", "steal", "new_leader", "winner", "timeout", "mao_call"}
+LOG_EVENTS = {"round_start", "gift", "hint", "boost", "steal", "new_leader", "winner", "timeout", "mao_call",
+              "setter_hint"}
+SETTER_HINTS = 3                 # hint words the viewer who picked the round's word may give (through the bot)
 LOG_KEYS = ("name", "uid", "gift", "count", "word", "by", "rank", "kind", "reason", "cmd", "n")
 STUCK_PAUSE_SEC = 120                          # the active game paused this long = a bug: drop the round, start anew
 LAST_NAMER_SEC = 20           # a row shows who named its word last this long, then the first namer again
@@ -235,6 +237,7 @@ class GuessGame(BaseGame):
         self.setter = None            # {"id", "name"} of the viewer who picked this round's word
         self.word_hidden = False      # a viewer's word nobody found: never shown
         self.setter_t = 0.0
+        self.setter_hints = []        # up to 3 words the setter gave through the bot (top right of the camera zone)
         self.log = []                 # the round's events for the room page's monitor
         self.guess_times = deque(maxlen=3000)   # accepted guesses: the chat's pace
 
@@ -259,7 +262,8 @@ class GuessGame(BaseGame):
             self.round_level = 2
             self.secret = item["word"]
             sid = item["tiktok_id"].lower()                 # the nickname now, not as it was when picked
-            self.setter = {"id": sid, "name": getattr(self, "names", {}).get(sid) or item["name"], "cid": item["id"]}
+            self.setter = {"id": sid, "name": getattr(self, "names", {}).get(sid) or item["name"], "cid": item["id"],
+                           "avatar": self._avatar_of(sid)}
             self.played_custom.append(item["id"])
         else:
             nxt, self.next_pick = self.next_pick, None
@@ -1156,6 +1160,30 @@ class GuessGame(BaseGame):
         self.custom = [c for c in self.custom if c["id"] != cid]
         self.store.save(self.CUSTOM, self.custom)
 
+    def _avatar_of(self, sid):
+        """the viewer's avatar as of their last event in this stream (the hub's viewers), "" if never seen"""
+        viewers = getattr(self, "viewers", {})
+        u = viewers.get(sid) or next((v for k, v in viewers.items() if k.lower() == sid), None)
+        return (u or {}).get("avatar", "")
+
+    def setter_status(self):
+        """for the bot: the round with a viewer's word now (its id and how many of their hints are shown), or None"""
+        if not self.setter or self.phase not in (COUNTDOWN, PLAYING):
+            return None
+        return {"id": self.setter.get("cid", ""), "hints": len(self.setter_hints)}
+
+    def add_setter_hints(self, cid, words):
+        """the setter's hint words from the bot (all of them so far): the new ones go on screen"""
+        if not self.setter or self.setter.get("cid") != cid or self.phase not in (COUNTDOWN, PLAYING):
+            return
+        for w in [str(w).strip()[:24] for w in words or []]:
+            if w and w not in self.setter_hints and len(self.setter_hints) < SETTER_HINTS:
+                self.setter_hints.append(w)
+                self.emit("setter_hint", name=self.setter["name"], word=w)
+                if self.live:
+                    self.live.write("setter_hint", round=self.round_id, word=w,
+                                    by=self.live.user(self.setter["id"], self.setter["name"]))
+
     def _take_custom(self):
         for c in self.custom:
             if c["lang"] == self.lang and c["word"] in (self.sems.get(self.lang) or self.sem).index:
@@ -1410,6 +1438,9 @@ class GuessGame(BaseGame):
             "streamLeaderboard": self.stats.leaderboard(),
             "champions": self.stats.champions(),                          # TT mode: medals block
             "boosts": self._round_boosts(),                               # TT mode: the BOOST column
+            "setterHints": {"name": self.setter["name"], "avatar": self.setter.get("avatar", ""),
+                            "words": self.setter_hints}
+                           if self.setter and self.setter_hints and self.phase in (COUNTDOWN, PLAYING) else None,
             "lastRound": self._last_round(),                             # for the ticker
             "chroma": self.chroma_top if self.chroma else 0,              # % of the screen, 0 = off
             "chromaTop": self.chroma_top,                                 # TT mode (?tt=1) always uses it
@@ -1444,6 +1475,7 @@ class GuessGame(BaseGame):
             "saved_at": self.paused_at or time.time(), "lang": self.round_lang,
             "level": self.round_level, "next_level": self.level,
             "setter": self.setter, "setter_t": self.setter_t, "word_hidden": self.word_hidden,
+            "setter_hints": self.setter_hints,
             "frozen": self.frozen, "pause_after": self.pause_after,
         })
 
@@ -1484,6 +1516,7 @@ class GuessGame(BaseGame):
             self.auto_hint_done = d.get("auto_hint_done", False)
             self.finished_at = d.get("finished_at", 0.0)
             self.setter, self.setter_t = d.get("setter"), d.get("setter_t", 0.0)
+            self.setter_hints = d.get("setter_hints", [])
             self.word_hidden = d.get("word_hidden", False)
             self.paused_at = d.get("saved_at")         # timers resume on activation
             print(f"[guess] restored round {self.round_id} ({self.phase})")

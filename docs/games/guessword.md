@@ -98,6 +98,18 @@ On a room's first start `App\Games\Guessword\Services\BotClient` registers it in
 encrypted in `guessword_rooms.tg_key`; Laravel passes it to the engine with the room. The same key opens
 the word-ranker Lambdas. Registering the same id again rotates the key.
 
+
+### The setter's hints (since 2026-11-01)
+
+A viewer whose word is being played can put up to 3 hint words on screen through the bot: `/podskazka`
+(or `подсказка`) then one word, or `/podskazka зима` at once. The bot refuses outside that round, more
+than one word, the word itself or a word with the same start (common prefix ≥ min(4, lengths)) and
+repeats. State: `SROUND#<game>` in the bot (written on "played", deleted when the game's poll reports
+another `setter` id or `null`). The engine sends `setter: {id, hints shown}` with every poll and polls
+every 3 s instead of 10 while hints can still come; the bot answers `setter_hints: {id, words}` (all so
+far). On screen (chroma / TT mode only): `#setterHints`, top right of the camera zone under the timer
+row, the same pill as a boost (avatar + the word), shown in COUNTDOWN / PLAYING.
+
 ## Live logs and avatars (for clips and digests)
 
 The engine keeps what happened on every TikTok LIVE, so clips and digests can be cut later without
@@ -134,6 +146,7 @@ header `X-Internal-Secret` (= `GUESSWORD_ENGINE_SECRET` in Laravel's `.env`), on
 | `live_start` | `epoch` (unix time of the start), `tiktok_room`, `username` (the streamer) |
 | `viewer` | `user`, `first` (true: first event of this viewer in the LIVE; otherwise the nickname changed) |
 | `round_start` | `round`, `word`, `lang`, `tier`, `round_type`, `duration` (s), `setter` (user who picked the word) |
+| `setter_hint` | `round`, `word`, `by` (the user who picked the round's word and sent this hint through the bot) |
 | `winner` | `round`, `user`, `word`, `seconds`, `guesses`, `streak`, `stolen` ("steal the win" gift) |
 | `round_end` | `round`, `word`, `reason` (`exact` / `timeout` / `skip`), `winner` (user or absent), `seconds`, `players`, `guesses`, `podium` (users + `rank`) |
 | `plane` | `user`, `likes` + `threshold` (like plane) or `gift` / `manual` + `count` (gift plane), `bomber` |

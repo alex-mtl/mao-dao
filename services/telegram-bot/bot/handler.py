@@ -31,6 +31,7 @@ KEY_PREFIX = "ключ-тг-"
 # the command menu: viewers see MENU_ALL; hosts and superadmins get MENU_HOST in their own chat
 MENU_ALL = [("start", "как связать аккаунт со стримом"), ("help", "помощь"),
             ("zagadka", "загадать слово для игры"), ("hints", "мои подсказки"),
+            ("podskazka", "подсказка к моему слову (в его раунде)"),
             ("game", "переключиться на другой стрим")]
 MENU_HOST = MENU_ALL + [("pick", "выбрать зрителя, который загадает слово"),
                         ("queue", "очередь загаданных слов"),
@@ -99,12 +100,16 @@ def on_message(msg, now=None):
     if riddle.is_viewer_command(text):                          # a viewer: "/zagadka", "загадка"
         store.delete("FLOW#" + tg_id)
         return riddle.viewer_command(chat, tg_id)
+    if riddle.is_setter_hint_command(text):                     # the viewer whose word is played: "/podskazka"
+        return riddle.setter_hint_command(chat, tg_id, text)
     if riddle.first_word(text) in GAME_COMMANDS:                # "/game WORD", "игра WORD": switch streams
         return switch_game(chat, tg_id, text, False, now)
     ask = store.get("ASK#" + tg_id)
     if ask and not text.startswith("/"):                       # the viewer answers the host's question
         tg.mark_transient(chat, msg.get("message_id"))           # the viewer's word: gone after the next message
         return riddle.viewer_word(ask, chat, tg_id, text)
+    if not text.startswith("/") and store.get("HINTASK#" + tg_id):   # the hint after a bare "/podskazka"
+        return riddle.setter_hint_word(chat, tg_id, text)
     if text.startswith("/start") or text.startswith("/help"):
         store.delete("FLOW#" + tg_id)
         tx = texts.TEXT[lang_of(DEFAULT_LANG)]

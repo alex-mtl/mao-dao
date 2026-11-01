@@ -993,6 +993,33 @@ class CustomWordTest(unittest.TestCase):
         g.tick(time.time() + 10**6); g.tick(time.time() + 2 * 10**6); g.tick(time.time() + 3 * 10**6)
         self.assertIsNone(g.setter)                                       # the next round is a normal one
 
+    def test_setter_hints_from_the_bot(self):
+        g = GuessGame(JsonStore(tempfile.mkdtemp()))
+        g.set_lang("ru")
+        g.viewers = {"Vorobey": {"name": "воробей", "avatar": "https://a/v.jpg"}}
+        g.queue_custom({"id": "h1", "word": "огурец", "name": "воробей", "tiktok_id": "vorobey"})
+        self.assertIsNone(g.setter_status())
+        g.tick(time.time()); g.tick(time.time() + 0.01)
+        self.assertEqual(g.setter_status(), {"id": "h1", "hints": 0})
+        self.assertIsNone(g.snapshot()["setterHints"])
+        g.add_setter_hints("other", ["салат"])                            # another round's id: ignored
+        g.add_setter_hints("h1", ["салат"])
+        g.add_setter_hints("h1", ["салат", "грядка", "зелёный", "лишний"])   # all of them so far: new ones only, 3 max
+        self.assertEqual(g.snapshot()["setterHints"],
+                         {"name": "воробей", "avatar": "https://a/v.jpg", "words": ["салат", "грядка", "зелёный"]})
+        self.assertEqual([e["word"] for e in g.events if e["type"] == "setter_hint"], ["салат", "грядка", "зелёный"])
+        self.assertEqual(g.setter_status()["hints"], 3)
+        g.save()
+        g2 = GuessGame(g.store)
+        g2.set_lang("ru")
+        g2.load()
+        self.assertEqual(g2.setter_hints, ["салат", "грядка", "зелёный"])
+        g.tick(g.ends_at + 0.1)                                           # the round is over: gone
+        self.assertIsNone(g.setter_status())
+        self.assertIsNone(g.snapshot()["setterHints"])
+        g.add_setter_hints("h1", ["поздно"])
+        self.assertNotIn("поздно", g.setter_hints)
+
     def test_viewer_word_nobody_found_stays_secret(self):
         g = GuessGame(JsonStore(tempfile.mkdtemp()))
         g.set_lang("ru")
