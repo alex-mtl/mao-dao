@@ -149,8 +149,8 @@ function DigestBuilder({ room, live }) {
             });
             const url = URL.createObjectURL(blob);
             // the TikTok cover: podium, hardest words, totals (Digest/cover.js)
-            const { drawCover } = await import('./Digest/cover.js');
-            const cv = new OffscreenCanvas(1080, 1920);
+            const { drawCover, W: CW, H: CH } = await import('./Digest/cover.js');
+            const cv = new OffscreenCanvas(CW, CH);
             const c = (k) => t('guessword.digest_cover_' + k);
             drawCover(cv.getContext('2d'), model, {
                 avatars,

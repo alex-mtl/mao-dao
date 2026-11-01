@@ -194,7 +194,7 @@ own recording (MP4 from TikTok LIVE Center): the file is never uploaded.
 - **Measured** on the 19.10 recording (7 h 27 min, HEVC 1080x1920, 21.6 GB): 1800 frames built in ~19 s
   (the old ffmpeg + screenshot pipeline: ~11.5 min); Chrome peak ~1.5 GB (all its processes), JS heap
   ~360 MB (incl. the 59 MB result).
-- **TikTok cover** (since 2026-10-31, the owner's mockup): `Digest/cover.js` draws one 1080x1920 PNG from the
+- **TikTok cover** (since 2026-10-31, the owner's mockup): `Digest/cover.js` draws one 1080x1440 PNG (3:4, what TikTok keeps of a cover) from the
   same model — date, the three hardest guessed words (the longest won rounds), the podium of the wins race
   (equal wins: who got there first; avatars or initials), rounds / length / balloons / planes, the streamer's
   `@username` from `live_start`. The archive page saves it next to the clip (`digest-<date>-cover.png`, strings

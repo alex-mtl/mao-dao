@@ -9,7 +9,7 @@
 import { digestModel, factsFromEvents, factsFromLive, FPS } from './model.js';
 import { renderer, W, H } from './draw.js';
 import { buildDigest, probe } from './build.js';
-import { drawCover } from './cover.js';
+import { drawCover, W as CW, H as CH } from './cover.js';
 
 const facts = (d) => (d.lines ? factsFromLive(d.lines) : factsFromEvents(d.events, d));
 
@@ -25,7 +25,7 @@ window.renderFrames = (d, vs) => {
 // the TikTok cover as a PNG data URL; d.avatars: {avatar id: image URL}, d.labels: cover.js labels
 window.renderCover = async (d) => {
     const cv = document.createElement('canvas');
-    cv.width = W; cv.height = H;
+    cv.width = CW; cv.height = CH;
     const f = facts(d);
     if (d.date) f.date = d.date;
     const avatars = new Map();
