@@ -140,15 +140,7 @@ function DigestBuilder({ room, live }) {
                     } catch { /* initials */ }
                 }));
             }
-            const { buildDigest } = await import('./Digest/build.js');
-            let lost = 0;
-            const blob = await buildDigest({
-                file: src.file, hls: src.hls, liveStart: src.liveStart, model, avatars, canvas: canvasRef.current, signal: ac.signal,
-                labels: { round: t('guessword.digest_round_tag') },
-                onProgress: (p) => { lost = p.lost || 0; setState({ stage: p.stage === 'mux' ? 'mux' : 'building', duration, lc, frame: p.frame, frames: p.frames, mb: p.mb }); },
-            });
-            const url = URL.createObjectURL(blob);
-            // the TikTok cover: podium, hardest words, totals (Digest/cover.js)
+            // the TikTok cover: podium, hardest words, totals (Digest/cover.js); also the clip's first frame
             const { drawCover, W: CW, H: CH } = await import('./Digest/cover.js');
             const cv = new OffscreenCanvas(CW, CH);
             const c = (k) => t('guessword.digest_cover_' + k);
@@ -160,6 +152,14 @@ function DigestBuilder({ room, live }) {
                 },
             });
             const coverUrl = URL.createObjectURL(await cv.convertToBlob({ type: 'image/png' }));
+            const { buildDigest } = await import('./Digest/build.js');
+            let lost = 0;
+            const blob = await buildDigest({
+                file: src.file, hls: src.hls, liveStart: src.liveStart, model, avatars, cover: cv, canvas: canvasRef.current, signal: ac.signal,
+                labels: { round: t('guessword.digest_round_tag') },
+                onProgress: (p) => { lost = p.lost || 0; setState({ stage: p.stage === 'mux' ? 'mux' : 'building', duration, lc, frame: p.frame, frames: p.frames, mb: p.mb }); },
+            });
+            const url = URL.createObjectURL(blob);
             setState({ stage: 'done', duration, lc, url, coverUrl, seconds: Math.round((performance.now() - t0) / 1000), lost });
             // saved at once: the video lives only in this tab's memory until then
             for (const [href, download] of [[url, fileName], [coverUrl, coverName]]) {

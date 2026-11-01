@@ -64,9 +64,9 @@ export function drawCover(ctx, m, { avatars = new Map(), labels = {} } = {}) {
     ctx.fillRect(0, 0, W, H);
     ctx.textBaseline = 'middle';
 
-    // header: the game, the date, the title
+    // header: the title (small) and the date, then the game (large: it comes first, by look and by sense)
     ctx.font = black(36); ctx.fillStyle = CYAN; ctx.textAlign = 'left';
-    spaced(L.game, 58, 70, 7);
+    spaced(L.title, 58, 70, 7);
     if (m.date) {
         ctx.font = black(36);
         const w = ctx.measureText(m.date).width + 64;
@@ -74,8 +74,8 @@ export function drawCover(ctx, m, { avatars = new Map(), labels = {} } = {}) {
         ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.fillText(m.date, 1024 - w / 2, 71);
     }
     ctx.fillStyle = '#fff'; ctx.textAlign = 'left';
-    fit(L.title, black, 130, W - 100);
-    ctx.fillText(L.title, 50, 186);
+    fit(L.game, black, 130, W - 100);
+    ctx.fillText(L.game, 50, 186);
     ctx.font = black(44); ctx.fillStyle = CYAN;
     spaced(L.subtitle, 50, 282, 14);
 

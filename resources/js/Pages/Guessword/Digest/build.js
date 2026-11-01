@@ -176,9 +176,11 @@ export async function* hlsDense(hls, times, start, onSegment) {
  * liveStart = unix time of the LIVE log's second 0). model: digestModel(...) whose stream seconds are the
  * log's (file: second 0 of the file = second 0 of the log). Returns a Blob (video/mp4).
  * onProgress({frame, frames, stage, lost, mb}); signal: AbortSignal; canvas: optional W x H canvas to draw
- * on (the page shows it as a live preview); bitrate in bits/s.
+ * on (the page shows it as a live preview); bitrate in bits/s. cover: optional cover canvas (cover.js), drawn as
+ * the clip's first frame, centred on black: TikTok takes the first frame as the default cover and its 3:4 crop
+ * of the 9:16 frame is exactly that picture.
  */
-export async function buildDigest({ file, hls, liveStart = 0, model, avatars, labels, onProgress = () => {}, signal, canvas, bitrate = 8e6 }) {
+export async function buildDigest({ file, hls, liveStart = 0, model, avatars, labels, cover, onProgress = () => {}, signal, canvas, bitrate = 8e6 }) {
     const frames = Math.round(model.video * FPS);
     const cv = canvas || new OffscreenCanvas(W, H);
     const ctx = cv.getContext('2d');
@@ -289,6 +291,11 @@ export async function buildDigest({ file, hls, liveStart = 0, model, avatars, la
                 if (current) ctx.drawImage(current, 0, 0, W, H);
             }
             draw(f / FPS);
+            if (f === 0 && cover) {
+                const ch = (cover.height * W) / cover.width;
+                ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
+                ctx.drawImage(cover, 0, (H - ch) / 2, W, ch);
+            }
             await source.add(f / FPS, 1 / FPS);
             if (f % 15 === 0) progress(f, 'frames');
         }
