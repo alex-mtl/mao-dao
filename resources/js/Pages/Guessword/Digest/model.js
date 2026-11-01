@@ -63,6 +63,7 @@ export function factsFromLive(lines) {
     const shows = { start: at('cake_start'), last: at('cake_last'), split: at('cake_split') };
     return {
         date: start ? String(start.t).slice(0, 10) : '',
+        username: start?.username || '',
         duration: Math.max(0, ...lines.map((l) => l.s || 0)),
         rounds: of('round_start').length,
         starts: of('round_start').map((l) => l.s),
@@ -236,7 +237,7 @@ export function digestModel(facts, { stream = facts.duration, video = VIDEO, slo
         return { t, k: countAt(wins, t), slow: piece.kind === 'win' };
     }
     return {
-        stream, video: tl.total, slow, date: facts.date, people, wins, planes, balloons, cakes, shows, rounds, lost,
+        stream, video: tl.total, slow, date: facts.date, username: facts.username || '', people, wins, planes, balloons, cakes, shows, rounds, lost,
         roundAt: (t) => countAt(starts.map((x) => ({ t: x })), t),
         // the stream's temperature per BIN seconds (the curve at the bottom, its dot runs with the clock)
         temp: temperature(bins(facts)),

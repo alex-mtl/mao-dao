@@ -76,16 +76,16 @@ function Curve({ bins, label }) {
  * length and built in this browser (Digest/build.js, WebCodecs); nothing is uploaded.
  */
 function DigestBuilder({ room, live }) {
-    const { t } = useLaravelReactI18n();
+    const { t, currentLocale } = useLaravelReactI18n();
     const [state, setState] = useState({ stage: 'pick' });
     const srcRef = useRef(null), canvasRef = useRef(null), abortRef = useRef(null);
-    const fileName = `digest-${live.date || live.file.slice(0, 10)}.mp4`;
+    const fileName = `digest-${live.date || live.file.slice(0, 10)}.mp4`, coverName = fileName.replace('.mp4', '-cover.png');
     const why = (w) => t({ webcodecs: 'guessword.digest_no_webcodecs', decode: 'guessword.digest_no_decode', encode: 'guessword.digest_no_encode', format: 'guessword.digest_bad_format' }[w]);
 
     const pick = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
-        if (state.url) URL.revokeObjectURL(state.url);
+        if (state.url) { URL.revokeObjectURL(state.url); URL.revokeObjectURL(state.coverUrl); }
         setState({ stage: 'checking' });
         const build = await import('./Digest/build.js');
         const w = await build.unsupported(file);
@@ -99,7 +99,7 @@ function DigestBuilder({ room, live }) {
     // the recording straight from TikTok LIVE Center (browser extension): found by the LIVE's TikTok id,
     // placed by the playlist's clock, so no length check is needed
     const fromLiveCenter = async () => {
-        if (state.url) URL.revokeObjectURL(state.url);
+        if (state.url) { URL.revokeObjectURL(state.url); URL.revokeObjectURL(state.coverUrl); }
         setState({ stage: 'finding' });
         try {
             const lc = await import('./Digest/livecenter.js');
@@ -148,12 +148,26 @@ function DigestBuilder({ room, live }) {
                 onProgress: (p) => { lost = p.lost || 0; setState({ stage: p.stage === 'mux' ? 'mux' : 'building', duration, lc, frame: p.frame, frames: p.frames, mb: p.mb }); },
             });
             const url = URL.createObjectURL(blob);
-            setState({ stage: 'done', duration, lc, url, seconds: Math.round((performance.now() - t0) / 1000), lost });
+            // the TikTok cover: podium, hardest words, totals (Digest/cover.js)
+            const { drawCover } = await import('./Digest/cover.js');
+            const cv = new OffscreenCanvas(1080, 1920);
+            const c = (k) => t('guessword.digest_cover_' + k);
+            drawCover(cv.getContext('2d'), model, {
+                avatars,
+                labels: {
+                    lang: currentLocale(), game: c('game'), title: c('title'), subtitle: c('subtitle'), wins: c('wins'), rounds: c('rounds'),
+                    stream: c('stream'), balloons: c('balloons'), planes: c('planes'), footer: c('tag'),
+                },
+            });
+            const coverUrl = URL.createObjectURL(await cv.convertToBlob({ type: 'image/png' }));
+            setState({ stage: 'done', duration, lc, url, coverUrl, seconds: Math.round((performance.now() - t0) / 1000), lost });
             // saved at once: the video lives only in this tab's memory until then
-            const a = Object.assign(document.createElement('a'), { href: url, download: fileName });
-            document.body.appendChild(a);
-            a.click();
-            a.remove();
+            for (const [href, download] of [[url, fileName], [coverUrl, coverName]]) {
+                const a = Object.assign(document.createElement('a'), { href, download });
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+            }
         } catch (e) {
             setState(e.name === 'AbortError' ? { stage: 'ready', duration, lc } : { stage: 'error', message: t('guessword.digest_failed', { error: e.message }) });
         }
@@ -224,6 +238,12 @@ function DigestBuilder({ room, live }) {
                                className="inline-flex rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-700">
                                 {t('guessword.digest_download')}
                             </a>
+                            {state.coverUrl && (
+                                <a href={state.coverUrl} download={coverName}
+                                   className="ml-2 inline-flex rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-700">
+                                    {t('guessword.digest_cover_download')}
+                                </a>
+                            )}
                         </div>
                     )}
                     {state.stage === 'error' && <p className="rounded-lg bg-danger-50 px-3 py-2 text-sm text-danger-700">{state.message}</p>}

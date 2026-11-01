@@ -9,6 +9,7 @@
 import { digestModel, factsFromEvents, factsFromLive, FPS } from './model.js';
 import { renderer, W, H } from './draw.js';
 import { buildDigest, probe } from './build.js';
+import { drawCover } from './cover.js';
 
 const facts = (d) => (d.lines ? factsFromLive(d.lines) : factsFromEvents(d.events, d));
 
@@ -19,6 +20,20 @@ window.renderFrames = (d, vs) => {
     const ctx = cv.getContext('2d');
     const draw = renderer(ctx, digestModel(facts(d), { stream: d.duration }));
     return vs.map((v) => { ctx.clearRect(0, 0, W, H); draw(v); return cv.toDataURL('image/png'); });
+};
+
+// the TikTok cover as a PNG data URL; d.avatars: {avatar id: image URL}, d.labels: cover.js labels
+window.renderCover = async (d) => {
+    const cv = document.createElement('canvas');
+    cv.width = W; cv.height = H;
+    const f = facts(d);
+    if (d.date) f.date = d.date;
+    const avatars = new Map();
+    for (const [k, url] of Object.entries(d.avatars || {})) {
+        try { avatars.set(k, await createImageBitmap(await (await fetch(url)).blob())); } catch { /* initials */ }
+    }
+    drawCover(cv.getContext('2d'), digestModel(f, { stream: d.stream || f.duration }), { avatars, labels: d.labels });
+    return cv.toDataURL('image/png');
 };
 
 // the whole clip from the file chosen in #file; the result stays in window.__clip for chunk()
