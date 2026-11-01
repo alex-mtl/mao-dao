@@ -37,6 +37,45 @@ MENU_HOST = MENU_ALL + [("pick", "выбрать зрителя, который 
                         ("queue", "очередь загаданных слов"),
                         ("round", "текущий раунд: слово, участники, топ-20"),
                         ("history", "прошлые раунды: /history 3")]
+# a command's sponsor (the first who used it): SPONSOR#<command> = {tt, name}; the menu shows their nickname as it
+# is now (TT#<tt>), the TikTok id stays - nicknames change
+SPONSOR_TEXT = "{d} · спонсор функции: {name}"
+
+
+def sponsor_name(command):
+    sp = store.get("SPONSOR#" + command)
+    if not sp:
+        return ""
+    link = store.get("TT#" + sp["tt"])
+    return (link or {}).get("tiktok_name") or sp.get("name") or "@" + sp["tt"]
+
+
+def menu(base):
+    out = []
+    for c, d in base:
+        name = sponsor_name(c) if c in SPONSORED else ""
+        out.append((c, SPONSOR_TEXT.format(d=d, name=name)[:256] if name else d))
+    return out
+
+
+SPONSORED = ("podskazka",)       # the first viewer who used the command becomes its sponsor (riddle.py)
+
+
+def set_host_menu(chat):
+    """the host's menu in their chat; the chat is remembered, so a sponsor's new nickname reaches it too"""
+    tg.set_commands(menu(MENU_HOST), chat)
+    chats = (store.get("MENUCHATS") or {}).get("chats", [])
+    if chat not in chats:
+        store.put("MENUCHATS", {"chats": chats + [chat]})
+
+
+def refresh_menus(extra=()):
+    """everyone's menu and every host's (after a sponsor or their nickname changed)"""
+    tg.set_commands(menu(MENU_ALL))
+    chats = set((store.get("MENUCHATS") or {}).get("chats", [])) | set(extra)
+    for c in chats:
+        set_host_menu(c)
+    return len(chats)
 
 
 def new_key():
@@ -79,7 +118,7 @@ def on_message(msg, now=None):
         store.delete("HOSTCODE#" + code)
         store.put("OWNER#" + h["game"], {"chat": chat, "tg": tg_id})
         store.put("HOSTOF#" + tg_id, {"game": h["game"]})
-        tg.set_commands(MENU_HOST, chat)
+        set_host_menu(chat)
         events.log(h["game"], "host", tg=tg_id, tg_name=user.get("username") or "")
         print(f"host of {h['game']}: tg {tg_id}")
         who = " ".join(filter(None, [user.get("first_name"), user.get("last_name"),
@@ -404,7 +443,7 @@ def admin(event):
         admins = (store.get("SUPERADMINS") or {}).get("chats", [])
         if u["chat"] not in admins:
             store.put("SUPERADMINS", {"chats": admins + [u["chat"]]})
-        tg.set_commands(MENU_HOST, u["chat"])
+        set_host_menu(u["chat"])
         tg.send(u["chat"], texts.TEXT["ru"]["superadmin"])
         return {"ok": True, "tg": u["tg"]}
     if action == "delete_later":                     # from tg.send_temp: an async invoke of this function
@@ -413,12 +452,13 @@ def admin(event):
             tg.delete(event["chat"], mid)
         return {"ok": True}
     if action == "set_menus":                        # {"action":"set_menus","games":["mao"]}: menus for all + hosts
-        tg.set_commands(MENU_ALL)
         chats = set((store.get("SUPERADMINS") or {}).get("chats", []))
         chats |= {o["chat"] for o in (store.get("OWNER#" + g) for g in event.get("games", [])) if o}
-        for c in chats:
-            tg.set_commands(MENU_HOST, c)
-        return {"ok": True, "host_menus": len(chats)}
+        return {"ok": True, "host_menus": refresh_menus(chats)}
+    if action == "set_sponsor":                      # {"action":"set_sponsor","command":"podskazka","tiktok_id":"x"}
+        store.put("SPONSOR#" + event["command"], {"tt": event["tiktok_id"].lstrip("@").lower(),
+                                                  "name": event.get("name", "")})
+        return {"ok": True, "name": sponsor_name(event["command"]), "host_menus": refresh_menus()}
     if action == "set_webhook":                      # {"action":"set_webhook","url":"https://...lambda-url.../tg"}
         return tg.call("setWebhook", url=event["url"], secret_token=tg.webhook_secret(),
                        allowed_updates=["message", "callback_query"], drop_pending_updates=True)

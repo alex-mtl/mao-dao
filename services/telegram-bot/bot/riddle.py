@@ -64,7 +64,8 @@ TEXT = {
               "💡 Можешь помочь игрокам: до 3 слов-подсказок на экран — /podskazka",
     "hint_ask": "💡 Напиши одно слово-подсказку к своему слову «<b>{w}</b>». Осталось подсказок: {n} из 3.",
     "hint_shown": "💡 Подсказка «<b>{h}</b>» появится на экране через пару секунд. Осталось: {n}.",
-    "hint_none_left": "Все 3 подсказки уже на экране.",
+    "hint_sponsor": "\n\n🏅 Спонсор этой функции: <b>{name}</b> (самая первая подсказка к своему слову).",
+    "hint_none_left":"Все 3 подсказки уже на экране.",
     "hint_not_now": "Подсказку можно дать, только когда на стриме идёт раунд с твоим словом. "
                     "Загадать слово — /zagadka",
     "hint_over": "Раунд с твоим словом уже закончился — подсказка не нужна.",
@@ -243,7 +244,10 @@ def setter_hint_command(chat, tg_id, text, now=None):
     if rest:
         return setter_hint_word(chat, tg_id, rest, now)
     store.put("HINTASK#" + tg_id, {"game": link["game"]}, ttl=now + HINT_ASK_TTL)
-    return [(chat, TEXT["hint_ask"].format(w=e(sr["word"].upper()), n=MAX_SETTER_HINTS - len(sr["hints"])))]
+    from .handler import sponsor_name                    # (circular import otherwise)
+    sp = sponsor_name("podskazka")
+    return [(chat, TEXT["hint_ask"].format(w=e(sr["word"].upper()), n=MAX_SETTER_HINTS - len(sr["hints"]))
+             + (TEXT["hint_sponsor"].format(name=e(sp)) if sp else ""))]
 
 
 def setter_hint_word(chat, tg_id, text, now=None):
@@ -268,6 +272,10 @@ def setter_hint_word(chat, tg_id, text, now=None):
     store.put("SROUND#" + link["game"], sr, ttl=now + SROUND_TTL)
     store.delete("HINTASK#" + tg_id)
     events.log(link["game"], "setter_hint", tt=sr["tt"], word=h)
+    if not store.get("SPONSOR#podskazka"):                # the first ever: the feature's sponsor, in everyone's menu
+        from .handler import refresh_menus
+        store.put("SPONSOR#podskazka", {"tt": sr["tt"], "name": link.get("tiktok_name", "")})
+        refresh_menus()
     return [(chat, TEXT["hint_shown"].format(h=e(h.upper()), n=MAX_SETTER_HINTS - len(sr["hints"])))]
 
 
@@ -402,6 +410,10 @@ def rename(gid, names, items):
         events.log(gid, "rename", tt=tt, name=n)
     if hit:
         store.put("GAMEUSERS#" + gid, {"users": gu["users"]})
+        sp = store.get("SPONSOR#podskazka")
+        if sp and sp["tt"] in hit:                        # the sponsor's new nickname in everyone's menu
+            from .handler import refresh_menus
+            refresh_menus()
     for i in items.values():                              # words on their way show the new name too
         if i["tt"] in names:
             i["name"] = names[i["tt"]]

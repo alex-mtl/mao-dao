@@ -310,6 +310,11 @@ class BotTest(unittest.TestCase):
         self.assertIn("почти само слово", tg.sent[-1][1])
         call("/tg", msg("Зима"))
         self.assertIn("«<b>ЗИМА</b>» появится", tg.sent[-1][1])
+        sp = dict(handler.menu(handler.MENU_ALL))["podskazka"]         # the first hint ever: the sponsor
+        self.assertIn("спонсор функции: воробей", sp)
+        self.poll({"names": {"Vorobey": "Соловей"}})                   # a new nickname: the menu follows
+        self.assertIn("спонсор функции: Соловей", dict(handler.menu(handler.MENU_ALL))["podskazka"])
+        self.assertEqual(tg.markups[-1][1]["commands"][4], "podskazka")
         call("/tg", msg("горка"))                                      # no "/podskazka" first: not a hint
         self.assertEqual(store.get("SROUND#mao")["hints"], ["зима"])
         call("/tg", msg("подсказка горка"))                             # the word right in the command
@@ -319,6 +324,9 @@ class BotTest(unittest.TestCase):
         self.assertIn("Осталось: 0", tg.sent[-1][1])
         call("/tg", msg("/podskazka"))
         self.assertIn("Все 3", tg.sent[-1][1])
+        r = handler.admin({"action": "set_sponsor", "command": "podskazka", "tiktok_id": "@Sinica", "name": "синица"})
+        self.assertEqual(r["name"], "синица")                           # not linked: the name given
+        self.assertIn("спонсор функции: синица", dict(handler.menu(handler.MENU_ALL))["podskazka"])
         r = self.poll({"setter": {"id": wid, "hints": 1}})
         self.assertEqual(r["setter_hints"], {"id": wid, "words": ["зима", "горка", "дети"]})
         self.assertNotIn("setter_hints", self.poll({"setter": {"id": wid, "hints": 3}}))
