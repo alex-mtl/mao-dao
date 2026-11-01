@@ -95,6 +95,7 @@ class TikTokConnector:
                 self.offline_since = time.time()      # the LIVE ended (or dropped): waiting again
             except UserOfflineError:
                 print(f"[tiktok] @{self.username} is not live yet, retry in {config.RECONNECT_SEC:.0f}s")
+                self.hub.live_ended()
             except Exception as e:
                 if self.stopping:                     # TikTokLive turns the cancel into its own error
                     break

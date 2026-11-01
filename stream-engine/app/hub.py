@@ -154,6 +154,10 @@ class Hub:
         if room_id:
             self.live.open(room_id, self.username)
 
+    def live_ended(self):
+        """TikTok says the host is not live: the LIVE's log is closed (a dropped connection alone keeps it)."""
+        self.live.close()
+
     def _save_if_needed(self):
         """An important event (round start, winner, gift, hint...) was just handled: to disk now."""
         g = self.game

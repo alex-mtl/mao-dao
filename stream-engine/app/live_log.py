@@ -152,6 +152,14 @@ class LiveLog:
             print(f"[live] can't open the log: {type(e).__name__}: {e}")
             self.path = None
 
+    def close(self):
+        """The LIVE is over (TikTok says the host is not live): nothing more goes to its file. Without this the
+        next day's first round, started before TikTok connects to the new LIVE, landed in the old file.
+        The same LIVE coming back reopens its file in open()."""
+        if self.path:
+            print(f"[live] log closed {os.path.basename(self.path)}")
+        self.path, self.tiktok_room, self.seen = None, None, {}
+
     def user(self, viewer_id, name=""):
         """the nickname as TikTok sent it (no cut, no normalising) when the viewer was seen this LIVE"""
         vid = str(viewer_id or "")

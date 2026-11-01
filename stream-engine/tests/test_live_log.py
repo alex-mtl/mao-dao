@@ -140,6 +140,23 @@ class LiveLogTest(unittest.TestCase):
         h2.new_live("7003")                                  # a new LIVE: a new file
         self.assertNotEqual(h2.live.path, first)
 
+    def test_nothing_goes_to_a_finished_live(self):
+        h = self.hub()
+        h.set_active("guess")
+        h.new_live("7007")
+        first = h.live.path
+        h.live_ended()                                       # TikTok: not live
+        self.assertIsNone(h.live.path)
+        g = h.game
+        g.tick(time.time())
+        g.tick(time.time() + 0.01)                           # next morning's round before TikTok connects
+        h.like(Viewer("bob", "Bob", "", 1, 0, "222"), config.PLANE_AUTO_LIKES)
+        with open(first, encoding="utf-8") as f:
+            kinds = [json.loads(x)["type"] for x in f]
+        self.assertEqual(kinds, ["live_start"])
+        h.new_live("7007")                                   # the same LIVE back: its file again
+        self.assertEqual(h.live.path, first)
+
     def test_avatars_saved_by_numeric_id(self):
         h = self.hub()
         h.new_live("7004")
