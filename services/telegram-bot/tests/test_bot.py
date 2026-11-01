@@ -246,6 +246,46 @@ class BotTest(unittest.TestCase):
         call("/tg", msg("/queue", uid=5))
         self.assertIn("пуста", tg.temp[-1][1])
 
+    def test_words_never_get_stuck(self):
+        from unittest import mock
+        from bot import riddle
+        self.host_and_viewer()
+        call("/tg", msg("/zagadka"))
+        call("/tg", msg("огурец"))
+        wid = self.poll()["words"][0]["id"]
+        self.assertEqual(self.poll()["words"], [])                    # being checked
+        t = __import__("time").time()
+        with mock.patch.object(riddle.time, "time", return_value=t + riddle.RESEND_SEC + 1):
+            self.assertEqual(self.poll()["words"][0]["id"], wid)      # the game restarted: given again
+        self.poll({"results": [{"id": wid, "stage": "check", "ok": True, "word": "огурец"}]})
+        tg.markups.clear()
+        call("/tg", msg("очередь", uid=5))                            # the host's message lost: buttons again
+        self.assertIn("предлагает слово «<b>ОГУРЕЦ", tg.sent[-1][1])
+        self.assertEqual(tg.markups[-1][1]["inline_keyboard"][0][0]["callback_data"], "ok:" + wid)
+        call("/tg", msg("/zagadka"))
+        self.assertIn("ждёт", tg.sent[-1][1])
+        with mock.patch.object(riddle.time, "time", return_value=t + riddle.CHECKED_TTL + 1):
+            call("/tg", msg("/zagadka"))                              # never decided: dropped, offered again
+        self.assertIn("из сохранённых", tg.sent[-1][1])
+        self.assertEqual(tg.markups[-1][1]["inline_keyboard"][0][0]["callback_data"], "use:огурец")
+        self.cb("ok:" + wid)
+        self.assertIn("не отменить", tg.answers[-1])
+
+    def test_lost_queue_answer(self):
+        from unittest import mock
+        from bot import riddle
+        self.host_and_viewer()
+        call("/tg", msg("/zagadka"))
+        call("/tg", msg("огурец"))
+        wid = self.poll()["words"][0]["id"]
+        self.poll({"results": [{"id": wid, "stage": "check", "ok": True, "word": "огурец"}]})
+        self.cb("ok:" + wid)
+        self.assertEqual(self.poll()["words"][0]["action"], "queue")
+        t = __import__("time").time() + riddle.RESEND_SEC + 1
+        with mock.patch.object(riddle.time, "time", return_value=t):
+            self.assertEqual(self.poll({"queue_ids": [wid]})["words"], [])   # it's in the game's queue: kept
+        self.assertEqual(store.get("PEND#mao")["items"][0]["state"], "queued")
+
     def test_unguessed_word_saved_and_hints(self):
         call("/tg", msg("/hints", uid=8))
         self.assertIn("/start", tg.sent[-1][1])                        # not linked
