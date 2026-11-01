@@ -47,6 +47,12 @@ def sent_at(event):
     return ct or None
 
 
+def key_refused(error):
+    """True when the Euler Sign API refused the key itself (401/403 "The provided API Key is invalid.")"""
+    status = getattr(getattr(error, "response", None), "status_code", None)
+    return type(error).__name__ == "SignAPIError" and status in (401, 403)
+
+
 class TikTokConnector:
     def __init__(self, hub, username, sign_api_key=None):
         self.hub = hub
@@ -55,6 +61,7 @@ class TikTokConnector:
         self.stopping = False                     # set by the room's stop: never reconnect after it
         self.offline_since = time.time()          # no LIVE since (None while connected)
         self.on_give_up = None                    # called when there's no LIVE for LIVE_WAIT_SEC
+        self.on_key = None                        # on_key(False): Euler refused the key; on_key(True): connected with it
         self.seen = deque(maxlen=5000)            # msg ids: drop duplicates
         self.seen_set = set()
         # Chat history TikTok replays on (re)connect: anything sent before the app started is
@@ -100,6 +107,8 @@ class TikTokConnector:
                 if self.stopping:                     # TikTokLive turns the cancel into its own error
                     break
                 print(f"[tiktok] error: {type(e).__name__}: {e}")
+                if self.sign_api_key and key_refused(e) and self.on_key:
+                    self.on_key(False)                # the streamer's panel asks for a new key
                 was_live = self.hub.tiktok_status == "connected"
             self.hub.tiktok_status = "offline"
             if self.offline_since and time.time() - self.offline_since >= config.LIVE_WAIT_SEC:
@@ -132,6 +141,8 @@ class TikTokConnector:
             hub.tiktok_status = "connected"
             self.offline_since = None
             print(f"[tiktok] connected to @{self.username} LIVE")
+            if self.sign_api_key and self.on_key:
+                self.on_key(True)
             hub.new_live(str(getattr(client, "room_id", None) or ""))
             if catalog().needs_refresh():                 # every gift's price and image, once a day (all rooms)
                 asyncio.get_running_loop().create_task(refresh_gifts())

@@ -72,6 +72,7 @@ class Room:
                 from .tiktok.client import TikTokConnector
                 self.connector = TikTokConnector(hub, self.cfg["username"], self.cfg.get("euler_key") or None)
                 self.connector.on_give_up = on_give_up
+                self.connector.on_key = self._key_status
                 jobs.append(self.connector.run_forever())
             key = self.cfg.get("tg_key") or ""
             if config.TG_BOT_URL and key:
@@ -86,6 +87,12 @@ class Room:
             print(f"[room] started (@{self.cfg.get('username') or 'simulation'})")
         finally:
             current_room.reset(token)
+
+    def _key_status(self, ok):
+        if ok:
+            self.cfg.pop("euler_rejected", None)
+        else:
+            self.cfg["euler_rejected"] = True
 
     async def stop(self):
         if not self.running:
@@ -116,6 +123,7 @@ class Room:
                 "simulate": bool(self.cfg.get("simulate")), "started_at": self.started_at if self.running else None,
                 "tiktok": hub.tiktok_status if hub else "offline", "active": hub.active if hub else None,
                 "lang": hub.lang if hub else self.cfg.get("lang"), "euler_key": bool(self.cfg.get("euler_key")),
+                "euler_rejected": bool(self.cfg.get("euler_key") and self.cfg.get("euler_rejected")),
                 "clients": len(hub.clients) if hub else 0,
                 "stop_reason": self.cfg.get("stop_reason")}       # "no_live": stopped itself, no TikTok LIVE
 
@@ -157,6 +165,8 @@ class RoomManager:
         room = self.rooms.get(rid)
         if room is None:
             room = self.rooms[rid] = Room(rid, {}, self.root)
+        if "euler_key" in fields and fields["euler_key"] != room.cfg.get("euler_key"):
+            room.cfg.pop("euler_rejected", None)          # a new key: not refused until Euler says so
         for k in FIELDS:
             if k in fields:
                 room.cfg[k] = fields[k]

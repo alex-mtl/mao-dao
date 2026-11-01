@@ -204,6 +204,60 @@ function HostBot({ room }) {
     );
 }
 
+/**
+ * The Euler key: the server never sends it back, only whether one is saved. Three states -
+ * none (field open, where to get one), saved (locked "key saved" + Change / Remove; saving the other
+ * settings leaves it alone), refused by Euler (field open + a warning to paste a new one).
+ */
+function EulerKey({ room, form }) {
+    const { t } = useLaravelReactI18n();
+    const [editing, setEditing] = useState(false);
+    const removing = form.data.clear_euler_key;
+    const locked = room.hasEulerKey && !room.eulerRejected && !editing;
+
+    const cancel = () => { setEditing(false); form.setData({ ...form.data, euler_key: '', clear_euler_key: false }); };
+
+    return (
+        <div className="sm:col-span-2">
+            <InputLabel htmlFor="gw-euler" value={t('guessword.euler_label')} />
+            {room.eulerRejected && (
+                <p className="mt-1 rounded-lg bg-danger-50 px-3 py-2 text-sm font-semibold text-danger-700">{t('guessword.euler_rejected')}</p>
+            )}
+            <div className="mt-1 flex flex-wrap items-center gap-2">
+                {locked || removing ? (
+                    <div className={'min-w-0 flex-1 rounded-md border border-warm-300 bg-warm-50 px-3 py-2 text-sm ' +
+                                    (removing ? 'text-danger-700 line-through' : 'text-ink-700')}>
+                        🔒 {t('guessword.euler_saved')}
+                    </div>
+                ) : (
+                    <TextInput id="gw-euler" type="password" autoComplete="off" className="block min-w-0 flex-1"
+                               placeholder={room.hasEulerKey ? t('guessword.euler_new_placeholder') : ''} autoFocus={editing}
+                               value={form.data.euler_key} onChange={(e) => form.setData('euler_key', e.target.value)} />
+                )}
+                {room.hasEulerKey && (locked && !removing ? (
+                    <>
+                        <SecondaryButton type="button" onClick={() => setEditing(true)}>{t('guessword.euler_change')}</SecondaryButton>
+                        <SecondaryButton type="button" className="text-danger-700" onClick={() => form.setData('clear_euler_key', true)}>
+                            {t('guessword.euler_clear')}
+                        </SecondaryButton>
+                    </>
+                ) : (editing || removing) && (
+                    <SecondaryButton type="button" onClick={cancel}>{t('guessword.cancel')}</SecondaryButton>
+                ))}
+                {room.eulerRejected && !removing && (
+                    <SecondaryButton type="button" className="text-danger-700" onClick={() => form.setData('clear_euler_key', true)}>
+                        {t('guessword.euler_clear')}
+                    </SecondaryButton>
+                )}
+            </div>
+            <p className="mt-1 text-xs text-ink-500">
+                {removing ? t('guessword.euler_removing') : locked ? t('guessword.euler_set') : t('guessword.euler_help')}
+            </p>
+            <InputError className="mt-1" message={form.errors.euler_key} />
+        </div>
+    );
+}
+
 function AccountModal({ show, onClose, room, languages }) {
     const { t } = useLaravelReactI18n();
     const [copied, setCopied] = useState(false);
@@ -213,9 +267,10 @@ function AccountModal({ show, onClose, room, languages }) {
         e.preventDefault();
         form.post(act(room, 'update'), {
             preserveScroll: true,
-            onSuccess: () => { form.setData('euler_key', ''); onClose(); },
+            onSuccess: close,
         });
     };
+    const close = () => { form.setData({ ...form.data, euler_key: '', clear_euler_key: false }); onClose(); };
     const copy = async () => {
         try {
             await navigator.clipboard.writeText(room.overlayUrl);
@@ -227,7 +282,7 @@ function AccountModal({ show, onClose, room, languages }) {
     };
 
     return (
-        <Modal show={show} onClose={onClose} maxWidth="2xl">
+        <Modal show={show} onClose={close} maxWidth="2xl">
             <form onSubmit={save} className="p-6">
                 <h2 className="font-heading text-xl font-bold text-ink-900">{t('guessword.account')}</h2>
 
@@ -261,24 +316,12 @@ function AccountModal({ show, onClose, room, languages }) {
                             {languages.map((l) => <option key={l} value={l}>{l.toUpperCase()}</option>)}
                         </select>
                     </div>
-                    <div className="sm:col-span-2">
-                        <InputLabel htmlFor="gw-euler" value={t('guessword.euler_label')} />
-                        <TextInput id="gw-euler" type="password" autoComplete="off" className="mt-1 block w-full"
-                                   value={form.data.euler_key} onChange={(e) => form.setData('euler_key', e.target.value)} />
-                        <p className="mt-1 text-xs text-ink-500">{room.hasEulerKey ? t('guessword.euler_set') : t('guessword.euler_help')}</p>
-                        {room.hasEulerKey && (
-                            <label className="mt-1 inline-flex items-center gap-2 text-xs text-ink-600">
-                                <input type="checkbox" checked={form.data.clear_euler_key}
-                                       onChange={(e) => form.setData('clear_euler_key', e.target.checked)} />
-                                {t('guessword.euler_clear')}
-                            </label>
-                        )}
-                        <InputError className="mt-1" message={form.errors.euler_key} />
-                    </div>
+                    <EulerKey room={room} form={form} />
+
                 </div>
 
                 <div className="mt-6 flex justify-end gap-2">
-                    <SecondaryButton type="button" onClick={onClose}>{t('guessword.cancel')}</SecondaryButton>
+                    <SecondaryButton type="button" onClick={close}>{t('guessword.cancel')}</SecondaryButton>
                     <PrimaryButton disabled={form.processing}>{t('guessword.save')}</PrimaryButton>
                 </div>
             </form>

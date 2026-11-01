@@ -144,6 +144,28 @@ class RoomsTest(unittest.TestCase):
         self.assertEqual(TikTokConnector(None, "x", "k1").sign_api_key, "k1")
         self.assertIsNone(TikTokConnector(None, "x").sign_api_key)
 
+    def test_refused_euler_key_shows_until_a_new_key(self):
+        from types import SimpleNamespace
+        from app.tiktok.client import key_refused
+        SignAPIError = type("SignAPIError", (Exception,), {})
+        err = SignAPIError()
+        err.response = SimpleNamespace(status_code=401)
+        self.assertTrue(key_refused(err))
+        err.response = SimpleNamespace(status_code=500)
+        self.assertFalse(key_refused(err))
+
+        m = RoomManager(tempfile.mkdtemp())
+        room = m.upsert("a", {"username": "x", "euler_key": "bad"})
+        room._key_status(False)
+        self.assertTrue(room.status()["euler_rejected"])
+        m.upsert("a", {"euler_key": "bad"})                 # other settings saved: still refused
+        self.assertTrue(room.status()["euler_rejected"])
+        m.upsert("a", {"euler_key": "good"})
+        self.assertFalse(room.status()["euler_rejected"])
+        room._key_status(False)
+        room._key_status(True)                              # connected with the key
+        self.assertFalse(room.status()["euler_rejected"])
+
 
 if __name__ == "__main__":
     unittest.main()

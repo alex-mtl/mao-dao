@@ -157,6 +157,19 @@ it('creates the room, saves the settings into the engine and keeps the Euler key
         ->missing('room.euler_key'));
 });
 
+it('tells the streamer when Euler refused the saved key', function () {
+    $streamer = User::factory()->create(['email' => 'streamer@example.com']);
+    $room = GuesswordRoom::create(['user_id' => $streamer->id, 'lang' => 'ru']);
+    $room->euler_key = 'bad-key';
+    $room->save();
+    Http::fake(['engine.test/internal/rooms' => Http::response(engineRooms([
+        ['id' => $room->engineId(), 'running' => true, 'euler_rejected' => true],
+    ]))]);
+
+    $this->actingAs($streamer)->get('/guessword/room')->assertInertia(fn ($p) => $p
+        ->where('room.hasEulerKey', true)->where('room.eulerRejected', true));
+});
+
 it('refuses a TikTok username another streamer already uses', function () {
     Http::fake(['engine.test/*' => Http::response(engineRooms())]);
     config(['guessword.streamers' => ['a@example.com', 'b@example.com']]);

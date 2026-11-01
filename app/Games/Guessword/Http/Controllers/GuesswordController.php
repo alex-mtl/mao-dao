@@ -65,6 +65,7 @@ class GuesswordController extends Controller
                 'tiktok' => $room->tiktok_username,
                 'lang' => $room->lang,
                 'hasEulerKey' => filled($room->euler_key),
+                'eulerRejected' => filled($room->euler_key) && ($status['euler_rejected'] ?? false),   // Euler answered 401
                 'overlayUrl' => $room->overlayUrl(),
                 'controlUrl' => $room->controlUrl(),
                 'running' => (bool) ($status['running'] ?? false),
