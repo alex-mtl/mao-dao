@@ -1014,6 +1014,9 @@ class CustomWordTest(unittest.TestCase):
         g2.set_lang("ru")
         g2.load()
         self.assertEqual(g2.setter_hints, ["салат", "грядка", "зелёный"])
+        g2.setter.pop("avatar")                                           # a round saved before avatars were kept
+        g2.viewers = g.viewers
+        self.assertEqual(g2.snapshot()["setterHints"]["avatar"], "https://a/v.jpg")
         g.tick(g.ends_at + 0.1)                                           # the round is over: gone
         self.assertIsNone(g.setter_status())
         self.assertIsNone(g.snapshot()["setterHints"])

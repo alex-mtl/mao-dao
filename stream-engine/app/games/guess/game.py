@@ -1166,6 +1166,13 @@ class GuessGame(BaseGame):
         u = viewers.get(sid) or next((v for k, v in viewers.items() if k.lower() == sid), None)
         return (u or {}).get("avatar", "")
 
+    def _setter_avatar(self):
+        """taken at the round's start; looked up again while missing (a round restored after a restart, the setter
+        not seen in this stream yet)"""
+        if not self.setter.get("avatar"):
+            self.setter["avatar"] = self._avatar_of(self.setter["id"])
+        return self.setter["avatar"]
+
     def setter_status(self):
         """for the bot: the round with a viewer's word now (its id and how many of their hints are shown), or None"""
         if not self.setter or self.phase not in (COUNTDOWN, PLAYING):
@@ -1438,7 +1445,7 @@ class GuessGame(BaseGame):
             "streamLeaderboard": self.stats.leaderboard(),
             "champions": self.stats.champions(),                          # TT mode: medals block
             "boosts": self._round_boosts(),                               # TT mode: the BOOST column
-            "setterHints": {"name": self.setter["name"], "avatar": self.setter.get("avatar", ""),
+            "setterHints": {"name": self.setter["name"], "avatar": self._setter_avatar(),
                             "words": self.setter_hints}
                            if self.setter and self.setter_hints and self.phase in (COUNTDOWN, PLAYING) else None,
             "lastRound": self._last_round(),                             # for the ticker
