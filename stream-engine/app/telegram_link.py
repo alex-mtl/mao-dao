@@ -30,7 +30,15 @@ def norm(text):
     return " ".join(re.sub(r"[^\w\s]", " ", (text or "").lower().replace("ё", "е")).split())
 
 
+def picture(url):
+    """which picture a TikTok avatar URL shows: its file name up to "~" (host, region, size and the signed
+    query vary from event to event; the bot keeps the same rule)"""
+    m = re.search(r"/([^/?~]+)~", url or "")
+    return m.group(1) if m else (url or "").split("?", 1)[0]
+
+
 LINKS_SEC = 300                                  # viewers' Telegram links from the bot, refreshed this often
+AVATAR_SEC = 24 * 3600                           # a linked viewer's avatar goes to the bot at most this often
 
 
 class TelegramLink:
@@ -48,6 +56,7 @@ class TelegramLink:
         self.sent_names = {}          # nicknames as the bot last got them (only new/changed ones are sent)
         self.links = {}               # TikTok id -> {tg, id, full}: the viewer's Telegram (the room page links it)
         self.links_t = 0.0            # last time the bot sent them (asked every LINKS_SEC)
+        self.sent_avatars = {}        # TikTok id -> (picture, time) of their avatar the bot last got
 
     async def api(self, path, **body):
         import httpx
@@ -113,6 +122,21 @@ class TelegramLink:
                 await self.poll()
             await asyncio.sleep(POLL_FAST_SEC if self.word and self._setter_waits() else POLL_SEC)
 
+    def _avatars(self):
+        """linked viewers' TikTok avatars (the bot shows a sponsor's photo): at once when the picture changes (the
+        URL's path), otherwise once in AVATAR_SEC - the signed URL's query changes with every event"""
+        if not self.links:
+            return {}
+        now = time.time()
+        seen = {k.lower(): u.get("big") or u.get("avatar") for k, u in self.hub.recent.items()}
+        out = {}
+        for k in self.links:
+            url = seen.get(k)
+            pic, t = self.sent_avatars.get(k, ("", 0))
+            if url and (picture(url) != pic or now - t > AVATAR_SEC):
+                out[k] = url
+        return out
+
     def _setter_waits(self):
         g = self.hub.games.get("guess")
         s = g.setter_status() if g else None
@@ -129,16 +153,18 @@ class TelegramLink:
         credits = {k: v for k, v in g.credits.items() if self.sent_credits.get(k) != v}
         credits.update({k: 0 for k in self.sent_credits if k not in g.credits and self.sent_credits[k]})
         names = dict(list((k, v) for k, v in self.hub.names.items() if self.sent_names.get(k) != v)[:500])
+        avatars = self._avatars()
         want_links = time.time() - self.links_t > LINKS_SEC
         r = await self.api("/game/poll", v=2, instance=self.instance, results=self.results, played=played, unguessed=unguessed,
                            credits=credits, names=names, queue_ids=[c["id"] for c in g.custom], want_links=want_links,
-                           setter=g.setter_status())
+                           setter=g.setter_status(), avatars=avatars)
         if "error" in r:
             g.played_custom = played + g.played_custom          # retry next time
             g.unguessed_custom = unguessed + g.unguessed_custom
             return
         self.sent_credits.update(credits)
         self.sent_names.update(names)
+        self.sent_avatars.update({k: (picture(u), time.time()) for k, u in avatars.items()})
         if isinstance(r.get("links"), dict):
             self.links, self.links_t = r["links"], time.time()
         self.results = []

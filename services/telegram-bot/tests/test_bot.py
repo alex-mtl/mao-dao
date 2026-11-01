@@ -23,6 +23,7 @@ class BotTest(unittest.TestCase):
         tg.deleted.clear()
         tg.temp.clear()
         tg.later.clear()
+        tg.photos.clear()
         tg._params.update({"webhook-secret": "s", "bot_name": "test_bot", "token": "x"})
         self.key = handler.admin({"action": "add_game", "id": "mao"})["game_key"]
         self.key2 = handler.admin({"action": "add_game", "id": "other"})["game_key"]
@@ -336,6 +337,35 @@ class BotTest(unittest.TestCase):
         self.assertIsNone(store.get("SROUND#mao"))
         call("/tg", msg("/podskazka"))
         self.assertIn("только когда", tg.sent[-1][1])
+
+    def test_sponsor_photo(self):
+        self.host_and_viewer()
+        handler.admin({"action": "set_sponsor", "command": "podskazka", "tiktok_id": "vorobey"})
+        store.put("SROUND#mao", {"id": "x", "tg": "7", "chat": 7, "tt": "vorobey", "word": "санки", "hints": []})
+        call("/tg", msg("/podskazka"))                                 # no avatar yet: text
+        self.assertEqual(tg.photos, [])
+        self.assertIn("Спонсор этой функции: <b>воробей</b>", tg.sent[-1][1])
+        a1 = "https://p16-eu.tiktokcdn.com/tos-avt/aa11~tplv-shrink:720:720.jpeg?x-expires=1"
+        self.poll({"avatars": {"Vorobey": a1, "nobody": "https://p16/b.jpg"}})
+        self.assertEqual(store.get("TT#vorobey")["avatar"], a1)
+        self.assertIsNone(store.get("TT#nobody"))                      # only linked viewers
+        call("/tg", msg("/podskazka"))                                 # by URL, then by Telegram's file_id
+        a2 = "https://p77-us.tiktokcdn.com/tos-avt-us/aa11~tplv-shrink:1080:1080.jpeg?x-expires=2"
+        self.poll({"avatars": {"vorobey": a2}})                        # the same picture, another link
+        call("/tg", msg("/podskazka"))
+        self.assertEqual(tg.photos, [(7, a1), (7, "fid:" + a1)])
+        self.assertIn("Спонсор этой функции", tg.sent[-1][1])
+        a3 = "https://p16-eu.tiktokcdn.com/tos-avt/bb22~tplv-shrink:720:720.jpeg?x-expires=3"
+        self.poll({"avatars": {"vorobey": a3}})                        # a new picture: Telegram fetches it again
+        call("/tg", msg("/podskazka"))
+        self.assertEqual(tg.photos[-1], (7, a3))
+        self.assertEqual(store.get("SPONSOR#podskazka")["file_src"], "bb22")
+        store.put("SPONSOR#podskazka", dict(store.get("SPONSOR#podskazka"), file_id=""))
+        store.put("TT#vorobey", dict(store.get("TT#vorobey"), avatar="https://bad/x.jpg"))
+        n = len(tg.sent)
+        call("/tg", msg("/podskazka"))                                 # Telegram can't fetch it: text instead
+        self.assertEqual(len(tg.sent), n + 1)
+        self.assertIn("Осталось подсказок", tg.sent[-1][1])
 
     def test_unguessed_word_saved_and_hints(self):
         call("/tg", msg("/hints", uid=8))

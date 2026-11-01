@@ -2,6 +2,7 @@
 Viewer + text/gift/join/follow calls on the hub, and keeps the connection alive."""
 
 import asyncio
+import re
 import time
 from collections import deque
 
@@ -36,7 +37,20 @@ def viewer_of(user):
         num = str(int(getattr(user, "id", 0) or 0) or "")             # the numeric user id: stable
     except Exception:
         pass
-    return Viewer(uid, name, avatar, follows, fan, num, str(getattr(user, "nickname", None) or ""))
+    return Viewer(uid, name, avatar, follows, fan, num, str(getattr(user, "nickname", None) or ""), big_avatar(user))
+
+
+def big_avatar(user):
+    """the largest avatar TikTok sent, a JPEG one first (the bot shows it as a Telegram photo; the thumb is 72 px
+    and webp), "" if none"""
+    for field in ("avatar_large", "avatar_medium", "avatar_thumb"):
+        try:
+            urls = [u for u in (getattr(user, field).url_list or []) if u.startswith("https://")]
+        except Exception:
+            continue
+        if urls:
+            return next((u for u in urls if re.search(r"\.jpe?g(\?|$)", u)), urls[0])
+    return ""
 
 
 def sent_at(event):

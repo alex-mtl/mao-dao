@@ -61,7 +61,7 @@ class Hub:
         self.feed_sent = 0
         self.greeted = set()                      # viewers already welcomed this stream
         self.names = {}                           # viewer id -> their TikTok nickname as of their last event
-        self.recent = OrderedDict((u["id"], {k: u.get(k, "") for k in ("name", "avatar", "t")})
+        self.recent = OrderedDict((u["id"], {k: u.get(k, "") for k in ("name", "avatar", "t", "big")})
                                   for u in s.get("viewers") or [] if u.get("id"))   # this stream's viewers, latest last
         self.live = LiveLog(store.path("lives"))   # this LIVE's rounds, winners, planes... for clips
         # the cake show's clock (reactions/cake.py): the server fires the crackers, the pages draw
@@ -191,7 +191,8 @@ class Hub:
             self.live.viewer(v)
             self.names[v.id.lower()] = v.name
             r = self.recent.pop(v.id, None) or {}
-            self.recent[v.id] = {"name": v.name, "avatar": v.avatar or r.get("avatar", ""), "t": time.time()}
+            self.recent[v.id] = {"name": v.name, "avatar": v.avatar or r.get("avatar", ""), "t": time.time(),
+                                 "big": v.big or r.get("big", "")}   # for the bot: a sponsor's photo
             while len(self.recent) > 500:
                 self.recent.pop(next(iter(self.recent)))
 

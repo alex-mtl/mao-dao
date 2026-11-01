@@ -957,6 +957,30 @@ class TelegramLinkTest(unittest.TestCase):
         self.assertFalse(link.on_comment(v, "огурец"))                 # an ordinary guess goes to the game
 
 
+class LinkedAvatarsTest(unittest.TestCase):
+    def test_big_jpeg_avatar_goes_to_the_bot_when_the_picture_changes(self):
+        from types import SimpleNamespace as NS
+        from app.tiktok.client import big_avatar
+        from app import telegram_link as tl
+        img = lambda *u: NS(url_list=list(u))
+        user = NS(avatar_thumb=img("https://p16/t/aa~s:72:72.webp?x=1"),
+                  avatar_large=img("https://p16/l/aa~s:720:720.webp?x=1", "https://p16/l/aa~s:720:720.jpeg?x=1"))
+        self.assertEqual(big_avatar(user), "https://p16/l/aa~s:720:720.jpeg?x=1")
+        self.assertEqual(big_avatar(NS(avatar_thumb=img("https://p16/t/aa~s:72:72.webp"))), "https://p16/t/aa~s:72:72.webp")
+        self.assertEqual(big_avatar(NS()), "")
+        link = tl.TelegramLink(NS(recent={"Vorobey": {"avatar": "https://t", "big": "https://p16/l/aa~s.jpeg?x=1"},
+                                          "sova": {"avatar": "https://s"}}), "https://bot", "k")
+        self.assertEqual(link._avatars(), {})                            # no linked viewers known yet
+        link.links = {"vorobey": {}, "sova": {}, "nobody": {}}
+        got = link._avatars()
+        self.assertEqual(got, {"vorobey": "https://p16/l/aa~s.jpeg?x=1", "sova": "https://s"})
+        link.sent_avatars.update({k: (tl.picture(u), time.time()) for k, u in got.items()})
+        link.hub.recent["Vorobey"]["big"] = "https://p77/l2/aa~s.jpeg?x=2"   # the same picture, a new link
+        self.assertEqual(link._avatars(), {})
+        link.hub.recent["Vorobey"]["big"] = "https://p16/l/bb~s.jpeg?x=3"    # a new picture: at once
+        self.assertEqual(link._avatars(), {"vorobey": "https://p16/l/bb~s.jpeg?x=3"})
+
+
 class CustomWordTest(unittest.TestCase):
     def test_viewer_picked_word(self):
         import json as _json

@@ -244,10 +244,13 @@ def setter_hint_command(chat, tg_id, text, now=None):
     if rest:
         return setter_hint_word(chat, tg_id, rest, now)
     store.put("HINTASK#" + tg_id, {"game": link["game"]}, ttl=now + HINT_ASK_TTL)
-    from .handler import sponsor_name                    # (circular import otherwise)
+    from .handler import sponsor_name, sponsor_photo     # (circular import otherwise)
     sp = sponsor_name("podskazka")
-    return [(chat, TEXT["hint_ask"].format(w=e(sr["word"].upper()), n=MAX_SETTER_HINTS - len(sr["hints"]))
-             + (TEXT["hint_sponsor"].format(name=e(sp)) if sp else ""))]
+    text = TEXT["hint_ask"].format(w=e(sr["word"].upper()), n=MAX_SETTER_HINTS - len(sr["hints"])) \
+        + (TEXT["hint_sponsor"].format(name=e(sp)) if sp else "")
+    if sp and sponsor_photo("podskazka", chat, text):   # the sponsor's TikTok avatar with the text under it
+        return []
+    return [(chat, text)]
 
 
 def setter_hint_word(chat, tg_id, text, now=None):
@@ -483,6 +486,10 @@ def game_poll(game, body):
     if body.get("names"):                                 # nicknames change: keep linked viewers' current
         rename(gid, {k.lower(): v for k, v in body["names"].items() if v}, items)
         changed = True
+    for tt, url in (body.get("avatars") or {}).items():   # linked viewers' TikTok avatars: a new picture, or daily
+        link = store.get("TT#" + tt.lower())
+        if link and str(url).startswith("https://") and link.get("avatar") != url:
+            store.put("TT#" + tt.lower(), dict(link, avatar=url))
     if body.get("credits"):                               # hint credits as they are now (only changes come)
         cur = (store.get("CREDITS#" + gid) or {}).get("credits", {})
         cur.update({k.lower(): int(v) for k, v in body["credits"].items()})

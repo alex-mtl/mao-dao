@@ -15,6 +15,7 @@ class Viewer:
     fan: int = 0         # level in the host's team (fan club) by their badge, 0 = not in the team
     uid: str = ""        # numeric TikTok user id (never changes, unlike the @unique_id), "" if unknown
     nick: str = ""       # the nickname exactly as TikTok sent it (name is cut for the screen), "" = same as name
+    big: str = ""        # the largest avatar url, JPEG first (the bot's photo of a viewer), "" if unknown
 
 
 class BaseGame:

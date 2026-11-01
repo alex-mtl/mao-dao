@@ -61,6 +61,25 @@ def send(chat, text, markup=None, transient=False):
     return mid
 
 
+photos = []                  # tests: (chat, photo) of photo messages
+
+
+def send_photo(chat, photo, caption):
+    """a photo (URL or a file_id Telegram gave before) with an HTML caption -> (message id, file_id) or None"""
+    if sent is not None:
+        if photo.startswith("https://bad"):
+            return None
+        sent.append((chat, caption))
+        photos.append((chat, photo))
+        return len(sent), "fid:" + photo
+    try:
+        r = call("sendPhoto", chat_id=chat, photo=photo, caption=caption, parse_mode="HTML")["result"]
+        return r["message_id"], (r.get("photo") or [{}])[-1].get("file_id", "")
+    except Exception as e:
+        print(f"send_photo error: {type(e).__name__}")
+        return None
+
+
 SUPERSEDE_SEC = 20
 later = []                   # tests: (chat, [mids], seconds) scheduled for deletion
 

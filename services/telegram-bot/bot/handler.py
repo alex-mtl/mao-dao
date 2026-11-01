@@ -16,6 +16,7 @@ import hashlib
 import hmac
 import json
 import os
+import re
 import time
 from html import escape as html_escape
 
@@ -48,6 +49,32 @@ def sponsor_name(command):
         return ""
     link = store.get("TT#" + sp["tt"])
     return (link or {}).get("tiktok_name") or sp.get("name") or "@" + sp["tt"]
+
+
+def avatar_key(url):
+    """which picture a TikTok avatar URL shows: its file name up to "~" (host, region, size and the signed query
+    vary from event to event; the game keeps the same rule)"""
+    m = re.search(r"/([^/?~]+)~", url or "")
+    return m.group(1) if m else (url or "").split("?", 1)[0]
+
+
+def sponsor_photo(command, chat, caption):
+    """the sponsor's TikTok avatar (the game sends linked viewers' avatars) with the caption -> sent or not.
+    Telegram fetches the URL once; its file_id is kept (TikTok's signed URLs expire, the file_id does not)
+    until the sponsor's picture itself changes."""
+    sp = store.get("SPONSOR#" + command)
+    if not sp:
+        return False
+    url = (store.get("TT#" + sp["tt"]) or {}).get("avatar", "")
+    if sp.get("file_id") and (not url or sp.get("file_src") == avatar_key(url)) \
+            and tg.send_photo(chat, sp["file_id"], caption):
+        return True
+    if not url:
+        return False
+    got = tg.send_photo(chat, url, caption)
+    if got and got[1]:
+        store.put("SPONSOR#" + command, dict(sp, file_id=got[1], file_src=avatar_key(url)))
+    return bool(got)
 
 
 def menu(base):
