@@ -55,8 +55,14 @@ export function factsFromEvents(events, { duration = 0, date = '' } = {}) {
  * Facts from a LIVE log of the engine: JSONL objects {s, type, user: {uid, id, name}, ...}
  * (docs/games/guessword.md, "Live logs"); a log filtered to these types by Laravel reads the same.
  */
-export function factsFromLive(lines) {
-    const start = lines.find((l) => l.type === 'live_start');
+export function factsFromLive(all) {
+    const start = all.find((l) => l.type === 'live_start');
+    // the LIVE ends at its first silence of GAP s (not even a viewer): the engine may write the next day's first
+    // round into this file before TikTok connects to the new LIVE (30.10 got a round at 31.10 07:01, s = 18:48 h)
+    const GAP = 1800;
+    const ss = all.map((l) => l.s).filter((s) => typeof s === 'number').sort((a, b) => a - b);
+    const gap = ss.findIndex((s, i) => i && s - ss[i - 1] > GAP);
+    const lines = gap < 0 ? all : all.filter((l) => typeof l.s !== 'number' || l.s <= ss[gap - 1]);
     const who = (u = {}) => ({ key: u.uid || (u.id ? '@' + u.id : clean(u.name)), name: clean(u.name || u.id || '?'), avatar: u.uid || u.id || '' });
     const of = (type) => lines.filter((l) => l.type === type && typeof l.s === 'number');
     const at = (type) => Object.fromEntries(of(type).filter((l) => l.seed).map((l) => [l.seed, l.s]));
