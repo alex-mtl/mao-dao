@@ -15,13 +15,6 @@ return [
     // where nginx publishes the engine to browsers and TikTok LIVE Studio (= the engine's BASE_PATH)
     'public_path' => env('GUESSWORD_ENGINE_PUBLIC_PATH', '/guessword/engine'),
 
-    // Pilot access to the TikTok mode: these accounts (e-mails, comma separated) besides super admins.
-    // Replaced later by the platform's "streamer pack" (see App\Services\Capabilities).
-    'streamers' => array_values(array_filter(array_map(
-        fn ($e) => strtolower(trim($e)),
-        explode(',', (string) env('GUESSWORD_STREAMERS', '')),
-    ))),
-
     // the Telegram bot (services/telegram-bot): rooms register there and get their key, which also
     // opens the word-ranker Lambdas. Secret = SSM /tiktok-tg-bot/platform-secret.
     'bot_url' => env('GUESSWORD_BOT_URL', env('APP_ENV') === 'testing' ? 'http://bot.test' : null),

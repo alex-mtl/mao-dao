@@ -10,7 +10,6 @@ beforeEach(function () {
     config([
         'guessword.engine_url' => 'http://engine.test',
         'guessword.engine_secret' => 's3cret',
-        'guessword.streamers' => ['streamer@example.com'],
     ]);
 });
 
@@ -51,7 +50,7 @@ function fakeEngine(): void
 
 it('lists the streamer\'s lives with counts, champion and activity bins', function () {
     fakeEngine();
-    $user = User::factory()->create(['email' => 'streamer@example.com']);
+    $user = withPack(User::factory()->create(['email' => 'streamer@example.com']));
 
     $this->actingAs($user)->get('/guessword/archive')->assertOk()->assertInertia(fn ($p) => $p
         ->component('Guessword/Archive')
@@ -79,7 +78,7 @@ it('lists the streamer\'s lives with counts, champion and activity bins', functi
 
 it('gives the digest only its event types, users cut to uid / id / name', function () {
     fakeEngine();
-    $user = User::factory()->create(['email' => 'streamer@example.com']);
+    $user = withPack(User::factory()->create(['email' => 'streamer@example.com']));
 
     $events = $this->actingAs($user)->getJson('/guessword/archive/lives/2026-10-30_064810_7.jsonl')->assertOk()->json();
     expect(collect($events)->pluck('type')->unique()->values()->all())
@@ -92,7 +91,7 @@ it('gives the digest only its event types, users cut to uid / id / name', functi
 
 it('serves avatars from the engine and keeps the archive from non-streamers', function () {
     fakeEngine();
-    $user = User::factory()->create(['email' => 'streamer@example.com']);
+    $user = withPack(User::factory()->create(['email' => 'streamer@example.com']));
     $this->actingAs($user)->get('/guessword/avatars/1')->assertOk()->assertHeader('Content-Type', 'image/jpeg');
     $this->actingAs($user)->get('/guessword/avatars/5')->assertNotFound();
 
@@ -150,7 +149,7 @@ it('rebuilds LIVE logs from the engine journal, one per TikTok LIVE, reconnects 
 });
 
 it('shows journal LIVEs in the archive unless the engine logged the same LIVE', function () {
-    $user = User::factory()->create(['email' => 'streamer@example.com']);
+    $user = withPack(User::factory()->create(['email' => 'streamer@example.com']));
     $room = GuesswordRoom::create(['user_id' => $user->id, 'lang' => 'ru']);
     $dir = App\Games\Guessword\Services\LiveArchive::journalDir($room->engineId());
     @mkdir($dir, 0775, true);

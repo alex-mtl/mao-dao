@@ -1,70 +1,56 @@
 <?php
 
 use App\Models\User;
+use App\Models\UserProduct;
 use App\Services\Capabilities;
 use App\Services\StreamerPack;
+use Illuminate\Support\Carbon;
 
-beforeEach(function () {
-    // the command edits .env: point the app at a throw-away copy
-    $this->envDir = sys_get_temp_dir().'/streamer-pack-'.uniqid();
-    mkdir($this->envDir);
-    file_put_contents($this->envDir.'/.env', "APP_NAME=Test\nGUESSWORD_STREAMERS=old@example.com\nAPP_DEBUG=true\n");
-    app()->useEnvironmentPath($this->envDir);
-});
+afterEach(fn () => Carbon::setTestNow());
 
-afterEach(function () {
-    @unlink($this->envDir.'/.env');
-    @rmdir($this->envDir);
-});
-
-it('grants and revokes the pack and keeps the rest of .env', function () {
+it('grants and revokes the pack from the console, keeping every grant as history', function () {
     $user = User::factory()->create(['email' => 'New@Example.com']);
+    $caps = app(Capabilities::class);
 
-    $this->artisan('streamer', ['action' => 'grant', 'user' => 'new@example.com'])->assertSuccessful();
-
-    expect(file_get_contents($this->envDir.'/.env'))
-        ->toBe("APP_NAME=Test\nGUESSWORD_STREAMERS=old@example.com,new@example.com\nAPP_DEBUG=true\n")
-        ->and(app(Capabilities::class)->allows($user, Capabilities::GUESSWORD_TIKTOK))->toBeTrue();
+    $this->artisan('streamer', ['action' => 'grant', 'user' => 'new@example.com'])
+        ->expectsOutputToContain('until 2026-12-31')->assertSuccessful();
+    expect($caps->allows($user, Capabilities::GUESSWORD_TIKTOK))->toBeTrue();
 
     $this->artisan('streamer', ['action' => 'grant', 'user' => 'NEW@example.com'])
         ->expectsOutputToContain('Already has the pack')->assertSuccessful();
 
+    // a longer term replaces the shorter one
+    $this->artisan('streamer', ['action' => 'grant', 'user' => 'new@example.com', '--until' => '2027-03-31'])
+        ->expectsOutputToContain('until 2027-03-31')->assertSuccessful();
+
+    $this->artisan('streamer', ['action' => 'list'])->expectsOutputToContain('New@Example.com')->assertSuccessful();
+
     $this->artisan('streamer', ['action' => 'revoke', 'user' => 'new@example.com'])->assertSuccessful();
-
-    expect(app(StreamerPack::class)->emails())->toBe(['old@example.com'])
-        ->and(app(Capabilities::class)->allows($user, Capabilities::GUESSWORD_TIKTOK))->toBeFalse();
+    expect($caps->allows($user, Capabilities::GUESSWORD_TIKTOK))->toBeFalse()
+        ->and(UserProduct::where('user_id', $user->id)->count())->toBe(2)
+        ->and(UserProduct::active()->count())->toBe(0);
 });
 
-it('refuses an unknown e-mail unless forced', function () {
+it('ends the pack on its expiry date', function () {
+    $user = User::factory()->create();
+    app(StreamerPack::class)->grantUser($user, Carbon::parse('2026-12-31 23:59:59'));
+
+    Carbon::setTestNow('2026-12-31 23:00:00');
+    expect(app(StreamerPack::class)->hasUser($user))->toBeTrue();
+
+    Carbon::setTestNow('2027-01-01 00:00:01');
+    expect(app(StreamerPack::class)->hasUser($user))->toBeFalse();
+});
+
+it('refuses an unknown user and finds one by nickname, refusing an ambiguous one', function () {
     $this->artisan('streamer', ['action' => 'grant', 'user' => 'ghost@example.com'])->assertFailed();
-    expect(app(StreamerPack::class)->has('ghost@example.com'))->toBeFalse();
 
-    $this->artisan('streamer', ['action' => 'grant', 'user' => 'ghost@example.com', '--force' => true])->assertSuccessful();
-    expect(app(StreamerPack::class)->has('ghost@example.com'))->toBeTrue();
-});
-
-it('finds the user by nickname and refuses an ambiguous one', function () {
     $user = User::factory()->create(['name' => 'StreamStar', 'email' => 'Star@Example.com']);
-
     $this->artisan('streamer', ['action' => 'grant', 'user' => 'streamstar'])
-        ->expectsOutputToContain('Granted: star@example.com')->assertSuccessful();
-    expect(app(Capabilities::class)->allows($user, Capabilities::GUESSWORD_TIKTOK))->toBeTrue();
-
-    $this->artisan('streamer', ['action' => 'revoke', 'user' => 'StreamStar'])->assertSuccessful();
-    expect(app(StreamerPack::class)->has('star@example.com'))->toBeFalse();
+        ->expectsOutputToContain('Granted: Star@Example.com')->assertSuccessful();
+    expect(app(StreamerPack::class)->hasUser($user))->toBeTrue();
 
     User::factory()->create(['name' => 'streamstar', 'email' => 'other@example.com']);
     $this->artisan('streamer', ['action' => 'grant', 'user' => 'StreamStar'])
         ->expectsOutputToContain('Several users')->assertFailed();
-
-    $this->artisan('streamer', ['action' => 'grant', 'user' => 'NoSuchNick', '--force' => true])->assertFailed();
-    expect(app(StreamerPack::class)->emails())->toBe(['old@example.com']);
-});
-
-it('adds the line when .env has none', function () {
-    file_put_contents($this->envDir.'/.env', "APP_NAME=Test\n");
-
-    app(StreamerPack::class)->grant('a@example.com');
-
-    expect(file_get_contents($this->envDir.'/.env'))->toBe("APP_NAME=Test\nGUESSWORD_STREAMERS=a@example.com\n");
 });

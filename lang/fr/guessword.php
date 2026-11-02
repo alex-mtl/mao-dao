@@ -470,6 +470,7 @@ return [
     'clients_none' => 'Aucun client pour l\'instant.',
     'client_name' => 'Nom du client',
     'client_pack' => 'Pack streamer',
+    'client_pack_until' => 'jusqu\'au :date',
     'client_create' => 'Créer',
     'client_created' => 'Client créé. Générez-lui maintenant une clé.',
     'client_no_key' => 'Pas de clé',

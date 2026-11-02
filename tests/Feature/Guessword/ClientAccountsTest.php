@@ -4,26 +4,16 @@ use App\Games\Guessword\Models\GuesswordRoom;
 use App\Models\Role;
 use App\Models\User;
 use App\Services\ClientAccounts;
+use App\Services\StreamerPack;
 use Illuminate\Support\Facades\Http;
 
 beforeEach(function () {
     $this->withoutVite();
-    // StreamerPack edits .env: point the app at a throw-away copy
-    $this->envDir = sys_get_temp_dir().'/client-accounts-'.uniqid();
-    mkdir($this->envDir);
-    file_put_contents($this->envDir.'/.env', "GUESSWORD_STREAMERS=\n");
-    app()->useEnvironmentPath($this->envDir);
     config([
         'guessword.engine_url' => 'http://engine.test',
         'guessword.engine_secret' => 's3cret',
-        'guessword.streamers' => [],
     ]);
     Http::fake(['engine.test/*' => Http::response(['rooms' => []])]);
-});
-
-afterEach(function () {
-    @unlink($this->envDir.'/.env');
-    @rmdir($this->envDir);
 });
 
 function clientAdmin(): User
@@ -44,13 +34,15 @@ it('lets only a super admin create a client and issue its key, shown once', func
     expect($client->name)->toBe('Streamer One')
         ->and($client->email)->toEndWith('@'.ClientAccounts::EMAIL_DOMAIN)
         ->and($client->hasVerifiedEmail())->toBeTrue()
-        ->and($client->streamer_pack)->toBeTrue()
-        // the web server cannot write .env on the server: the pack is an account flag
-        ->and(file_get_contents($this->envDir.'/.env'))->toBe("GUESSWORD_STREAMERS=\n");
+        ->and(app(StreamerPack::class)->activeFor($client))
+        ->source->toBe('admin')
+        ->granted_by->toBe($admin->id)
+        ->expires_at->toDateString()->toBe('2026-12-31');
 
     $this->post("/guessword/clients/{$client->id}/key")->assertRedirect();
     $page = $this->get('/guessword/clients')->assertInertia(fn ($p) => $p
-        ->component('Guessword/Clients')->where('clients.0.pack', true)->where('newKey.id', $client->id));
+        ->component('Guessword/Clients')->where('clients.0.pack', true)->where('newKey.id', $client->id)
+        ->where('clients.0.packUntil', fn ($v) => str_starts_with($v, '2026-12-31')));
     $key = $page->viewData('page')['props']['newKey']['key'];
 
     expect($key)->toMatch('/^MD(-[2-9A-Z]{4}){5}$/')

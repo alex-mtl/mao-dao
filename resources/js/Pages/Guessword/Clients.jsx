@@ -73,6 +73,11 @@ export default function Clients({ clients, newKey, notice }) {
                                         <label className="flex items-center gap-2 text-sm text-ink-700">
                                             <Checkbox checked={c.pack} onChange={(e) => post('pack', c.id, { on: e.target.checked })} />
                                             {t('guessword.client_pack')}
+                                            {c.pack && c.packUntil && (
+                                                <span className="text-xs text-ink-500">
+                                                    {t('guessword.client_pack_until', { date: new Date(c.packUntil).toLocaleDateString() })}
+                                                </span>
+                                            )}
                                         </label>
                                         <SecondaryButton type="button"
                                                          onClick={() => post('key', c.id, {}, c.keyHint ? t('guessword.client_key_replace_confirm') : null)}>

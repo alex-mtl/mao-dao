@@ -48,8 +48,8 @@ picked a word and for the host deciding on it. Other languages: no `difficulty.j
 ## Access
 
 Who may run a room is answered by the platform service `App\Services\Capabilities`
-(`guessword.tiktok`): super admins and the e-mails in `GUESSWORD_STREAMERS` (pilot allowlist; the
-planned "streamer pack" replaces it there, not in the game).
+(`guessword.tiktok`): super admins and accounts with an active streamer pack (`user_products`,
+`App\Services\StreamerPack`; CLAUDE.md rule 3).
 
 Every streamer reaches only their own room: `/guessword/room*` takes no room id, and the engine opens a
 room only by its secret tokens. Super admins alone also see every room: `/guessword/rooms` (list) and
@@ -95,7 +95,6 @@ engine they are guess options (`GuessGame.SCREEN`, saved with the room) and go t
 | `GUESSWORD_ENGINE_URL` | engine for server-to-server calls, default `http://127.0.0.1:8770` |
 | `GUESSWORD_ENGINE_SECRET` | shared secret with the engine |
 | `GUESSWORD_ENGINE_PUBLIC_PATH` | where nginx publishes the engine, default `/guessword/engine` |
-| `GUESSWORD_STREAMERS` | pilot allowlist: e-mails, comma separated |
 | `GUESSWORD_BOT_URL` | the Telegram bot's Function URL |
 | `GUESSWORD_BOT_PLATFORM_SECRET` | = SSM `/tiktok-tg-bot/platform-secret` |
 

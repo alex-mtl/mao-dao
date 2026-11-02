@@ -13,6 +13,8 @@ use App\Models\User;
  */
 class Capabilities
 {
+    public function __construct(private StreamerPack $pack) {}
+
     /** Guess the Word: run the game for one's own TikTok LIVE. */
     public const GUESSWORD_TIKTOK = 'guessword.tiktok';
 
@@ -23,9 +25,7 @@ class Capabilities
         }
 
         return match ($capability) {
-            self::GUESSWORD_TIKTOK => $user->isSuperAdmin()
-                || $user->streamer_pack
-                || in_array(strtolower((string) $user->email), config('guessword.streamers', []), true),
+            self::GUESSWORD_TIKTOK => $user->isSuperAdmin() || $this->pack->hasUser($user),
             default => false,
         };
     }

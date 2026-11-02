@@ -470,6 +470,7 @@ return [
     'clients_none' => 'Клиентов пока нет.',
     'client_name' => 'Имя клиента',
     'client_pack' => 'Стримерпак',
+    'client_pack_until' => 'до :date',
     'client_create' => 'Создать',
     'client_created' => 'Клиент создан. Теперь сгенерируйте ему ключ.',
     'client_no_key' => 'Ключа нет',

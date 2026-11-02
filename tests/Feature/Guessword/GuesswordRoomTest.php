@@ -10,7 +10,6 @@ beforeEach(function () {
     config([
         'guessword.engine_url' => 'http://engine.test',
         'guessword.engine_secret' => 's3cret',
-        'guessword.streamers' => ['streamer@example.com'],
         'guessword.bot_url' => 'http://bot.test',
         'guessword.bot_platform_secret' => 'plat',
     ]);
@@ -27,7 +26,7 @@ it('shows the section to everyone and the start button only to streamers', funct
     $this->get('/guessword')->assertOk()->assertInertia(fn ($p) => $p
         ->component('Guessword/Index')->where('canStart', false)->where('engineOnline', true));
 
-    $streamer = User::factory()->create(['email' => 'streamer@example.com']);
+    $streamer = withPack(User::factory()->create(['email' => 'streamer@example.com']));
     $this->actingAs($streamer)->get('/guessword')
         ->assertInertia(fn ($p) => $p->where('canStart', true));
 });
@@ -54,10 +53,9 @@ it('says when the engine is down instead of failing', function () {
 });
 
 it('gives every streamer only their own room, never another one', function () {
-    config(['guessword.streamers' => ['a@example.com', 'b@example.com']]);
     Http::fake(['engine.test/*' => Http::response(engineRooms())]);
-    $a = User::factory()->create(['email' => 'a@example.com']);
-    $b = User::factory()->create(['email' => 'b@example.com']);
+    $a = withPack(User::factory()->create(['email' => 'a@example.com']));
+    $b = withPack(User::factory()->create(['email' => 'b@example.com']));
 
     $this->actingAs($a)->get('/guessword/room')->assertOk();
     $this->actingAs($b)->get('/guessword/room')->assertOk();
@@ -83,7 +81,7 @@ it('lets a super admin into every room and nobody else', function () {
         'engine.test/*' => Http::response(engineRooms()),
         'bot.test/platform/games' => Http::response(['id' => 'gw1', 'game_key' => 'key-1']),
     ]);
-    $streamer = User::factory()->create(['email' => 'streamer@example.com']);
+    $streamer = withPack(User::factory()->create(['email' => 'streamer@example.com']));
     $this->actingAs($streamer)->post('/guessword/room', ['tiktok' => 'mao', 'lang' => 'ru']);
     $room = GuesswordRoom::where('user_id', $streamer->id)->sole();
     $admin = User::factory()->create();
@@ -102,8 +100,7 @@ it('lets a super admin into every room and nobody else', function () {
     expect(GuesswordRoom::count())->toBe(1);                                     // the admin's visit made no room of their own
 
     // the streamer (with the streamer pack) and an ordinary user: not the list, not someone's room by id
-    $other = User::factory()->create(['email' => 'other@example.com']);
-    config(['guessword.streamers' => ['streamer@example.com', 'other@example.com']]);
+    $other = withPack(User::factory()->create(['email' => 'other@example.com']));
     foreach ([$streamer, $other, User::factory()->create()] as $u) {
         $this->actingAs($u)->get('/guessword')->assertInertia(fn ($p) => $p->where('isAdmin', false));
         $this->actingAs($u)->get('/guessword/rooms')->assertForbidden();
@@ -131,7 +128,7 @@ it('keeps the room pages for streamers only', function () {
 
 it('creates the room, saves the settings into the engine and keeps the Euler key secret', function () {
     Http::fake(['engine.test/*' => Http::response(engineRooms() + ['running' => false])]);
-    $streamer = User::factory()->create(['email' => 'streamer@example.com']);
+    $streamer = withPack(User::factory()->create(['email' => 'streamer@example.com']));
 
     $this->actingAs($streamer)->get('/guessword/room')->assertOk()->assertInertia(fn ($p) => $p
         ->component('Guessword/Room')
@@ -158,7 +155,7 @@ it('creates the room, saves the settings into the engine and keeps the Euler key
 });
 
 it('tells the streamer when Euler refused the saved key', function () {
-    $streamer = User::factory()->create(['email' => 'streamer@example.com']);
+    $streamer = withPack(User::factory()->create(['email' => 'streamer@example.com']));
     $room = GuesswordRoom::create(['user_id' => $streamer->id, 'lang' => 'ru']);
     $room->euler_key = 'bad-key';
     $room->save();
@@ -172,9 +169,8 @@ it('tells the streamer when Euler refused the saved key', function () {
 
 it('refuses a TikTok username another streamer already uses', function () {
     Http::fake(['engine.test/*' => Http::response(engineRooms())]);
-    config(['guessword.streamers' => ['a@example.com', 'b@example.com']]);
-    $a = User::factory()->create(['email' => 'a@example.com']);
-    $b = User::factory()->create(['email' => 'b@example.com']);
+    $a = withPack(User::factory()->create(['email' => 'a@example.com']));
+    $b = withPack(User::factory()->create(['email' => 'b@example.com']));
     $this->actingAs($a)->post('/guessword/room', ['tiktok' => 'mao', 'lang' => 'ru']);
 
     $this->actingAs($b)->post('/guessword/room', ['tiktok' => '@MAO', 'lang' => 'ru'])->assertSessionHasErrors('tiktok');
@@ -185,7 +181,7 @@ it('starts and stops the room in the engine', function () {
         'engine.test/*' => Http::response(['running' => true]),
         'bot.test/platform/games' => Http::response(['id' => 'gw1', 'game_key' => 'key-1']),
     ]);
-    $streamer = User::factory()->create(['email' => 'streamer@example.com']);
+    $streamer = withPack(User::factory()->create(['email' => 'streamer@example.com']));
 
     $this->actingAs($streamer)->post('/guessword/room/start')->assertSessionHasErrors('tiktok');   // no username yet
 
@@ -207,7 +203,7 @@ it('starts and stops the room in the engine', function () {
 
 it('makes a new Studio link that replaces the old one', function () {
     Http::fake(['engine.test/*' => Http::response(engineRooms())]);
-    $streamer = User::factory()->create(['email' => 'streamer@example.com']);
+    $streamer = withPack(User::factory()->create(['email' => 'streamer@example.com']));
     $this->actingAs($streamer)->get('/guessword/room');
     $old = GuesswordRoom::firstWhere('user_id', $streamer->id)->overlay_token;
 
@@ -220,13 +216,13 @@ it('makes a new Studio link that replaces the old one', function () {
 
 it('tells the streamer when the engine does not answer', function () {
     Http::fake(['engine.test/*' => Http::response('', 500)]);
-    $streamer = User::factory()->create(['email' => 'streamer@example.com']);
+    $streamer = withPack(User::factory()->create(['email' => 'streamer@example.com']));
 
     $this->actingAs($streamer)->post('/guessword/room', ['tiktok' => 'mao', 'lang' => 'ru'])->assertSessionHas('error');
 });
 
 it('tells the streamer the room stopped itself without a LIVE', function () {
-    $streamer = User::factory()->create(['email' => 'streamer@example.com']);
+    $streamer = withPack(User::factory()->create(['email' => 'streamer@example.com']));
     $this->actingAs($streamer)->get('/guessword/room');
     $room = GuesswordRoom::firstWhere('user_id', $streamer->id);
     Http::fake(['engine.test/*' => Http::response(engineRooms([

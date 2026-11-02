@@ -470,6 +470,7 @@ return [
     'clients_none' => 'No clients yet.',
     'client_name' => 'Client name',
     'client_pack' => 'Streamer pack',
+    'client_pack_until' => 'until :date',
     'client_create' => 'Create',
     'client_created' => 'Client created. Now generate a key for it.',
     'client_no_key' => 'No key',

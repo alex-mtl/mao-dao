@@ -48,3 +48,11 @@ function something()
 {
     // ..
 }
+
+/** the account with an active streamer pack (App\Services\StreamerPack) */
+function withPack(\App\Models\User $user): \App\Models\User
+{
+    app(\App\Services\StreamerPack::class)->grantUser($user);
+
+    return $user;
+}

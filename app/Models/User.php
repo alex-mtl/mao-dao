@@ -73,6 +73,12 @@ class User extends Authenticatable implements HasLocalePreference, HasMedia, Mus
         return $this->belongsTo(Role::class);
     }
 
+    /** every product grant of the account, active and past (App\Services\StreamerPack, ...) */
+    public function products(): HasMany
+    {
+        return $this->hasMany(UserProduct::class);
+    }
+
     public function hasRole(string $slug): bool
     {
         return $this->role?->slug === $slug;
@@ -100,7 +106,6 @@ class User extends Authenticatable implements HasLocalePreference, HasMedia, Mus
             'verification_expires_at' => 'datetime',
             'password' => 'hashed',
             'client_only' => 'boolean',
-            'streamer_pack' => 'boolean',
             'client_key_issued_at' => 'datetime',
         ];
     }

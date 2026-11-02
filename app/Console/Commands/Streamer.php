@@ -5,12 +5,13 @@ namespace App\Console\Commands;
 use App\Models\User;
 use App\Services\StreamerPack;
 use Illuminate\Console\Command;
+use Illuminate\Support\Carbon;
 
 /**
  * Turns the "streamer pack" on/off for a user by hand (the rules live in StreamerPack):
  *
  *   php artisan streamer grant user@example.com
- *   php artisan streamer grant SomeNick          (the user's name; must match exactly one user)
+ *   php artisan streamer grant SomeNick --until=2027-03-31   (the user's name; must match exactly one user)
  *   php artisan streamer revoke user@example.com|SomeNick
  *   php artisan streamer list
  */
@@ -19,7 +20,7 @@ class Streamer extends Command
     protected $signature = 'streamer
         {action : grant | revoke | list}
         {user? : the user\'s e-mail or nickname}
-        {--force : grant even if no user has this e-mail yet}';
+        {--until= : last day of the pack, YYYY-MM-DD (default: the end of 2026)}';
 
     protected $description = 'Turn the streamer pack on/off for a user, or list who has it';
 
@@ -29,24 +30,22 @@ class Streamer extends Command
         $given = trim((string) $this->argument('user'));
 
         if ($action === 'list') {
-            $emails = $pack->emails();
-            foreach ($emails as $e) {
-                $this->line($e.'  '.$this->describe($this->findUser($e)));
+            $holders = $pack->holders();
+            foreach ($holders as $grant) {
+                $this->line($grant->user->email.'  '.$this->describe($grant->user).'  until '.($grant->expires_at?->toDateString() ?? 'no end'));
             }
-            $this->info(count($emails).' streamer(s); super admins have the pack anyway.');
+            $this->info($holders->count().' streamer(s); super admins have the pack anyway.');
 
             return self::SUCCESS;
         }
 
         if (! in_array($action, ['grant', 'revoke'], true) || $given === '') {
-            $this->error('Usage: streamer grant|revoke <email|nickname>  or  streamer list');
+            $this->error('Usage: streamer grant|revoke <email|nickname> [--until=YYYY-MM-DD]  or  streamer list');
 
             return self::FAILURE;
         }
 
-        $email = strtolower($given);
-        $user = $this->findUser($email);
-
+        $user = User::whereRaw('lower(email) = ?', [strtolower($given)])->first();
         if (! $user) {
             $byName = User::whereRaw('lower(name) = ?', [mb_strtolower($given)])->get();
             if ($byName->count() > 1) {
@@ -57,34 +56,30 @@ class Streamer extends Command
 
                 return self::FAILURE;
             }
-            if ($user = $byName->first()) {
-                $email = strtolower($user->email);
-            }
+            $user = $byName->first();
+        }
+        if (! $user) {
+            $this->error("No user with e-mail or nickname \"{$given}\".");
+
+            return self::FAILURE;
         }
 
-        $who = $email.'  '.$this->describe($user);
+        $who = $user->email.'  '.$this->describe($user);
 
         if ($action === 'grant') {
-            if (! $user && (! $this->option('force') || ! str_contains($email, '@'))) {
-                $this->error("No user with e-mail or nickname \"{$given}\" (--force adds an unregistered e-mail).");
-
-                return self::FAILURE;
-            }
-            $this->info($pack->grant($email) ? "Granted: {$who}" : "Already has the pack: {$who}");
+            $until = $this->option('until') ? Carbon::parse($this->option('until'))->endOfDay() : null;
+            $done = $pack->grantUser($user, $until, 'console');
+            $end = $pack->activeFor($user)?->expires_at?->toDateString() ?? 'no end';
+            $this->info(($done ? 'Granted: ' : 'Already has the pack: ').$who.'  until '.$end);
         } else {
-            $this->info($pack->revoke($email) ? "Revoked: {$who}" : "Did not have the pack: {$who}");
+            $this->info($pack->revokeUser($user) ? "Revoked: {$who}" : "Did not have the pack: {$who}");
         }
 
         return self::SUCCESS;
     }
 
-    private function findUser(string $email): ?User
+    private function describe(User $user): string
     {
-        return User::whereRaw('lower(email) = ?', [$email])->first();
-    }
-
-    private function describe(?User $user): string
-    {
-        return $user ? "(id {$user->id}, {$user->name})" : '(no such user)';
+        return "(id {$user->id}, {$user->name})";
     }
 }

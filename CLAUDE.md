@@ -47,16 +47,22 @@ separable later:
    Quiz code, Guess the Word never imports Mafia code.
 3. **Shared capabilities are platform services.** Game currency, the planned
    "streamer pack", access to a game's TikTok mode: one platform service
-   answers "may this user do X?", games only ask. (For the Guess the Word
-   pilot this is an allowlist; the streamer pack replaces it later without
-   touching the game.)
+   answers "may this user do X?", games only ask.
+   **Products of an account** live in `user_products` (`App\Models\UserProduct`):
+   one row per grant with `starts_at` / `expires_at` / `revoked_at`, `source`
+   (migration | admin | console | purchase) and `granted_by`; active rows give
+   access, old rows are the history. Purchases and the game currency come later
+   and will add rows here. The first product is the **streamer pack**
+   (`streamer_pack`); until it is sold every grant runs to 2026-12-31
+   (`StreamerPack::DEFAULT_UNTIL`, owner's decision 2026-11-02; the old
+   `GUESSWORD_STREAMERS` allowlist in `.env` was moved here and is no longer read).
    **"Turn on the streamer pack for user X"** = one command, nothing else to
    look up: `ssh aws-dev "cd /var/www/quiz && php artisan streamer grant
-   <email>"` (`revoke`, `list`; e-mail or nickname = `users.name`, an ambiguous nickname is refused). It checks the user exists (prints
-   id and name; `--force` for an e-mail not registered yet), edits
-   `GUESSWORD_STREAMERS` in `.env` and rebuilds the config cache. Super
-   admins have the pack anyway. All grants go through
-   `App\Services\StreamerPack` — the future on-site purchase calls it too.
+   <email>"` (`--until=YYYY-MM-DD`; `revoke`, `list`; e-mail or nickname =
+   `users.name`, an ambiguous nickname is refused; the user must exist). Client
+   accounts get it on `/guessword/clients`. Super admins have the pack anyway.
+   All grants go through `App\Services\StreamerPack` — the future on-site
+   purchase calls it too.
 4. **Sidecars and cloud services talk to Laravel only over HTTP** with a
    shared secret (`/internal/*`), as `media-sfu` already does.
 

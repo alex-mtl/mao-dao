@@ -26,7 +26,7 @@ class ClientAccounts
 
     public function __construct(private StreamerPack $pack) {}
 
-    public function create(string $name, bool $streamerPack): User
+    public function create(string $name, bool $streamerPack, ?User $by = null): User
     {
         $user = new User;
         $user->forceFill([
@@ -38,7 +38,7 @@ class ClientAccounts
         ])->save();
 
         if ($streamerPack) {
-            $this->pack->grantUser($user);
+            $this->pack->grantUser($user, by: $by);
         }
 
         return $user;
