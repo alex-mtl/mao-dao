@@ -47,6 +47,20 @@ class LikeBalloons:
         self.dirty = True
         return launches
 
+    def rename(self, old, new):
+        """one viewer under two ids (identities): the likes add up under the new one"""
+        o = self.likes.pop(old, None)
+        if not o:
+            return
+        u = self.likes.get(new)
+        if u is None:
+            self.likes[new] = o
+        else:
+            for k in ("progress", "total", "launched"):
+                u[k] += o[k]
+            u["last"] = max(u["last"], o["last"])
+        self.dirty = True
+
     def total_of(self, viewer_id):
         u = self.likes.get(viewer_id)
         return u["total"] if u else 0

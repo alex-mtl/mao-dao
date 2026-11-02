@@ -1252,5 +1252,97 @@ class TelegramPollTest(unittest.TestCase):
         self.assertEqual(bodies[-1]["credits"], {"vorobey": 0})
 
 
+class IdentitiesTest(unittest.TestCase):
+    """TikTok's chat lost the @id (2026-11-01): one viewer must stay one viewer, found by any of their ids."""
+
+    def setUp(self):
+        from app import identities as ids_mod
+        self.ids_mod = ids_mod
+        self.saved = ids_mod.IDENTITIES
+        self.d = tempfile.mkdtemp()
+        ids_mod.IDENTITIES = ids_mod.Identities(os.path.join(self.d, "identities.json"))
+        self.ids = ids_mod.IDENTITIES
+
+    def tearDown(self):
+        self.ids_mod.IDENTITIES = self.saved
+
+    def chat(self, nick, uid):
+        return Viewer(nick, nick, "", 1, uid=uid, guessed=True)
+
+    def test_chat_gets_the_known_id(self):
+        self.ids.resolve(Viewer("krestik63119", "Krestik", uid="683"))       # a gift / like: the real @id
+        v = self.ids.resolve(self.chat("Krestik", "683"))
+        self.assertEqual(v.id, "krestik63119")
+        self.assertEqual(self.ids.lookup("@KRESTIK63119"), "krestik63119")
+        self.assertEqual(self.ids.renames, [])
+
+    def test_stand_in_is_renamed_when_the_real_id_comes(self):
+        self.assertEqual(self.ids.resolve(self.chat("Krestik", "683")).id, "Krestik")
+        self.assertEqual(self.ids.resolve(Viewer("krestik63119", "Krestik", uid="683")).id, "krestik63119")
+        self.assertEqual(self.ids.renames, [(1, "Krestik", "krestik63119")])
+        self.assertEqual(self.ids.lookup("krestik"), "krestik63119")        # the old id still finds them
+        self.assertEqual(self.ids.resolve(self.chat("Krestik", "683")).id, "krestik63119")
+
+    def test_nicknames_never_collide(self):
+        self.ids.resolve(Viewer("ares", "Ares", uid="1"))                    # someone's real @id is "ares"
+        self.assertEqual(self.ids.resolve(self.chat("ares", "2")).id, "ares~2")
+        self.ids.resolve(self.chat("Masha", "3"))                            # a stand-in "Masha"...
+        self.ids.resolve(Viewer("masha", "Masha K", uid="4"))                # ... is somebody else's real @id
+        self.assertEqual(self.ids.resolve(self.chat("Masha", "3")).id, "Masha~3")
+        self.assertEqual(self.ids.lookup("masha"), "masha")
+        self.ids.resolve(self.chat("Kot", "5"))
+        self.ids.resolve(self.chat("Kot", "6"))                              # one nickname, two viewers
+        self.assertEqual(self.ids.lookup("Kot"), "Kot")                       # found nobody: nothing goes astray
+        self.assertEqual(self.ids.resolve(self.chat("Kot", "6")).id, "Kot~6")
+
+    def test_saved_and_loaded(self):
+        self.ids.resolve(self.chat("Krestik", "683"))
+        self.ids.resolve(Viewer("krestik63119", "Krestik", uid="683"))
+        self.ids.flush()
+        again = self.ids_mod.Identities(os.path.join(self.d, "identities.json"))
+        self.assertEqual(again.lookup("Krestik"), "krestik63119")
+        self.assertEqual(again.renames_since(0), [(1, "Krestik", "krestik63119")])
+
+    def test_hub_merges_the_room_data(self):
+        from app.hub import Hub
+        store = JsonStore(tempfile.mkdtemp())
+        hub = Hub(store)
+        g = hub.games["guess"]
+        hub.gift(Viewer("krestik63119", "Krestik", "", 1, uid="683"), "Rose", 3)   # credits on the real @id
+        hub.comment(self.chat("Krestik", "683"), "мои подсказки")
+        self.assertIn("krestik63119", hub.recent)
+        self.assertNotIn("Krestik", hub.recent)
+        # a chat-only viewer: hints and stats under the stand-in until their real @id shows up
+        hub.comment(self.chat("Masha", "77"), "привет")
+        g.add_credits("Masha", 2)
+        g.boost_ids.add("Masha")
+        g.stats.get("Masha", "Masha")["wins"] = 2
+        g.stats.get("mashavrai4444", "Masha")["wins"] = 1
+        hub.like(Viewer("mashavrai4444", "Masha", "", uid="77"), 5)
+        self.assertEqual(g.credits.get("mashavrai4444"), 2)
+        self.assertNotIn("masha", g.credits)
+        self.assertIn("mashavrai4444", g.boost_ids)
+        self.assertNotIn("Masha", g.stats.players)
+        self.assertEqual(g.stats.players["mashavrai4444"]["wins"], 3)
+        self.assertEqual(g.add_credits("@Masha", 1), 3)                     # the bot / artisan by the old id
+        hub.save_session()
+        self.assertEqual(Hub(store).ids_seq, 1)                            # applied once, not again
+
+    def test_backfill_from_live_logs(self):
+        import json as _json
+        lives = os.path.join(self.d, "rooms", "gw1", "lives")
+        os.makedirs(lives)
+        rows = [{"t": "2026-10-30T10:00:00.000-05:00", "type": "viewer", "user": {"uid": "683", "id": "krestik63119"}},
+                {"t": "2026-11-02T06:50:36.000-05:00", "type": "viewer", "user": {"uid": "77", "id": "Masha"}},
+                {"t": "2026-11-02T06:51:00.000-05:00", "type": "balloon", "user": {"uid": "77", "id": "mashavrai4444"}},
+                {"t": "2026-11-02T06:52:00.000-05:00", "type": "viewer", "user": {"uid": "683", "id": "Krestik"}}]
+        with open(os.path.join(lives, "a.jsonl"), "w", encoding="utf-8") as f:
+            f.write("\n".join(_json.dumps(r) for r in rows))
+        ids = self.ids_mod.Identities(os.path.join(self.d, "fresh.json"))
+        self.assertEqual(ids.lookup("Krestik"), "krestik63119")
+        self.assertEqual(ids.lookup("Masha"), "mashavrai4444")
+        self.assertEqual({r[1:] for r in ids.renames}, {("Masha", "mashavrai4444"), ("Krestik", "krestik63119")})
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -11,6 +11,7 @@ from collections import OrderedDict, deque
 from . import config
 from .games import GAMES
 from .games.base import Viewer
+from .identities import identities
 from .live_log import LiveLog
 from .reactions.balloons import LikeBalloons
 from .reactions.cake import CakeShows
@@ -72,6 +73,8 @@ class Hub:
             g.live = self.live
         self.balloons = LikeBalloons(store, self.global_settings)   # like balloons fly over every page
         self.closed = False                       # set on shutdown: incoming events are ignored
+        self.ids_seq = int(s.get("ids_seq") or 0)   # identities' renames already applied to this room's data
+        self._apply_renames()
         self.game.on_activate()
 
     @property
@@ -105,7 +108,7 @@ class Hub:
 
     def save_session(self):
         self.store.save(self.SESSION, {"room_id": self.room_id, "active": self.active, "lang": self.lang,
-                                       "options": self.options(),
+                                       "options": self.options(), "ids_seq": self.ids_seq,
                                        "viewers": [{"id": k, **u} for k, u in self.recent.items()]})
 
     def options(self):
@@ -184,9 +187,32 @@ class Hub:
         e.update(seq=self.feed_seq, t=time.time())
         self.feed.append(e)
 
+    def _apply_renames(self):
+        """viewers who got their real @id (or a new handle) since: their data here moves to it, merged"""
+        for seq, old, new in identities().renames_since(self.ids_seq):
+            self.ids_seq = seq
+            if old == new:
+                continue
+            r = self.recent.pop(old, None)
+            if r and new not in self.recent:
+                self.recent[new] = r
+            name = self.names.pop(old.lower(), None)
+            if name:
+                self.names.setdefault(new.lower(), name)
+            if old in self.greeted:
+                self.greeted.discard(old)
+                self.greeted.add(new)
+            self.balloons.rename(old, new)
+            for g in self.games.values():
+                if hasattr(g, "rename_viewer"):
+                    g.rename_viewer(old, new)
+
     def _seen(self, v):
         """nicknames change: every event carries the current one; the stream's viewers, latest first (the room
-        page picks one to act for)"""
+        page picks one to act for). First of all: who it is (identities - chat events come without the @id)."""
+        identities().resolve(v)
+        if identities().seq > self.ids_seq:
+            self._apply_renames()
         if v.id and v.name:
             self.live.viewer(v)
             self.names[v.id.lower()] = v.name
@@ -408,6 +434,7 @@ class Hub:
             self.balloons.save()
             self.save_session()
             catalog().flush()
+            identities().flush()
 
     async def broadcaster(self):
         """Push the active game's state + new events to websocket clients (<=10/s)."""

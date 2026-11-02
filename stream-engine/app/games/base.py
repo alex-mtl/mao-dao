@@ -16,6 +16,7 @@ class Viewer:
     uid: str = ""        # numeric TikTok user id (never changes, unlike the @unique_id), "" if unknown
     nick: str = ""       # the nickname exactly as TikTok sent it (name is cut for the screen), "" = same as name
     big: str = ""        # the largest avatar url, JPEG first (the bot's photo of a viewer), "" if unknown
+    guessed: bool = False  # TikTok sent no @unique_id (chat since 2026-11-01): id is the nickname until identities resolves it
 
 
 class BaseGame:

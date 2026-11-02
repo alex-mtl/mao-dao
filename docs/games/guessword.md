@@ -110,6 +110,22 @@ every 3 s instead of 10 while hints can still come; the bot answers `setter_hint
 far). On screen (chroma / TT mode only): `#setterHints`, top right of the camera zone under the timer
 row, the same pill as a boost (avatar + the word), shown in COUNTDOWN / PLAYING.
 
+## Viewer identity: one viewer, one id (since 2026-11-02)
+
+Since 2026-11-01 ~16:26 UTC TikTok sends chat messages **without the `@unique_id`** (only the nickname and
+the numeric user id); gifts, likes and joins still carry it. Hint credits, boosts, wins, the Telegram link and
+the setter check are all keyed by the `@id`, so "подсказка", "мои подсказки" and the 3-words boost stopped
+working for anyone whose nickname differs from their `@id`.
+
+`stream-engine/app/identities.py` (one registry for all rooms, `DATA_DIR/identities.json`) maps the numeric id
+(never changes) → the current `@id`, plus every id a viewer ever had (old handles, nickname stand-ins) → the
+numeric id. Every event goes through it in `Hub._seen()`; `lookup()` finds a viewer by any of their ids
+(`add_credits` uses it, so the bot / `guessword:hints` may name an old id). A viewer seen only in the chat gets
+their nickname as a stand-in id; when the real `@id` arrives the registry records a rename and every room merges
+its data (`GuessGame.rename_viewer`, balloons, the room's recent viewers) — never two records of one person.
+A nickname several viewers use finds nobody and is never merged. On first start the registry is filled from the
+rooms' LIVE logs (`backfill`), which also merges the stand-ins created between 2026-11-01 and the deploy.
+
 ## Live logs and avatars (for clips and digests)
 
 The engine keeps what happened on every TikTok LIVE, so clips and digests can be cut later without

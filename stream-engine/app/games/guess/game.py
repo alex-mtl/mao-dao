@@ -18,6 +18,7 @@ from collections import deque
 import numpy as np
 
 from ... import config
+from ...identities import identities
 from ..base import BaseGame, Viewer
 from . import hints
 from .players import RoundPlayer, SessionStats
@@ -729,10 +730,80 @@ class GuessGame(BaseGame):
         finally:
             self.stolen_by = None
 
+    # ------------------------------------------------------------------ one viewer, two ids
+    def rename_viewer(self, old, new):
+        """identities: the viewer known as `old` (their nickname as a stand-in, or an old @handle) is `new` - what
+        this room keeps under `old` is merged into `new`, so nobody is counted twice"""
+        a_old, a_new = account_id(old), account_id(new)
+        if not (a_old in self.credits or a_old in self.credits_ever or old in self.boost_ids or old in self.players
+                or old in self.stats.players or old in self.hint_t or old in self.multi_ids
+                or (self.setter and self.setter["id"] == a_old)):
+            return                                       # nothing of theirs here
+        if a_old in self.credits and a_old != a_new:     # "Krestik" -> "krestik" is the same account
+            n = self.credits.pop(a_old)
+            self.credits[a_new] = self.credits.get(a_new, 0) + n
+            self.store.save(self.CREDITS, self.credits)
+        if a_old in self.credits_ever:
+            self.credits_ever.discard(a_old)
+            self.credits_ever.add(a_new)
+            self.store.save(self.CREDITS_EVER, sorted(self.credits_ever))
+        if old in self.boost_ids:
+            self.boost_ids.discard(old)
+            self.boost_ids.add(new)
+            self.store.save(self.BOOSTS, sorted(self.boost_ids))
+        for d in (self.hint_t, self.fans_note_t):
+            if old in d:
+                d[new] = max(d.pop(old), d.get(new, 0))
+        if old in self.multi_ids:
+            self.multi_ids.discard(old)
+            self.multi_ids.add(new)
+        if old in self.multi_who:
+            self.multi_who.setdefault(new, self.multi_who.pop(old))
+        s = self.stats.players.pop(old, None)
+        if s:
+            t = self.stats.players.get(new)
+            if t is None:
+                self.stats.players[new] = s
+            else:
+                for k in ("wins", "podiums", "guesses", "rounds", "sum_best"):
+                    t[k] = t.get(k, 0) + s.get(k, 0)
+                t["best"] = min(x for x in (t.get("best"), s.get("best")) if x) if t.get("best") or s.get("best") else 0
+                t["streak"] = max(t.get("streak", 0), s.get("streak", 0))
+                t["best_streak"] = max(t.get("best_streak", 0), s.get("best_streak", 0))
+            self.stats.save()
+        p = self.players.pop(old, None)
+        if p:
+            q = self.players.get(new)
+            if q is None:
+                p.id = new
+                self.players[new] = p
+            else:                                        # guessed under both ids this round: one row, the best
+                q.words |= p.words
+                q.guesses += p.guesses
+                q.improvements += p.improvements
+                q.last_t = max(q.last_t, p.last_t)
+                if p.best and (not q.best or p.best < q.best):
+                    q.best, q.best_t, q.best_word, q.prev = p.best, p.best_t, p.best_word, q.best
+                q.tier = min(q.tier, p.tier)
+                q.found_exact = q.found_exact or p.found_exact
+        for g in self.guesses.values():                  # who named each word of the table last
+            if g.get("last_id") == old:
+                g["last_id"] = new
+        if self.leader_id == old:
+            self.leader_id = new
+        if old in self.past_leaders:
+            self.past_leaders.discard(old)
+            self.past_leaders.add(new)
+        self.exact_order = [new if x == old else x for x in self.exact_order]
+        if self.setter and self.setter["id"] == a_old:
+            self.setter["id"] = a_new
+        self.save_now = True
+        print(f"[guess] viewer {old} -> {new} (merged)")
+
     # ------------------------------------------------------------------ hint credits
     def add_credits(self, viewer_id, n=1):
         """Put hints on a viewer's account (gift-free hints they spend with "подсказка")."""
-        viewer_id = account_id(viewer_id)
+        viewer_id = account_id(identities().lookup(account_id(viewer_id)))
         if not viewer_id:
             return 0
         left = max(0, self.credits.get(viewer_id, 0) + int(n))

@@ -8,11 +8,13 @@ from collections import deque
 
 from .. import config
 from ..games.base import Viewer
+from ..identities import identities
 from ..room_prefs import catalog
 
 
 def viewer_of(user):
-    uid = str(getattr(user, "unique_id", None) or getattr(user, "nickname", None) or "anon")
+    real = getattr(user, "unique_id", None) or getattr(user, "display_id", None)
+    uid = str(real or getattr(user, "nickname", None) or "anon")
     name = (getattr(user, "nickname", None) or uid)[:40]
     avatar = ""
     try:
@@ -37,7 +39,8 @@ def viewer_of(user):
         num = str(int(getattr(user, "id", 0) or 0) or "")             # the numeric user id: stable
     except Exception:
         pass
-    return Viewer(uid, name, avatar, follows, fan, num, str(getattr(user, "nickname", None) or ""), big_avatar(user))
+    return Viewer(uid, name, avatar, follows, fan, num, str(getattr(user, "nickname", None) or ""), big_avatar(user),
+                  guessed=not real)
 
 
 def big_avatar(user):
@@ -157,6 +160,13 @@ class TikTokConnector:
             print(f"[tiktok] connected to @{self.username} LIVE")
             if self.sign_api_key and self.on_key:
                 self.on_key(True)
+            try:                                          # the host's numeric id: their chat (no @id) is the host's
+                owner = (getattr(client, "room_info", None) or {}).get("owner") or {}
+                oid = str(owner.get("id_str") or owner.get("id") or "")
+                if oid:
+                    identities().resolve(Viewer(self.username, self.username, uid=oid))
+            except Exception as e:
+                print(f"[tiktok] host id unknown: {type(e).__name__}")
             hub.new_live(str(getattr(client, "room_id", None) or ""))
             if catalog().needs_refresh():                 # every gift's price and image, once a day (all rooms)
                 asyncio.get_running_loop().create_task(refresh_gifts())
@@ -191,6 +201,8 @@ class TikTokConnector:
             # the receiver: the host, or someone else on the stream (a guest / co-host in a multi-guest live)
             to_user = getattr(event, "to_user", None)
             to = str(getattr(to_user, "unique_id", "") or "") if to_user else ""
+            if to:                                        # the receiver's numeric id -> @id (the host's chat has no @id)
+                identities().resolve(viewer_of(to_user))
             if config.LOG_CHAT:
                 print(f"[gift] event {v.name}: {name} x{count} ({coins} coins) streaking={streaking} to=@{to or '-'}")
             # act on the first event at once (TikTok sends the combo's end 3-5 s later); later events of the
