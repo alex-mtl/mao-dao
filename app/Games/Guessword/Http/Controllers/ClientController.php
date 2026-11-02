@@ -36,6 +36,9 @@ class ClientController extends Controller
             'name' => $user->name,
             'enterUrl' => route('guessword.client.enter', $this->clients->loginCode($user)),
             'overlayUrl' => $this->room($user)->overlayUrl(),
+            // what the app's Language / Theme menus mark as chosen
+            'uiLanguage' => $user->ui_language ?? config('locales.default'),
+            'colorScheme' => $user->color_scheme ?? config('color_schemes.default'),
         ]);
     }
 
@@ -54,6 +57,13 @@ class ClientController extends Controller
         }
         Auth::guard('web')->login($user, remember: true);
         $request->session()->regenerate();
+        // the app's language and a theme picked on its key form (the menus are there too)
+        if (in_array($request->query('ui_language'), config('locales.supported'), true)) {
+            $user->update(['ui_language' => $request->query('ui_language')]);
+        }
+        if (in_array($request->query('color_scheme'), config('color_schemes.supported'), true)) {
+            $user->update(['color_scheme' => $request->query('color_scheme')]);
+        }
 
         return redirect()->route('guessword.room');
     }

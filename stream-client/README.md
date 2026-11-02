@@ -15,7 +15,13 @@ OBS / TikTok LIVE Studio a local address.
    `POST /guessword/client/api/session` and gets a one-time address
    (`/guessword/client/enter/{code}`, 2 minutes) that signs its window in, plus the overlay link.
    The key is kept in `%APPDATA%\com.guessword.streamer\key.txt`, so the next start signs in by
-   itself; menu → **Change key** forgets it.
+   itself; menu → **Change key** opens the form with **Cancel** (back to the room) and replaces
+   the saved key only when a new one signs in.
+   **Language / Theme** menus (the menus speak the chosen language, it is kept in `lang.txt`):
+   on the room page the app saves the choice through the page's own session
+   (`PATCH /profile/language`, `/profile/color-scheme`, the only profile actions a client
+   account may use) and reloads; on the key form the choice goes along with the next sign-in
+   (`/guessword/client/enter/{code}?ui_language=..&color_scheme=..`).
 3. **The window** shows only the room: a client account gets no site chrome (`PlatformLayout`),
    any other page of the site sends it back to the room (`RestrictClientAccounts`), and the app
    itself lets the window go only to `/guessword/...` (other links open in the browser).

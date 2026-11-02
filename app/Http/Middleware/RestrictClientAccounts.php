@@ -17,6 +17,8 @@ class RestrictClientAccounts
         'guessword.archive', 'guessword.archive.*',
         'guessword.avatar',
         'guessword.client.*',
+        // the app's Language / Theme menus
+        'profile.language.update', 'profile.color-scheme.update',
         'logout',
     ];
 

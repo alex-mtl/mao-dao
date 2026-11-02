@@ -18,6 +18,7 @@
     button { margin-top: 14px; width: 100%; padding: 12px; border: 0; border-radius: 10px; background: #8b5cf6;
              color: #fff; font: 700 16px system-ui, sans-serif; cursor: pointer; }
     button:disabled { opacity: .5; cursor: default; }
+    button.secondary { margin-top: 8px; background: transparent; border: 1px solid #4a3a6b; color: #d8cff0; }
     .error { margin-top: 12px; color: #fca5a5; font-size: 14px; min-height: 20px; }
     .hidden { display: none; }
 </style>
@@ -30,47 +31,52 @@
         <p data-t="help"></p>
         <input id="key" autocomplete="off" spellcheck="false" placeholder="MD-XXXX-XXXX-XXXX-XXXX-XXXX" autofocus>
         <button id="go" type="submit" data-t="enter"></button>
+        <button id="cancel" type="button" class="secondary hidden" data-t="cancel"></button>
         <div id="error" class="error"></div>
     </form>
 </div>
 <script>
     const T = {
         ru: { title: 'Введите ваш ключ', help: 'Ключ доступа вам выдали вместе с программой.', enter: 'Войти',
+              change: 'Новый ключ', change_help: 'Текущий ключ останется, пока новый не подойдёт.', cancel: 'Отмена',
               connecting: 'Подключение…', wait: 'Открываем вашу комнату.',
               bad_key: 'Ключ не подошёл. Проверьте его или попросите новый.',
               no_access: 'Доступ по этому ключу выключен.',
               network: 'Нет связи с сервером. Проверьте интернет и попробуйте ещё раз.' },
         en: { title: 'Enter your key', help: 'You got the access key together with the app.', enter: 'Sign in',
+              change: 'New key', change_help: 'Your current key stays until a new one works.', cancel: 'Cancel',
               connecting: 'Connecting…', wait: 'Opening your room.',
               bad_key: 'The key did not work. Check it or ask for a new one.',
               no_access: 'Access with this key is switched off.',
               network: 'No connection to the server. Check the internet and try again.' },
         fr: { title: 'Saisissez votre clé', help: 'La clé d\'accès vous a été remise avec l\'application.', enter: 'Entrer',
+              change: 'Nouvelle clé', change_help: 'La clé actuelle reste valable tant qu\'une nouvelle n\'est pas acceptée.', cancel: 'Annuler',
               connecting: 'Connexion…', wait: 'Ouverture de votre salle.',
               bad_key: 'Clé refusée. Vérifiez-la ou demandez-en une nouvelle.',
               no_access: 'L\'accès avec cette clé est désactivé.',
               network: 'Pas de connexion au serveur. Vérifiez Internet et réessayez.' },
         es: { title: 'Introduce tu clave', help: 'Recibiste la clave de acceso junto con la aplicación.', enter: 'Entrar',
+              change: 'Clave nueva', change_help: 'Tu clave actual sigue valiendo hasta que la nueva funcione.', cancel: 'Cancelar',
               connecting: 'Conectando…', wait: 'Abriendo tu sala.',
               bad_key: 'La clave no funcionó. Revísala o pide una nueva.',
               no_access: 'El acceso con esta clave está desactivado.',
               network: 'Sin conexión con el servidor. Revisa internet e inténtalo de nuevo.' },
     };
-    const t = T[(navigator.language || 'en').slice(0, 2)] || T.en;
-    document.querySelectorAll('[data-t]').forEach((el) => { el.textContent = t[el.dataset.t]; });
-
     const invoke = window.__TAURI__.core.invoke;
     const $ = (id) => document.getElementById(id);
     const show = (busy) => { $('busy').classList.toggle('hidden', !busy); $('form').classList.toggle('hidden', busy); };
+    // opened from the menu's "Change key": the saved key stays until a new one signs in
+    const changing = new URLSearchParams(location.search).has('change');
+    let t = T.en;
 
     // on success the app itself moves this window to the room
-    async function signIn(key) {
+    async function signIn(key, typed = true) {
         show(true);
         try {
             await invoke('sign_in', { key });
         } catch (e) {
             show(false);
-            $('key').value = key;
+            if (typed) $('key').value = key;
             $('error').textContent = t[e] || t.network;
             $('key').focus();
         }
@@ -82,7 +88,25 @@
         if (key) signIn(key);
     });
 
-    invoke('stored_key').then((key) => (key ? signIn(key) : show(false)), () => show(false));
+    (async () => {
+        // the app's language (the menu sets it); the system's on the very first start
+        const lang = await invoke('ui_lang', { fallback: navigator.language || 'en' }).catch(() => 'en');
+        t = T[lang] || T.en;
+        document.querySelectorAll('[data-t]').forEach((el) => { el.textContent = t[el.dataset.t]; });
+
+        const saved = await invoke('stored_key').catch(() => null);
+        if (saved && changing) {
+            $('form').querySelector('h1').textContent = t.change;
+            $('form').querySelector('p').textContent = t.change_help;
+            $('cancel').classList.remove('hidden');
+            $('cancel').addEventListener('click', () => signIn(saved, false));
+            show(false);
+        } else if (saved) {
+            signIn(saved, false);
+        } else {
+            show(false);
+        }
+    })();
 </script>
 </body>
 </html>

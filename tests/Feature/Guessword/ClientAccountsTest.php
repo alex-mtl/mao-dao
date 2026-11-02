@@ -64,9 +64,19 @@ it('signs the app in with the key, once per code, and gives the overlay link', f
 
     $this->postJson('/guessword/client/api/overlay', ['key' => $key])->assertOk()->assertJsonPath('overlayUrl', $room->overlayUrl());
 
+    expect($res->json('uiLanguage'))->toBe(config('locales.default'))
+        ->and($res->json('colorScheme'))->toBe(config('color_schemes.default'));
+
+    // the language picked in the app's menu before signing in comes along
     $enter = parse_url($res->json('enterUrl'), PHP_URL_PATH);
-    $this->get($enter)->assertRedirect('/guessword/room');
+    $this->get($enter.'?ui_language=fr&color_scheme=dark-cool')->assertRedirect('/guessword/room');
     $this->assertAuthenticatedAs($client);
+    expect($client->fresh())->ui_language->toBe('fr')->color_scheme->toBe('dark-cool');
+
+    // the app's Language / Theme menus use the profile's own actions
+    $this->patch('/profile/language', ['ui_language' => 'es'])->assertRedirect();
+    $this->patch('/profile/color-scheme', ['color_scheme' => 'light-cool'])->assertRedirect();
+    expect($client->fresh())->ui_language->toBe('es')->color_scheme->toBe('light-cool');
 
     auth()->logout();
     $this->get($enter)->assertOk()->assertInertia(fn ($p) => $p->component('Guessword/ClientSignedOut'));
