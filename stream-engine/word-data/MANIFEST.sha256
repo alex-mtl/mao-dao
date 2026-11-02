@@ -267,3 +267,4 @@ e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 *sources/wordfr
 ed9f3fdbbb9a1c8fd4640738528c783e906143d639fe6a1d65758cc6d522e0d5 *sources/wordfreq-3.1.1/wordfreq-3.1.1.dist-info/WHEEL
 b408855c4e1f6ff2f06abfba6c952c10bcf28507e60ad9241197566c5a650f4e *built/ru/embeddings.npy
 0969e032d682c3bcfd55ce445e2b11f3a6b0e86899fb73138b980c654d862df9 *built/ru/embeddings.rubert-tiny2.npy
+da3fffca3c734ef153bb065ea855acfbcb40be0fc4ac65706df438f95e12241a *built/ru/difficulty.json

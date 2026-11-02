@@ -95,6 +95,24 @@ SROUND_TTL = 2 * 3600            # SROUND#<game>: the round with a viewer's word
 HINT_RE = re.compile(r"[^\W\d_]+(-[^\W\d_]+)?")
 
 
+SCALE_CELLS = 12
+SCALE_COLORS = "🟦🟦🟦🟪🟪🟪🟪🟧🟧🟧🟥🟥"     # the game's scale: blue-violet (simple) -> red (hard)
+GROUP_NAMES = {"simple": "простое", "normal": "нормальное", "hard": "сложное"}
+
+
+def scale(diff):
+    """the word's difficulty from the game ({"pos", "group", "ticks"}) as a line of emoji: the scale, ┃ where the
+    simple words end and the hard ones start, ⚪ = the word. "" when the game sent none (not Russian)"""
+    if not isinstance(diff, dict) or diff.get("group") not in GROUP_NAMES:
+        return ""
+    cells = list(SCALE_COLORS)
+    cells[min(SCALE_CELLS - 1, max(0, int(float(diff.get("pos") or 0) * SCALE_CELLS)))] = "⚪"
+    for t in sorted((diff.get("ticks") or [])[:2], reverse=True):
+        cells.insert(min(SCALE_CELLS - 1, max(1, round(float(t) * SCALE_CELLS))), "┃")
+    return (f"\n\nСложность: <b>{GROUP_NAMES[diff['group']]}</b>\n" + "".join(cells)
+            + "\nпростые · нормальные · сложные")
+
+
 def first_word(text):
     return (norm(text).split(" ", 1) or [""])[0]
 
@@ -164,7 +182,7 @@ def queue_command(chat, tg_id):
         tg.send_temp(chat, "\n".join([TEXT["queue"]] + [TEXT["queue_row"].format(
             round=i.get("round") or "…", w=e(i["word"].upper()), name=e(i["name"])) for i in queued]))
     for i in waiting:                                     # the buttons again: the first message may be lost
-        tg.send(chat, TEXT["host_word"].format(w=e(i["word"].upper()), name=e(i["name"]), tt=e(i["tt"])),
+        tg.send(chat, TEXT["host_word"].format(w=e(i["word"].upper()), name=e(i["name"]), tt=e(i["tt"])) + scale(i.get("diff")),
                 decide_buttons(i["id"]))
     return []
 
@@ -460,9 +478,11 @@ def game_poll(game, body):
                 events.log(gid, "word_missing", tt=it["tt"], word=it["word"])
         elif r.get("ok"):                                 # in the dictionary: the host decides
             it.update(state="checked", word=r.get("word") or it["word"], at=int(now))
+            if isinstance(r.get("diff"), dict):
+                it["diff"] = r["diff"]                    # the scale again when the host lists the waiting words
             store.delete("ASK#" + it["tg"])
-            tg.send(it["chat"], TEXT["checked"].format(w=w), transient=True)
-            tg.send(it["host"], TEXT["host_word"].format(w=w, name=e(it["name"]), tt=e(it["tt"])),
+            tg.send(it["chat"], TEXT["checked"].format(w=w) + scale(it.get("diff")), transient=True)
+            tg.send(it["host"], TEXT["host_word"].format(w=w, name=e(it["name"]), tt=e(it["tt"])) + scale(it.get("diff")),
                     decide_buttons(it["id"]))
             events.log(gid, "word_checked", tt=it["tt"], word=it["word"])
         else:

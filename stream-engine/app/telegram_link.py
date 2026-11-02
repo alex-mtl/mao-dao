@@ -184,7 +184,8 @@ class TelegramLink:
                 self.results.append({"id": w["id"], "stage": "queue", "ok": ok, "word": word, "round": rnd})
             else:                                                # new: only the dictionary check
                 ok, word = g.check_custom(w)
-                self.results.append({"id": w["id"], "stage": "check", "ok": ok, "word": word})
+                self.results.append({"id": w["id"], "stage": "check", "ok": ok, "word": word,
+                                     "diff": g.word_difficulty(word) if ok else None})
         answers = []                                             # the host asked in the bot: /round, /history N
         for q in r.get("requests") or []:
             if q.get("type") == "round":

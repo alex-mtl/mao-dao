@@ -176,6 +176,7 @@ class RussianTest(unittest.TestCase):
         self.assertEqual(n("ежики")[0], "ежик")
         for w in ("быстро", "красивый", "бежать", "го", "ми"):
             self.assertNotIn(w, normal.index)                      # not nouns / junk
+        self.assertIn(g.secret, normal.groups["normal"])           # level 2: a word of the normal group
         g.set_option("level", 1)                                   # from the next round
         self.assertIs(g.sem, normal)
         g.on_comment(Viewer("ivan", "Иван", "", 1), g.secret)
@@ -183,21 +184,48 @@ class RussianTest(unittest.TestCase):
             if g.phase == guess_mod.COUNTDOWN:
                 break
             g.tick(max(time.time(), g.phase_until) + 0.1)
-        self.assertEqual(g.sem.level, "easy")
-        self.assertIn("быстро", g.sem.index)                       # easy: any part of speech
+        self.assertIs(g.sem, normal)                               # Russian: one dictionary, the level picks a group
+        self.assertIn(g.secret, normal.groups["simple"])
+        self.assertEqual(g.tier, "easy")
         self.assertEqual(g.snapshot()["languages"], ["en", "es", "fr", "ru"])
-        g.set_option("level", 3)                                   # hard: normal + OpenCorpora nouns
+        g.set_option("level", 3)
         g.tick(max(time.time(), g.phase_until) + 0.1)              # countdown -> playing
         g.on_comment(Viewer("ivan", "Иван", "", 1), g.secret)
         for _ in range(10):
             if g.phase == guess_mod.COUNTDOWN:
                 break
             g.tick(max(time.time(), g.phase_until) + 0.1)
-        self.assertEqual(g.sem.level, "hard")
-        self.assertIn("стамеска", g.sem.index)
-        self.assertIn("яхромчанка", g.sem.index)
-        self.assertNotIn("яхромчанка", normal.index)
+        self.assertIs(g.sem, normal)
+        self.assertIn(g.secret, normal.groups["hard"])
+        self.assertEqual(g.snapshot()["difficulty"]["group"], "hard")
+        self.assertEqual(g.dict_key("ru", 3), "ru")
         self.assertEqual(g.dict_key("en", 3), "en")                # no hard dictionary: the normal one
+        self.assertEqual(g.dict_key("en", 1), "en-easy")
+
+    def test_difficulty_groups(self):
+        g = GuessGame(JsonStore(tempfile.mkdtemp()))
+        sem = g.sems["ru"]
+        self.assertEqual({k: len(v) for k, v in sem.groups.items()}, {"simple": 1922, "normal": 1884, "hard": 1978})
+        t1, t2 = sem.ticks
+        for group, lo, hi in (("simple", 0, t1), ("normal", t1, t2), ("hard", t2, 1)):
+            for w in sem.groups[group][:200]:
+                d = sem.difficulty(w)
+                self.assertEqual(d["group"], group)
+                self.assertTrue(lo <= d["pos"] <= hi, (w, d))
+        self.assertLess(sem.difficulty("время")["pos"], 0.01)       # the most frequent nouns sit on the left
+        self.assertEqual(g.word_difficulty("стамеска", "ru")["group"], "hard")   # a viewer's word outside the pool too
+        self.assertIsNone(g.sems["en"].difficulty("cat"))           # no groups: no scale
+        # a level's group played through: only its words start anew, the other groups stay used
+        g.set_lang("ru")
+        used = g.used.setdefault("ru", set())
+        used.update(sem.groups["simple"])
+        used.add(sem.groups["hard"][0])
+        word, tier = g._pick_secret(sem, "ru", 1)
+        self.assertIn(word, sem.groups["simple"])
+        self.assertEqual(tier, "easy")
+        self.assertNotIn(word, used)
+        self.assertIn(sem.groups["hard"][0], used)
+        self.assertEqual(g._fresh_words(sem, "ru", 1), len(sem.groups["simple"]))
 
     def test_switch_language_starts_new_round(self):
         g = GuessGame(JsonStore(tempfile.mkdtemp()))

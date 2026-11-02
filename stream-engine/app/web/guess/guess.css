@@ -142,6 +142,20 @@ html.chroma #recent > .title { display: none; }
 #timer { font: 900 calc(var(--u) * 9)/1 var(--font-display); color: var(--cyan);
          text-shadow: 0 0 .2em var(--cyan), 0 0 .6em rgba(0,240,255,.6); font-variant-numeric: tabular-nums; }
 #timer.low { color: var(--pink); text-shadow: 0 0 .2em var(--pink), 0 0 .7em var(--pink); animation: pulse 1s infinite; }
+/* difficulty scale under the round / timer / players row: blue-violet (simple) -> red (hard), no green
+   (the chroma key would cut it out) */
+#diffScale { position: relative; height: calc(var(--u) * 1.1); margin-top: calc(var(--u) * 1); border-radius: 999px;
+             background: linear-gradient(90deg, var(--t-freezing), var(--violet) 30%, var(--magenta) 55%,
+                                         var(--t-veryhot) 80%, var(--t-burning));
+             box-shadow: 0 0 .6em rgba(157,77,255,.45); }
+#diffScale[hidden] { display: none; }
+#diffScale .dtick { position: absolute; top: -45%; bottom: -45%; width: calc(var(--u) * .45); margin-left: calc(var(--u) * -.225);
+                    border-radius: 999px; background: #fff; opacity: .85; box-shadow: 0 0 .3em rgba(0,0,0,.8); }
+#diffRunner { position: absolute; top: 50%; width: calc(var(--u) * 3); height: calc(var(--u) * 3);
+              margin: calc(var(--u) * -1.5) 0 0 calc(var(--u) * -1.5); border-radius: 50%;
+              background: #fff; border: calc(var(--u) * .5) solid rgb(10, 0, 25);
+              box-shadow: 0 0 .5em #fff, 0 0 1em var(--magenta); transition: left .8s ease; }
+html.chroma #diffScale { margin-top: calc(var(--u) * .8); height: calc(var(--u) * .9); }
 #goal { display: flex; align-items: center; gap: calc(var(--u) * 2); margin-bottom: calc(var(--u) * 1.5);
         font: 800 calc(var(--u) * 3) var(--font-display); color: var(--muted); }
 #goal[hidden] { display: none; }

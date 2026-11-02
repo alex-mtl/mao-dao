@@ -883,6 +883,16 @@
     }
   }
 
+  // the difficulty scale under the timer row: ticks where the simple words end and the hard ones start,
+  // the runner at this round's word (Russian; nothing without difficulty groups or between rounds)
+  function renderDifficulty(d) {
+    const box = $('diffScale');
+    box.hidden = !d;
+    if (!d) return;
+    box.querySelectorAll('.dtick').forEach((el, i) => { el.style.left = (d.ticks[i] * 100) + '%'; });
+    $('diffRunner').style.left = (Math.min(1, Math.max(0, d.pos)) * 100) + '%';
+  }
+
   function render(s) {
     S = s;
     applyChroma(TT ? (s.chroma || s.chromaTop || 33) : (s.chroma || 0), s.frame || 16);
@@ -903,6 +913,7 @@
     chip.textContent = t('g.round', { n: s.roundId }) + (s.roundType === 'speed' ? t('g.speed') : '');
     chip.classList.toggle('speed', s.roundType === 'speed');
     $('playersChip').textContent = '👥 ' + s.stats.players;
+    renderDifficulty(s.difficulty);
     fitText($('secretWord'), s.secretWord || '? ? ?');
     $('subs').hidden = !s.subscribersOnly;
     if (s.goal) {

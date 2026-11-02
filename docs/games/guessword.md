@@ -35,6 +35,16 @@ similarity to the secret word (the secret itself is always #1) — `SemanticInde
 `stream-engine/app/games/guess/semantic.py`, the same math in `ranking()` of `services/word-ranker/handler.py`,
 which is what production uses (the game server holds no vectors).
 
+**Russian difficulty groups (2026-11-02).** The secret pool of `ru` (5 784 words, `pools` in `meta.json`) is split
+by wordfreq zipf into three near-equal groups — simple (zipf > 3.86, 1 922), normal (> 3.44, 1 884), hard (the
+rest, 1 978); thresholds and the zipf of every `ru` vocab word are in `built/ru/difficulty.json` (on the server:
+`stream-engine/assets/ru/difficulty.json`). In Russian every level plays the `ru` dictionary and the room's level
+picks the group (1 simple, 2 normal, 3 hard); `ru-easy` / `ru-hard` are no longer used for Russian. No repeats:
+a word picked once stays used (any group) until its group is played through, then only that group starts anew.
+The scale: `SemanticIndex.difficulty()` puts a word at the share of the pool more frequent than it (ticks =
+where the groups end); the overlay draws it under the timer row, the bot as an emoji line for the viewer who
+picked a word and for the host deciding on it. Other languages: no `difficulty.json`, no groups, no scale.
+
 ## Access
 
 Who may run a room is answered by the platform service `App\Services\Capabilities`

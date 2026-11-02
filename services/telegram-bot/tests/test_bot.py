@@ -272,6 +272,26 @@ class BotTest(unittest.TestCase):
         self.cb("ok:" + wid)
         self.assertIn("не отменить", tg.answers[-1])
 
+    def test_difficulty_scale(self):
+        from bot import riddle
+        self.host_and_viewer()
+        call("/tg", msg("/zagadka"))
+        call("/tg", msg("огурец"))
+        wid = self.poll()["words"][0]["id"]
+        diff = {"pos": 0.5, "group": "normal", "ticks": [0.3323, 0.658]}
+        self.poll({"results": [{"id": wid, "stage": "check", "ok": True, "word": "огурец", "diff": diff}]})
+        bar = "🟦🟦🟦🟪┃🟪🟪⚪🟧┃🟧🟧🟥🟥"
+        viewer, host = tg.sent[-2][1], tg.sent[-1][1]
+        self.assertIn("есть в словаре", viewer)
+        self.assertIn("предлагает слово", host)
+        for text in (viewer, host):
+            self.assertIn("Сложность: <b>нормальное</b>\n" + bar, text)
+        call("/tg", msg("очередь", uid=5))                            # the waiting word, listed again: the scale too
+        self.assertIn(bar, tg.sent[-1][1])
+        self.assertEqual(riddle.scale(None), "")                       # no groups (not Russian): no scale
+        self.assertIn("⚪🟦", riddle.scale({"pos": 0, "group": "simple", "ticks": [0.33, 0.66]}))
+        self.assertIn("🟥⚪", riddle.scale({"pos": 1, "group": "hard", "ticks": [0.33, 0.66]}))
+
     def test_lost_queue_answer(self):
         from unittest import mock
         from bot import riddle

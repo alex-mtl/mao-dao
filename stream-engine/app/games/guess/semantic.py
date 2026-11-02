@@ -1,6 +1,7 @@
 """Semantic index over the precomputed vocabulary (no model needed at runtime:
 every guessable word already has an embedding, built by tools/build_assets.py)."""
 
+import bisect
 import hashlib
 import json
 import os
@@ -21,6 +22,8 @@ ELISION = re.compile(r"^(?:l|d|j|m|n|s|t|c|qu)'")      # French: l'arbre -> arbr
 # guessable (they are in vocab), they are just never picked as secrets.
 # The zipf map lives in meta.json ("zipf"); without it, pools are unfiltered.
 NORMAL_MIN_ZIPF = 3.4
+# difficulty groups (difficulty.json): the room's level 1 / 2 / 3 picks the secret from one of them
+GROUPS = ("simple", "normal", "hard")
 
 
 class SemanticIndex:
@@ -54,7 +57,10 @@ class SemanticIndex:
                 self.valid_nouns = {w.strip() for w in f if w.strip()}
         except OSError:
             pass
-        if self.lang == "ru" and self.level == "normal" and self.zipf:
+        self._load_difficulty(assets_dir)
+        if self.groups:
+            pass                    # the levels pick from the difficulty groups (the whole pool, rare words too)
+        elif self.lang == "ru" and self.level == "normal" and self.zipf:
             # Filter secret pools, not the vocabulary: guessing and hints
             # still use the full vocab; only secret picking is restricted.
             self.pools = {t: [w for w in pool if self.zipf.get(w, 0) >= NORMAL_MIN_ZIPF]
@@ -65,6 +71,44 @@ class SemanticIndex:
         self.size = len(self.words)
         print(f"[semantic {lang}] {self.size} words, pools "
               f"{ {k: len(v) for k, v in self.pools.items()} }")
+
+    def _load_difficulty(self, assets_dir):
+        """difficulty.json (Russian): every vocab word's zipf + two thresholds that split the secret pool into
+        three near-equal groups, simple / normal / hard. The room's level picks from one group; the scale
+        on screen and in the bot puts any word between them. Missing file = no groups, no scale."""
+        self.groups, self.diff_zipf, self.pool_zipf, self.ticks = {}, {}, [], None
+        try:
+            with open(os.path.join(assets_dir, "difficulty.json"), encoding="utf-8") as f:
+                d = json.load(f)
+        except OSError:
+            return
+        self.diff_zipf = d["zipf"]
+        self.simple_min, self.normal_min = d["thresholds"]["simple_min"], d["thresholds"]["normal_min"]
+        pool = sorted({w for p in self.pools.values() for w in p if w in self.index})
+        self.groups = {g: [] for g in GROUPS}
+        for w in pool:
+            self.groups[self.group_of(w)].append(w)
+        self.pool_zipf = sorted(self.diff_zipf.get(w, 0) for w in pool)      # ascending
+        n = len(pool)
+        self.ticks = [round(len(self.groups["simple"]) / n, 4),
+                      round((len(self.groups["simple"]) + len(self.groups["normal"])) / n, 4)]
+        print(f"[semantic {self.lang}] difficulty groups { {g: len(v) for g, v in self.groups.items()} }")
+
+    def group_of(self, word):
+        z = self.diff_zipf.get(word, 0)
+        return "simple" if z > self.simple_min else "normal" if z > self.normal_min else "hard"
+
+    def difficulty(self, word):
+        """{"pos": 0 simple .. 1 hard, "group", "ticks": [end of simple, start of hard]} or None (no groups).
+        pos = the share of the pool that is more frequent than the word (ties: half), so the ticks are where
+        the groups end; a word outside the pool lands by its own frequency."""
+        if not self.groups or not word:
+            return None
+        z = self.diff_zipf.get(word, 0)
+        n = len(self.pool_zipf)
+        rarer, not_more = bisect.bisect_left(self.pool_zipf, z), bisect.bisect_right(self.pool_zipf, z)
+        pos = (n - not_more + (not_more - rarer) / 2) / n
+        return {"pos": round(pos, 4), "group": self.group_of(word), "ticks": self.ticks}
 
     def normalize(self, text):
         """Chat message -> dictionary word, or None if it isn't a single-word guess.

@@ -79,6 +79,11 @@ def _load_indexes(assets_dir):
     return out
 
 
+# difficulty groups (Russian): the room's level -> the group of its secrets; the group -> the round's tier
+GROUP_OF_LEVEL = {1: "simple", 2: "normal", 3: "hard"}
+TIER_OF_GROUP = {"simple": "easy", "normal": "medium", "hard": "hard"}
+
+
 def now_past(t):
     return time.time() >= t
 
@@ -271,7 +276,7 @@ class GuessGame(BaseGame):
             if nxt and nxt[:2] == (self.lang, self.level) and nxt[2] not in used and nxt[2] in self.sem.index:
                 self.secret, self.tier = nxt[2], nxt[3]         # picked at the end of the last round
             else:
-                self.secret, self.tier = self._pick_secret(self.sem, self.lang)
+                self.secret, self.tier = self._pick_secret(self.sem, self.lang, self.round_level)
         used.add(self.secret)
         self.store.save(self.USED, {k: sorted(v) for k, v in self.used.items()})
         rank = self.ranks.pop((self.dict_key(self.round_lang, self.round_level), self.secret), None)
@@ -371,7 +376,7 @@ class GuessGame(BaseGame):
                             guesses=sum(p.guesses for p in self.players.values()),
                             podium=[dict(self.live.user(p["id"], p["name"]), rank=p["rank"]) for p in self.podium])
         # the next word, picked now: its table comes in the break
-        self.next_pick = (self.lang, self.level) + tuple(self._pick_secret(self.sem_for(self.lang, self.level), self.lang))
+        self.next_pick = (self.lang, self.level) + tuple(self._pick_secret(self.sem_for(self.lang, self.level), self.lang, self.level))
         print(f"[guess] round {self.round_id} {reason}: word={self.secret} "
               f"winner={player.name if player else '-'}")
 
@@ -1139,8 +1144,11 @@ class GuessGame(BaseGame):
     # ------------------------------------------------------------------ next round's table (ranker Lambda)
     def dict_key(self, lang, level):
         """name of the dictionary (assets folder) used for a language + level; a language without a hard
-        dictionary (all but Russian) plays its normal one on level 3"""
+        dictionary (all but Russian) plays its normal one on level 3. A dictionary with difficulty groups
+        (Russian) plays on every level: the level only picks the group of the secret."""
         easy, hard = lang + "-easy", lang + "-hard"
+        if lang in self.sems and self.sems[lang].groups:
+            return lang
         if level == 1 and easy in self.sems:
             return easy
         if level == 3 and hard in self.sems:
@@ -1163,19 +1171,31 @@ class GuessGame(BaseGame):
                 return key, c["word"], self.sems[key].vocab_hash
         used = self.used.get(self.lang, set())
         if not self.next_pick or self.next_pick[:2] != (self.lang, self.level) or self.next_pick[2] in used:
-            self.next_pick = (self.lang, self.level) + tuple(self._pick_secret(self.sem_for(self.lang, self.level), self.lang))
+            self.next_pick = (self.lang, self.level) + tuple(self._pick_secret(self.sem_for(self.lang, self.level), self.lang, self.level))
         key = self.dict_key(self.lang, self.level)
         return key, self.next_pick[2], self.sems[key].vocab_hash
 
-    def _fresh_words(self, sem, lang):
-        """how many words of the dictionary's pools the game hasn't picked yet"""
+    def _fresh_words(self, sem, lang, level=2):
+        """how many words of the dictionary's pools (of the level's group) the game hasn't picked yet"""
         used = self.used.get(lang, set())
+        if sem.groups:
+            return sum(1 for w in sem.groups[GROUP_OF_LEVEL[level]] if w not in used)
         return sum(1 for p in sem.pools.values() for w in p if w not in used and w in sem.index)
 
-    def _pick_secret(self, sem, lang):
+    def _pick_secret(self, sem, lang, level=2):
         """(word, tier): any word never picked before, all of them alike (common and rare); all of them played ->
-        a new cycle (the list starts anew)"""
+        a new cycle (the list starts anew). With difficulty groups: a word of the level's group, never picked
+        before in any group; the group played through -> only its words start anew."""
         used = self.used.setdefault(lang, set())
+        if sem.groups:
+            group = GROUP_OF_LEVEL[level]
+            fresh = [w for w in sem.groups[group] if w not in used]
+            if not fresh:
+                print(f"[guess] every {group} word of the {lang} dictionary has been played: a new cycle of them")
+                used.difference_update(sem.groups[group])
+                self.store.save(self.USED, {k: sorted(v) for k, v in self.used.items()})
+                fresh = list(sem.groups[group])
+            return random.choice(fresh), TIER_OF_GROUP[group]
         fresh = [(w, t) for t, pool in sem.pools.items() for w in pool if w not in used and w in sem.index]
         if not fresh:
             print(f"[guess] every word of the {lang} dictionary has been played ({len(used)}): a new cycle")
@@ -1229,6 +1249,18 @@ class GuessGame(BaseGame):
             print(f"[guess] {item.get('name')}'s word '{word}' isn't a noun in nominative singular")
             return False, None
         return True, word
+
+    def word_difficulty(self, word, lang=None):
+        """a word's place on the difficulty scale (dictionary of the normal level, as a viewer's word plays), or None"""
+        sem = self.sems.get(lang or self.lang)
+        return sem.difficulty(word) if sem else None
+
+    def _difficulty(self):
+        """the round's word on the scale, from the countdown on (None between rounds, or without groups)"""
+        if not self.secret or self.phase == IDLE or not self.sems:
+            return None
+        sem = self.sems.get(self.dict_key(self.round_lang, self.round_level))
+        return sem.difficulty(self.secret) if sem else None
 
     def queue_custom(self, item):
         """A word the host accepted -> (ok, dictionary word, round it will be played in)."""
@@ -1394,6 +1426,7 @@ class GuessGame(BaseGame):
         current = {
             "round": self.round_id, "phase": self.phase, "type": self.round_type, "tier": self.tier,
             "word": (self.secret or "").upper(), "setter": self.setter["name"] if self.setter else None,
+            "difficulty": self._difficulty(),
             "lang": self.round_lang, "level": self.round_level,
             "paused": f is not None, "left": max(0, round(f["ends"] if f else self.ends_at - now)),
             "elapsed": round(f["elapsed"] if f else (now - self.started_at if self.started_at else 0)),
@@ -1424,7 +1457,7 @@ class GuessGame(BaseGame):
                      "ready": (self.dict_key(self.lang, self.level), nxt[2]) in self.ranks} if nxt else None,
             "pause": self.reveal_sec, "roundSec": self.round_sec, "level": self.level, "lang": self.lang,
             "breakAfter": self.pause_after,
-            "fresh": self._fresh_words(self.sem_for(self.lang, self.level), self.lang) if self.sems else 0,
+            "fresh": self._fresh_words(self.sem_for(self.lang, self.level), self.lang, self.level) if self.sems else 0,
             "credits": sorted(([names.get(k, k), n] for k, n in self.credits.items() if n > 0), key=lambda x: -x[1])[:20],
             "boosts": sorted(names.get(k.lower(), k) for k in self.boost_ids),
         }
@@ -1511,6 +1544,7 @@ class GuessGame(BaseGame):
             "roundId": self.round_id,
             "roundType": self.round_type,
             "tier": self.tier,
+            "difficulty": self._difficulty(),            # the scale at the top: where this round's word is
             "startedAt": self.started_at,
             "endsAt": self.ends_at,
             "phaseUntil": self.phase_until,
