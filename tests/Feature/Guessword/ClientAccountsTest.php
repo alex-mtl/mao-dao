@@ -44,7 +44,9 @@ it('lets only a super admin create a client and issue its key, shown once', func
     expect($client->name)->toBe('Streamer One')
         ->and($client->email)->toEndWith('@'.ClientAccounts::EMAIL_DOMAIN)
         ->and($client->hasVerifiedEmail())->toBeTrue()
-        ->and(config('guessword.streamers'))->toBe([$client->email]);
+        ->and($client->streamer_pack)->toBeTrue()
+        // the web server cannot write .env on the server: the pack is an account flag
+        ->and(file_get_contents($this->envDir.'/.env'))->toBe("GUESSWORD_STREAMERS=\n");
 
     $this->post("/guessword/clients/{$client->id}/key")->assertRedirect();
     $page = $this->get('/guessword/clients')->assertInertia(fn ($p) => $p

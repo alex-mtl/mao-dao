@@ -100,6 +100,7 @@ class User extends Authenticatable implements HasLocalePreference, HasMedia, Mus
             'verification_expires_at' => 'datetime',
             'password' => 'hashed',
             'client_only' => 'boolean',
+            'streamer_pack' => 'boolean',
             'client_key_issued_at' => 'datetime',
         ];
     }

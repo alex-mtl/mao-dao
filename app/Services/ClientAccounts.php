@@ -38,7 +38,7 @@ class ClientAccounts
         ])->save();
 
         if ($streamerPack) {
-            $this->pack->grant($user->email);
+            $this->pack->grantUser($user);
         }
 
         return $user;

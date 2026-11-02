@@ -24,6 +24,7 @@ class Capabilities
 
         return match ($capability) {
             self::GUESSWORD_TIKTOK => $user->isSuperAdmin()
+                || $user->streamer_pack
                 || in_array(strtolower((string) $user->email), config('guessword.streamers', []), true),
             default => false,
         };

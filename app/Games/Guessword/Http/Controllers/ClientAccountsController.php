@@ -35,7 +35,7 @@ class ClientAccountsController extends Controller
                     'name' => $u->name,
                     'tiktok' => $rooms[$u->id]->tiktok_username ?? null,
                     'roomId' => $rooms[$u->id]->id ?? null,
-                    'pack' => $this->pack->has($u->email),
+                    'pack' => $this->pack->hasUser($u),
                     'keyHint' => $u->client_key_hint,
                     'keyIssued' => $u->client_key_issued_at?->toIso8601String(),
                     'created' => $u->created_at?->toIso8601String(),
@@ -76,7 +76,7 @@ class ClientAccountsController extends Controller
     public function pack(Request $request, User $user): RedirectResponse
     {
         $this->client($request, $user);
-        $request->boolean('on') ? $this->pack->grant($user->email) : $this->pack->revoke($user->email);
+        $request->boolean('on') ? $this->pack->grantUser($user) : $this->pack->revokeUser($user);
 
         return back();
     }

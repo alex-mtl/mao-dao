@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Models\User;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Support\Facades\Artisan;
 
@@ -34,6 +35,25 @@ class StreamerPack
     public function has(string $email): bool
     {
         return in_array(strtolower(trim($email)), $this->emails(), true);
+    }
+
+    /*
+     * The account flag users.streamer_pack: what the site switches (the client accounts page) -
+     * the web server cannot and must not write .env. The allowlist above still counts as well.
+     */
+    public function hasUser(User $user): bool
+    {
+        return $user->streamer_pack || $this->has((string) $user->email);
+    }
+
+    public function grantUser(User $user): void
+    {
+        $user->forceFill(['streamer_pack' => true])->save();
+    }
+
+    public function revokeUser(User $user): void
+    {
+        $user->forceFill(['streamer_pack' => false])->save();
     }
 
     /** @return bool false if the e-mail already had the pack */
