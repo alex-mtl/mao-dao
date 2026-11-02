@@ -2,6 +2,7 @@
 pk prefixes: GAME#<sha256 of game key>, WORD#<stream word>, FLOW#<tg id>, KEY#<code>, TT#<tiktok id>, TG#<tg id>.
 Tests swap the backend for MemoryTable."""
 
+import copy
 import os
 import time
 from decimal import Decimal
@@ -44,6 +45,11 @@ def delete(pk):
 def append(pk, field, value):
     """add value to the list field (created if missing), atomically"""
     table().append(pk, field, value)
+
+
+def put_if_rev(pk, data, rev):
+    """put with "rev" = rev + 1 only if the stored "rev" is still rev (None: no rev yet); True if written"""
+    return table().put_if_rev(dict(data, pk=pk, rev=(rev or 0) + 1), rev)
 
 
 def claim(pk, data, ttl, now):
@@ -99,13 +105,22 @@ class DynamoTable:
         except self.t.meta.client.exceptions.ConditionalCheckFailedException:
             return False
 
+    def put_if_rev(self, item, rev):
+        cond = {"ConditionExpression": "attribute_not_exists(rev)"} if rev is None else \
+            {"ConditionExpression": "rev = :r", "ExpressionAttributeValues": {":r": rev}}
+        try:
+            self.t.put_item(Item=_dynamo(item), **cond)
+            return True
+        except self.t.meta.client.exceptions.ConditionalCheckFailedException:
+            return False
+
 
 class MemoryTable:
     def __init__(self):
         self.items = {}
 
     def get(self, pk):
-        return dict(self.items[pk]) if pk in self.items else None
+        return copy.deepcopy(self.items[pk]) if pk in self.items else None   # a copy, like a real read
 
     def put(self, item):
         self.items[item["pk"]] = dict(item)
@@ -119,6 +134,12 @@ class MemoryTable:
     def put_if_free(self, item, now):
         cur = self.items.get(item["pk"])
         if cur and cur.get("ttl", now + 1) > now:
+            return False
+        self.put(item)
+        return True
+
+    def put_if_rev(self, item, rev):
+        if (self.items.get(item["pk"]) or {}).get("rev") != rev:
             return False
         self.put(item)
         return True

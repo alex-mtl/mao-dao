@@ -307,6 +307,29 @@ class BotTest(unittest.TestCase):
             self.assertEqual(self.poll({"queue_ids": [wid]})["words"], [])   # it's in the game's queue: kept
         self.assertEqual(store.get("PEND#mao")["items"][0]["state"], "queued")
 
+    def test_accept_during_poll(self):
+        """the host's ✅ lands between a poll's read and write: the poll must not put the word back to "checked"
+        (a word approved during another word's queue answer never reached the game)"""
+        from unittest import mock
+        from bot import riddle
+        self.host_and_viewer()
+        call("/tg", msg("/zagadka"))
+        call("/tg", msg("огурец"))
+        wid = self.poll()["words"][0]["id"]
+        self.poll({"results": [{"id": wid, "stage": "check", "ok": True, "word": "огурец"}]})
+        load, raced = riddle._load_pend, []
+
+        def racing(gid):
+            pend = load(gid)
+            if not raced:
+                raced.append(1)
+                self.cb("ok:" + wid)                                   # pressed while the poll is running
+            return pend
+        with mock.patch.object(riddle, "_load_pend", racing):
+            self.poll({"names": {"vorobey": "Воробей"}})               # the poll writes the words back
+        self.assertEqual(store.get("PEND#mao")["items"][0]["state"], "approved")
+        self.assertEqual(self.poll()["words"][0]["action"], "queue")
+
     def test_setter_hints(self):
         self.host_and_viewer()
         call("/tg", msg("/podskazka"))

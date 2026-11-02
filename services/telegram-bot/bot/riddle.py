@@ -17,9 +17,12 @@ PEND#<game> -> words on their way, state:
   cancel: rejected after it reached the game's queue (old messages) -> the game drops it.
   "at" = when the state last changed. sent/queuing without an answer for RESEND_SEC (the game restarted and lost
   it) go to the game again; checked older than CHECKED_TTL (the host never decided) is dropped and saved for the
-  viewer, so they are never stuck with "your word is still waiting"."""
+  viewer, so they are never stuck with "your word is still waiting".
+  Several writers (the host's ✅, the game's poll, a viewer's word) change it at once: writes are guarded by
+  "rev", a lost race re-reads and merges word by word (_save_pend), so a ✅ is never overwritten by a poll."""
 
 import base64
+import copy
 import os
 import re
 import time
@@ -357,7 +360,7 @@ def decide(cb, game, chat, mid, data):
     """the host's ✅/❌ on an offered word: popup, the message disappears, the decision goes to the journal"""
     accept = data.startswith("ok:")
     wid = data.split(":", 1)[1]
-    pend = store.get("PEND#" + game) or {"items": []}
+    pend = _load_pend(game)
     it = next((i for i in pend["items"] if i["id"] == wid), None)
     if not it or it["state"] == "cancel" or (not accept and it["state"] not in ("checked", "approved", "queuing",
                                                                                "queued")):
@@ -376,16 +379,45 @@ def decide(cb, game, chat, mid, data):
     else:                                                 # already in the game's queue (old messages)
         it["state"] = "cancel"
         tg.send(it["chat"], TEXT["rejected"].format(w=e(it["word"])))
-    store.put("PEND#" + game, {"items": pend["items"]})
+    _save_pend(game, pend, pend["items"])
     tg.answer(cb.get("id"), TEXT["pop_accepted" if accept else "pop_rejected"].format(w=w))
     tg.delete(chat, mid)
     events.log(game, "word_accepted" if accept else "word_rejected", id=wid, word=it["word"], tt=it["tt"])
 
 
+def _load_pend(gid):
+    """PEND#<game> plus "base": the words as read, for the merge when another writer gets there first"""
+    pend = store.get("PEND#" + gid) or {"items": []}
+    pend["base"] = copy.deepcopy(pend["items"])
+    return pend
+
+
+def _merge(base, ours, theirs):
+    """word by word: one another writer changed, added or removed since we read (base) stays theirs,
+    the rest is ours (changed, added or removed by us)"""
+    base, ours = {i["id"]: i for i in base}, {i["id"]: i for i in ours}
+    out = [ours[i["id"]] if i == base.get(i["id"]) and i["id"] in ours else i
+           for i in theirs if i != base.get(i["id"]) or i["id"] in ours]
+    return out + [i for wid, i in ours.items() if wid not in base and all(t["id"] != wid for t in theirs)]
+
+
+def _save_pend(gid, pend, items):
+    """write the words if nobody wrote since _load_pend, otherwise merge into the fresh copy and retry"""
+    base, rev = pend["base"], pend.get("rev")
+    for _ in range(5):
+        if store.put_if_rev("PEND#" + gid, {"items": items}, rev):
+            pend.update(items=items, rev=(rev or 0) + 1, base=copy.deepcopy(items))
+            return
+        fresh = store.get("PEND#" + gid) or {"items": []}
+        items = _merge(base, items, fresh["items"])
+        base, rev = copy.deepcopy(fresh["items"]), fresh.get("rev")
+    print(f"PEND#{gid}: write conflict, gave up")
+
+
 def _pend_for(game, tg_id, now):
     """PEND#<game> with this viewer's undecided words past CHECKED_TTL dropped (saved for them, like a word
     nobody found) -> (pend, the viewer still has a word on its way)"""
-    pend = store.get("PEND#" + game) or {"items": []}
+    pend = _load_pend(game)
     stale = [i for i in pend["items"] if i["tg"] == tg_id and i["state"] == "checked"
              and now - int(i.get("at") or 0) > CHECKED_TTL]
     for i in stale:
@@ -393,7 +425,7 @@ def _pend_for(game, tg_id, now):
         save_word(i["tt"], i["word"], game)
         events.log(game, "word_expired", id=i["id"], word=i["word"], tt=i["tt"])
     if stale:
-        store.put("PEND#" + game, {"items": pend["items"]})
+        _save_pend(game, pend, pend["items"])
     return pend, any(i["tg"] == tg_id and i["state"] in OPEN for i in pend["items"])
 
 
@@ -412,7 +444,7 @@ def viewer_word(ask, chat, tg_id, text, now=None, from_saved=False):
     pend["items"].append({"id": base64.urlsafe_b64encode(os.urandom(6)).decode(), "word": word, "tt": ask["tt"],
                           "name": ask["name"], "tg": tg_id, "chat": chat, "host": ask["host"], "state": "new",
                           "saved": from_saved, "at": int(now)})
-    store.put("PEND#" + game, {"items": pend["items"]})
+    _save_pend(game, pend, pend["items"])
     events.log(game, "word_sent", tt=ask["tt"], word=word)
     return [(chat, TEXT["checking"].format(w=e(word)), None, True)]   # transient: gone after the next one
 
@@ -457,7 +489,7 @@ def game_poll(game, body):
     from .handler import check_instance_twin           # (circular import otherwise)
     now = time.time()
     check_instance_twin(game, str(body.get("instance") or ""), now)
-    pend = store.get("PEND#" + gid) or {"items": []}
+    pend = _load_pend(gid)
     items = {i["id"]: i for i in pend["items"]}
     changed = False
     for r in body.get("results") or []:
@@ -546,7 +578,7 @@ def game_poll(game, body):
     for cid in cancel:
         del items[cid]                                    # the game drops it now
     if changed or words or cancel:
-        store.put("PEND#" + gid, {"items": list(items.values())})
+        _save_pend(gid, pend, list(items.values()))
     out = {"words": words, "cancel": cancel, "requests": pending(gid)}
     if "setter" in body:                                  # the round with a viewer's word: {id, hints shown} or null
         cur = body["setter"] or {}
