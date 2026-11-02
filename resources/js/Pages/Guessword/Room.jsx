@@ -14,6 +14,10 @@ import qrcode from 'qrcode-generator';
 import useEngineSettings from './Partials/useEngineSettings';
 
 // where an action goes: the streamer's own room, or the room a super admin opened from the list
+// the streamer app hands OBS / LIVE Studio a local address that leads to the room's overlay (stream-client/)
+const CLIENT_OVERLAY_URL = 'http://localhost:7777/overlay';
+const studioUrl = (room) => (room.client ? CLIENT_OVERLAY_URL : room.overlayUrl);
+
 const act = (room, name) => (room.foreign ? route('guessword.rooms.' + name, room.id) : route('guessword.room.' + name));
 
 /**
@@ -24,9 +28,11 @@ const act = (room, name) => (room.foreign ? route('guessword.rooms.' + name, roo
 export default function Room({ room, languages, notice, problem }) {
     const { t } = useLaravelReactI18n();
     const s = useEngineSettings(room.controlUrl, room.engineOnline);
+    // the streamer app: until the TikTok nick and a working Euler key are saved there is only the setup
+    const setup = room.client && (!room.tiktok || !room.hasEulerKey || room.eulerRejected);
     const [mode, setMode] = useState('guess');
     const [menu, setMenu] = useState(false);
-    const [account, setAccount] = useState(false);
+    const [account, setAccount] = useState(setup);
     const [flash, setFlash] = useState(null);           // "applied" / "failed" under the buttons
     const menuRef = useRef(null);
     const active = s.info?.active;
@@ -77,6 +83,15 @@ export default function Room({ room, languages, notice, problem }) {
                 )}
                 {!room.engineOnline && <p className="mb-3 rounded-lg bg-danger-50 px-4 py-2 text-sm text-danger-700">{t('guessword.engine_offline')}</p>}
 
+                {setup ? (
+                    <div className="mx-auto mt-10 max-w-lg rounded-2xl border-2 border-warm-200 bg-surface p-6 text-center shadow-soft">
+                        <h1 className="font-heading text-2xl font-bold text-ink-900">{t('guessword.client_setup_title')}</h1>
+                        <p className="mt-2 text-sm text-ink-600">{t('guessword.client_setup_text')}</p>
+                        <PrimaryButton type="button" className="mt-5" onClick={() => setAccount(true)}>
+                            {t('guessword.client_setup_btn')}
+                        </PrimaryButton>
+                    </div>
+                ) : (<>
                 <p className="mb-3 text-right">
                     <Link href={room.foreign ? route('guessword.rooms.archive', room.id) : route('guessword.archive')}
                           className="text-sm font-semibold text-primary-700 hover:underline">
@@ -138,9 +153,11 @@ export default function Room({ room, languages, notice, problem }) {
                         </div>
                         <p className="mt-2.5 text-xs text-ink-500">
                             {t('guessword.preview_note')}{' '}
-                            <a href={room.controlUrl} target="_blank" rel="noopener noreferrer" className="font-semibold text-primary-700 hover:underline">
-                                {t('guessword.open_full')} ↗
-                            </a>
+                            {!room.client && (
+                                <a href={room.controlUrl} target="_blank" rel="noopener noreferrer" className="font-semibold text-primary-700 hover:underline">
+                                    {t('guessword.open_full')} ↗
+                                </a>
+                            )}
                         </p>
                     </div>
 
@@ -161,6 +178,7 @@ export default function Room({ room, languages, notice, problem }) {
                         }
                     />
                 </div>
+                </>)}
             </div>
 
             <AccountModal show={account} onClose={() => setAccount(false)} room={room} languages={languages} />
@@ -251,7 +269,8 @@ function EulerKey({ room, form }) {
                 )}
             </div>
             <p className="mt-1 text-xs text-ink-500">
-                {removing ? t('guessword.euler_removing') : locked ? t('guessword.euler_set') : t('guessword.euler_help')}
+                {removing ? t('guessword.euler_removing') : locked ? t('guessword.euler_set')
+                    : t(room.client ? 'guessword.client_euler_help' : 'guessword.euler_help')}
             </p>
             <InputError className="mt-1" message={form.errors.euler_key} />
         </div>
@@ -273,11 +292,11 @@ function AccountModal({ show, onClose, room, languages }) {
     const close = () => { form.setData({ ...form.data, euler_key: '', clear_euler_key: false }); onClose(); };
     const copy = async () => {
         try {
-            await navigator.clipboard.writeText(room.overlayUrl);
+            await navigator.clipboard.writeText(studioUrl(room));
             setCopied(true);
             setTimeout(() => setCopied(false), 2000);
         } catch (e) {
-            window.prompt(t('guessword.studio_heading'), room.overlayUrl);
+            window.prompt(t('guessword.studio_heading'), studioUrl(room));
         }
     };
 
@@ -288,7 +307,7 @@ function AccountModal({ show, onClose, room, languages }) {
 
                 <InputLabel className="mt-4" value={t('guessword.studio_heading')} />
                 <div className="mt-1 flex flex-wrap items-center gap-2">
-                    <code className="min-w-0 flex-1 truncate rounded-lg bg-warm-50 px-3 py-2 text-xs text-ink-700">{room.overlayUrl}</code>
+                    <code className="min-w-0 flex-1 truncate rounded-lg bg-warm-50 px-3 py-2 text-xs text-ink-700">{studioUrl(room)}</code>
                     <SecondaryButton type="button" onClick={copy}>{t(copied ? 'guessword.copied' : 'guessword.copy')}</SecondaryButton>
                     <SecondaryButton
                         type="button"
@@ -298,7 +317,7 @@ function AccountModal({ show, onClose, room, languages }) {
                         {t('guessword.regenerate')}
                     </SecondaryButton>
                 </div>
-                <p className="mt-1 text-xs text-ink-500">{t('guessword.studio_help')}</p>
+                <p className="mt-1 text-xs text-ink-500">{t(room.client ? 'guessword.client_studio_help' : 'guessword.studio_help')}</p>
 
                 <HostBot room={room} />
 

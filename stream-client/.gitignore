@@ -1,0 +1,4 @@
+src-tauri/target/
+src-tauri/gen/
+# made from app-icon.png by `tauri icon` in the build
+src-tauri/icons/

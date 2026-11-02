@@ -294,3 +294,10 @@ lookup, game logic). Order of work when audiences grow, each step only when a me
 
 `tests/Feature/Guessword/` (Pest, engine faked with `Http::fake`); the engine has its own unittest
 suite in `stream-engine/tests/`.
+
+## The streamer app (client accounts)
+
+Streamers who want a program instead of the site get `stream-client/` (Tauri, Windows) and an
+access key made by a super admin on `/guessword/clients`. The account has no e-mail or password,
+sees only its room without the site chrome, must save an Euler key before the first start, and
+OBS loads its overlay through `http://localhost:7777/overlay`. Details: `stream-client/README.md`.

@@ -62,6 +62,8 @@ class GuesswordController extends Controller
                 'id' => $room->id,
                 // a super admin in someone else's room: whose it is (the page then acts on this room)
                 'foreign' => $room->user_id !== $request->user()->id ? $room->user()->value('name') : null,
+                // a client account in the streamer app: no game without the TikTok nick and an Euler key
+                'client' => (bool) $request->user()->client_only,
                 'tiktok' => $room->tiktok_username,
                 'lang' => $room->lang,
                 'hasEulerKey' => filled($room->euler_key),
@@ -110,6 +112,9 @@ class GuesswordController extends Controller
         $room = $this->roomFor($request, $room);
         if (! $room->tiktok_username) {
             return back()->withErrors(['tiktok' => __('guessword.tiktok_required')]);
+        }
+        if ($room->user->client_only && blank($room->euler_key)) {
+            return back()->with('error', __('guessword.client_euler_required'));
         }
 
         return $this->toEngine(function () use ($room) {

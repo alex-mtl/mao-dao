@@ -20,7 +20,7 @@ use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
 
 #[Fillable(['name', 'email', 'password', 'ui_language', 'color_scheme'])]
-#[Hidden(['password', 'remember_token'])]
+#[Hidden(['password', 'remember_token', 'client_key_hash'])]
 class User extends Authenticatable implements HasLocalePreference, HasMedia, MustVerifyEmail
 {
     /** @use HasFactory<UserFactory> */
@@ -99,6 +99,8 @@ class User extends Authenticatable implements HasLocalePreference, HasMedia, Mus
             'email_verified_at' => 'datetime',
             'verification_expires_at' => 'datetime',
             'password' => 'hashed',
+            'client_only' => 'boolean',
+            'client_key_issued_at' => 'datetime',
         ];
     }
 

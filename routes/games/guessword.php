@@ -1,6 +1,8 @@
 <?php
 
 use App\Games\Guessword\Http\Controllers\ArchiveController;
+use App\Games\Guessword\Http\Controllers\ClientAccountsController;
+use App\Games\Guessword\Http\Controllers\ClientController;
 use App\Games\Guessword\Http\Controllers\GuesswordController;
 use Illuminate\Support\Facades\Route;
 
@@ -30,6 +32,22 @@ Route::middleware('auth')->group(function () {
     Route::post('/guessword/rooms/{room}/link', [GuesswordController::class, 'regenerateLink'])->name('guessword.rooms.link');
     Route::get('/guessword/rooms/{room}/archive', [ArchiveController::class, 'index'])->name('guessword.rooms.archive');
     Route::get('/guessword/rooms/{room}/archive/lives/{file}', [ArchiveController::class, 'roomEvents'])->name('guessword.rooms.archive.events');
+
+    // super admins: accounts for the streamer app and their access keys
+    Route::get('/guessword/clients', [ClientAccountsController::class, 'index'])->name('guessword.clients');
+    Route::post('/guessword/clients', [ClientAccountsController::class, 'store'])->name('guessword.clients.store');
+    Route::post('/guessword/clients/{user}/key', [ClientAccountsController::class, 'issueKey'])->name('guessword.clients.key');
+    Route::post('/guessword/clients/{user}/revoke', [ClientAccountsController::class, 'revokeKey'])->name('guessword.clients.revoke');
+    Route::post('/guessword/clients/{user}/pack', [ClientAccountsController::class, 'pack'])->name('guessword.clients.pack');
 });
 
 Route::get('/guessword', [GuesswordController::class, 'index'])->name('guessword.index');
+
+// the streamer app (stream-client/): access key → one-time sign-in address and the overlay link
+Route::middleware('throttle:20,1')->group(function () {
+    Route::post('/guessword/client/api/session', [ClientController::class, 'session'])->name('guessword.client.session');
+    Route::get('/guessword/client/enter/{code}', [ClientController::class, 'enter'])->name('guessword.client.enter');
+});
+// asked on every load of the overlay in OBS / LIVE Studio
+Route::post('/guessword/client/api/overlay', [ClientController::class, 'overlay'])
+    ->middleware('throttle:120,1')->name('guessword.client.overlay');

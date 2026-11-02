@@ -26,6 +26,7 @@ service. Everything that serves the platform lives here:
 app/ ...              Laravel: the platform core + the games
 media-sfu/            Node sidecar: voice/video for Mafia
 stream-engine/        Python sidecar: Guess the Word for TikTok LIVE (planned)
+stream-client/        Tauri desktop app for streamers: the room in a window + localhost overlay link (README there)
 services/
   telegram-bot/       AWS Lambda: the Telegram bot (from the tiktok-tg-bot repo, planned)
   word-ranker/        AWS Lambdas: dictionary ranking per language (from election-game/ranker, planned)

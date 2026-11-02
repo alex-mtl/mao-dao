@@ -20,9 +20,13 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->web(append: [
             \App\Http\Middleware\EnsureAccountIsActive::class,
+            \App\Http\Middleware\RestrictClientAccounts::class,
             \App\Http\Middleware\HandleInertiaRequests::class,
             \Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets::class,
         ]);
+
+        // the streamer app's API: the access key is the credential, there is no browser form
+        $middleware->validateCsrfTokens(except: ['guessword/client/api/*']);
 
         $middleware->alias([
             'race.player' => \App\Http\Middleware\ResolveRacePlayer::class,

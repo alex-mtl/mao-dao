@@ -1,0 +1,88 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Guess the Word</title>
+<style>
+    :root { color-scheme: dark; }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center;
+           background: #0b0614; color: #f4f0ff; font: 16px/1.45 system-ui, sans-serif; padding: 16px; }
+    .card { width: 100%; max-width: 420px; background: #1a1229; border: 1px solid #33264d; border-radius: 18px; padding: 28px; }
+    h1 { margin: 0 0 6px; font-size: 24px; }
+    p { margin: 0 0 18px; color: #b9aed0; font-size: 14px; }
+    input { width: 100%; padding: 12px 14px; border-radius: 10px; border: 1px solid #4a3a6b; background: #0f0a1a;
+            color: #fff; font: 600 18px ui-monospace, monospace; letter-spacing: .04em; text-transform: uppercase; }
+    input:focus { outline: 2px solid #8b5cf6; border-color: transparent; }
+    button { margin-top: 14px; width: 100%; padding: 12px; border: 0; border-radius: 10px; background: #8b5cf6;
+             color: #fff; font: 700 16px system-ui, sans-serif; cursor: pointer; }
+    button:disabled { opacity: .5; cursor: default; }
+    .error { margin-top: 12px; color: #fca5a5; font-size: 14px; min-height: 20px; }
+    .hidden { display: none; }
+</style>
+</head>
+<body>
+<div class="card">
+    <div id="busy" class="hidden"><h1 data-t="connecting"></h1><p data-t="wait"></p></div>
+    <form id="form" class="hidden">
+        <h1 data-t="title"></h1>
+        <p data-t="help"></p>
+        <input id="key" autocomplete="off" spellcheck="false" placeholder="MD-XXXX-XXXX-XXXX-XXXX-XXXX" autofocus>
+        <button id="go" type="submit" data-t="enter"></button>
+        <div id="error" class="error"></div>
+    </form>
+</div>
+<script>
+    const T = {
+        ru: { title: 'Введите ваш ключ', help: 'Ключ доступа вам выдали вместе с программой.', enter: 'Войти',
+              connecting: 'Подключение…', wait: 'Открываем вашу комнату.',
+              bad_key: 'Ключ не подошёл. Проверьте его или попросите новый.',
+              no_access: 'Доступ по этому ключу выключен.',
+              network: 'Нет связи с сервером. Проверьте интернет и попробуйте ещё раз.' },
+        en: { title: 'Enter your key', help: 'You got the access key together with the app.', enter: 'Sign in',
+              connecting: 'Connecting…', wait: 'Opening your room.',
+              bad_key: 'The key did not work. Check it or ask for a new one.',
+              no_access: 'Access with this key is switched off.',
+              network: 'No connection to the server. Check the internet and try again.' },
+        fr: { title: 'Saisissez votre clé', help: 'La clé d\'accès vous a été remise avec l\'application.', enter: 'Entrer',
+              connecting: 'Connexion…', wait: 'Ouverture de votre salle.',
+              bad_key: 'Clé refusée. Vérifiez-la ou demandez-en une nouvelle.',
+              no_access: 'L\'accès avec cette clé est désactivé.',
+              network: 'Pas de connexion au serveur. Vérifiez Internet et réessayez.' },
+        es: { title: 'Introduce tu clave', help: 'Recibiste la clave de acceso junto con la aplicación.', enter: 'Entrar',
+              connecting: 'Conectando…', wait: 'Abriendo tu sala.',
+              bad_key: 'La clave no funcionó. Revísala o pide una nueva.',
+              no_access: 'El acceso con esta clave está desactivado.',
+              network: 'Sin conexión con el servidor. Revisa internet e inténtalo de nuevo.' },
+    };
+    const t = T[(navigator.language || 'en').slice(0, 2)] || T.en;
+    document.querySelectorAll('[data-t]').forEach((el) => { el.textContent = t[el.dataset.t]; });
+
+    const invoke = window.__TAURI__.core.invoke;
+    const $ = (id) => document.getElementById(id);
+    const show = (busy) => { $('busy').classList.toggle('hidden', !busy); $('form').classList.toggle('hidden', busy); };
+
+    // on success the app itself moves this window to the room
+    async function signIn(key) {
+        show(true);
+        try {
+            await invoke('sign_in', { key });
+        } catch (e) {
+            show(false);
+            $('key').value = key;
+            $('error').textContent = t[e] || t.network;
+            $('key').focus();
+        }
+    }
+
+    $('form').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const key = $('key').value.trim();
+        if (key) signIn(key);
+    });
+
+    invoke('stored_key').then((key) => (key ? signIn(key) : show(false)), () => show(false));
+</script>
+</body>
+</html>

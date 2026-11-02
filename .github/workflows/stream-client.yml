@@ -1,0 +1,34 @@
+name: stream-client
+
+# The streamer app (stream-client/README.md): a Windows installer built on GitHub's runner,
+# so nobody needs Rust or the MSVC tools locally. The installer is the run's artifact.
+on:
+  push:
+    branches: [main]
+    paths: ['stream-client/**', '.github/workflows/stream-client.yml']
+  workflow_dispatch:
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: stream-client
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: stream-client/src-tauri
+      - name: Icons
+        run: npx --yes @tauri-apps/cli@2 icon app-icon.png -o src-tauri/icons
+      - name: Build
+        run: npx --yes @tauri-apps/cli@2 build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: guessword-streamer-setup
+          path: stream-client/src-tauri/target/release/bundle/nsis/*.exe
+          retention-days: 30
