@@ -47,9 +47,24 @@ def append(pk, field, value):
     table().append(pk, field, value)
 
 
-def put_if_rev(pk, data, rev):
-    """put with "rev" = rev + 1 only if the stored "rev" is still rev (None: no rev yet); True if written"""
-    return table().put_if_rev(dict(data, pk=pk, rev=(rev or 0) + 1), rev)
+def update(pk, changes, expect=None):
+    """set the fields in changes, only if the item exists and each field in expect has that value (a tuple:
+    one of these values); True if written. Two writers can never undo each other's change this way."""
+    return table().update(pk, changes, expect or {})
+
+
+def delete_if(pk, expect=None):
+    """delete only if the item exists and matches expect (as in update); True if deleted"""
+    return table().delete_if(pk, expect or {})
+
+
+def set_add(pk, field, value):
+    """add a string to the set field (created if missing), atomically"""
+    table().set_op("ADD", pk, field, value)
+
+
+def set_remove(pk, field, value):
+    table().set_op("DELETE", pk, field, value)
 
 
 def claim(pk, data, ttl, now):
@@ -105,14 +120,44 @@ class DynamoTable:
         except self.t.meta.client.exceptions.ConditionalCheckFailedException:
             return False
 
-    def put_if_rev(self, item, rev):
-        cond = {"ConditionExpression": "attribute_not_exists(rev)"} if rev is None else \
-            {"ConditionExpression": "rev = :r", "ExpressionAttributeValues": {":r": rev}}
+    @staticmethod
+    def _cond(expect, names, values):
+        names["#pk"] = "pk"
+        conds = ["attribute_exists(#pk)"]
+        for n, (k, v) in enumerate(expect.items()):
+            names[f"#e{n}"] = k
+            vs = v if isinstance(v, (list, tuple)) else [v]
+            values.update({f":e{n}_{m}": _dynamo(x) for m, x in enumerate(vs)})
+            conds.append(f"#e{n} IN ({', '.join(f':e{n}_{m}' for m in range(len(vs)))})")
+        return " AND ".join(conds)
+
+    def _try(self, call, **kw):
+        if not kw.get("ExpressionAttributeValues"):
+            kw.pop("ExpressionAttributeValues", None)
         try:
-            self.t.put_item(Item=_dynamo(item), **cond)
+            call(**kw)
             return True
         except self.t.meta.client.exceptions.ConditionalCheckFailedException:
             return False
+
+    def update(self, pk, changes, expect):
+        names, values = {}, {}
+        for n, (k, v) in enumerate(changes.items()):
+            names[f"#c{n}"], values[f":c{n}"] = k, _dynamo(v)
+        cond = self._cond(expect, names, values)
+        return self._try(self.t.update_item, Key={"pk": pk}, ConditionExpression=cond,
+                         UpdateExpression="SET " + ", ".join(f"#c{n} = :c{n}" for n in range(len(changes))),
+                         ExpressionAttributeNames=names, ExpressionAttributeValues=values)
+
+    def delete_if(self, pk, expect):
+        names, values = {}, {}
+        cond = self._cond(expect, names, values)
+        return self._try(self.t.delete_item, Key={"pk": pk}, ConditionExpression=cond,
+                         ExpressionAttributeNames=names, ExpressionAttributeValues=values)
+
+    def set_op(self, op, pk, field, value):
+        self.t.update_item(Key={"pk": pk}, UpdateExpression=f"{op} #f :v",
+                           ExpressionAttributeNames={"#f": field}, ExpressionAttributeValues={":v": {value}})
 
 
 class MemoryTable:
@@ -138,8 +183,25 @@ class MemoryTable:
         self.put(item)
         return True
 
-    def put_if_rev(self, item, rev):
-        if (self.items.get(item["pk"]) or {}).get("rev") != rev:
+    def _matches(self, pk, expect):
+        cur = self.items.get(pk)
+        return cur is not None and all(cur.get(k) in (v if isinstance(v, (list, tuple)) else [v])
+                                       for k, v in expect.items())
+
+    def update(self, pk, changes, expect):
+        if not self._matches(pk, expect):
             return False
-        self.put(item)
+        self.items[pk].update(copy.deepcopy(changes))
         return True
+
+    def delete_if(self, pk, expect):
+        if not self._matches(pk, expect):
+            return False
+        del self.items[pk]
+        return True
+
+    def set_op(self, op, pk, field, value):
+        s = self.items.setdefault(pk, {"pk": pk}).setdefault(field, set())
+        s.add(value) if op == "ADD" else s.discard(value)
+        if not s:
+            del self.items[pk][field]

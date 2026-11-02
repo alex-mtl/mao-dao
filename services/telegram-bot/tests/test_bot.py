@@ -212,8 +212,8 @@ class BotTest(unittest.TestCase):
         call("/tg", msg("/queue", uid=7))
         self.assertIn("только для ведущего", tg.sent[-1][1])          # the host's command only
         call("/tg", msg("очередь", uid=5))
-        self.assertEqual(tg.temp[-1][0], 5)
-        self.assertIn("Раунд … — <b>ОГУРЕЦ</b> (воробей)", tg.temp[-1][1])   # accepted, round not known yet
+        self.assertIn("«<b>ОГУРЕЦ</b>» от <b>воробей</b> — передаётся в очередь игры", tg.sent[-1][1])   # no round yet
+        self.assertEqual(tg.markups[-1][1]["inline_keyboard"][0][0]["callback_data"], "re:" + wid)
         self.poll({"results": [{"id": wid, "stage": "queue", "ok": True, "round": 7}]})
         self.assertIn("раунде <b>7</b>", tg.sent[-2][1])               # the viewer
         self.assertEqual(tg.temp[-1], (5, "✅ «<b>ОГУРЕЦ</b>» от <b>воробей</b> — раунд <b>7</b>", 60))  # the host
@@ -305,7 +305,7 @@ class BotTest(unittest.TestCase):
         t = __import__("time").time() + riddle.RESEND_SEC + 1
         with mock.patch.object(riddle.time, "time", return_value=t):
             self.assertEqual(self.poll({"queue_ids": [wid]})["words"], [])   # it's in the game's queue: kept
-        self.assertEqual(store.get("PEND#mao")["items"][0]["state"], "queued")
+        self.assertEqual(riddle.words("mao")[0]["state"], "queued")
 
     def test_accept_during_poll(self):
         """the host's ✅ lands between a poll's read and write: the poll must not put the word back to "checked"
@@ -317,7 +317,7 @@ class BotTest(unittest.TestCase):
         call("/tg", msg("огурец"))
         wid = self.poll()["words"][0]["id"]
         self.poll({"results": [{"id": wid, "stage": "check", "ok": True, "word": "огурец"}]})
-        load, raced = riddle._load_pend, []
+        load, raced = riddle.words, []
 
         def racing(gid):
             pend = load(gid)
@@ -325,10 +325,35 @@ class BotTest(unittest.TestCase):
                 raced.append(1)
                 self.cb("ok:" + wid)                                   # pressed while the poll is running
             return pend
-        with mock.patch.object(riddle, "_load_pend", racing):
+        with mock.patch.object(riddle, "words", racing):
             self.poll({"names": {"vorobey": "Воробей"}})               # the poll writes the words back
-        self.assertEqual(store.get("PEND#mao")["items"][0]["state"], "approved")
+        self.assertEqual(riddle.words("mao")[0]["state"], "approved")
         self.assertEqual(self.poll()["words"][0]["action"], "queue")
+
+    def test_stuck_word_told_to_host(self):
+        from unittest import mock
+        from bot import riddle
+        self.host_and_viewer()
+        call("/tg", msg("/zagadka"))
+        call("/tg", msg("огурец"))
+        wid = self.poll()["words"][0]["id"]
+        self.poll({"results": [{"id": wid, "stage": "check", "ok": True, "word": "огурец"}]})
+        self.cb("ok:" + wid)
+        self.assertEqual(self.poll()["words"][0]["action"], "queue")   # the game never answers
+        t = __import__("time").time() + riddle.STUCK_SEC + 1
+        with mock.patch.object(riddle.time, "time", return_value=t):
+            self.assertEqual(self.poll()["words"][0]["action"], "queue")   # given again
+            self.assertIn("не доходит до игры", tg.sent[-1][1])
+            self.assertEqual(tg.markups[-1][1]["inline_keyboard"][0][0]["callback_data"], "re:" + wid)
+            n = len(tg.sent)
+            self.poll()
+            self.assertEqual(len(tg.sent), n)                         # told once
+            self.cb("re:" + wid)                                      # the host's 🔁
+            self.assertIn("Отдам игре снова: ОГУРЕЦ", tg.answers[-1])
+            self.assertEqual(self.poll()["words"][0]["action"], "queue")
+        self.cb("rej:" + wid)                                         # ❌ on a word already given to the game
+        self.assertEqual(self.poll()["cancel"], [wid])
+        self.assertEqual(riddle.words("mao"), [])
 
     def test_setter_hints(self):
         self.host_and_viewer()
