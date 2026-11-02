@@ -119,6 +119,11 @@ class BotTest(unittest.TestCase):
         call("/tg", {"callback_query": {"id": "c", "from": {"id": 5}, "data": data,
                                         "message": {"chat": {"id": 5}, "message_id": mid}}})
 
+    def vcb(self, data, mid=99):
+        """the viewer (tg 7) presses a button"""
+        call("/tg", {"callback_query": {"id": "v", "from": {"id": 7}, "data": data,
+                                        "message": {"chat": {"id": 7}, "message_id": mid}}})
+
     def poll(self, body=None):
         return call("/game/poll", dict(body or {}, v=2), self.key)[1]
 
@@ -181,6 +186,7 @@ class BotTest(unittest.TestCase):
         wid = self.poll()["words"][0]["id"]
         tg.markups.clear()
         self.poll({"results": [{"id": wid, "stage": "check", "ok": True, "word": "огурец"}]})
+        self.vcb("go:" + wid)
         self.assertIn("Жду решения ведущего", tg.sent[-2][1])
         self.assertIn("предлагает слово «<b>ОГУРЕЦ", tg.sent[-1][1])
         self.assertEqual([b["callback_data"] for b in tg.markups[-1][1]["inline_keyboard"][0]], ["ok:" + wid, "rej:" + wid])
@@ -204,6 +210,7 @@ class BotTest(unittest.TestCase):
         call("/tg", msg("огурец"))
         wid = self.poll()["words"][0]["id"]
         self.poll({"results": [{"id": wid, "stage": "check", "ok": True, "word": "огурец"}]})
+        self.vcb("go:" + wid)
         self.cb("ok:" + wid, mid=2)
         self.assertIn("Принято: ОГУРЕЦ", tg.answers[-1])
         self.assertEqual(tg.deleted[-1], (5, 2))
@@ -231,7 +238,7 @@ class BotTest(unittest.TestCase):
         self.assertIn("пуста", tg.temp[-1][1])
         log = store.get("EVLOG#mao#" + __import__("time").strftime("%Y-%m-%d", __import__("time").gmtime()))
         self.assertEqual([x["type"] for x in log["events"]],
-                         ["link", "host", "ask_self", "word_sent", "word_checked", "word_accepted", "word_queued",
+                         ["link", "host", "ask_self", "word_sent", "word_checked", "word_offered", "word_accepted", "word_queued",
                           "ask_self", "word_played"])
 
     def test_queue_follows_the_game(self):
@@ -240,6 +247,7 @@ class BotTest(unittest.TestCase):
         call("/tg", msg("огурец"))
         wid = self.poll()["words"][0]["id"]
         self.poll({"results": [{"id": wid, "stage": "check", "ok": True, "word": "огурец"}]})
+        self.vcb("go:" + wid)
         self.cb("ok:" + wid)
         self.poll()
         self.poll({"results": [{"id": wid, "stage": "queue", "ok": True, "round": 8}]})
@@ -259,6 +267,7 @@ class BotTest(unittest.TestCase):
         with mock.patch.object(riddle.time, "time", return_value=t + riddle.RESEND_SEC + 1):
             self.assertEqual(self.poll()["words"][0]["id"], wid)      # the game restarted: given again
         self.poll({"results": [{"id": wid, "stage": "check", "ok": True, "word": "огурец"}]})
+        self.vcb("go:" + wid)
         tg.markups.clear()
         call("/tg", msg("очередь", uid=5))                            # the host's message lost: buttons again
         self.assertIn("предлагает слово «<b>ОГУРЕЦ", tg.sent[-1][1])
@@ -280,6 +289,7 @@ class BotTest(unittest.TestCase):
         wid = self.poll()["words"][0]["id"]
         diff = {"pos": 0.5, "group": "normal", "ticks": [0.3323, 0.658]}
         self.poll({"results": [{"id": wid, "stage": "check", "ok": True, "word": "огурец", "diff": diff}]})
+        self.vcb("go:" + wid)
         bar = "🟦🟦🟦🟪┃🟪🟪⚪🟧┃🟧🟧🟥🟥"
         viewer, host = tg.sent[-2][1], tg.sent[-1][1]
         self.assertIn("есть в словаре", viewer)
@@ -300,6 +310,7 @@ class BotTest(unittest.TestCase):
         call("/tg", msg("огурец"))
         wid = self.poll()["words"][0]["id"]
         self.poll({"results": [{"id": wid, "stage": "check", "ok": True, "word": "огурец"}]})
+        self.vcb("go:" + wid)
         self.cb("ok:" + wid)
         self.assertEqual(self.poll()["words"][0]["action"], "queue")
         t = __import__("time").time() + riddle.RESEND_SEC + 1
@@ -317,6 +328,7 @@ class BotTest(unittest.TestCase):
         call("/tg", msg("огурец"))
         wid = self.poll()["words"][0]["id"]
         self.poll({"results": [{"id": wid, "stage": "check", "ok": True, "word": "огурец"}]})
+        self.vcb("go:" + wid)
         load, raced = riddle.words, []
 
         def racing(gid):
@@ -338,6 +350,7 @@ class BotTest(unittest.TestCase):
         call("/tg", msg("огурец"))
         wid = self.poll()["words"][0]["id"]
         self.poll({"results": [{"id": wid, "stage": "check", "ok": True, "word": "огурец"}]})
+        self.vcb("go:" + wid)
         self.cb("ok:" + wid)
         self.assertEqual(self.poll()["words"][0]["action"], "queue")   # the game never answers
         t = __import__("time").time() + riddle.STUCK_SEC + 1
@@ -355,6 +368,35 @@ class BotTest(unittest.TestCase):
         self.assertEqual(self.poll()["cancel"], [wid])
         self.assertEqual(riddle.words("mao"), [])
 
+    def test_viewer_withdraws_a_word_after_seeing_its_difficulty(self):
+        self.host_and_viewer()
+        to_host = lambda: len([1 for c, t in tg.sent if c == 5])
+        call("/tg", msg("/zagadka"))
+        call("/tg", msg("огурец"))
+        wid = self.poll()["words"][0]["id"]
+        n = to_host()
+        diff = {"pos": 0.1, "group": "simple", "ticks": [0.3, 0.7]}
+        self.poll({"results": [{"id": wid, "stage": "check", "ok": True, "word": "огурец", "diff": diff}]})
+        self.assertEqual(tg.sent[-1][0], 7)
+        self.assertIn("Сложность: <b>простое</b>", tg.sent[-1][1])
+        self.assertEqual([b["callback_data"] for b in tg.markups[-1][1]["inline_keyboard"][0]], ["go:" + wid, "no:" + wid])
+        self.assertEqual(to_host(), n)                                 # the host doesn't know yet
+        self.vcb("no:" + wid)
+        self.assertIn("не отправлено", tg.sent[-1][1])
+        self.assertIsNone(store.get(f"WQ#mao#{wid}"))
+        self.assertEqual(self.poll()["words"], [])
+        self.vcb("go:" + wid)                                          # pressed after: nothing
+        self.assertEqual(to_host(), n)
+        call("/tg", msg("/zagadka"))                                   # a new word at once
+        self.assertNotIn("ещё ждёт", tg.sent[-1][1])
+        call("/tg", msg("арбуз"))
+        wid2 = self.poll()["words"][0]["id"]
+        self.poll({"results": [{"id": wid2, "stage": "check", "ok": True, "word": "арбуз"}]})
+        call("/tg", msg("/zagadka"))                                   # not answered, a new /zagadka: dropped
+        self.assertNotIn("ещё ждёт", tg.sent[-1][1])
+        self.assertIsNone(store.get(f"WQ#mao#{wid2}"))
+        self.assertEqual(to_host(), n)
+
     def test_setter_hints(self):
         self.host_and_viewer()
         call("/tg", msg("/podskazka"))
@@ -363,6 +405,7 @@ class BotTest(unittest.TestCase):
         call("/tg", msg("санки"))
         wid = self.poll()["words"][0]["id"]
         self.poll({"results": [{"id": wid, "stage": "check", "ok": True, "word": "санки"}]})
+        self.vcb("go:" + wid)
         self.cb("ok:" + wid)
         self.poll()
         self.poll({"results": [{"id": wid, "stage": "queue", "ok": True, "round": 4}]})
@@ -371,14 +414,20 @@ class BotTest(unittest.TestCase):
         self.assertNotIn("setter_hints", r)
         call("/tg", msg("/podskazka", uid=5))                          # the host: not linked as a viewer
         self.assertIn("/start", tg.sent[-1][1])
-        call("/tg", msg("/podskazka"))
-        self.assertIn("«<b>САНКИ</b>». Осталось подсказок: 3 из 3", tg.sent[-1][1])
+        kinds = lambda: [row[0]["callback_data"] for row in tg.markups[-1][1]["inline_keyboard"]]
+        call("/tg", msg("/podskazka"))                                 # three kinds of hint
+        self.assertIn("«<b>САНКИ</b>»? Осталось подсказок: 3 из 3", tg.sent[-1][1])
+        self.assertEqual(kinds(), ["hk:word", "hk:first", "hk:len"])
+        call("/tg", msg("зима"))                                       # no kind chosen: not a hint
+        self.assertEqual(store.get("SROUND#mao")["hints"], [])
+        self.vcb("hk:word")
+        self.assertIn("Напиши одно слово-подсказку", tg.sent[-1][1])
         call("/tg", msg("снежная горка"))
         self.assertIn("одно слово", tg.sent[-1][1])
         call("/tg", msg("Санка"))
         self.assertIn("почти само слово", tg.sent[-1][1])
         call("/tg", msg("Зима"))
-        self.assertIn("«<b>ЗИМА</b>» появится", tg.sent[-1][1])
+        self.assertIn("Проверяю «<b>ЗИМА</b>» по словарю", tg.sent[-1][1])
         sp = dict(handler.menu(handler.MENU_ALL))["podskazka"]         # the first hint ever: the sponsor
         self.assertIn("спонсор функции: воробей", sp)
         self.poll({"names": {"Vorobey": "Соловей"}})                   # a new nickname: the menu follows
@@ -386,18 +435,36 @@ class BotTest(unittest.TestCase):
         self.assertEqual(tg.markups[-1][1]["commands"][4], "podskazka")
         call("/tg", msg("горка"))                                      # no "/podskazka" first: not a hint
         self.assertEqual(store.get("SROUND#mao")["hints"], ["зима"])
+        self.poll({"setter": {"id": wid, "hints": 0, "shown": [], "rejected": ["зима"]}})   # not in the dictionary
+        self.assertIn("Слова «<b>ЗИМА</b>» нет в словаре игры", tg.sent[-1][1])
+        self.assertEqual(store.get("SROUND#mao")["hints"], [])
         call("/tg", msg("подсказка горка"))                             # the word right in the command
-        call("/tg", msg("/podskazka зима"))
+        n = len(tg.sent)
+        r = self.poll({"setter": {"id": wid, "hints": 1, "shown": ["горка"], "rejected": ["зима"]}})
+        self.assertIn("✅ Подсказка «<b>ГОРКА</b>» на экране. Осталось подсказок: 2", tg.sent[-1][1])
+        self.assertNotIn("setter_hints", r)
+        self.poll({"setter": {"id": wid, "hints": 1, "shown": ["горка"], "rejected": ["зима"]}})
+        self.assertEqual(len(tg.sent), n + 1)                          # told once
+        call("/tg", msg("/podskazka горка"))
         self.assertIn("уже есть", tg.sent[-1][1])
-        call("/tg", msg("/podskazka дети"))
+        self.vcb("hk:first")                                           # the bot makes it: no dictionary check
+        self.assertIn("«<b>С…</b>» появится", tg.sent[-1][1])
+        call("/tg", msg("/podskazka"))
+        self.assertEqual(kinds(), ["hk:word", "hk:len"])               # the first letter is on screen already
+        self.vcb("hk:first")
+        self.assertIn("уже на экране", tg.sent[-1][1])
+        self.vcb("hk:len")
+        self.assertIn("«<b>5 БУКВ</b>» появится", tg.sent[-1][1])
         self.assertIn("Осталось: 0", tg.sent[-1][1])
         call("/tg", msg("/podskazka"))
+        self.assertIn("Все 3", tg.sent[-1][1])
+        self.vcb("hk:word")
         self.assertIn("Все 3", tg.sent[-1][1])
         r = handler.admin({"action": "set_sponsor", "command": "podskazka", "tiktok_id": "@Sinica", "name": "синица"})
         self.assertEqual(r["name"], "синица")                           # not linked: the name given
         self.assertIn("спонсор функции: синица", dict(handler.menu(handler.MENU_ALL))["podskazka"])
         r = self.poll({"setter": {"id": wid, "hints": 1}})
-        self.assertEqual(r["setter_hints"], {"id": wid, "words": ["зима", "горка", "дети"]})
+        self.assertEqual(r["setter_hints"], {"id": wid, "words": ["горка", "с…", "5 букв"], "free": ["с…", "5 букв"]})
         self.assertNotIn("setter_hints", self.poll({"setter": {"id": wid, "hints": 3}}))
         self.assertNotIn("setter_hints", self.poll())                  # an old game: no "setter", nothing changes
         self.assertTrue(store.get("SROUND#mao"))
@@ -415,8 +482,8 @@ class BotTest(unittest.TestCase):
         self.assertEqual({k: store.get("SROUND#mao")[k] for k in ("id", "tg", "word")},
                          {"id": "zz", "tg": "7", "word": "огурец"})
         call("/tg", msg("/podskazka салат"))
-        self.assertIn("«<b>САЛАТ</b>» появится", tg.sent[-1][1])
-        self.assertEqual(self.poll({"setter": cur})["setter_hints"], {"id": "zz", "words": ["салат"]})
+        self.assertIn("Проверяю «<b>САЛАТ</b>» по словарю", tg.sent[-1][1])
+        self.assertEqual(self.poll({"setter": cur})["setter_hints"], {"id": "zz", "words": ["салат"], "free": []})
         self.poll({"setter": None})
         self.assertIsNone(store.get("SROUND#mao"))
 
@@ -479,6 +546,7 @@ class BotTest(unittest.TestCase):
         self.assertIn("ждёт", tg.sent[-1][1])                          # pressed twice
         wid = self.poll()["words"][0]["id"]
         self.poll({"results": [{"id": wid, "stage": "check", "ok": True, "word": "огурец"}]})
+        self.vcb("go:" + wid)
         self.cb("rej:" + wid)
         self.assertEqual([w["word"] for w in store.get("SAVED#vorobey")["words"]], ["огурец"])   # back again
 
@@ -641,9 +709,10 @@ class ReportsTest:
         self.assertEqual(tg.later, [(7, [prompt], 20), (7, [501], 20)])
         wid = self.poll()["words"][0]["id"]
         self.poll({"results": [{"id": wid, "stage": "check", "ok": True, "word": "огурец"}]})
-        self.assertIn("есть в словаре", [t for c, t in tg.sent if c == 7][-1])
         self.assertEqual(tg.later[-1], (7, [checking], 20))
-        checked = max(i + 1 for i, (c, t) in enumerate(tg.sent) if c == 7)
+        self.vcb("go:" + wid)                                          # the question becomes "waits for the host"
+        self.assertIn("Жду решения ведущего", [t for c, t in tg.sent if c == 7][-1])
+        checked = 99
         self.cb("ok:" + wid)
         self.poll()
         self.poll({"results": [{"id": wid, "stage": "queue", "ok": True, "round": 8}]})

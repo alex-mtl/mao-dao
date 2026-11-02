@@ -111,14 +111,23 @@ the word-ranker Lambdas. Registering the same id again rotates the key.
 
 ### The setter's hints (since 2026-11-01)
 
-A viewer whose word is being played can put up to 3 hint words on screen through the bot: `/podskazka`
-(or `подсказка`) then one word, or `/podskazka зима` at once. The bot refuses outside that round, more
-than one word, the word itself or a word with the same start (common prefix ≥ min(4, lengths)) and
-repeats. State: `SROUND#<game>` in the bot (written on "played", deleted when the game's poll reports
-another `setter` id or `null`). The engine sends `setter: {id, hints shown}` with every poll and polls
-every 3 s instead of 10 while hints can still come; the bot answers `setter_hints: {id, words}` (all so
-far). On screen (chroma / TT mode only): `#setterHints`, top right of the camera zone under the timer
-row, the same pill as a boost (avatar + the word), shown in COUNTDOWN / PLAYING.
+A viewer whose word is being played can put up to 3 hints on screen through the bot: `/podskazka`
+(or `подсказка`) shows three kinds (2026-11-02): ✏️ a word (they type it), 🔤 the first letter (the bot
+puts up "к…") and 🔢 the number of letters ("5 букв"); the last two need no typing and each can be used
+once. `/podskazka зима` gives a word at once. The bot refuses outside that round, more than one word, the
+word itself or a word with the same start (common prefix ≥ min(4, lengths)) and repeats; the engine
+then shows a word only if it is in the round's dictionary (`sem.normalize`, the same check as guesses),
+else lists it in `setter.rejected` and the bot takes it back and tells the setter ("✅ на экране" for a
+word shown). State: `SROUND#<game>` in the bot (written on "played", deleted when the game's poll reports
+another `setter` id or `null`; `ver` guards the poll's write against a hint added meanwhile). The engine
+sends `setter: {id, hints shown, shown, rejected}` with every poll and polls every 3 s instead of 10
+while hints can still come; the bot answers `setter_hints: {id, words, free}` (all so far; `free` = the
+bot-made ones, no dictionary check). On screen (chroma / TT mode only): `#setterHints`, top right of the
+camera zone under the timer row, the same pill as a boost (avatar + the word), shown in COUNTDOWN / PLAYING.
+
+**Taking a word back (2026-11-02).** After the dictionary check the viewer sees the word's difficulty
+with 📨 "отправить ведущему" / ✖️ "отменить" (state `confirm`); only 📨 shows the word to the host.
+✖️, a new `/zagadka`, or 30 min without an answer drop it (a word chosen from the saved ones stays saved).
 
 ## Viewer identity: one viewer, one id (since 2026-11-02)
 

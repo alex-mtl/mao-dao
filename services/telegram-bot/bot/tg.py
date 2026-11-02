@@ -64,16 +64,21 @@ def send(chat, text, markup=None, transient=False):
 photos = []                  # tests: (chat, photo) of photo messages
 
 
-def send_photo(chat, photo, caption):
+def send_photo(chat, photo, caption, markup=None):
     """a photo (URL or a file_id Telegram gave before) with an HTML caption -> (message id, file_id) or None"""
     if sent is not None:
         if photo.startswith("https://bad"):
             return None
         sent.append((chat, caption))
         photos.append((chat, photo))
+        if markup:
+            markups.append((chat, markup))
         return len(sent), "fid:" + photo
     try:
-        r = call("sendPhoto", chat_id=chat, photo=photo, caption=caption, parse_mode="HTML")["result"]
+        data = dict(chat_id=chat, photo=photo, caption=caption, parse_mode="HTML")
+        if markup:
+            data["reply_markup"] = markup
+        r = call("sendPhoto", **data)["result"]
         return r["message_id"], (r.get("photo") or [{}])[-1].get("file_id", "")
     except Exception as e:
         print(f"send_photo error: {type(e).__name__}")
@@ -182,6 +187,16 @@ def edit(chat, message_id, text):
         call("editMessageText", chat_id=chat, message_id=message_id, text=text, parse_mode="HTML")
     except Exception as e:
         print(f"edit error: {type(e).__name__}")
+
+
+def drop_buttons(chat, message_id):
+    """remove a message's buttons, keep its text (or photo)"""
+    if sent is not None:
+        return
+    try:
+        call("editMessageReplyMarkup", chat_id=chat, message_id=message_id, reply_markup={"inline_keyboard": []})
+    except Exception as e:
+        print(f"drop_buttons error: {type(e).__name__}")
 
 
 def bot_name():

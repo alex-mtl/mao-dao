@@ -244,6 +244,7 @@ class GuessGame(BaseGame):
         self.word_hidden = False      # a viewer's word nobody found: never shown
         self.setter_t = 0.0
         self.setter_hints = []        # up to 3 words the setter gave through the bot (top right of the camera zone)
+        self.setter_rejected = []     # ... their words not in the round's dictionary (the bot tells them)
         self.log = []                 # the round's events for the room page's monitor
         self.guess_times = deque(maxlen=3000)   # accepted guesses: the chat's pace
 
@@ -1296,14 +1297,21 @@ class GuessGame(BaseGame):
         if not self.setter or self.phase not in (COUNTDOWN, PLAYING):
             return None
         return {"id": self.setter.get("cid", ""), "hints": len(self.setter_hints), "tiktok_id": self.setter["id"],
-                "word": self.secret, "round": self.round_id}   # the bot rebuilds its record if "played" was lost
+                "word": self.secret, "round": self.round_id,   # the bot rebuilds its record if "played" was lost
+                "shown": self.setter_hints, "rejected": self.setter_rejected}
 
-    def add_setter_hints(self, cid, words):
-        """the setter's hint words from the bot (all of them so far): the new ones go on screen"""
+    def add_setter_hints(self, cid, words, free=()):
+        """the setter's hints from the bot (all of them so far): the new ones go on screen. A word must be in the
+        round's dictionary; "free" ones (the first letter, the number of letters - the bot makes them) need not."""
         if not self.setter or self.setter.get("cid") != cid or self.phase not in (COUNTDOWN, PLAYING):
             return
+        free = {str(w).strip()[:24] for w in free or []}
         for w in [str(w).strip()[:24] for w in words or []]:
-            if w and w not in self.setter_hints and len(self.setter_hints) < SETTER_HINTS:
+            if w and w not in self.setter_hints and w not in self.setter_rejected and len(self.setter_hints) < SETTER_HINTS:
+                if w not in free and (not self.sem or self.sem.normalize(w)[0] in (None, self.secret)):
+                    self.setter_rejected.append(w)
+                    print(f"[guess] setter's hint '{w}' isn't in the dictionary")
+                    continue
                 self.setter_hints.append(w)
                 self.emit("setter_hint", name=self.setter["name"], word=w)
                 if self.live:

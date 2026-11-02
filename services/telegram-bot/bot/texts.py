@@ -28,7 +28,7 @@ TEXT = {
                            "Выключите лишнюю — иначе слова и очередь разойдутся.",
         "help_all": "/zagadka или <b>загадка</b> — загадать слово для игры (решает ведущий)\n"
                     "/hints или <b>подсказки</b> — сколько подсказок у тебя на счету\n"
-                    "/podskazka или <b>подсказка</b> — подсказка к твоему слову, пока идёт его раунд (до 3 слов)\n"
+                    "/podskazka или <b>подсказка</b> — подсказка к твоему слову, пока идёт его раунд: слово, первая буква или число букв (до 3)\n"
                     "/game или <b>игра</b> [слово стрима] — переключиться на другой стрим",
         "ask_game": "Пришли слово стрима — оно появляется на экране после команды <b>настроить связь</b> в чате стрима.",
         "game_ok": "✅ Теперь ты играешь на стриме <b>{word}</b>.",
@@ -56,7 +56,7 @@ TEXT = {
                      "/history [N] - the last N rounds (1 by default, up to 10)",
         "help_all": "/zagadka - offer a word for the game (the host decides)\n"
                     "/hints - how many hints you have on account\n"
-                    "/podskazka - a hint for your word while its round is on (up to 3 words)\n"
+                    "/podskazka - a hint for your word while its round is on: a word, the first letter or the number of letters (up to 3)\n"
                     "/game [stream word] - switch to another stream",
         "ask_game": "Send the stream word - it appears on screen after the <b>link up</b> command in the stream chat.",
         "game_ok": "✅ You now play on the stream <b>{word}</b>.",

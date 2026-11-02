@@ -1086,20 +1086,22 @@ class CustomWordTest(unittest.TestCase):
         self.assertIsNone(g.setter_status())
         g.tick(time.time()); g.tick(time.time() + 0.01)
         self.assertEqual(g.setter_status(), {"id": "h1", "hints": 0, "tiktok_id": "vorobey", "word": "огурец",
-                                             "round": g.round_id})
+                                             "round": g.round_id, "shown": [], "rejected": []})
         self.assertIsNone(g.snapshot()["setterHints"])
         g.add_setter_hints("other", ["салат"])                            # another round's id: ignored
         g.add_setter_hints("h1", ["салат"])
-        g.add_setter_hints("h1", ["салат", "грядка", "зелёный", "лишний"])   # all of them so far: new ones only, 3 max
+        g.add_setter_hints("h1", ["салат", "абырвалг", "огурец", "о…"], ["о…"])   # not in the dictionary, the word
+        g.add_setter_hints("h1", ["салат", "абырвалг", "о…", "грядка", "лишний"])  # itself: no; "free": no check
         self.assertEqual(g.snapshot()["setterHints"],
-                         {"name": "воробей", "avatar": "https://a/v.jpg", "words": ["салат", "грядка", "зелёный"]})
-        self.assertEqual([e["word"] for e in g.events if e["type"] == "setter_hint"], ["салат", "грядка", "зелёный"])
-        self.assertEqual(g.setter_status()["hints"], 3)
+                         {"name": "воробей", "avatar": "https://a/v.jpg", "words": ["салат", "о…", "грядка"]})
+        self.assertEqual([e["word"] for e in g.events if e["type"] == "setter_hint"], ["салат", "о…", "грядка"])
+        st = g.setter_status()
+        self.assertEqual((st["hints"], st["shown"], st["rejected"]), (3, ["салат", "о…", "грядка"], ["абырвалг", "огурец"]))
         g.save()
         g2 = GuessGame(g.store)
         g2.set_lang("ru")
         g2.load()
-        self.assertEqual(g2.setter_hints, ["салат", "грядка", "зелёный"])
+        self.assertEqual(g2.setter_hints, ["салат", "о…", "грядка"])
         g2.setter.pop("avatar")                                           # a round saved before avatars were kept
         g2.viewers = g.viewers
         self.assertEqual(g2.snapshot()["setterHints"]["avatar"], "https://a/v.jpg")

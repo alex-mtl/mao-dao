@@ -175,7 +175,7 @@ class TelegramLink:
         self.results = []
         sh = r.get("setter_hints")
         if isinstance(sh, dict):                                 # the setter's hint words: new ones on screen
-            g.add_setter_hints(sh.get("id"), sh.get("words"))
+            g.add_setter_hints(sh.get("id"), sh.get("words"), sh.get("free"))
         for cid in r.get("cancel") or []:
             g.cancel_custom(cid)
         for w in r.get("words") or []:

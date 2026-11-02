@@ -58,7 +58,7 @@ def avatar_key(url):
     return m.group(1) if m else (url or "").split("?", 1)[0]
 
 
-def sponsor_photo(command, chat, caption):
+def sponsor_photo(command, chat, caption, markup=None):
     """the sponsor's TikTok avatar (the game sends linked viewers' avatars) with the caption -> sent or not.
     Telegram fetches the URL once; its file_id is kept (TikTok's signed URLs expire, the file_id does not)
     until the sponsor's picture itself changes."""
@@ -67,11 +67,11 @@ def sponsor_photo(command, chat, caption):
         return False
     url = (store.get("TT#" + sp["tt"]) or {}).get("avatar", "")
     if sp.get("file_id") and (not url or sp.get("file_src") == avatar_key(url)) \
-            and tg.send_photo(chat, sp["file_id"], caption):
+            and tg.send_photo(chat, sp["file_id"], caption, markup):
         return True
     if not url:
         return False
-    got = tg.send_photo(chat, url, caption)
+    got = tg.send_photo(chat, url, caption, markup)
     if got and got[1]:
         store.put("SPONSOR#" + command, dict(sp, file_id=got[1], file_src=avatar_key(url)))
     return bool(got)

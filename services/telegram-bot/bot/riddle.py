@@ -5,6 +5,7 @@
     host:   "загадывает [part of a nick]" or "/pick" -> buttons with the game's linked viewers -> the bot asks one
   viewer: replies with one word (10 minutes)
   game:   polls /game/poll every ~10 s: checks new words in its dictionary (action "check")
+  viewer: sees the word's difficulty: 📨 to the host or ✖️ take it back (too easy / too hard)
   host:   gets "X предлагает слово ..." with ✅ принять / ❌ отклонить; a press deletes the message (popup instead)
   game:   ✅ -> on the next poll puts the word in its queue (action "queue") and answers with the round number
   viewer: is told the round (or "not in the dictionary" / "rejected")
@@ -13,7 +14,8 @@ pk: HOSTOF#<tg id> -> game the user hosts; GAMEUSERS#<game> -> linked viewers; A
 SAVED#<tiktok id> -> the viewer's words nobody found (offered again by /zagadka); CREDITS#<game> -> hint credits
 as the game last reported them (/hints works after the stream too);
 WQ#<game>#<id> -> one word on its way (WQIDS#<game>: the set of their ids), state:
-  new -> sent (being checked) -> checked (waits for the host) -> approved -> queuing -> queued -> (played: gone)
+  new -> sent (being checked) -> confirm (the viewer saw the difficulty, the host doesn't know yet; a new word
+  or CONFIRM_TTL drops it) -> checked (waits for the host) -> approved -> queuing -> queued -> (played: gone)
   cancel: rejected after it reached the game's queue (old messages) -> the game drops it.
   "at" = when the state last changed, "born" = when the viewer sent it, "ok_at" = the host's ✅.
   sent/queuing without an answer for RESEND_SEC (the game restarted and lost it) go to the game again; checked
@@ -38,6 +40,7 @@ MAX_BUTTONS = 12
 POLL_VERSION = 2                # games older than this only get results, no new words
 OPEN = ("new", "sent", "checked", "approved", "queuing")
 RESEND_SEC = 120                # sent/queuing with no answer from the game -> given to it again
+CONFIRM_TTL = 30 * 60           # the viewer never pressed 📨 / ✖️ -> dropped
 CHECKED_TTL = 12 * 3600         # a word the host never decided on -> dropped, saved for the viewer
 STUCK_SEC = 180                 # not checked / not queued by the game this long -> the host is told
 STATE_NAMES = {"new": "ждёт игру для проверки", "sent": "проверяется игрой", "checked": "ждёт твоего решения",
@@ -57,6 +60,12 @@ TEXT = {
     "checking": "Проверяю слово «{w}»…",
     "busy": "Твоё прошлое слово ещё ждёт проверки или решения ведущего.",
     "checked": "Слово «<b>{w}</b>» есть в словаре ✅ Жду решения ведущего.",
+    "confirm": "Слово «<b>{w}</b>» есть в словаре ✅{scale}\n\nОтправить его ведущему? Если слово слишком лёгкое "
+               "или трудное — отмени и загадай другое.",
+    "send_host": "📨 отправить ведущему",
+    "withdraw": "✖️ отменить",
+    "withdrawn": "✖️ Слово «<b>{w}</b>» не отправлено. Загадать другое — /zagadka",
+    "confirm_gone": "Это слово уже не ждёт решения.",
     "host_word": "🎯 <b>{name}</b> (@{tt}) предлагает слово «<b>{w}</b>»",
     "queued": "✅ Ведущий принял слово «<b>{w}</b>»! Оно будет загадано в раунде <b>{round}</b>.",
     "missing": "Слова «{w}» нет в словаре игры. Пришли другое слово.",
@@ -75,8 +84,17 @@ TEXT = {
     "transit_row": "⏳ «<b>{w}</b>» от <b>{name}</b> — {state}, {age}",
     "played": "🎯 Твоё слово «<b>{w}</b>» загадано прямо сейчас в раунде {round}!\n\n"
               "💡 Можешь помочь игрокам: до 3 слов-подсказок на экран — /podskazka",
-    "hint_ask": "💡 Напиши одно слово-подсказку к своему слову «<b>{w}</b>». Осталось подсказок: {n} из 3.",
+    "hint_menu": "💡 Какую подсказку дать к своему слову «<b>{w}</b>»? Осталось подсказок: {n} из 3.",
+    "hint_kind_word": "✏️ слово",
+    "hint_kind_first": "🔤 первая буква",
+    "hint_kind_len": "🔢 количество букв",
+    "hint_ask": "✏️ Напиши одно слово-подсказку к «<b>{w}</b>». Оно должно быть в словаре игры.",
+    "hint_checking": "💡 Проверяю «<b>{h}</b>» по словарю игры — если оно там есть, через пару секунд появится "
+                     "на экране.",
     "hint_shown": "💡 Подсказка «<b>{h}</b>» появится на экране через пару секунд. Осталось: {n}.",
+    "hint_on_screen": "✅ Подсказка «<b>{h}</b>» на экране. Осталось подсказок: {n}.",
+    "hint_unknown": "📕 Слова «<b>{h}</b>» нет в словаре игры — подсказка не показана. Дай другую — /podskazka",
+    "hint_used": "Такая подсказка уже на экране — выбери другую.",
     "hint_sponsor": "\n\n🏅 Спонсор этой функции: <b>{name}</b> (самая первая подсказка к своему слову).",
     "hint_none_left":"Все 3 подсказки уже на экране.",
     "hint_not_now": "Подсказку можно дать, только когда на стриме идёт раунд с твоим словом. "
@@ -287,18 +305,58 @@ def setter_hint_command(chat, tg_id, text, now=None):
     rest = (text.strip().split(None, 1) + [""])[1].strip()
     if rest:
         return setter_hint_word(chat, tg_id, rest, now)
-    store.put("HINTASK#" + tg_id, {"game": link["game"]}, ttl=now + HINT_ASK_TTL)
     from .handler import sponsor_name, sponsor_photo     # (circular import otherwise)
     sp = sponsor_name("podskazka")
-    text = TEXT["hint_ask"].format(w=e(sr["word"].upper()), n=MAX_SETTER_HINTS - len(sr["hints"])) \
+    text = TEXT["hint_menu"].format(w=e(sr["word"].upper()), n=MAX_SETTER_HINTS - len(sr["hints"])) \
         + (TEXT["hint_sponsor"].format(name=e(sp)) if sp else "")
-    if sp and sponsor_photo("podskazka", chat, text):   # the sponsor's TikTok avatar with the text under it
+    markup = hint_buttons(sr)
+    if sp and sponsor_photo("podskazka", chat, text, markup):   # the sponsor's TikTok avatar with the text under it
         return []
-    return [(chat, text)]
+    return [(chat, text, markup)]
+
+
+def plural_letters(n):
+    n10, n100 = n % 10, n % 100
+    return "буква" if n10 == 1 and n100 != 11 else "буквы" if 2 <= n10 <= 4 and not 12 <= n100 <= 14 else "букв"
+
+
+def free_hint(sr, kind):
+    """a hint the bot makes from the word itself: "к…" (the first letter) or "5 букв" (no dictionary check)"""
+    if kind == "first":
+        return sr["word"][:1].lower() + "…"
+    n = sum(ch.isalpha() for ch in sr["word"])
+    return f"{n} {plural_letters(n)}"
+
+
+def hint_buttons(sr):
+    """the three kinds; the first letter / the number of letters only while not on screen yet"""
+    rows = [[(TEXT["hint_kind_word"], "hk:word")]]
+    for kind in ("first", "len"):
+        if free_hint(sr, kind) not in sr["hints"]:
+            rows.append([(TEXT["hint_kind_" + kind], "hk:" + kind)])
+    return tg.buttons(rows)
+
+
+def setter_hint_kind(cb, tg_id, chat, mid, kind, now=None):
+    """the setter picked a kind: a word -> asks for it; the first letter / the number of letters -> on screen"""
+    now = now or time.time()
+    tg.answer(cb.get("id"))
+    tg.drop_buttons(chat, mid)
+    link, sr = _setter_round(tg_id)
+    if not sr:
+        tg.send(chat, TEXT["hint_over" if link else "need_link"])
+    elif len(sr["hints"]) >= MAX_SETTER_HINTS:
+        tg.send(chat, TEXT["hint_none_left"])
+    elif kind == "word":
+        store.put("HINTASK#" + tg_id, {"game": link["game"]}, ttl=now + HINT_ASK_TTL)
+        tg.send(chat, TEXT["hint_ask"].format(w=e(sr["word"].upper())))
+    elif kind in ("first", "len"):
+        for c, text in _add_hint(chat, tg_id, link, sr, free_hint(sr, kind), now, free=True):
+            tg.send(c, text)
 
 
 def setter_hint_word(chat, tg_id, text, now=None):
-    """one hint word: checked, kept in SROUND#<game>; the game gets it on its next poll"""
+    """one hint word: checked here, kept in SROUND#<game>; the game checks it in its dictionary on its next poll"""
     now = now or time.time()
     link, sr = _setter_round(tg_id)
     if not sr:
@@ -313,9 +371,17 @@ def setter_hint_word(chat, tg_id, text, now=None):
     h = words[0]
     if _same_root(norm(h), norm(sr["word"])):
         return [(chat, TEXT["hint_same"].format(w=e(sr["word"].upper())))]
+    return _add_hint(chat, tg_id, link, sr, h, now)
+
+
+def _add_hint(chat, tg_id, link, sr, h, now, free=False):
+    """a hint into SROUND#<game> ("free" ones need no dictionary check); the game gets it on its next poll"""
     if norm(h) in [norm(x) for x in sr["hints"]]:
-        return [(chat, TEXT["hint_repeat"])]
+        return [(chat, TEXT["hint_used" if free else "hint_repeat"])]
     sr["hints"].append(h)
+    sr["ver"] = int(sr.get("ver") or 0) + 1               # hint_verdicts writes only over the hints it read
+    if free:
+        sr["free"] = sr.get("free", []) + [h]
     store.put("SROUND#" + link["game"], sr, ttl=now + SROUND_TTL)
     store.delete("HINTASK#" + tg_id)
     events.log(link["game"], "setter_hint", tt=sr["tt"], word=h)
@@ -323,7 +389,28 @@ def setter_hint_word(chat, tg_id, text, now=None):
         from .handler import refresh_menus
         store.put("SPONSOR#podskazka", {"tt": sr["tt"], "name": link.get("tiktok_name", "")})
         refresh_menus()
-    return [(chat, TEXT["hint_shown"].format(h=e(h.upper()), n=MAX_SETTER_HINTS - len(sr["hints"])))]
+    if free:
+        return [(chat, TEXT["hint_shown"].format(h=e(h.upper()), n=MAX_SETTER_HINTS - len(sr["hints"])))]
+    return [(chat, TEXT["hint_checking"].format(h=e(h.upper())))]
+
+
+def hint_verdicts(gid, sr, cur):
+    """the game's word on the setter's hint words: not in its dictionary -> taken back (the setter is told),
+    on screen -> the setter is told once. Written only if no hint came meanwhile (the next poll otherwise)."""
+    bad = [h for h in sr["hints"] if h in (cur.get("rejected") or ())]
+    new = [h for h in cur.get("shown") or () if h in sr["hints"] and h not in sr.get("told", [])
+           and h not in sr.get("free", [])]
+    if not bad and not new:
+        return sr
+    hints, told, ver = [h for h in sr["hints"] if h not in bad], sr.get("told", []) + new, int(sr.get("ver") or 0)
+    if not store.update("SROUND#" + gid, {"hints": hints, "told": told, "ver": ver + 1}, {"ver": ver}):
+        return sr
+    for h in bad:
+        tg.send(sr["chat"], TEXT["hint_unknown"].format(h=e(h.upper())))
+        events.log(gid, "setter_hint_unknown", tt=sr["tt"], word=h)
+    for h in new:
+        tg.send(sr["chat"], TEXT["hint_on_screen"].format(h=e(h.upper()), n=MAX_SETTER_HINTS - len(hints)))
+    return dict(sr, hints=hints, told=told, ver=ver + 1)
 
 
 def add_game_user(game, link):
@@ -344,6 +431,10 @@ def on_callback(cb, now=None):
     data = cb.get("data") or ""
     if data.startswith("use:") or data == "new":          # a viewer chose a saved word / a new one
         return viewer_choice(cb, tg_id, chat, mid, data)
+    if data.startswith("go:") or data.startswith("no:"):  # a viewer: their checked word to the host, or not
+        return viewer_confirm(cb, tg_id, chat, mid, data)
+    if data.startswith("hk:"):                            # the setter: a kind of hint
+        return setter_hint_kind(cb, tg_id, chat, mid, data[3:], now)
     game = (store.get("HOSTOF#" + tg_id) or {}).get("game")
     if not game:
         tg.answer(cb.get("id"))
@@ -379,6 +470,34 @@ def viewer_choice(cb, tg_id, chat, mid, data):
         return
     out = viewer_word(ask, chat, tg_id, word, from_saved=True)
     tg.edit(chat, mid, out[0][1])
+
+
+def viewer_confirm(cb, tg_id, chat, mid, data):
+    """the viewer saw their word's difficulty: 📨 -> the host decides; ✖️ -> dropped (a saved word stays saved)"""
+    go, wid = data.startswith("go:"), data[3:]
+    game = (store.get("TG#" + tg_id) or {}).get("game")
+    it = store.get(_pk(game, wid)) if game else None
+    if not it or it["tg"] != tg_id or it["state"] != "confirm":
+        tg.answer(cb.get("id"), TEXT["confirm_gone"])
+        tg.drop_buttons(chat, mid)
+        return
+    w = e(it["word"].upper())
+    if go and _move(game, it, "confirm", state="checked", at=int(time.time())):
+        tg.answer(cb.get("id"))
+        tg.edit(chat, mid, TEXT["checked"].format(w=w) + scale(it.get("diff")))
+        tg.mark_transient(chat, mid)                      # goes when the next message comes
+        tg.send(it["host"], TEXT["host_word"].format(w=w, name=e(it["name"]), tt=e(it["tt"]))
+                + scale(it.get("diff")), decide_buttons(it["id"]))
+        events.log(game, "word_offered", id=wid, word=it["word"], tt=it["tt"])
+    elif not go and _drop(game, it, "confirm"):
+        if it.get("saved"):
+            save_word(it["tt"], it["word"], game)
+        tg.answer(cb.get("id"))
+        tg.edit(chat, mid, TEXT["withdrawn"].format(w=w))
+        events.log(game, "word_withdrawn", id=wid, word=it["word"], tt=it["tt"])
+    else:
+        tg.answer(cb.get("id"), TEXT["confirm_gone"])
+        tg.drop_buttons(chat, mid)
 
 
 def decide(cb, game, chat, mid, data):
@@ -471,9 +590,20 @@ def _viewer_open(game, tg_id, now):
         if i["state"] == "checked" and now - int(i.get("at") or 0) > CHECKED_TTL and _drop(game, i, "checked"):
             save_word(i["tt"], i["word"], game)
             events.log(game, "word_expired", id=i["id"], word=i["word"], tt=i["tt"])
+        elif i["state"] == "confirm":                     # never sent to the host: a new word replaces it
+            _drop_unconfirmed(game, i)
         elif i["state"] in OPEN:
             busy = True
     return busy
+
+
+def _drop_unconfirmed(game, it):
+    if _drop(game, it, "confirm"):
+        if it.get("saved"):
+            save_word(it["tt"], it["word"], game)
+        events.log(game, "word_unconfirmed", id=it["id"], word=it["word"], tt=it["tt"])
+        return True
+    return False
 
 
 def _open_item(game, tg_id, now=None):
@@ -551,15 +681,14 @@ def game_poll(game, body):
                 del items[it["id"]]
                 tg.send(it["chat"], TEXT["missing"].format(w=e(it["word"])))
                 events.log(gid, "word_missing", tt=it["tt"], word=it["word"])
-        elif r.get("ok"):                                 # in the dictionary: the host decides
-            ch = {"state": "checked", "word": r.get("word") or it["word"], "at": int(now)}
+        elif r.get("ok"):                                 # in the dictionary: the viewer sees how hard, then the host
+            ch = {"state": "confirm", "word": r.get("word") or it["word"], "at": int(now)}
             if isinstance(r.get("diff"), dict):
                 ch["diff"] = r["diff"]                    # the scale again when the host lists the waiting words
             if _move(gid, it, ("new", "sent"), **ch):
                 store.delete("ASK#" + it["tg"])
-                tg.send(it["chat"], TEXT["checked"].format(w=w) + scale(it.get("diff")), transient=True)
-                tg.send(it["host"], TEXT["host_word"].format(w=w, name=e(it["name"]), tt=e(it["tt"]))
-                        + scale(it.get("diff")), decide_buttons(it["id"]))
+                tg.send(it["chat"], TEXT["confirm"].format(w=w, scale=scale(it.get("diff"))),
+                        tg.buttons([[(TEXT["send_host"], "go:" + it["id"]), (TEXT["withdraw"], "no:" + it["id"])]]))
                 events.log(gid, "word_checked", tt=it["tt"], word=it["word"])
         elif _drop(gid, it, ("new", "sent")):
             del items[it["id"]]
@@ -595,7 +724,8 @@ def game_poll(game, body):
             tg.send(it["chat"], TEXT["played"].format(w=e(it["word"].upper()), round=it.get("round", "")))
             events.log(gid, "word_played", tt=it["tt"], word=it["word"], round=it.get("round"))
             store.put("SROUND#" + gid, {"id": pid, "tg": it["tg"], "chat": it["chat"], "tt": it["tt"],
-                                        "word": it["word"], "round": it.get("round"), "hints": []}, ttl=now + SROUND_TTL)
+                                        "word": it["word"], "round": it.get("round"), "hints": [], "ver": 0},
+                      ttl=now + SROUND_TTL)
     real = set(body.get("queue_ids") or ())               # the game's real queue: what isn't there is done
     for i in list(items.values()):                        # (played or lost, e.g. a report lost in a restart)
         if "queue_ids" in body and i["state"] == "queued" and i["id"] not in real:
@@ -604,6 +734,9 @@ def game_poll(game, body):
                 events.log(gid, "word_dropped", tt=i["tt"], word=i["word"], round=i.get("round"))
         elif i["state"] == "queuing" and i["id"] in real:  # given to the game, the answer never came (a restart):
             _move(gid, i, "queuing", state="queued", at=int(now))   # it is in the game's queue, only the report was lost
+        elif i["state"] == "confirm" and now - int(i.get("at") or 0) > CONFIRM_TTL:
+            if _drop_unconfirmed(gid, i):
+                del items[i["id"]]
         elif i["state"] in ("sent", "queuing") and now - int(i.get("at") or 0) > RESEND_SEC:
             if _move(gid, i, i["state"], state="new" if i["state"] == "sent" else "approved", at=int(now)):
                 events.log(gid, "word_resent", tt=i["tt"], word=i["word"])
@@ -635,10 +768,12 @@ def game_poll(game, body):
             link = store.get("TT#" + cur["tiktok_id"].lower())
             if link and link.get("game") == gid:
                 sr = {"id": cur["id"], "tg": link["tg"], "chat": link["chat"], "tt": link["tiktok_id"],
-                      "word": cur.get("word", ""), "round": cur.get("round"), "hints": []}
+                      "word": cur.get("word", ""), "round": cur.get("round"), "hints": [], "ver": 0}
                 store.put("SROUND#" + gid, sr, ttl=now + SROUND_TTL)
+        if sr:
+            sr = hint_verdicts(gid, sr, cur)
         if sr and len(sr["hints"]) > int(cur.get("hints") or 0):
-            out["setter_hints"] = {"id": sr["id"], "words": sr["hints"]}
+            out["setter_hints"] = {"id": sr["id"], "words": sr["hints"], "free": sr.get("free", [])}
     if body.get("want_links"):                            # the room page: a player's Telegram next to their TikTok
         users = (store.get("GAMEUSERS#" + gid) or {}).get("users", {})
         out["links"] = {tt: {"tg": u.get("tg_name", ""), "id": u.get("tg", ""), "full": u.get("tg_full", "")}
