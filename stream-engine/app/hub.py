@@ -15,7 +15,7 @@ from .identities import identities
 from .live_log import LiveLog
 from .reactions.balloons import LikeBalloons
 from .reactions.cake import CakeShows
-from .room_prefs import GiftRules, Toasts, catalog
+from .room_prefs import EmoteRules, EmotesSeen, GiftRules, Toasts, catalog
 from .settings import GlobalSettings
 
 
@@ -39,6 +39,8 @@ class Hub:
         self.global_settings.load(saved.pop("global", None))
         self.toasts = Toasts(saved.pop("toasts", None))           # each toast: show / voice / its speed
         self.gift_rules = GiftRules(saved.pop("gifts", None))     # which gift triggers which action
+        self.emote_rules = EmoteRules(saved.pop("emotes", None))  # which club emote sent alone does what
+        self.emotes_seen = EmotesSeen(store)
         if "break" in saved:                          # old single on/off switch for guess
             saved = {"guess": {"break": saved.pop("break")}, **saved}
         for name, opts in saved.items():
@@ -116,6 +118,7 @@ class Hub:
         out["global"] = self.global_settings.values()
         out["toasts"] = self.toasts.values()
         out["gifts"] = self.gift_rules.values()
+        out["emotes"] = self.emote_rules.values()
         return out
 
     def set_options(self, name, opts):
@@ -125,6 +128,11 @@ class Hub:
             self.save_session()
             self.game.dirty = True                    # pages get the new toast settings
             print(f"[hub] {name} -> {(self.toasts if name == 'toasts' else self.gift_rules).values()}")
+            return
+        if name == "emotes":
+            self.emote_rules.set(opts)
+            self.save_session()
+            print(f"[hub] emotes -> {self.emote_rules.values()}")
             return
         if name == "global":
             for k, v in (opts or {}).items():
@@ -253,6 +261,22 @@ class Hub:
             return
         self.game.on_comment(v, text, ts)
         self._save_if_needed()
+
+    def emote(self, v: Viewer, emotes, ts=None):
+        """Club emotes sent in the chat with no text: [(emote id, image url)]. Each is remembered for the room page;
+        one sent alone does what the streamer bound it to (a hint from the account, like "подсказка")."""
+        if self.closed:
+            return
+        self._seen(v)
+        for emote_id, image in emotes:
+            self.emotes_seen.record(emote_id, image)
+        action = self.emote_rules.action_for(emotes[0][0]) if len(emotes) == 1 else None
+        if action:
+            print(f"[emote] {v.name}: {emotes[0][0]} -> {action}")
+            on_emote = getattr(self.game, "on_emote_action", None)
+            if on_emote:
+                on_emote(v, action, ts)
+                self._save_if_needed()
 
     def join(self, v: Viewer):
         if self.closed:                               # shutting down: nothing changes any more

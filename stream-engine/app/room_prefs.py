@@ -3,6 +3,8 @@
 - Toasts: each toast / voice line of the pages can be hidden, silenced, and said at its own speed.
 - GiftRules: which gift triggers which action (a hint, 3 words, a balloon, a plane...).
 - GiftCatalog: every gift seen on any stream of the platform (name -> coins), for the page's selectors.
+- EmoteRules: which of the streamer's club emotes, sent alone in the chat, does what (a hint from the account).
+- EmotesSeen: the club emotes seen in this room's chat (id -> image), for the page to pick from.
 
 Hub-level (shared by the room's games); kept in the hub's session file with the other options."""
 
@@ -97,6 +99,57 @@ class GiftRules:
         if bound:
             return bound
         return {action for action, rule in self._v.items() if rule == "any"}
+
+
+# what a club emote sent alone can do: "hint" = like typing "подсказка" (spends a hint on account)
+EMOTE_ACTIONS = ["hint"]
+
+
+class EmoteRules:
+    """{emote id: action}. Club emotes are the streamer's own, so the rules are the room's; none by default."""
+
+    def __init__(self, values=None):
+        self._v = {}
+        self.set(values or {})
+
+    def set(self, values):
+        for emote_id, action in (values or {}).items():
+            if not isinstance(emote_id, str) or not emote_id:
+                continue
+            if action in EMOTE_ACTIONS:
+                self._v[emote_id] = action
+            elif action in ("", None):
+                self._v.pop(emote_id, None)
+
+    def values(self):
+        return dict(self._v)
+
+    def action_for(self, emote_id):
+        return self._v.get(emote_id or "")
+
+
+class EmotesSeen:
+    """The club emotes sent in this room's chat, latest first: {id: {image, n, t}} (the room's store)."""
+    FILE = "emotes_seen.json"
+    MAX = 60
+
+    def __init__(self, store):
+        self.store = store
+        self._v = store.load(self.FILE, {}) or {}
+        self._saved_t = 0.0
+
+    def record(self, emote_id, image):
+        e = self._v.pop(emote_id, None) or {"n": 0}
+        e.update(image=image or e.get("image", ""), n=e["n"] + 1, t=time.time())
+        self._v[emote_id] = e
+        while len(self._v) > self.MAX:
+            self._v.pop(min(self._v, key=lambda k: self._v[k]["t"]))
+        if e["n"] == 1 or time.time() - self._saved_t > 60:   # a new emote at once, the counts once a minute
+            self._saved_t = time.time()
+            self.store.save(self.FILE, self._v)
+
+    def list(self):
+        return sorted(({"id": k, **v} for k, v in self._v.items()), key=lambda e: -e["t"])
 
 
 def _load_ru():

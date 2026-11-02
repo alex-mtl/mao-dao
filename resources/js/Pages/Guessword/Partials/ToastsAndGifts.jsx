@@ -111,6 +111,32 @@ export function ToastsTab({ s, mode }) {
     );
 }
 
+/** The streamer's club emotes seen in the chat: one sent alone can do an action (a hint from the viewer's account). */
+function EmotesSection({ s }) {
+    const { t } = useLaravelReactI18n();
+    const emotes = s.info?.emotes || { actions: [], seen: [] };
+    return (
+        <div className="mt-2 border-t border-warm-100 pt-3">
+            <h3 className="text-sm font-semibold text-ink-900">{t('guessword.emotes_title')}</h3>
+            <p className="pb-2 text-xs text-ink-500">{t('guessword.emotes_note')}</p>
+            {emotes.seen.length === 0 && <p className="py-2 text-sm text-ink-500">{t('guessword.emotes_empty')}</p>}
+            <div className="flex flex-wrap gap-2">
+                {emotes.seen.map((e) => (
+                    <label key={e.id} className="flex items-center gap-2 rounded-lg border border-warm-200 px-2 py-1.5">
+                        {e.image ? <img src={e.image} alt="" className="h-9 w-9 object-contain" />
+                            : <span className="text-xs text-ink-500">#{e.id}</span>}
+                        <select value={s.draft.emotes?.[e.id] ?? ''} onChange={(ev) => s.set('emotes', e.id, ev.target.value)}
+                                className="h-9 rounded-lg border-warm-200 bg-surface py-0 text-sm text-ink-900">
+                            <option value="">{t('guessword.emote_none')}</option>
+                            {emotes.actions.map((a) => <option key={a} value={a}>{t('guessword.act_' + a)}</option>)}
+                        </select>
+                    </label>
+                ))}
+            </div>
+        </div>
+    );
+}
+
 /** One row per action: which gift triggers it - none, any, any from N coins, or a gift seen on the streams. */
 export function GiftsTab({ s, mode }) {
     const { t } = useLaravelReactI18n();
@@ -166,6 +192,7 @@ export function GiftsTab({ s, mode }) {
                 </tbody>
             </table>
             <p className="py-3 text-xs text-ink-500">{t('guessword.gift_any_note')} {t('guessword.act_now_note')}</p>
+            {mode === 'guess' && <EmotesSection s={s} />}
             {done && (
                 <div className={'fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-full px-4 py-2 text-sm font-semibold text-white shadow-lg '
                     + (done.ok ? 'bg-success-500' : 'bg-danger-500')}>{done.text}</div>

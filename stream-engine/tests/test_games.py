@@ -285,6 +285,17 @@ class GiftHintTest(unittest.TestCase):
         g.on_comment(eva, "подсказка")                                     # no credits left: a guess
         self.assertEqual(len(g.hints), 1)
 
+    def test_club_emote_bound_to_hint_spends_a_credit(self):
+        g = GuessGame(JsonStore(tempfile.mkdtemp()))
+        g.tick(time.time()); g.tick(time.time() + 0.01)
+        eva = Viewer("eva", "Eva", "", 1)
+        g.on_emote_action(eva, "hint")                     # no credits: nothing
+        self.assertEqual(len(g.hints), 0)
+        g.add_credits("eva", 2)
+        g.on_emote_action(eva, "hint")
+        self.assertEqual(len(g.hints), 1)
+        self.assertEqual(g.credits["eva"], 1)
+
     def test_credit_spent_by_mixed_case_id(self):
         g = GuessGame(JsonStore(tempfile.mkdtemp()))
         g.tick(time.time()); g.tick(time.time() + 0.01)
@@ -672,6 +683,28 @@ class JournalTest(unittest.TestCase):
             self.assertIn("[gift] hello", open(os.path.join(d, "logs", logs[0]), encoding="utf-8").read())
         finally:
             config.DATA_DIR = saved
+
+
+class EmoteTest(unittest.TestCase):
+    def test_emotes_are_remembered_and_a_bound_one_alone_acts(self):
+        from app.hub import Hub
+        d = tempfile.mkdtemp()
+        hub = Hub(JsonStore(d))
+        calls = []
+        hub.games[hub.active].on_emote_action = lambda viewer, action, ts=None: calls.append((viewer.id, action))
+        mia = Viewer("mia", "Mia", "", 1)
+        hub.emote(mia, [("777", "https://x/balloon.png")])            # not bound yet: only remembered
+        self.assertEqual(calls, [])
+        self.assertEqual([e["id"] for e in hub.emotes_seen.list()], ["777"])
+        hub.set_options("emotes", {"777": "hint", "888": "nonsense"})
+        self.assertEqual(hub.options()["emotes"], {"777": "hint"})
+        hub.emote(mia, [("777", "")])
+        self.assertEqual(calls, [("mia", "hint")])
+        hub.emote(mia, [("777", ""), ("777", "")])                    # two emotes in one message: not a command
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(Hub(JsonStore(d)).emotes_seen.list()[0]["image"], "https://x/balloon.png")   # kept
+        hub.set_options("emotes", {"777": ""})                        # unbound
+        self.assertEqual(hub.emote_rules.values(), {})
 
 
 class ShutdownTest(unittest.TestCase):

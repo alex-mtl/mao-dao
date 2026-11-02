@@ -56,6 +56,11 @@ def big_avatar(user):
     return ""
 
 
+def emote_image(emote):
+    img = getattr(emote, "image", None)
+    return next(iter(getattr(img, "m_urls", None) or getattr(img, "url_list", None) or []), "")
+
+
 def sent_at(event):
     """When the viewer sent it (TikTok create_time, seconds) or None."""
     ct = getattr(getattr(event, "common", None), "create_time", 0) or 0
@@ -137,7 +142,7 @@ class TikTokConnector:
 
     async def _run_once(self):
         from TikTokLive import TikTokLiveClient
-        from TikTokLive.events import (CommentEvent, ConnectEvent, FollowEvent, GiftEvent,
+        from TikTokLive.events import (CommentEvent, ConnectEvent, EmoteChatEvent, FollowEvent, GiftEvent,
                                        JoinEvent, LikeEvent)
 
         kwargs = {"web_kwargs": {"signer_kwargs": {"sign_api_key": self.sign_api_key}}} if self.sign_api_key else {}
@@ -180,10 +185,23 @@ class TikTokConnector:
         def comment(event):
             v, text = viewer_of(event.user), (getattr(event, "comment", "") or "")[:200]
             ts = sent_at(event)
+            emotes = [e.emote for e in getattr(event, "emotes", None) or [] if getattr(e, "emote", None)]
+            if emotes and not re.sub(r"\[[^\]]*\]", "", text).strip():     # club emotes only, no words
+                emote_chat(v, emotes, ts)
+                return
             if config.LOG_CHAT:
                 lag = f" +{time.time() - ts:.0f}s" if ts else ""
                 print(f"[chat] {v.name} (@{v.id}) follow={v.follows} fan={v.fan}{lag}: {text!r}")
             hub.comment(v, text, ts)
+
+        def emote_chat(v, emotes, ts):
+            found = [(str(e.emote_id), emote_image(e)) for e in emotes if getattr(e, "emote_id", "")]
+            if found:
+                print(f"[emote] {v.name} (@{v.id}): {' '.join(i for i, _ in found)}")
+                hub.emote(v, found, ts)
+
+        def emote(event):
+            emote_chat(viewer_of(event.user), list(getattr(event, "emote_list", None) or []), sent_at(event))
 
         def join(event):
             hub.join(viewer_of(event.user))
@@ -234,6 +252,7 @@ class TikTokConnector:
             hub.like(v, n)
 
         client.on(CommentEvent)(safe(comment))
+        client.on(EmoteChatEvent)(safe(emote))
         client.on(JoinEvent)(safe(join))
         client.on(GiftEvent)(safe(gift))
         client.on(FollowEvent)(safe(follow))

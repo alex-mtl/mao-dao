@@ -410,8 +410,7 @@ class GuessGame(BaseGame):
             return
         now = time.time()
         # "подсказка" / "hint" (any language, any case) from a viewer with hints on account
-        if self.phase == PLAYING and self.credits.get(account_id(viewer.id), 0) > 0                 and (text or "").strip(" !.?").lower().replace("ё", "е") in HINT_WORDS                 and not (ts and ts < self.started_at - 3):
-            self.use_credit(viewer, now)
+        if (text or "").strip(" !.?").lower().replace("ё", "е") in HINT_WORDS and self._hint_from_account(viewer, ts, now):
             return
         # stream champions (1st-3rd place by wins, ties included) and round champions (whoever named
         # the 1st, 2nd and 3rd word of the table first) may send up to 3 words at once: each word
@@ -827,6 +826,22 @@ class GuessGame(BaseGame):
     def _hint_wait(self, viewer, now):
         """Seconds this viewer still has to wait for their next hint (0 = now)."""
         return max(0, self.hint_t.get(viewer.id, 0) + self.hint_cd - now)
+
+    def _hint_from_account(self, viewer, ts, now):
+        """A viewer asks for a hint from their account: in a round, with hints on account, sent after it started."""
+        if self.phase == PLAYING and self.credits.get(account_id(viewer.id), 0) > 0 \
+                and not (ts and ts < self.started_at - 3):
+            self.use_credit(viewer, now)
+            return True
+        return False
+
+    def on_emote_action(self, viewer: Viewer, action, ts=None):
+        """A club emote the streamer bound to "hint", sent alone: the same as typing "подсказка"."""
+        if action != "hint" or self.frozen is not None or not self.sem or self.rank is None:
+            return
+        if self.setter and (viewer.id or "").lower() == self.setter["id"] and self.phase in (COUNTDOWN, PLAYING):
+            return
+        self._hint_from_account(viewer, ts, time.time())
 
     def use_credit(self, viewer, now=None):
         now = now or time.time()

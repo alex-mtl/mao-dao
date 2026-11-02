@@ -28,8 +28,10 @@ export default function useEngineSettings(controlUrl, enabled) {
         if (!enabled) return;
         call('games')
             .then((d) => {
-                // sections: each game's options, global (likes...), toasts {id: {show, voice, rate}}, gifts {action: rule}
-                const values = { global: { ...d.global.values }, toasts: { ...(d.toasts?.values || {}) }, gifts: { ...(d.gifts?.values || {}) } };
+                // sections: each game's options, global (likes...), toasts {id: {show, voice, rate}}, gifts {action: rule},
+                // emotes {club emote id: action}
+                const values = { global: { ...d.global.values }, toasts: { ...(d.toasts?.values || {}) }, gifts: { ...(d.gifts?.values || {}) },
+                                 emotes: { ...(d.emotes?.values || {}) } };
                 d.games.forEach((g) => { values[g.name] = { ...g.values }; });
                 setInfo(d);
                 setSaved(values);
