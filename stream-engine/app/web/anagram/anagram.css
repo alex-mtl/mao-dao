@@ -14,6 +14,13 @@
 #word .t.in { animation: flipIn .5s backwards; }
 #word .q { font: 900 calc(var(--u) * 7) var(--font-display); color: var(--muted); letter-spacing: .3em; }
 html.chroma #word { margin-top: calc(var(--u) * 1.2); }
+/* the camera zone's popups stay below the round's word (--word-bottom: anagram.js) */
+html.chroma #toast { top: calc(var(--word-bottom, 0px) + var(--u) * 1.5); transform: none; }
+html.chroma #miniToasts { top: calc(var(--word-bottom, 0px) + var(--u) * 17); }
+html.chroma #bigNum { top: var(--word-bottom, 0px); height: calc(var(--chroma-top) - var(--word-bottom, 0px)); }
+html.chroma #champs, html.chroma #likers { max-height: calc(var(--chroma-top) - var(--word-bottom, 0px) - var(--u) * 1.5);
+                                          overflow: hidden; justify-content: flex-end; }
+html.chroma .greet, html.chroma.tt .greet { top: calc(var(--word-bottom-vp, 0px) + var(--u) * 1); }
 
 /* the answer line: like Guess the Word's rows - the word on the left, the player on the right */
 #try { position: relative; flex: none; height: calc(var(--u) * 9); border-radius: calc(var(--u) * 2.5); border: 1px solid var(--line);

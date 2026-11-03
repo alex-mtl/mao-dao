@@ -622,6 +622,15 @@
     renderPromo(s.promo || []);
   }
 
+  // the popups (toasts, notes, greetings, big numbers) start below the round's word: they never cover it
+  function wordBottom() {
+    const st = $('stage').getBoundingClientRect(), w = $('word').getBoundingClientRect();
+    const root = document.documentElement.style;
+    root.setProperty('--word-bottom', Math.round(w.bottom - st.top) + 'px');
+    root.setProperty('--word-bottom-vp', Math.round(w.bottom) + 'px');
+  }
+  addEventListener('resize', wordBottom);
+
   function render(s) {
     const roundChanged = !S || S.roundId !== s.roundId;
     S = s;
@@ -637,6 +646,7 @@
     $('playersChip').textContent = '👥 ' + s.stats.players;
     $('found').textContent = s.stats.possible ? t('a.found', { n: s.stats.found, m: s.stats.possible }) : '';
     renderWord(s);
+    wordBottom();
     if (roundChanged) { blocks.clear(); $('table').replaceChildren(); }
     renderTable();
     $('winner').hidden = s.phase !== 'winner';
