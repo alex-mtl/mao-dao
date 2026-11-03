@@ -11,7 +11,7 @@
 /* the round's word: crisp letters, no glow, opaque tiles (over the camera in TT mode) */
 #word { display: flex; justify-content: center; gap: calc(var(--tw) * .12); margin-top: calc(var(--u) * 1.6); min-height: calc(var(--tw) * 1.18); }
 #word .t { border-color: var(--cyan); background: rgb(10, 0, 25); color: #fff;   /* the poster white of Guess the Word's table words */
-           font: 800 calc(var(--tw) * .74)/1 var(--font-display); text-shadow: 0 1px 2px rgba(0,0,0,.9), 0 0 .5em rgba(0,0,0,.6); }
+           font: 800 calc(var(--tw) * .74)/1 var(--font-display); text-shadow: none; box-shadow: none; }
 #word .t.in { animation: flipIn .5s backwards; }
 #word .q { font: 900 calc(var(--u) * 7) var(--font-display); color: var(--muted); letter-spacing: .3em; }
 html.chroma #word { margin-top: calc(var(--u) * 1.2); }
