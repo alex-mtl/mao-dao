@@ -1,6 +1,7 @@
 """Anagram: the round's long word (more than 10 letters) stands at the top, letter by letter; viewers type words
 of the dictionary made of its letters. The first to name a word gets a point per letter; every other viewer who
-names the same word later gives its author those points again (the word's x2, x3; after x3 each repeat adds 0.1).
+names the same word later gives its author those points again (the word's x2, x3; after x3 each repeat adds 0.1);
+with the multiplication off (a setting) every repeat adds 0.1. The round's word itself counts nothing.
 Who has the most points
 when the time is up wins the round; stream champions = most rounds won (like Guess the Word).
 
@@ -61,11 +62,11 @@ class Dictionary:
         self.pool = sorted(w for w in self.words if len(w) >= LONG_MIN and (not nouns or w in nouns))
 
     def subwords(self, word):
-        """Every dictionary word of MIN_LEN+ letters made of the word's letters (the word itself too)."""
+        """Every dictionary word of MIN_LEN+ letters made of the word's letters (not the word itself)."""
         have = Counter(word)
         out = []
         for w in self.words:
-            if MIN_LEN <= len(w) <= len(word) and all(have[c] >= n for c, n in Counter(w).items()):
+            if MIN_LEN <= len(w) <= len(word) and w != word and all(have[c] >= n for c, n in Counter(w).items()):
                 out.append(w)
         return out
 
@@ -118,6 +119,7 @@ class AnagramGame(BaseGame):
     title = "Anagram"
     OPTIONS = {"pause": [0, 10, 30, 60, 120],      # break between rounds, seconds (incl. the winner card)
                "round_min": [3, 5, 10, 15, 20, 30],  # round length, minutes
+               "mult": [1, 0],                     # a repeat gives the author the word's letters again (to x3) / 0.1
                "follow": [2, 1, 0],                # who plays: the host's team only / followers only / all
                "fan_min": [1, 5, 10, 15, 20, 25, 30, 40],
                "chroma": [0, 1], "chroma_top": [25, 30, 32, 33, 35, 40, 45, 50],
@@ -138,6 +140,7 @@ class AnagramGame(BaseGame):
         self.round_lang = self.lang
         self.pause_sec = config.WINNER_SEC + config.REVEAL_SEC
         self.round_sec = 10 * 60
+        self.mult = True                             # repeats multiply the word (up to x3), else +0.1 each
         self.follow_required, self.fans_only, self.fan_min = False, False, 1
         self.chroma, self.chroma_top, self.chat_zone, self.frame = False, 33, 20, 16
         self.screen = {k: d for k, (d, _) in self.SCREEN.items()}
@@ -288,6 +291,9 @@ class AnagramGame(BaseGame):
         if any(x != "ok" for x in m):
             self._note(now, kind="bad", word=word.upper(), marks=m, **who)
             return
+        if word == self.word:                            # the round's word itself is not made of its letters
+            self._note(now, kind="base", word=word.upper(), **who)
+            return
         if word not in d.words:
             self._note(now, kind="dict", word=word.upper(), **who)
             return
@@ -301,7 +307,7 @@ class AnagramGame(BaseGame):
             f["ids"].append(viewer.id)
             f["n"] += 1
             f["last"], f["last_avatar"], f["last_t"] = viewer.name, viewer.avatar, now
-            points = len(word) if f["n"] <= MAX_MULT else AFTER_MAX
+            points = len(word) if self.mult and f["n"] <= MAX_MULT else AFTER_MAX
             owner = self.players.get(f["id"])
             if owner:
                 owner["score"] = round(owner["score"] + points, 1)
@@ -367,6 +373,8 @@ class AnagramGame(BaseGame):
                 self.phase_until = self.finished_at + self.pause_sec
         elif key == "round_min":
             self.round_sec = max(60, int(value) * 60)    # from the next round
+        elif key == "mult":
+            self.mult = bool(int(value))
         elif key == "follow":
             self.fans_only = int(value) == 2
             self.follow_required = int(value) >= 1
@@ -385,7 +393,7 @@ class AnagramGame(BaseGame):
         self.dirty = True
 
     def get_options(self):
-        return {"pause": self.pause_sec, "round_min": self.round_sec // 60,
+        return {"pause": self.pause_sec, "round_min": self.round_sec // 60, "mult": int(self.mult),
                 "follow": 2 if self.fans_only else int(self.follow_required), "fan_min": self.fan_min,
                 "chroma": int(self.chroma), "chroma_top": self.chroma_top, "frame": self.frame,
                 "chat_zone": self.chat_zone, **self.screen}
@@ -489,6 +497,7 @@ class AnagramGame(BaseGame):
             "lastRound": self._last_round(),
             "chroma": self.chroma_top if self.chroma else 0, "chromaTop": self.chroma_top,
             "frame": self.frame, "chatZone": self.chat_zone, "screen": self.screen,
+            "mult": self.mult, "maxMult": MAX_MULT,
             "breakSec": self.reveal_sec, "resultsSec": min(config.RESULTS_SEC, self.reveal_sec),
             "promo": config.PROMO_LINES_BY_LANG.get(self.lang, config.PROMO_LINES),
             "lang": self.round_lang, "languages": sorted(self.dicts),

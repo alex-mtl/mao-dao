@@ -42,8 +42,11 @@
     [...word].forEach((c, i) => box.append(el('span', 't' + (marks && marks[i] !== 'ok' ? ' ' + marks[i] : ''), c)));
     return box;
   }
-  // a word's ×N stops at ×3 (the engine's MAX_MULT): later repeats add 0.1 and the word just flashes
+  // a word's ×N stops at ×3 (the engine's MAX_MULT): later repeats add 0.1 and the word just flashes; with the
+  // multiplication off (a setting) every repeat adds 0.1 and ×N is the real number of namers
   const MAX_MULT = 3;
+  const multOn = () => !S || S.mult !== false;
+  const shownN = n => (multOn() ? Math.min(MAX_MULT, n) : n);
   const score = x => (Number.isInteger(x) ? String(x) : x.toFixed(1));
   // points on a seven-segment display (like a fuel pump's): every digit an SVG, unlit segments dimly visible
   // a digit is W x 100, a segment K * 2 thick (extra bold), G apart from its neighbours
@@ -57,9 +60,13 @@
     ? `${p},${q} ${p + K},${q - K} ${r - K},${q - K} ${r},${q} ${r - K},${q + K} ${p + K},${q + K}`
     : `${p},${q} ${p + K},${q + K} ${p + K},${r - K} ${p},${r} ${p - K},${r - K} ${p - K},${q + K}`;
   const NS = 'http://www.w3.org/2000/svg';
+  // always 00.0: at least two digits before the point, one after; the leading zeros are grey
   function lcd(x) {
     const box = el('span', 'sc');
-    for (const ch of score(x)) {
+    const [whole, tenth] = Math.max(0, x).toFixed(1).split('.');
+    const digits = whole.padStart(2, '0'), text = digits + '.' + tenth;
+    const lead = digits.slice(0, -1).match(/^0*/)[0].length;  // zeros before the last whole digit
+    [...text].forEach((ch, i) => {
       const svg = document.createElementNS(NS, 'svg');
       if (ch === '.') {
         svg.setAttribute('viewBox', '0 0 20 100'); svg.setAttribute('class', 'dot');
@@ -72,12 +79,12 @@
         Object.entries(SEG).forEach(([k, s]) => {
           const p = document.createElementNS(NS, 'polygon');
           p.setAttribute('points', segPoints(s));
-          p.setAttribute('class', lit.includes(k) ? 'on' : 'off');
+          p.setAttribute('class', lit.includes(k) ? (i < lead ? 'on lead' : 'on') : 'off');
           svg.append(p);
         });
       }
       box.append(svg);
-    }
+    });
     return box;
   }
 
@@ -164,7 +171,8 @@
   }
   function label(e) {
     if (e.kind === 'ok') return '+' + e.points;
-    if (e.kind === 'rep') return e.n > MAX_MULT ? '+' + score(e.points) : '×' + e.n;
+    if (e.kind === 'rep') return e.points >= 1 ? '×' + e.n : '+' + score(e.points);
+    if (e.kind === 'base') return t('a.base');
     if (e.kind === 'dict') return t('a.dict');
     if (e.kind === 'own') return t('a.own');
     const letters = kind => [...new Set([...e.word].filter((c, i) => e.marks[i] === kind))].join(', ');
@@ -202,7 +210,7 @@
   const OVER_MS = 5000;
   function hold(e) {
     if (e.kind === 'ok') held.set(e.word, { kind: 'ok' });
-    else if (e.kind === 'rep' && e.n <= MAX_MULT) held.set(e.word, { kind: 'rep', n: e.n - 1 });
+    else if (e.kind === 'rep' && shownN(e.n) !== shownN(e.n - 1)) held.set(e.word, { kind: 'rep', n: e.n - 1 });
   }
   function land(e, from) {
     held.delete(e.word);
@@ -218,7 +226,7 @@
     }
     if (e.kind === 'rep') {
       chip.classList.remove('hit'); void chip.offsetWidth; chip.classList.add('hit');
-      const x = chip.querySelector('.x'); if (x && e.n <= MAX_MULT) x.classList.add('pop');
+      const x = chip.querySelector('.x'); if (x && shownN(e.n) !== shownN(e.n - 1)) x.classList.add('pop');
       return;
     }
     const a = from.getBoundingClientRect(), b = chip.getBoundingClientRect();
@@ -243,7 +251,7 @@
     const h = held.get(w.w);
     const c = tiles(w.w);
     c.dataset.w = w.w;
-    const n = Math.min(MAX_MULT, h && h.kind === 'rep' ? h.n : w.n);
+    const n = shownN(h && h.kind === 'rep' ? h.n : w.n);
     if (n > 1) c.append(el('span', 'x', '×' + n));
     if (h && h.kind === 'ok') c.classList.add('hidden');
     return c;

@@ -269,6 +269,10 @@ export default function SettingsPanel({ s, mode, setMode, footer, bonusesUrl }) 
                                          label={(n) => (n >= 60 ? t('guessword.min', { n: n / 60 }) : n ? sec(n) : '0')}
                                          onChange={(v) => s.set('anagram', 'pause', v)} />
                                 </Field>
+                                <Field label={t('guessword.opt_mult')}>
+                                    <Seg value={an.mult} options={s.choices('anagram', 'mult')} label={(n) => t('guessword.opt_mult_' + n)}
+                                         onChange={(v) => s.set('anagram', 'mult', v)} />
+                                </Field>
                             </div>
                             <p className="mt-3 text-xs text-ink-500">{t('guessword.anagram_rules')}</p>
                         </div>

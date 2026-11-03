@@ -80,6 +80,23 @@ class AnagramTest(TinyAssets):
         self.assertEqual(g.players["krestik"]["score"], 12.2)
         self.assertEqual([e["points"] for e in self.tries(g)], [4, 4, 4, 0.1, 0.1])
 
+    def test_without_multiplication_every_repeat_is_a_tenth(self):
+        g = self.make()
+        g.set_option("mult", 0)
+        for n in ("Krestik", "a", "b", "c", "d"):
+            g.on_comment(v(n), "свет")
+        g.on_comment(v("Krestik"), "свет")           # the author again: nothing
+        self.assertEqual(g.players["krestik"]["score"], 4.4)
+        self.assertEqual(g.found["свет"]["n"], 5)     # the overlay shows the real count, x5
+        self.assertFalse(g.snapshot()["mult"])
+
+    def test_round_word_itself_counts_nothing(self):
+        g = self.make()
+        g.on_comment(v("Нина"), ROUND)
+        self.assertEqual(g.players, {})
+        self.assertEqual(self.tries(g)[-1]["kind"], "base")
+        self.assertNotIn(ROUND, g.possible)
+
     def test_rejected(self):
         g = self.make()
         g.on_comment(v("Нина"), "трасса")             # letters used up
