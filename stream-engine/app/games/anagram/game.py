@@ -1,6 +1,7 @@
 """Anagram: the round's long word (more than 10 letters) stands at the top, letter by letter; viewers type words
 of the dictionary made of its letters. The first to name a word gets a point per letter; every other viewer who
-names the same word later gives its author those points again (the word's x2, x3...). Who has the most points
+names the same word later gives its author those points again (the word's x2, x3; after x3 each repeat adds 0.1).
+Who has the most points
 when the time is up wins the round; stream champions = most rounds won (like Guess the Word).
 
 A word with a letter the round's word lacks, or with a letter used more times than it has, is shown letter by
@@ -27,6 +28,8 @@ IDLE, COUNTDOWN, PLAYING, WINNER, REVEAL, FINISHED = (
 
 LONG_MIN = 11                 # the round's word: more than 10 letters
 MIN_LEN = 3                   # shorter words are ordinary chat, not an answer
+MAX_MULT = 3                  # a word's author scores its letters again up to x3; every later repeat ...
+AFTER_MAX = 0.1               # ... gives them this much (the word just flashes, the x3 stays)
 LETTERS = {"en": "a-z", "ru": "а-я", "fr": "a-zàâæçéèêëîïôœùûüÿ", "es": "a-záéíóúüñ"}
 NOTE_SEC = 0.7                # rejected answers ("no such letter", "not in the dictionary") at most this often
 FOLLOW_NOTE_SEC = 30          # "follow to play" for one viewer at most this often
@@ -298,11 +301,12 @@ class AnagramGame(BaseGame):
             f["ids"].append(viewer.id)
             f["n"] += 1
             f["last"], f["last_avatar"], f["last_t"] = viewer.name, viewer.avatar, now
+            points = len(word) if f["n"] <= MAX_MULT else AFTER_MAX
             owner = self.players.get(f["id"])
             if owner:
-                owner["score"] += len(word)
+                owner["score"] = round(owner["score"] + points, 1)
                 owner["t"] = now
-            self.emit("try", kind="rep", word=word.upper(), points=len(word), n=f["n"], by=f["name"], byId=f["id"], **who)
+            self.emit("try", kind="rep", word=word.upper(), points=points, n=f["n"], by=f["name"], byId=f["id"], **who)
             print(f"[anagram] {viewer.name}: {word} again -> {f['name']} x{f['n']}")
         else:
             p = self.players.get(viewer.id)

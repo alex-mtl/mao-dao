@@ -421,6 +421,7 @@ window.I18N = (() => {
     const f = (P[lang || 'en'] || P.en)[word] || [word, word];
     if (lang === 'fr') return Math.abs(n) < 2 ? f[0] : f[1];
     if ((lang || 'en') !== 'ru') return n === 1 ? f[0] : f[1];
+    if (!Number.isInteger(n)) return f[1];        // 80.3 очка
     const a = Math.abs(n) % 100, b = a % 10;
     if (a > 10 && a < 20) return f[2];
     if (b === 1) return f[0];

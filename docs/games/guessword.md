@@ -143,9 +143,9 @@ engine game `anagram`, page `app/web/anagram/`). Mockup with the animations: `st
   answer line letter by letter: a missing letter red, a used-up one grey ("лишняя С"), a word of the right letters not in
   the dictionary greyed; rejected answers are shown at most every 0.7 s (the chat is fast).
 - **Points**: the first to name a good word gets a point per letter. Another viewer naming it later gives its author
-  the same points again (the word's ×2, ×3…; once per viewer); the repeater gets nothing; the author's own word again
-  counts nothing ("уже твоё"). The table: players by points (ties: who got there first); line 1 = avatar, nick, points,
-  words; more words go to lines below with a small avatar, up to 4 per line. A repeat: the repeater's nick covers the
+  the same points again (the word's ×2, ×3; after ×3 each repeat adds 0.1, the word flashes; once per viewer); the repeater gets nothing; the author's own word again
+  counts nothing ("уже твоё"). The table: players by points (ties: who got there first); line 1 = avatar, points (a cyan seven-segment display), nick,
+  words; more words go to lines below, up to 5 per line. A repeat: the repeater's nick covers the
   author's for 5 s, ×N on the word.
 - **Round end**: most points win (`winner`; nobody scored = `timeout`), podium by points. Stream champions = rounds
   won (`anagram/players.json`, `AnagramStats`, reset with a new LIVE), shown like Guess the Word's: the "On screen" tab

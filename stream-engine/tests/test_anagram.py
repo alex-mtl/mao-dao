@@ -69,6 +69,13 @@ class AnagramTest(unittest.TestCase):
         kinds = [e["kind"] for e in self.tries(g)]
         self.assertEqual(kinds, ["ok", "ok", "rep", "rep"])
 
+    def test_multiplier_stops_at_x3(self):
+        g = self.make()
+        for n in ("Krestik", "a", "b", "c", "d"):     # author, x2, x3, then +0.1 twice
+            g.on_comment(v(n), "свет")
+        self.assertEqual(g.players["krestik"]["score"], 12.2)
+        self.assertEqual([e["points"] for e in self.tries(g)], [4, 4, 4, 0.1, 0.1])
+
     def test_rejected(self):
         g = self.make()
         g.on_comment(v("Нина"), "трасса")             # letters used up

@@ -42,8 +42,44 @@
     [...word].forEach((c, i) => box.append(el('span', 't' + (marks && marks[i] !== 'ok' ? ' ' + marks[i] : ''), c)));
     return box;
   }
-  const u = () => parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--u')) ||
-                  $('stage').clientWidth / 100;
+  // a word's ×N stops at ×3 (the engine's MAX_MULT): later repeats add 0.1 and the word just flashes
+  const MAX_MULT = 3;
+  const score = x => (Number.isInteger(x) ? String(x) : x.toFixed(1));
+  // points on a seven-segment display (like a fuel pump's): every digit an SVG, unlit segments dimly visible
+  // a digit is W x 100, a segment K * 2 thick (extra bold), G apart from its neighbours
+  const W = 66, K = 9, G = 2;
+  const SEG = {
+    a: [K + G, K, W - K - G, 'h'], g: [K + G, 50, W - K - G, 'h'], d: [K + G, 100 - K, W - K - G, 'h'],
+    f: [K, K + G, 50 - G, 'v'], b: [W - K, K + G, 50 - G, 'v'], e: [K, 50 + G, 100 - K - G, 'v'], c: [W - K, 50 + G, 100 - K - G, 'v'],
+  };
+  const DIGITS = ['abcdef', 'bc', 'abged', 'abgcd', 'fgbc', 'afgcd', 'afgedc', 'abc', 'abcdefg', 'abcdfg'];
+  const segPoints = ([p, q, r, dir]) => dir === 'h'
+    ? `${p},${q} ${p + K},${q - K} ${r - K},${q - K} ${r},${q} ${r - K},${q + K} ${p + K},${q + K}`
+    : `${p},${q} ${p + K},${q + K} ${p + K},${r - K} ${p},${r} ${p - K},${r - K} ${p - K},${q + K}`;
+  const NS = 'http://www.w3.org/2000/svg';
+  function lcd(x) {
+    const box = el('span', 'sc');
+    for (const ch of score(x)) {
+      const svg = document.createElementNS(NS, 'svg');
+      if (ch === '.') {
+        svg.setAttribute('viewBox', '0 0 20 100'); svg.setAttribute('class', 'dot');
+        const c = document.createElementNS(NS, 'circle');
+        c.setAttribute('cx', 10); c.setAttribute('cy', 100 - K); c.setAttribute('r', K); c.setAttribute('class', 'on');
+        svg.append(c);
+      } else {
+        svg.setAttribute('viewBox', `0 0 ${W} 100`);
+        const lit = DIGITS[+ch] || '';
+        Object.entries(SEG).forEach(([k, s]) => {
+          const p = document.createElementNS(NS, 'polygon');
+          p.setAttribute('points', segPoints(s));
+          p.setAttribute('class', lit.includes(k) ? 'on' : 'off');
+          svg.append(p);
+        });
+      }
+      box.append(svg);
+    }
+    return box;
+  }
 
   // ------------------------------------------------------------ sounds and voice
   const FX = {
@@ -128,7 +164,7 @@
   }
   function label(e) {
     if (e.kind === 'ok') return '+' + e.points;
-    if (e.kind === 'rep') return '×' + e.n;
+    if (e.kind === 'rep') return e.n > MAX_MULT ? '+' + score(e.points) : '×' + e.n;
     if (e.kind === 'dict') return t('a.dict');
     if (e.kind === 'own') return t('a.own');
     const letters = kind => [...new Set([...e.word].filter((c, i) => e.marks[i] === kind))].join(', ');
@@ -166,7 +202,7 @@
   const OVER_MS = 5000;
   function hold(e) {
     if (e.kind === 'ok') held.set(e.word, { kind: 'ok' });
-    else if (e.kind === 'rep') held.set(e.word, { kind: 'rep', n: e.n - 1 });
+    else if (e.kind === 'rep' && e.n <= MAX_MULT) held.set(e.word, { kind: 'rep', n: e.n - 1 });
   }
   function land(e, from) {
     held.delete(e.word);
@@ -178,11 +214,11 @@
     const sc = block && block.querySelector('.sc');
     if (sc) {
       sc.classList.remove('pop'); void sc.offsetWidth; sc.classList.add('pop');
-      sc.append(el('span', 'plus', '+' + e.points));
+      sc.append(el('span', 'plus', '+' + score(e.points)));
     }
     if (e.kind === 'rep') {
       chip.classList.remove('hit'); void chip.offsetWidth; chip.classList.add('hit');
-      const x = chip.querySelector('.x'); if (x) x.classList.add('pop');
+      const x = chip.querySelector('.x'); if (x && e.n <= MAX_MULT) x.classList.add('pop');
       return;
     }
     const a = from.getBoundingClientRect(), b = chip.getBoundingClientRect();
@@ -207,13 +243,14 @@
     const h = held.get(w.w);
     const c = tiles(w.w);
     c.dataset.w = w.w;
-    const n = h && h.kind === 'rep' ? h.n : w.n;
+    const n = Math.min(MAX_MULT, h && h.kind === 'rep' ? h.n : w.n);
     if (n > 1) c.append(el('span', 'x', '×' + n));
     if (h && h.kind === 'ok') c.classList.add('hidden');
     return c;
   }
-  // a player: the first line - avatar, nick, points and as many words as fit; the rest on lines of up to 4 words
-  // with a small avatar
+  // a player: the first line - avatar, points, nick and as many words as fit; the rest on lines of up to
+  // WORDS_PER_LINE words
+  const WORDS_PER_LINE = 5;
   function fill(block, p) {
     block.replaceChildren();
     const nk = el('span', 'nk');
@@ -221,16 +258,16 @@
     nk.append(el('span', 'n', clean(p.name)), el('span', 'o', o ? o.nick : ''));
     block.classList.toggle('over', !!o);
     let line = el('div', 'line'), ws = el('div', 'ws'), n = 0;
-    line.append(avatar(p.name, p.avatar), nk, el('span', 'sc', String(p.score)), ws);
+    line.append(avatar(p.name, p.avatar), lcd(p.score), nk, ws);
     block.append(line);
     p.words.forEach(w => {
       const c = chip(w);
       ws.append(c);
       n++;
-      if ((n > 4 || line.scrollWidth > line.clientWidth + 1) && n > 1) {   // doesn't fit: a new line
+      if ((n > WORDS_PER_LINE || line.scrollWidth > line.clientWidth + 1) && n > 1) {   // doesn't fit: a new line
         c.remove();
         line = el('div', 'line'); ws = el('div', 'ws');
-        line.append(avatar(p.name, p.avatar, 'sm'), ws);
+        line.append(ws);
         block.append(line);
         ws.append(c);
         n = 1;
