@@ -130,6 +130,36 @@ engine they are guess options (`GuessGame.SCREEN`, saved with the room) and go t
 `state.screen`; `guess.js` (`renderSides`) re-checks them twice a second. The old toast switch
 "what the gifts do" (`toasts.promo`) is gone: a room that had it off got `gifts = never`.
 
+## Anagram — the second word game of the room (since 2026-11-03)
+
+A mode of the same room and engine, next to Battle / Guess the Word / Animation (Start ▾ on the room page;
+engine game `anagram`, page `app/web/anagram/`). Mockup with the animations: `stream-engine/app/web/demo/anagram.html`.
+
+- **Round word**: a noun of 11+ letters from the Guess the Word dictionary of the room's language
+  (`assets/<lang>/vocab.txt`, nouns = `valid_nouns.txt` when present; Russian: 9 111 words). A word is not picked again
+  until every long word of the language was played (`anagram/used_words.json`, kept across streams), then a new cycle.
+- **Answers**: one word of the chat, 3+ letters, `ё` = `е`. Made of the round word's letters (each letter as many times
+  as it is there) and in the dictionary (any word of `vocab.txt`, the round word itself too) = a good word. Shown on the
+  answer line letter by letter: a missing letter red, a used-up one grey ("лишняя С"), a word of the right letters not in
+  the dictionary greyed; rejected answers are shown at most every 0.7 s (the chat is fast).
+- **Points**: the first to name a good word gets a point per letter. Another viewer naming it later gives its author
+  the same points again (the word's ×2, ×3…; once per viewer); the repeater gets nothing; the author's own word again
+  counts nothing ("уже твоё"). The table: players by points (ties: who got there first); line 1 = avatar, nick, points,
+  words; more words go to lines below with a small avatar, up to 4 per line. A repeat: the repeater's nick covers the
+  author's for 5 s, ×N on the word.
+- **Round end**: most points win (`winner`; nobody scored = `timeout`), podium by points. Stream champions = rounds
+  won (`anagram/players.json`, `AnagramStats`, reset with a new LIVE), shown like Guess the Word's: the "On screen" tab
+  (the same `SCREEN` options, on the anagram game), tops of planes / balloons from the likes, the bot's name.
+- **Settings** (room page → Anagram): round length (3–30 min, default 10), break between rounds (0–2 min, default 2),
+  who plays (all / followers / the team from level N), frame and chroma, On screen, gifts, toasts, likes. Gifts launch
+  only the animations every page has (balloon, plane, butterflies, snowball, cake); hints / boosts / steal are Guess the
+  Word's and don't exist here (the overlay's "what the gifts do" lists only the animations).
+- The overlay reuses `guess/guess.css` and copies the stream chrome of `guess.js` (frame / chroma / TT, tops, gift
+  promo, toasts, ticker, clock) into `anagram/anagram.js`: a change there is to be made in both until it moves to
+  `common/`. Strings: `a.*` in `common/i18n.js`, `guessword.mode_anagram*` / `anagram_rules` in `lang/*/guessword.php`.
+- Engine log lines `[anagram] round N (ru), ...`; the live log gets `round_start` / `winner` / `round_end` with
+  `game: "anagram"`. Tests: `stream-engine/tests/test_anagram.py` (a tiny dictionary of its own, no built assets).
+
 ## Environment
 
 | Variable | Meaning |

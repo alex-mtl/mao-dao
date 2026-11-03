@@ -2,7 +2,8 @@ import { useLaravelReactI18n } from 'laravel-react-i18n';
 import { useEffect, useState } from 'react';
 import { Seg, Switch } from './SettingsPanel';
 
-// what the overlay shows besides the game: the engine's GuessGame.SCREEN (guess options), changed live during a stream
+// what the overlay shows besides the game: the engine's GuessGame.SCREEN (the options of guess, and of anagram that shares
+// them), changed live during a stream; game = the engine game whose settings these are
 const TOPS = ['stream', 'planes', 'balloons'];
 const VIEWS = ['line', 'tiles', 'ticker', 'column'];
 const LINE_DURS = [5, 10, 15];               // "one by one": seconds per gift
@@ -18,10 +19,10 @@ function airState(mode, every, dur, now) {
 }
 
 /** live settings: every click goes to the engine at once; a failure is shown under the tab */
-function useScreen(s) {
+function useScreen(s, game) {
     const [error, setError] = useState(false);
-    const v = s.draft.guess || {};
-    const put = (values) => s.setNow('guess', values).then(() => setError(false), () => setError(true));
+    const v = s.draft[game] || {};
+    const put = (values) => s.setNow(game, values).then(() => setError(false), () => setError(true));
     return { v, put, error };
 }
 
@@ -51,9 +52,9 @@ function Group({ title, sub, right, children }) {
     );
 }
 
-export default function ScreenTab({ s }) {
+export default function ScreenTab({ s, game = 'guess' }) {
     const { t } = useLaravelReactI18n();
-    const { v, put, error } = useScreen(s);
+    const { v, put, error } = useScreen(s, game);
     const [now, setNow] = useState(() => Date.now() / 1000);
     useEffect(() => {
         const id = setInterval(() => setNow(Date.now() / 1000), 1000);
@@ -182,9 +183,9 @@ function Status({ on, children }) {
 }
 
 /** the same switches in short, over the game monitor: tops, the bot, the gifts, hide everything */
-export function ScreenQuick({ s }) {
+export function ScreenQuick({ s, game = 'guess' }) {
     const { t } = useLaravelReactI18n();
-    const { v, put, error } = useScreen(s);
+    const { v, put, error } = useScreen(s, game);
     const [last, setLast] = useState({ bot: 'always', gifts: 'periodic' });   // what a switched-off row comes back to
     const flip = (key) => {
         if (v[key] === 'never') put({ [key]: last[key] });

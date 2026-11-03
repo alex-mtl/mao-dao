@@ -1,0 +1,87 @@
+/* Anagram overlay, on top of Guess the Word's guess.css (frame, chroma / TT modes, tops, toasts, overlays).
+   --u = 1% of the frame width; letter tiles take their width from --tw. */
+
+/* a letter tile */
+.t { width: var(--tw); height: calc(var(--tw) * 1.18); flex: none; display: grid; place-items: center;
+     font: calc(var(--tw) * .68)/1 'Russo One', var(--font-display); border-radius: calc(var(--tw) * .16);
+     border: max(1px, calc(var(--tw) * .06)) solid rgba(255,255,255,.55); background: rgba(255,255,255,.06); color: #fff; }
+.t.miss  { background: #e3133c; border-color: #ff6a86; }                    /* no such letter in the round's word */
+.t.extra { background: #5b5668; border-color: #858097; color: #d6d0e4; }    /* the letter is there, but used up */
+
+/* the round's word: crisp letters, no glow, opaque tiles (over the camera in TT mode) */
+#word { display: flex; justify-content: center; gap: calc(var(--tw) * .12); margin-top: calc(var(--u) * 1.6); min-height: calc(var(--tw) * 1.18); }
+#word .t { border-color: var(--cyan); background: rgb(10, 0, 25); }
+#word .t.in { animation: flipIn .5s backwards; }
+#word .q { font: 900 calc(var(--u) * 7) var(--font-display); color: var(--muted); letter-spacing: .3em; }
+html.chroma #word { margin-top: calc(var(--u) * 1.2); }
+
+/* the answer line: like Guess the Word's rows - the word on the left, the player on the right */
+#try { position: relative; flex: none; height: calc(var(--u) * 9); border-radius: calc(var(--u) * 2.5); border: 1px solid var(--line);
+       background: rgba(0,0,0,.30); display: flex; justify-content: space-between; align-items: center;
+       gap: calc(var(--u) * 1.5); padding: 0 calc(var(--u) * 2); overflow: hidden; }
+html.chroma:not(.alpha) #try { background: rgb(10, 0, 25); }
+#try .idle { margin: 0 auto; color: var(--muted); font: 700 calc(var(--u) * 3.4) var(--font-text); }
+#try .side { display: flex; align-items: center; gap: calc(var(--u) * 1.2); min-width: 0; }
+#try .tw { display: flex; gap: calc(var(--tw) * .12); }
+#try .who { flex: none; max-width: calc(var(--u) * 30); font: 700 calc(var(--u) * 3.2) var(--font-text); color: #e4dcff; }
+#try .who .av { width: calc(var(--u) * 4.6); height: calc(var(--u) * 4.6); font-size: calc(var(--u) * 2.2); }
+#try .who span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#try .lab { font: calc(var(--u) * 2.7) 'Russo One', var(--font-display); padding: .25em .7em; border-radius: 999px; white-space: nowrap; }
+.lab.ok { color: #0b0614; background: var(--lime); }
+.lab.rep { color: #0b0614; background: var(--gold); }
+.lab.bad { color: #fff; background: #e3133c; }
+.lab.dict, .lab.own { color: #d6d0e4; background: #5b5668; }
+#try .cur > * { animation: tryIn .25s ease-out; }
+#try.shake .tw { animation: shake .4s; }
+#try.fade .cur > * { transition: opacity .4s; opacity: 0; }
+
+/* the players' table */
+#board { flex: 1; min-height: 0; padding: calc(var(--u) * 1.6) calc(var(--u) * 1.6); overflow: hidden; display: flex; flex-direction: column;
+         gap: calc(var(--u) * 1); }
+#found { flex: none; text-align: right; font: 700 calc(var(--u) * 2.8) var(--font-text); color: var(--muted); padding: 0 calc(var(--u) * 1); }
+#table { flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column; gap: calc(var(--u) * 1); }
+#table .empty { color: var(--muted); font-weight: 700; text-align: center; padding: 1em 0; font-size: calc(var(--u) * 3.6); }
+.pl { flex: none; border-radius: calc(var(--u) * 2.2); padding: calc(var(--u) * .7) calc(var(--u) * 1.4); background: rgba(255,255,255,.05);
+      border: 1px solid transparent; }
+.pl.lead { background: linear-gradient(90deg, rgba(255,216,74,.20), rgba(255,255,255,.04)); border-color: rgba(255,216,74,.35); }
+.pl.enter { animation: slideIn .45s ease-out; }
+.line { display: flex; align-items: center; gap: calc(var(--u) * 1.4); min-height: calc(var(--u) * 6.4); }
+.line + .line { margin-top: calc(var(--u) * .4); }
+.pl .av { width: calc(var(--u) * 6.4); height: calc(var(--u) * 6.4); font-size: calc(var(--u) * 3); border: calc(var(--u) * .35) solid #fff; }
+.pl .av.sm { width: calc(var(--u) * 4.4); height: calc(var(--u) * 4.4); font-size: calc(var(--u) * 2.1); border-width: calc(var(--u) * .25);
+             margin-left: calc(var(--u) * 1); opacity: .85; }
+.nk { display: inline-grid; flex: none; max-width: calc(var(--u) * 24); font: 800 calc(var(--u) * 3.6) var(--font-text); }
+.nk > span { grid-area: 1 / 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; transition: opacity .3s, filter .3s, transform .3s; }
+/* someone named this player's word again: their nick covers the author's for a few seconds */
+.nk .o { opacity: 0; color: var(--lime); transform: translateY(40%); filter: blur(2px); }
+.pl.over .nk .n { opacity: 0; filter: blur(2px); transform: translateY(-40%); }
+.pl.over .nk .o { opacity: 1; filter: none; transform: none; }
+.sc { position: relative; flex: none; font: calc(var(--u) * 4) 'Russo One', var(--font-display); color: var(--gold); min-width: calc(var(--u) * 6);
+      font-variant-numeric: tabular-nums; }
+.sc.pop { animation: pop .6s; }
+.plus { position: absolute; left: 100%; top: -10%; font: calc(var(--u) * 3) 'Russo One', var(--font-display); color: var(--lime); white-space: nowrap;
+        pointer-events: none; animation: floatUp 1.1s ease-out forwards; }
+.ws { margin-left: auto; display: flex; align-items: center; gap: calc(var(--u) * 2.4); min-width: 0; }
+/* table words: big letters without frames */
+.w { display: flex; align-items: center; gap: calc(var(--u) * .25); flex: none; border-radius: calc(var(--u) * 1); }
+.w .t { width: auto; height: calc(var(--u) * 6); border: 0; background: none; font-size: calc(var(--u) * 4.6); }
+.w.hidden { visibility: hidden; }
+.w.hit { animation: hit 1s; }
+.x { font: calc(var(--u) * 3.2) 'Russo One', var(--font-display); color: var(--lime); margin-left: calc(var(--u) * .6); }
+.x.pop { animation: pop .6s; }
+.flyer { position: fixed; z-index: 40; display: flex; gap: calc(var(--tw) * .12); pointer-events: none; transform-origin: 0 0;
+         transition: transform .65s cubic-bezier(.3,.9,.3,1); }
+
+/* winner / results: the round's word in tiles */
+.aword { display: flex; justify-content: center; gap: calc(var(--tw) * .12); --tw: calc(var(--u) * 6.5); animation: wordIn .7s .3s both; }
+.aword .t { border-color: var(--magenta); background: rgb(10, 0, 25); }
+.rlong { font: 700 calc(var(--u) * 3.4) var(--font-text); color: var(--muted); display: flex; flex-direction: column; align-items: center;
+         gap: calc(var(--u) * 1); margin-top: calc(var(--u) * 2); }
+.rlong .w { --tw: calc(var(--u) * 4.4); }
+.rlong .w .t { border: max(1px, calc(var(--tw) * .06)) solid rgba(255,255,255,.55); height: calc(var(--tw) * 1.18); width: var(--tw);
+               font-size: calc(var(--tw) * .68); }
+
+@keyframes flipIn { from { opacity: 0; transform: rotateX(90deg) translateY(-30%); } }
+@keyframes tryIn { from { opacity: 0; transform: translateY(-35%); } }
+@keyframes hit { 0%, 100% { box-shadow: none; } 25% { box-shadow: 0 0 0 calc(var(--u) * .6) var(--lime), 0 0 1.4em var(--lime); } }
+@keyframes floatUp { to { opacity: 0; transform: translateY(-120%); } }

@@ -6,10 +6,11 @@ import ScreenTab, { ScreenQuick } from './ScreenTab';
 import { GiftsTab, ToastsTab } from './ToastsAndGifts';
 
 // the panel's modes (engine game names) and the sections of each mode
-export const MODES = ['battle', 'guess', 'streamer'];
+export const MODES = ['battle', 'guess', 'anagram', 'streamer'];
 const SECTIONS = {
     battle: ['gifts', 'toasts', 'likes', 'catalog'],
     guess: ['game', 'frame', 'screen', 'gifts', 'toasts', 'likes', 'catalog'],
+    anagram: ['game', 'frame', 'screen', 'gifts', 'toasts', 'likes', 'catalog'],
     streamer: ['frame', 'gifts', 'toasts', 'likes', 'catalog'],
 };
 const LIVE_SECTIONS = ['screen'];            // applied at once, no Apply button
@@ -128,13 +129,15 @@ function LikesRow({ title, sub, value, onChange }) {
 
 export default function SettingsPanel({ s, mode, setMode, footer, bonusesUrl }) {
     const { t } = useLaravelReactI18n();
-    const [tab, setTab] = useState({ battle: 'gifts', guess: 'game', streamer: 'frame' });
+    const [tab, setTab] = useState({ battle: 'gifts', guess: 'game', anagram: 'game', streamer: 'frame' });
     const section = tab[mode];
     // the panel turns over: the settings, or the monitor of the guess game (remembered on this device)
     const [view, setViewState] = useState(() => { try { return localStorage.getItem('gw-panel-view') || 'settings'; } catch { return 'settings'; } });
     const setView = (v) => { setViewState(v); try { localStorage.setItem('gw-panel-view', v); } catch { /* private mode */ } };
     const monitor = view === 'monitor' && mode === 'guess';
     const g = s.draft.guess || {};
+    const an = s.draft.anagram || {};
+    const fr = s.draft[mode] || {};            // the frame of guess / anagram
     const gl = s.draft.global || {};
     const sec = (n) => t('guessword.sec', { n });
 
@@ -252,24 +255,59 @@ export default function SettingsPanel({ s, mode, setMode, footer, bonusesUrl }) 
                     </>
                 )}
 
-                {!s.failed && s.info && mode === 'guess' && section === 'frame' && (
+                {!s.failed && s.info && mode === 'anagram' && section === 'game' && (
+                    <>
+                        <div className="border-b border-warm-100 py-3">
+                            <h3 className="mb-3 font-heading text-base font-bold text-ink-900">{t('guessword.group_rounds')}</h3>
+                            <div className="grid gap-4 sm:grid-cols-2">
+                                <Field label={t('guessword.opt_round_min')}>
+                                    <Seg value={an.round_min} options={s.choices('anagram', 'round_min')} label={(n) => t('guessword.min', { n })}
+                                         onChange={(v) => s.set('anagram', 'round_min', v)} />
+                                </Field>
+                                <Field label={t('guessword.opt_pause')}>
+                                    <Seg value={an.pause} options={s.choices('anagram', 'pause')}
+                                         label={(n) => (n >= 60 ? t('guessword.min', { n: n / 60 }) : n ? sec(n) : '0')}
+                                         onChange={(v) => s.set('anagram', 'pause', v)} />
+                                </Field>
+                            </div>
+                            <p className="mt-3 text-xs text-ink-500">{t('guessword.anagram_rules')}</p>
+                        </div>
+                        <div className="py-3">
+                            <h3 className="mb-3 font-heading text-base font-bold text-ink-900">{t('guessword.group_players')}</h3>
+                            <div className="grid gap-4 sm:grid-cols-2">
+                                <Field label={t('guessword.opt_follow')}>
+                                    <Seg value={an.follow} options={s.choices('anagram', 'follow')} label={(n) => t('guessword.opt_follow_' + n)}
+                                         onChange={(v) => s.set('anagram', 'follow', v)} />
+                                </Field>
+                                {an.follow === 2 && (
+                                    <Field label={t('guessword.opt_fan_min')}>
+                                        <Seg value={an.fan_min} options={s.choices('anagram', 'fan_min')} label={(n) => t('guessword.opt_fan_min_v', { n })}
+                                             onChange={(v) => s.set('anagram', 'fan_min', v)} />
+                                    </Field>
+                                )}
+                            </div>
+                        </div>
+                    </>
+                )}
+
+                {!s.failed && s.info && (mode === 'guess' || mode === 'anagram') && section === 'frame' && (
                     <div className="grid gap-4 py-3 sm:grid-cols-2">
-                        {frameSeg('guess')}
+                        {frameSeg(mode)}
                         <Field label={t('guessword.opt_chat_zone')}>
-                            <Seg value={g.chat_zone} options={s.choices('guess', 'chat_zone')}
+                            <Seg value={fr.chat_zone} options={s.choices(mode, 'chat_zone')}
                                  label={(n) => (n ? n + '%' : t('guessword.opt_chat_zone_off'))}
-                                 onChange={(v) => s.set('guess', 'chat_zone', v)} />
+                                 onChange={(v) => s.set(mode, 'chat_zone', v)} />
                         </Field>
                         <Field label={t('guessword.opt_chroma')}>
                             <span className="flex items-center gap-3">
-                                <Switch on={!!g.chroma} onChange={(v) => s.set('guess', 'chroma', v ? 1 : 0)} />
+                                <Switch on={!!fr.chroma} onChange={(v) => s.set(mode, 'chroma', v ? 1 : 0)} />
                                 <select
-                                    className={'h-9 rounded-lg border-warm-300 bg-surface py-0 text-sm text-ink-900 ' + (g.chroma ? '' : 'opacity-40')}
-                                    value={g.chroma_top}
-                                    disabled={!g.chroma}
-                                    onChange={(e) => s.set('guess', 'chroma_top', Number(e.target.value))}
+                                    className={'h-9 rounded-lg border-warm-300 bg-surface py-0 text-sm text-ink-900 ' + (fr.chroma ? '' : 'opacity-40')}
+                                    value={fr.chroma_top}
+                                    disabled={!fr.chroma}
+                                    onChange={(e) => s.set(mode, 'chroma_top', Number(e.target.value))}
                                 >
-                                    {s.choices('guess', 'chroma_top').map((n) => (
+                                    {s.choices(mode, 'chroma_top').map((n) => (
                                         <option key={n} value={n}>{t('guessword.opt_chroma_top', { n })}</option>
                                     ))}
                                 </select>
@@ -278,7 +316,7 @@ export default function SettingsPanel({ s, mode, setMode, footer, bonusesUrl }) 
                     </div>
                 )}
 
-                {!s.failed && s.info && mode === 'guess' && section === 'screen' && <ScreenTab s={s} />}
+                {!s.failed && s.info && (mode === 'guess' || mode === 'anagram') && section === 'screen' && <ScreenTab s={s} game={mode} />}
 
                 {!s.failed && s.info && mode === 'streamer' && section === 'frame' &&<div className="py-3">{frameSeg('streamer')}</div>}
 
