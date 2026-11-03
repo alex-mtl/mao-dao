@@ -2,7 +2,8 @@
 of the dictionary made of its letters. The first to name a word gets a point per letter; every other viewer who
 names the same word later gives its author those points again (the word's x2, x3; after x3 each repeat adds 0.1);
 with the multiplication off (a setting) every repeat adds 0.1. The round's word itself counts nothing.
-Bonuses: the first word of each length from FIRST_MIN letters on scores double (the overlay's 3D "x2"). When the
+Bonuses: a new word of FIRST_MIN+ letters longer than every word named before it this round scores double (the
+overlay's 3D "x2"): be the first with the longest word - once a 9-letter word is found, 5..9 letters are too late. When the
 time is up, the most repeated word (the most namers, n) gives its author +n more; up to BONUS_WORDS words with the
 same top n give theirs each, and when all BONUS_WORDS of them are one player's, the sum is doubled. The overlay
 animates it in the BONUS phase, then the scores count and the winner is known.
@@ -35,7 +36,7 @@ LONG_MIN = 11                 # the round's word: more than 10 letters
 MIN_LEN = 3                   # shorter words are ordinary chat, not an answer
 MAX_MULT = 3                  # a word's author scores its letters again up to x3; every later repeat ...
 AFTER_MAX = 0.1               # ... gives them this much (the word just flashes, the x3 stays)
-FIRST_MIN = 5                 # the first word of each length from this many letters scores double
+FIRST_MIN = 5                 # a word of this many letters or more, longer than all found before it, scores double
 BONUS_WORDS = 3               # the end of the round: up to this many most repeated words give their authors +n
 LETTERS = {"en": "a-z", "ru": "а-я", "fr": "a-zàâæçéèêëîïôœùûüÿ", "es": "a-záéíóúüñ"}
 NOTE_SEC = 0.7                # rejected answers ("no such letter", "not in the dictionary") at most this often
@@ -171,7 +172,7 @@ class AnagramGame(BaseGame):
         self.winner = None
         self.podium = []
         self.log = []
-        self.firsts = set()                          # word lengths (FIRST_MIN+) already named this round: x2 given
+        self.longest = 0                             # the longest word found this round, letters: only a longer one gets x2
         self.bonus = None                            # the end of the round's repeat bonus (BONUS phase)
         self.finish_reason = "timeout"
 
@@ -364,17 +365,16 @@ class AnagramGame(BaseGame):
                 p = self.players[viewer.id] = {"id": viewer.id, "name": viewer.name, "avatar": viewer.avatar,
                                                "score": 0, "t": now, "words": []}
             p["name"], p["avatar"] = viewer.name, viewer.avatar or p["avatar"]
-            first = len(word) >= FIRST_MIN and len(word) not in self.firsts
+            first = len(word) >= FIRST_MIN and len(word) > self.longest
             points = len(word) * (2 if first else 1)
-            if first:
-                self.firsts.add(len(word))
+            self.longest = max(self.longest, len(word))
             p["words"].append(word)
             p["score"] += points
             p["t"] = now
             self.found[word] = {"word": word, "id": viewer.id, "name": viewer.name, "avatar": viewer.avatar,
                                 "n": 1, "t": now, "ids": [viewer.id], "last": "", "last_avatar": "", "last_t": 0.0}
             self.emit("try", kind="ok", word=word.upper(), points=points, first=first, **who)
-            print(f"[anagram] {viewer.name}: {word} +{points}" + (" (first of its length: x2)" if first else ""))
+            print(f"[anagram] {viewer.name}: {word} +{points}" + (" (the longest yet: x2)" if first else ""))
         self.stats.get(viewer.id, viewer.name, viewer.avatar)["guesses"] += 1
         self.dirty = True
 
@@ -564,7 +564,7 @@ class AnagramGame(BaseGame):
             "started_at": self.started_at, "ends_at": self.ends_at, "phase_until": self.phase_until,
             "finished_at": self.finished_at, "found": self.found, "players": self.players,
             "winner": self.winner, "podium": self.podium, "saved_at": self.paused_at or time.time(),
-            "firsts": sorted(self.firsts), "bonus": self.bonus, "finish_reason": self.finish_reason,
+            "bonus": self.bonus, "finish_reason": self.finish_reason,
         })
 
     def load(self):
@@ -584,7 +584,8 @@ class AnagramGame(BaseGame):
             self.phase_until, self.finished_at = d["phase_until"], d.get("finished_at", 0.0)
             self.found, self.players = d.get("found", {}), d.get("players", {})
             self.winner, self.podium = d.get("winner"), d.get("podium", [])
-            self.firsts, self.bonus = set(d.get("firsts", [])), d.get("bonus")
+            self.longest = max((len(w) for w in self.found), default=0)
+            self.bonus = d.get("bonus")
             self.finish_reason = d.get("finish_reason", "timeout")
             self.paused_at = d.get("saved_at")           # timers resume on activation
             print(f"[anagram] restored round {self.round_id} ({self.phase})")

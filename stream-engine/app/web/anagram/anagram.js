@@ -385,7 +385,7 @@
 
 
   // ------------------------------------------------------------ bonuses
-  // the first word of a length: the word pops up in gold tiles, the player's avatar and nick by a 3D "×2" that
+  // the longest word yet (5+ letters): the word pops up in gold tiles, the player's avatar and nick by a 3D "×2" that
   // spins, grows and turns into the points, which fly to the player's score; the end of the round (BONUS phase):
   // the most repeated words rise to the centre with their owners' avatars, burst, their green ×N becomes a 3D "+N"
   // (three words of one player: the sum, then ×2). No backing: the figures fly over the table as it is. The table shows a score without the points still in the air.

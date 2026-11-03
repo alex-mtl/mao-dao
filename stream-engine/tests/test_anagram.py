@@ -133,16 +133,17 @@ class AnagramTest(TinyAssets):
         g.ends_at = time.time() - 1
         g.tick(time.time())
 
-    def test_first_word_of_a_length_scores_double(self):
+    def test_longest_word_yet_scores_double(self):
         g = self.make()
         g.on_comment(v("Krestik"), "свет")             # 4 letters: never doubled
-        g.on_comment(v("Нина"), "редис")               # the first of 5 letters: x2
-        g.on_comment(v("Tati"), "ветер")               # the second of 5 letters: as usual
-        g.on_comment(v("Tati"), "деталь")              # the first of 6
+        g.on_comment(v("Нина"), "редис")               # the longest yet, 5 letters: x2
+        g.on_comment(v("Tati"), "ветер")               # 5 again: as usual
+        g.on_comment(v("Tati"), "писатель")            # 8: x2
+        g.on_comment(v("Нина"), "деталь")              # 6 after an 8: too late, as usual
         g.on_comment(v("Krestik"), "редис")            # a repeat of a doubled word: its letters once more
         self.assertEqual([(e["points"], e.get("first")) for e in self.tries(g)],
-                         [(4, False), (10, True), (5, False), (12, True), (5, None)])
-        self.assertEqual((g.players["нина"]["score"], g.players["tati"]["score"]), (15, 17))
+                         [(4, False), (10, True), (5, False), (16, True), (6, False), (5, None)])
+        self.assertEqual((g.players["нина"]["score"], g.players["tati"]["score"]), (21, 21))
 
     def test_most_repeated_word_bonus(self):
         g = self.make()
