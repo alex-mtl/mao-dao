@@ -393,13 +393,16 @@
   let fxGen = 0, fxChain = Promise.resolve();
   function addAdj(id, d) { const v = (adj.get(id) || 0) + d; if (Math.abs(v) < 1e-9) adj.delete(id); else adj.set(id, v); }
   function queueFx(fn) { const gen = fxGen; fxChain = fxChain.then(() => gen === fxGen && fn()).catch(err => console.warn('[anagram] fx', err)); }
+  const undim = () => $('dim').getAnimations().forEach(a => a.cancel());
   function resetFx() {
+    undim();                                      // the dimmer always goes, even with nothing else in the air
     if (!adj.size && !inAir.size && !$('fx').children.length) return;
     fxGen++; fxChain = Promise.resolve();
-    $('fx').replaceChildren(); $('dim').getAnimations().forEach(a => a.cancel());
+    $('fx').replaceChildren();
     adj.clear(); inAir.clear();
     renderTable();
   }
+  let dimTimer = 0;
   const wait = ms => new Promise(r => setTimeout(r, ms));
   const anim = (n, k, o) => n.animate(k, Object.assign({ fill: 'forwards' }, o)).finished;
   const U = () => $('uProbe').offsetWidth / 100;  // var(--u) in px
@@ -545,6 +548,7 @@
     await wait(900); if (!alive()) return;
     // the word bursts, its green ×N becomes a 3D "+N"
     await Promise.all(objs.map((o, i) => wait(i * 180).then(async () => {
+      if (!alive()) return;
       const xEl = o.clone.querySelector('.x'), xr = xEl ? rel(xEl) : { x: o.tx, y: o.ty };
       o.clone.querySelectorAll('.t').forEach(t => {
         const a = Math.random() * Math.PI * 2, d = (14 + Math.random() * 16) * u / S;
@@ -565,6 +569,7 @@
     await wait(700); if (!alive()) return;
     if (!ev.combo) {
       await Promise.all(objs.map((o, i) => wait(i * 220).then(async () => {
+        if (!alive() || !o.num) return;
         const target = scoreOf(o.it.uid);
         fx('whoosh');
         await Promise.all([flyTo(o.num, target), flyTo(o.av, target)]);
@@ -621,6 +626,7 @@
     }
     inAir.clear(); renderTable();
     await anim($('dim'), [{ opacity: 1 }, { opacity: 0 }], { duration: 400 });
+    undim();
   }
 
   // ------------------------------------------------------------ events from the server
@@ -634,7 +640,9 @@
         break;
       case 'bonus':                               // the end of the round: the x2 animations still running give way
         resetFx();
-        endBonus(e).catch(err => console.warn('[anagram] bonus', err));
+        clearTimeout(dimTimer);
+        dimTimer = setTimeout(undim, 15000);      // a safety net: the dimmer never outlives the bonus
+        endBonus(e).catch(err => { console.warn('[anagram] bonus', err); undim(); });
         break;
       case 'round_start':
         voice('round', t('g.v.round', { n: e.round }), 'urgent', 1);
