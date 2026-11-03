@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Угадай слово</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+:root {
+  --bg: var(--tg-theme-bg-color, #17212b);
+  --bg2: var(--tg-theme-secondary-bg-color, #232e3c);
+  --text: var(--tg-theme-text-color, #f5f5f5);
+  --hint: var(--tg-theme-hint-color, #8b9aa7);
+  --accent: var(--tg-theme-button-color, #5288c1);
+  --accent-text: var(--tg-theme-button-text-color, #fff);
+  --me: color-mix(in srgb, var(--accent) 22%, transparent);
+  --danger: #e26a5a;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
+  font: 15px/1.3 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+body { display: flex; flex-direction: column; height: var(--tg-viewport-stable-height, 100vh); overflow: hidden; }
+.bar { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 10px 12px 6px;
+  font-size: 13px; color: var(--hint); }
+.bar b { color: var(--text); font-weight: 600; }
+#timer { font-variant-numeric: tabular-nums; font-size: 17px; color: var(--text); font-weight: 600; }
+.banner { margin: 0 12px 6px; padding: 10px 12px; border-radius: 10px; background: var(--bg2); font-size: 14px; }
+.banner:empty { display: none; }
+.banner .big { font-size: 22px; font-weight: 700; letter-spacing: .04em; }
+#list { flex: 1; overflow-y: auto; padding: 0 6px; -webkit-overflow-scrolling: touch; }
+.row { display: grid; grid-template-columns: 34px 1fr 74px 26px; gap: 8px; align-items: center;
+  padding: 4px 6px; border-radius: 8px; }
+.row.me { background: var(--me); }
+.row.new { animation: flash .8s ease-out; }
+@keyframes flash { from { background: color-mix(in srgb, var(--accent) 45%, transparent); } }
+.rank { color: var(--hint); font-size: 12px; font-variant-numeric: tabular-nums; text-align: right; }
+.word { font-weight: 500; text-transform: lowercase; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.word small { color: var(--hint); font-weight: 400; }
+.meter { height: 6px; border-radius: 3px; background: color-mix(in srgb, var(--hint) 25%, transparent); overflow: hidden; }
+.meter i { display: block; height: 100%; border-radius: 3px; }
+.av { width: 24px; height: 24px; border-radius: 50%; background: var(--bg2); color: var(--hint); font-size: 11px;
+  display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.av img { width: 100%; height: 100%; object-fit: cover; }
+.empty { color: var(--hint); text-align: center; padding: 32px 16px; font-size: 14px; }
+.mine-h { display: flex; justify-content: space-between; padding: 6px 12px 4px; font-size: 12px; color: var(--hint);
+  border-top: 1px solid color-mix(in srgb, var(--hint) 20%, transparent); }
+#mine { display: flex; gap: 4px; padding: 0 12px 6px; overflow-x: auto; white-space: nowrap; min-height: 26px; }
+.chip { padding: 3px 8px; border-radius: 12px; background: var(--bg2); font-size: 12px; text-transform: lowercase; }
+.chip span { color: var(--hint); margin-left: 3px; }
+form { display: flex; gap: 6px; padding: 6px 10px calc(8px + env(safe-area-inset-bottom)); background: var(--bg); }
+input { flex: 1; min-width: 0; font-size: 16px; padding: 10px 12px; border-radius: 10px; border: 0; outline: 0;
+  background: var(--bg2); color: var(--text); }
+button { border: 0; border-radius: 10px; padding: 0 16px; font-size: 15px; font-weight: 600;
+  background: var(--accent); color: var(--accent-text); }
+#msg { min-height: 18px; padding: 0 12px; font-size: 12px; color: var(--hint); }
+#msg.err { color: var(--danger); }
+</style>
+</head>
+<body>
+<div class="bar">
+  <span id="timer">--:--</span>
+  <span>раунд <b id="round">–</b> · игроков <b id="players">0</b> · онлайн <b id="online">0</b></span>
+  <span>слов <b id="guesses">0</b></span>
+</div>
+<div class="banner" id="banner"></div>
+<div id="list"><div class="empty">Подключаемся…</div></div>
+<div class="mine-h"><span>Мои слова</span><span>моё место <b id="place">–</b></span></div>
+<div id="mine"></div>
+<div id="msg"></div>
+<form id="f" autocomplete="off">
+  <input id="w" placeholder="ваше слово" maxlength="30" enterkeyhint="send" autocapitalize="off" autocorrect="off" spellcheck="false">
+  <button type="submit">➤</button>
+</form>
+<script>
+const tg = window.Telegram && Telegram.WebApp;
+if (tg) { tg.ready(); tg.expand(); }
+const $ = id => document.getElementById(id);
+const BOUNDS = [1, 10, 50, 200, 1000, 5000];                      // the engine's TEMPERATURE_BOUNDS
+const COLORS = ['#ff3b30', '#ff6a3d', '#ff9f1a', '#ffcc00', '#7ec850', '#4fb3d9', '#7a8a9a'];
+const color = r => COLORS[BOUNDS.findIndex(b => r <= b) < 0 ? 6 : BOUNDS.findIndex(b => r <= b)];
+let me = null, state = null, mine = [], minesRound = null, clock = 0, ws = null, retry = 0, seen = new Set();
+
+function esc(s) { return String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function initials(n) { return esc((n || '?').split(/\s+/).map(x => x[0]).join('').slice(0, 2).toUpperCase()); }
+function meter(r) {                                              // closeness on a log scale: #1 full, the last word empty
+  const v = state && state.vocab ? state.vocab : 50000;
+  return Math.max(3, Math.round(100 * (1 - Math.log(r) / Math.log(v))));
+}
+function say(text, err) { const m = $('msg'); m.textContent = text || ''; m.className = err ? 'err' : ''; }
+
+function drawList() {
+  const s = state; if (!s) return;
+  const list = $('list');
+  if (!s.top.length) {
+    list.innerHTML = `<div class="empty">${s.phase === 'playing' ? 'Слов ещё нет — будьте первым' : 'Ждём начала раунда'}</div>`;
+    return;
+  }
+  list.innerHTML = s.top.map(t => {
+    const isMe = me && mine.some(m => m[0] === t.w);
+    const fresh = !seen.has(s.roundId + t.w); seen.add(s.roundId + t.w);
+    return `<div class="row${isMe ? ' me' : ''}${fresh && seen.size > s.top.length ? ' new' : ''}">
+      <span class="rank">#${t.r}</span>
+      <span class="word">${esc(t.w)}${t.c > 1 ? ` <small>×${t.c}</small>` : ''}</span>
+      <span class="meter"><i style="width:${meter(t.r)}%;background:${color(t.r)}"></i></span>
+      <span class="av" title="${esc(t.n)}">${t.a ? `<img src="${esc(t.a)}" alt="" referrerpolicy="no-referrer">` : initials(t.n)}</span>
+    </div>`;
+  }).join('');
+}
+
+function drawMine() {
+  $('mine').innerHTML = mine.length
+    ? mine.map(m => `<span class="chip">${esc(m[0])}<span>#${m[1]}</span></span>`).join('')
+    : '<span style="color:var(--hint);font-size:12px">пока нет</span>';
+}
+
+function drawBanner() {
+  const s = state, b = $('banner');
+  if (!s) return;
+  if (s.paused) { b.innerHTML = 'Игра на паузе'; return; }
+  if (s.phase === 'countdown') { b.innerHTML = '<span class="big">Раунд начинается…</span>'; return; }
+  if (s.secret) {
+    const w = s.winner ? ` · угадал <b>${esc(s.winner.name)}</b>` : ' · никто не угадал';
+    const pod = (s.podium || []).slice(0, 3).map((p, i) => `${['🥇','🥈','🥉'][i]} ${esc(p.name)}`).join('  ');
+    b.innerHTML = `Слово раунда: <span class="big">${esc(s.secret)}</span>${w}${pod ? `<div style="margin-top:4px">${pod}</div>` : ''}`;
+    return;
+  }
+  const h = (s.hints || []).slice(-1)[0];
+  const HINT = { semantic: 'близкое слово', category: 'тема', letter: 'начинается на', length: 'длина', distance: 'рядом со словом' };
+  b.innerHTML = h ? `Подсказка · ${HINT[h.type] || h.type}: <b>${esc(String(h.word || '').toLowerCase())}</b>` : '';
+}
+
+function tickTimer() {
+  const s = state; if (!s) return;
+  const now = Date.now() / 1000 + clock;
+  let left = 0, label = '';
+  if (s.phase === 'playing' && s.endsAt) left = s.endsAt - now;
+  else if (s.phaseUntil) { left = s.phaseUntil - now; label = 'пауза '; }
+  left = Math.max(0, Math.round(left));
+  $('timer').textContent = label + String(Math.floor(left / 60)).padStart(2, '0') + ':' + String(left % 60).padStart(2, '0');
+}
+setInterval(tickTimer, 250);
+
+function onState(s) {
+  if (state && state.roundId !== s.roundId) { mine = []; seen = new Set(); $('place').textContent = '–'; drawMine(); }
+  state = s;
+  if (s.now) clock = s.now - Date.now() / 1000;
+  $('round').textContent = s.roundId || '–';
+  $('players').textContent = s.players; $('online').textContent = s.online; $('guesses').textContent = s.guesses;
+  drawBanner(); drawList(); tickTimer();
+}
+
+const REASONS = { slow: 'Не так быстро', one: 'Одно слово', wait: 'Раунд ещё не идёт',
+                  bad: 'Это не слово', unknown: 'Такого слова нет в словаре', auth: 'Откройте игру из Telegram' };
+
+function onMsg(m) {
+  if (m.type === 'hello') { me = m.me; retry = 0; say(''); }
+  else if (m.type === 'state') onState(m);
+  else if (m.type === 'mine') { mine = m.words || []; $('place').textContent = m.place || '–'; drawMine(); drawList(); }
+  else if (m.type === 'guess') {
+    mine = m.words || mine;
+    $('place').textContent = m.place || '–';
+    say(m.rank === 1 ? `🎉 ${m.word.toLowerCase()} — это оно!` : `${m.word.toLowerCase()} — #${m.rank}${m.again ? ' (уже есть у вас)' : ''}`);
+    if (tg && tg.HapticFeedback) tg.HapticFeedback.impactOccurred(m.rank <= 10 ? 'heavy' : 'light');
+    drawMine(); drawList();
+  } else if (m.type === 'reject') {
+    say(REASONS[m.reason] || 'Не принято', true);
+    if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
+  }
+}
+
+function connect() {
+  const url = location.href.replace(/^http/, 'ws').replace(/[?#].*$/, '').replace(/\/?$/, '/') + 'ws';
+  ws = new WebSocket(url);
+  ws.onopen = () => {
+    const dev = new URLSearchParams(location.search).get('dev');
+    ws.send(JSON.stringify(tg && tg.initData ? { auth: tg.initData } : { dev: dev || '' }));
+  };
+  ws.onmessage = e => { try { onMsg(JSON.parse(e.data)); } catch (_) {} };
+  ws.onclose = e => {
+    if (e.code === 4401) { say(REASONS.auth, true); return; }
+    say('Нет связи, переподключаемся…', true);
+    setTimeout(connect, Math.min(10000, 500 * 2 ** retry++));
+  };
+}
+document.addEventListener('visibilitychange', () => {        // back from the background: the socket may be dead
+  if (!document.hidden && (!ws || ws.readyState > 1)) { retry = 0; connect(); }
+});
+
+$('f').addEventListener('submit', e => {
+  e.preventDefault();
+  const w = $('w').value.trim();
+  if (!w) return;
+  if (!ws || ws.readyState !== 1) { say('Нет связи', true); return; }
+  ws.send(JSON.stringify({ word: w }));
+  $('w').value = '';
+});
+connect();
+</script>
+</body>
+</html>

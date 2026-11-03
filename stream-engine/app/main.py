@@ -27,6 +27,17 @@ async def run():
         print(f"[dev] room {rid}: menu http://localhost:{config.PORT}{config.BASE_PATH}/r/dev{i}/ "
               f"overlay http://localhost:{config.PORT}{config.BASE_PATH}/r/view{i}/guess/")
     manager.restore()
+    if config.TG_APP_ROOM:                         # the Telegram Mini App's room: always there, always running
+        rid = config.TG_APP_ROOM
+        new = rid not in manager.rooms
+        manager.upsert(rid, {"tg_app": True, "lang": "ru"} if new else {"tg_app": True})
+        if new:                                    # no streamer, no stream: short breaks, everyone may play
+            hub = manager.rooms[rid].ensure_hub()
+            hub.set_active("guess")
+            hub.set_options("guess", {"pause": 10, "round_min": 10, "follow": 0})
+        if not manager.rooms[rid].running:
+            await manager.start(rid)
+        print(f"[tg-app] room {rid}: page http://localhost:{config.PORT}{config.BASE_PATH}/tg/")
     bonuses = asyncio.get_running_loop().create_task(manager.bonus_sync())   # noqa: F841 (kept alive)
     server = uvicorn.Server(uvicorn.Config(create_app(manager), host=config.HOST, port=config.PORT,
                                            log_level="warning", ws_ping_interval=20))

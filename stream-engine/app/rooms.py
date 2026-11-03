@@ -19,7 +19,7 @@ from .hub import Hub
 from .storage import JsonStore
 
 # what the platform may set for a room
-FIELDS = ("username", "lang", "euler_key", "overlay_token", "control_token", "simulate", "tg_key")
+FIELDS = ("username", "lang", "euler_key", "overlay_token", "control_token", "simulate", "tg_key", "tg_app")
 
 
 def new_token():
@@ -35,6 +35,7 @@ class Room:
         self.hub_lock = threading.Lock()              # the page and its preview may open a room at once
         self.tasks = []
         self.connector = None
+        self.tg_app = None                            # TgApp: the room is played from the Telegram Mini App
         self.started_at = 0.0
 
     @property
@@ -66,7 +67,13 @@ class Room:
             hub = self.ensure_hub()
             hub.closed = False
             jobs = [hub.ticker(), hub.saver(), hub.broadcaster()]
-            if self.cfg.get("simulate") or not self.cfg.get("username"):
+            if self.cfg.get("tg_app"):                    # players come from the Mini App, not from TikTok
+                from .tg_app import TgApp
+                self.tg_app = self.tg_app or TgApp(hub)
+                jobs.append(self.tg_app.broadcaster())
+                if self.cfg.get("simulate"):
+                    jobs.append(hub.simulator())
+            elif self.cfg.get("simulate") or not self.cfg.get("username"):
                 jobs.append(hub.simulator())
             else:
                 from .tiktok.client import TikTokConnector
@@ -75,10 +82,11 @@ class Room:
                 self.connector.on_key = self._key_status
                 jobs.append(self.connector.run_forever())
             key = self.cfg.get("tg_key") or ""
-            if config.TG_BOT_URL and key:
+            if config.TG_BOT_URL and key and not self.cfg.get("tg_app"):   # the TikTok viewers' bot: not here
                 from .telegram_link import TelegramLink
                 hub.tg = TelegramLink(hub, config.TG_BOT_URL, key)
                 jobs.append(hub.tg.run())
+            key = key or (config.RANKER_KEY if self.cfg.get("tg_app") else "")
             if config.RANKER_URLS and key:
                 from .ranker_client import RankerClient
                 jobs.append(RankerClient(hub, config.RANKER_URLS, key).run())

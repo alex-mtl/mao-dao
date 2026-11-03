@@ -94,4 +94,11 @@ TG_GAME_KEY = os.getenv("TG_GAME_KEY", "")
 # ---- word-ranker Lambdas (next round's table during the break): "en=https://...,ru=https://..."; empty = off ----
 RANKER_URLS = dict(x.split("=", 1) for x in _list("RANKER_URLS") if "=" in x)
 RANKER_KEY = os.getenv("RANKER_KEY", "") or TG_GAME_KEY
+# ---- Telegram Mini App (app/tg_app.py): one room played from phones instead of a TikTok chat; empty room = off ----
+TG_APP_ROOM = os.getenv("TG_APP_ROOM", "")                # the room's id, created and started by the engine itself
+TG_APP_BOT_TOKEN = os.getenv("TG_APP_BOT_TOKEN", "")      # the Mini App bot's token: checks the players' initData
+TG_APP_DEV = _b("TG_APP_DEV")                            # local testing: players without Telegram ({"dev": name})
+TG_APP_WORD_SEC = _f("TG_APP_WORD_SEC", 1.2)              # a player's words at most this often (no brute force)
+TG_APP_PUSH_SEC = _f("TG_APP_PUSH_SEC", 0.5)              # the table goes to the phones at most this often
+TG_APP_TOP = _i("TG_APP_TOP", 40)                        # this many closest words on the screen
 GOAL_TARGET = _i("GOAL_TARGET", 0)                       # follows this stream; 0 hides the goal bar

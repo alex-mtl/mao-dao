@@ -416,6 +416,33 @@ def create_app(manager):
         finally:
             hub.clients.discard(websocket)
 
+    # ------------------------------------------------------------------ Telegram Mini App (app/tg_app.py)
+    def tg_room():
+        room = manager.rooms.get(config.TG_APP_ROOM) if config.TG_APP_ROOM else None
+        if not room or not room.tg_app:
+            raise HTTPException(404, "not found")
+        current_room.set(room.id)
+        return room
+
+    @app.get("/tg")
+    def tg_root():
+        return RedirectResponse(f"{config.BASE_PATH}/tg/")
+
+    @app.get("/tg/")
+    def tg_page():
+        tg_room()
+        return FileResponse(os.path.join(WEB, "tg", "index.html"))
+
+    @app.websocket("/tg/ws")
+    async def tg_ws(websocket: WebSocket):
+        room = manager.rooms.get(config.TG_APP_ROOM) if config.TG_APP_ROOM else None
+        await websocket.accept()
+        if not room or not room.tg_app:
+            await websocket.close(code=4404)
+            return
+        current_room.set(room.id)
+        await room.tg_app.session(websocket)
+
     # ------------------------------------------------------------------ a room's pages and files
     @app.get("/r/{token}")
     def room_root(token: str):

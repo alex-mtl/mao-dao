@@ -344,6 +344,28 @@ did not reach 06.10 in 3 min). Measured 31.10: 90 s of the digest in 280 s, 767 
 `http://localhost:8791/DevDigest/`. Recordings without a known room id are found by their start time
 (extension 0.2.0: `replay` with an empty room id and a start, nearest within 3 min; matches `localhost:*`).
 
+## Telegram Mini App (prototype, 2026-11-03)
+
+One engine room is played from phones inside Telegram instead of a TikTok chat. Code: `stream-engine/app/tg_app.py`
+(protocol in its docstring), page `stream-engine/app/web/tg/index.html`, tests `stream-engine/tests/test_tg_app.py`.
+
+- **Words never go through Laravel.** The page is a static file served by the engine at `/tg/` (behind nginx:
+  `/guessword/engine/tg/`); it opens the websocket `/tg/ws`, sends Telegram's `initData` first, then words.
+  The engine checks `initData` with the bot's token (HMAC, max 24 h old), so a player can't pose as someone else.
+  A word from a phone = a chat line for `GuessGame` (`hub.comment`), all the game rules apply. Player ids are
+  `tg<telegram id>`, never equal to a TikTok @id.
+- **Load**: the phones get their own slim message (round + the closest `TG_APP_TOP` words), at most every
+  `TG_APP_PUSH_SEC` and only when it changed; the overlay's full message (10/s) is not sent to them. A player's
+  result and own words go to that player alone. Words: at most one per `TG_APP_WORD_SEC` per player
+  (no brute force of the dictionary); unknown words cost no wait.
+- **Env** (`/etc/guessword-engine.env`): `TG_APP_ROOM` (room id; empty = off; the engine creates the room, ru,
+  `pause` 10 s, `round_min` 10, everyone plays, and keeps it running), `TG_APP_BOT_TOKEN` (the Mini App bot from
+  BotFather), `TG_APP_DEV=1` only locally (`/tg/?dev=Name` plays without Telegram), `TG_APP_WORD_SEC` (1.2),
+  `TG_APP_PUSH_SEC` (0.5), `TG_APP_TOP` (40). The room still needs the ranker (`RANKER_URLS` + `RANKER_KEY`).
+- **Not done yet**: the bot itself (BotFather: `/newbot`, then `/newapp` or the menu button → the page URL),
+  bonuses/hints for Telegram players, the link Telegram ↔ TikTok account, sending only diffs of the table,
+  nginx `worker_connections` for hundreds of sockets.
+
 ## Load and scaling (measured 2026-10-28)
 
 Two live streams: ~190 guesses/min, ~140 chat messages/min, ~50 like events/min, <1 gift/min per room;
