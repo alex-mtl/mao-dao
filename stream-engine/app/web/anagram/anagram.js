@@ -214,7 +214,7 @@
   }
   function land(e, from) {
     held.delete(e.word);
-    if (e.kind === 'rep') over.set(e.byId, { nick: clean(e.name), until: Date.now() + OVER_MS });
+    if (e.kind === 'rep') over.set(e.byId, { nick: clean(e.name), avatar: e.avatar, until: Date.now() + OVER_MS });
     renderTable();
     const chip = $('table').querySelector(`.w[data-w="${CSS.escape(e.word)}"]`);
     if (!chip) return;
@@ -258,27 +258,36 @@
   }
   // a player: the first line - avatar, points, nick and as many words as fit; the rest on lines of up to
   // WORDS_PER_LINE words
-  const WORDS_PER_LINE = 5;
+  const WORDS_PER_LINE = 5, SQUEEZE = [0.94, 0.88, 0.82];
   function fill(block, p) {
     block.replaceChildren();
-    const nk = el('span', 'nk');
+    // no nick: the avatar with the points on its top right corner; who repeated the word covers it for a while
+    const pa = el('span', 'pa');
     const o = over.get(p.id);
-    nk.append(el('span', 'n', clean(p.name)), el('span', 'o', o ? o.nick : ''));
+    pa.append(avatar(p.name, p.avatar));
+    if (o) pa.append(avatar(o.nick, o.avatar, 'o'));
+    pa.append(lcd(p.score));
     block.classList.toggle('over', !!o);
     let line = el('div', 'line'), ws = el('div', 'ws'), n = 0;
-    line.append(avatar(p.name, p.avatar), lcd(p.score), nk, ws);
+    line.append(pa, ws);
     block.append(line);
+    const fits = () => line.scrollWidth <= line.clientWidth + 1;
+    let wf = 1;                                   // the line's word size (squeezed a little to take one more word)
     p.words.forEach(w => {
       const c = chip(w);
       ws.append(c);
       n++;
-      if ((n > WORDS_PER_LINE || line.scrollWidth > line.clientWidth + 1) && n > 1) {   // doesn't fit: a new line
+      if (n > 1 && (n > WORDS_PER_LINE || !fits())) {
+        const k = n <= WORDS_PER_LINE && SQUEEZE.find(x => x < wf && (ws.style.setProperty('--wf', x), fits()));
+        if (k) { wf = k; return; }
+        ws.style.setProperty('--wf', wf);         // doesn't fit even squeezed: a new line
         c.remove();
         line = el('div', 'line'); ws = el('div', 'ws');
         line.append(ws);
         block.append(line);
         ws.append(c);
         n = 1;
+        wf = 1;
       }
     });
   }
@@ -526,7 +535,7 @@
     root.classList.toggle('chroma', top > 0);
     if (top > 0) root.style.setProperty('--chroma-top', `calc(var(--u) * ${(100 * frame / 9 * top / 100).toFixed(2)})`);
     root.style.setProperty('--fh', (100 * frame / 9).toFixed(2));
-    if (ALPHA) root.style.setProperty('--game-bg-top', $('try').offsetTop + 'px');   // dark from the answer line on
+    if (ALPHA) root.style.setProperty('--game-bg-top', $('word').offsetTop + 'px');   // dark from the round's word on
     root.style.setProperty('--fr', (frame / 9).toFixed(4));
     const zone = $('chromaZone'), stage = $('stage');
     if (top > 0) {
@@ -630,15 +639,6 @@
     renderPromo(s.promo || []);
   }
 
-  // the popups (toasts, notes, greetings, big numbers) start below the round's word: they never cover it
-  function wordBottom() {
-    const st = $('stage').getBoundingClientRect(), w = $('word').getBoundingClientRect();
-    const root = document.documentElement.style;
-    root.setProperty('--word-bottom', Math.round(w.bottom - st.top) + 'px');
-    root.setProperty('--word-bottom-vp', Math.round(w.bottom) + 'px');
-  }
-  addEventListener('resize', wordBottom);
-
   function render(s) {
     const roundChanged = !S || S.roundId !== s.roundId;
     S = s;
@@ -653,7 +653,6 @@
     $('roundChip').textContent = t('g.round', { n: s.roundId });
     $('playersChip').textContent = '👥 ' + s.stats.players;
     renderWord(s);
-    wordBottom();
     if (roundChanged) { blocks.clear(); $('table').replaceChildren(); }
     renderTable();
     $('winner').hidden = s.phase !== 'winner';
