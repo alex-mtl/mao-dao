@@ -21,7 +21,9 @@ def v(name, follows=1):
     return Viewer(name.lower(), name, "", follows)
 
 
-class AnagramTest(unittest.TestCase):
+class TinyAssets(unittest.TestCase):
+    """A dictionary of WORDS in a temp folder as the engine's assets, for the test class."""
+
     @classmethod
     def setUpClass(cls):
         cls.tmp = tempfile.mkdtemp()
@@ -36,6 +38,8 @@ class AnagramTest(unittest.TestCase):
     def tearDownClass(cls):
         config.ASSETS_DIR, config.LANGUAGE, config.COUNTDOWN_SEC = cls.assets_was, cls.lang_was, cls.cd_was
 
+
+class AnagramTest(TinyAssets):
     def make(self, store=None):
         g = AnagramGame(store or JsonStore(tempfile.mkdtemp(dir=self.tmp)))
         self.assertIsNone(g.error)
@@ -138,6 +142,24 @@ class AnagramTest(unittest.TestCase):
         g2.tick(time.time())
         g2.tick(time.time())
         self.assertEqual((g2.phase, g2.word, g2.round_id), (ana.COUNTDOWN, ROUND, 2))
+
+
+class SharedFrameTest(TinyAssets):
+    def test_frame_is_the_rooms(self):
+        """The frame format / chroma key / chat zone set in one game go to every game; a room that had Anagram with
+        a frame of its own takes Guess the Word's once."""
+        from app.hub import Hub
+        d = tempfile.mkdtemp(dir=self.tmp)
+        JsonStore(d).save("session.json", {"options": {"guess": {"frame": 20, "chat_zone": 15},
+                                                       "anagram": {"frame": 16, "chat_zone": 20}}})
+        hub = Hub(JsonStore(d))
+        self.assertEqual((hub.games["anagram"].frame, hub.games["anagram"].chat_zone), (20, 15))
+        hub.set_options("anagram", {"frame": 19.5})
+        self.assertEqual((hub.games["guess"].frame, hub.games["streamer"].frame), (19.5, 19.5))
+        hub.save_session()
+        hub.set_options("guess", {"frame": 16})
+        hub2 = Hub(JsonStore(d))                       # migrated once: a later start keeps what was set
+        self.assertEqual(hub2.games["anagram"].frame, 16)
 
 
 class SwitchTest(unittest.TestCase):

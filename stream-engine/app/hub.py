@@ -47,6 +47,11 @@ class Hub:
             if name in self.games and isinstance(opts, dict):
                 for k, v in opts.items():
                     self.games[name].set_option(k, v)
+        # once: Anagram (2026-11-03) had a picture of its own; it takes Guess the Word's, from then on they are shared
+        self.shared = int(s.get("shared") or 0)
+        if not self.shared and "guess" in self.games and "anagram" in self.games:
+            self._share(self.games["guess"], self.games["anagram"])
+            self.shared = 1
         # "what the gifts do" moved from the toasts ("promo" show on/off) to the guess game's screen settings:
         # a room that had it off keeps it off
         g = self.games.get("guess")
@@ -83,6 +88,16 @@ class Hub:
     def game(self):
         return self.games[self.active]
 
+    # the picture is the streamer's setup (TikTok LIVE Studio, the phone), not a game's: the frame format, the chroma
+    # key and the chat zone set in one game go to every game that has them
+    SHARED_OPTIONS = ("frame", "chroma", "chroma_top", "chat_zone")
+
+    def _share(self, src, dst):
+        values = src.get_options()
+        for k in self.SHARED_OPTIONS:
+            if k in values and k in dst.OPTIONS and values[k] in dst.OPTIONS[k]:
+                dst.set_option(k, values[k])
+
     def menu(self):
         return [{"name": g.name, "title": g.title, "options": g.OPTIONS, "values": g.get_options()}
                 for g in self.games.values()]
@@ -110,7 +125,7 @@ class Hub:
 
     def save_session(self):
         self.store.save(self.SESSION, {"room_id": self.room_id, "active": self.active, "lang": self.lang,
-                                       "options": self.options(), "ids_seq": self.ids_seq,
+                                       "options": self.options(), "ids_seq": self.ids_seq, "shared": self.shared,
                                        "viewers": [{"id": k, **u} for k, u in self.recent.items()]})
 
     def options(self):
@@ -147,6 +162,11 @@ class Hub:
         for k, v in (opts or {}).items():
             if k in g.OPTIONS and v in g.OPTIONS[k]:
                 g.set_option(k, v)
+                if k in self.SHARED_OPTIONS:          # the streamer's picture: every game that has it
+                    for other in self.games.values():
+                        if other is not g and k in other.OPTIONS and v in other.OPTIONS[k]:
+                            other.set_option(k, v)
+                            other.dirty = True
         g.dirty = True
         self.save_session()
         print(f"[hub] {name} settings -> {g.get_options()}")

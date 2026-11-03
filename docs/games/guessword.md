@@ -151,7 +151,8 @@ engine game `anagram`, page `app/web/anagram/`). Mockup with the animations: `st
   won (`anagram/players.json`, `AnagramStats`, reset with a new LIVE), shown like Guess the Word's: the "On screen" tab
   (the same `SCREEN` options, on the anagram game), tops of planes / balloons from the likes, the bot's name.
 - **Settings** (room page → Anagram): round length (3–30 min, default 10), break between rounds (0–2 min, default 2),
-  who plays (all / followers / the team from level N), frame and chroma, On screen, gifts, toasts, likes. Gifts launch
+  who plays (all / followers / the team from level N), frame and chroma (shared by all the games of the room: `Hub.SHARED_OPTIONS`;
+  Anagram took Guess the Word's once, session flag `shared`), On screen, gifts, toasts, likes. Gifts launch
   only the animations every page has (balloon, plane, butterflies, snowball, cake); hints / boosts / steal are Guess the
   Word's and don't exist here (the overlay's "what the gifts do" lists only the animations).
 - The overlay reuses `guess/guess.css` and copies the stream chrome of `guess.js` (frame / chroma / TT, tops, gift

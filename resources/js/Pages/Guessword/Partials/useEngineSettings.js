@@ -65,6 +65,7 @@ export default function useEngineSettings(controlUrl, enabled) {
                 await call('settings', { game, options });
             }
             setSaved(draft);
+            load();                 // the engine shares some values between the games (the frame): read them back
             return true;
         } catch (e) {
             return false;
