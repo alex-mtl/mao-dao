@@ -59,7 +59,7 @@ class AnagramTest(TinyAssets):
     def test_points_and_repeats(self):
         g = self.make()
         g.on_comment(v("Krestik"), "Свет")
-        g.on_comment(v("Нина"), "деталь")
+        g.on_comment(v("Нина"), "лист")
         self.assertEqual(g.players["krestik"]["score"], 4)
         g.on_comment(v("Сергей"), "свет")            # someone else's word: its author gets the points again
         g.on_comment(v("Tati"), "свет!")
@@ -125,9 +125,75 @@ class AnagramTest(TinyAssets):
         g.tick(time.time())
         self.assertEqual(g.phase, ana.WINNER)
         self.assertEqual(g.winner["name"], "Нина")
-        self.assertEqual(g.winner["score"], 8)
+        self.assertEqual(g.winner["score"], 16)        # the first word of 8 letters: x2
         self.assertEqual(g.snapshot()["champions"][0]["players"][0]["name"], "Нина")
         self.assertEqual(g.history[-1]["podium"], ["Нина", "Krestik"])
+
+    def end(self, g):
+        g.ends_at = time.time() - 1
+        g.tick(time.time())
+
+    def test_first_word_of_a_length_scores_double(self):
+        g = self.make()
+        g.on_comment(v("Krestik"), "свет")             # 4 letters: never doubled
+        g.on_comment(v("Нина"), "редис")               # the first of 5 letters: x2
+        g.on_comment(v("Tati"), "ветер")               # the second of 5 letters: as usual
+        g.on_comment(v("Tati"), "деталь")              # the first of 6
+        g.on_comment(v("Krestik"), "редис")            # a repeat of a doubled word: its letters once more
+        self.assertEqual([(e["points"], e.get("first")) for e in self.tries(g)],
+                         [(4, False), (10, True), (5, False), (12, True), (5, None)])
+        self.assertEqual((g.players["нина"]["score"], g.players["tati"]["score"]), (15, 17))
+
+    def test_most_repeated_word_bonus(self):
+        g = self.make()
+        g.on_comment(v("Krestik"), "свет")
+        g.on_comment(v("Нина"), "лист")
+        for n in ("a", "b"):
+            g.on_comment(v(n), "свет")                 # x3
+        g.on_comment(v("c"), "лист")                   # x2
+        self.end(g)
+        self.assertEqual(g.phase, ana.BONUS)           # the overlay's animation first, the scores not yet counted
+        self.assertEqual(g.players["krestik"]["score"], 12)
+        e = [x for x in g.events if x["type"] == "bonus"][-1]
+        self.assertEqual(([i["word"] for i in e["items"]], e["items"][0]["n"], e["combo"]), (["СВЕТ"], 3, False))
+        self.assertEqual(g.snapshot()["bonus"]["items"][0]["uid"], "krestik")
+        g.tick(g.phase_until + 0.1)
+        self.assertEqual(g.phase, ana.WINNER)
+        self.assertEqual((g.players["krestik"]["score"], g.winner["score"]), (15, 15))
+        self.assertEqual(g.history[-1]["bonus"], [["СВЕТ", "Krestik", 3]])
+
+    def test_bonus_ties_up_to_three_words(self):
+        g = self.make()
+        for who, w in (("Krestik", "свет"), ("Нина", "лист"), ("Tati", "сталь")):
+            g.on_comment(v(who), w)
+            g.on_comment(v("x"), w)                    # each named twice
+        self.end(g)
+        self.assertEqual(g.bonus["points"], {"krestik": 2, "нина": 2, "tati": 2})
+        g.tick(g.phase_until + 0.1)
+        self.assertEqual(g.players["tati"]["score"], 10 + 5 + 2)
+
+    def test_bonus_three_words_of_one_player_doubled(self):
+        g = self.make()
+        for w in ("свет", "лист", "стрела"):
+            g.on_comment(v("Krestik"), w)
+            g.on_comment(v("x"), w)
+        self.end(g)
+        self.assertTrue(g.bonus["combo"])
+        self.assertEqual(g.bonus["points"], {"krestik": 12})   # (2 + 2 + 2) x2
+        g.tick(g.phase_until + 0.1)
+        self.assertEqual(g.players["krestik"]["score"], 4 + 4 + 4 + 4 + 12 + 6 + 12)
+
+    def test_no_bonus_for_more_than_three_or_no_repeats(self):
+        g = self.make()
+        for who, w in (("a", "свет"), ("b", "лист"), ("c", "сталь"), ("d", "ветер")):
+            g.on_comment(v(who), w)
+            g.on_comment(v("x"), w)
+        self.end(g)
+        self.assertEqual((g.phase, g.bonus), (ana.WINNER, None))
+        g2 = self.make()
+        g2.on_comment(v("a"), "свет")
+        self.end(g2)
+        self.assertEqual(g2.phase, ana.WINNER)
 
     def test_nobody(self):
         g = self.make()

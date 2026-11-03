@@ -2,6 +2,10 @@
 of the dictionary made of its letters. The first to name a word gets a point per letter; every other viewer who
 names the same word later gives its author those points again (the word's x2, x3; after x3 each repeat adds 0.1);
 with the multiplication off (a setting) every repeat adds 0.1. The round's word itself counts nothing.
+Bonuses: the first word of each length from FIRST_MIN letters on scores double (the overlay's 3D "x2"). When the
+time is up, the most repeated word (the most namers, n) gives its author +n more; up to BONUS_WORDS words with the
+same top n give theirs each, and when all BONUS_WORDS of them are one player's, the sum is doubled. The overlay
+animates it in the BONUS phase, then the scores count and the winner is known.
 Who has the most points
 when the time is up wins the round; stream champions = most rounds won (like Guess the Word).
 
@@ -10,7 +14,7 @@ letter (missing letters red, extra ones grey) and counts nothing; a word made of
 the dictionary is shown greyed.
 
 Round state machine (the same as Guess the Word, everything on one asyncio loop):
-    IDLE -> COUNTDOWN -> PLAYING -> WINNER -> REVEAL -> FINISHED -> COUNTDOWN ...
+    IDLE -> COUNTDOWN -> PLAYING -> [BONUS] -> WINNER -> REVEAL -> FINISHED -> COUNTDOWN ...
 """
 
 import os
@@ -24,13 +28,15 @@ from ..base import BaseGame, Viewer
 from ..guess.game import GuessGame
 from ..guess.players import SessionStats
 
-IDLE, COUNTDOWN, PLAYING, WINNER, REVEAL, FINISHED = (
-    "idle", "countdown", "playing", "winner", "reveal", "finished")
+IDLE, COUNTDOWN, PLAYING, BONUS, WINNER, REVEAL, FINISHED = (
+    "idle", "countdown", "playing", "bonus", "winner", "reveal", "finished")
 
 LONG_MIN = 11                 # the round's word: more than 10 letters
 MIN_LEN = 3                   # shorter words are ordinary chat, not an answer
 MAX_MULT = 3                  # a word's author scores its letters again up to x3; every later repeat ...
 AFTER_MAX = 0.1               # ... gives them this much (the word just flashes, the x3 stays)
+FIRST_MIN = 5                 # the first word of each length from this many letters scores double
+BONUS_WORDS = 3               # the end of the round: up to this many most repeated words give their authors +n
 LETTERS = {"en": "a-z", "ru": "а-я", "fr": "a-zàâæçéèêëîïôœùûüÿ", "es": "a-záéíóúüñ"}
 NOTE_SEC = 0.7                # rejected answers ("no such letter", "not in the dictionary") at most this often
 FOLLOW_NOTE_SEC = 30          # "follow to play" for one viewer at most this often
@@ -165,6 +171,9 @@ class AnagramGame(BaseGame):
         self.winner = None
         self.podium = []
         self.log = []
+        self.firsts = set()                          # word lengths (FIRST_MIN+) already named this round: x2 given
+        self.bonus = None                            # the end of the round's repeat bonus (BONUS phase)
+        self.finish_reason = "timeout"
 
     @property
     def dict(self):
@@ -212,9 +221,42 @@ class AnagramGame(BaseGame):
     def _ranked(self):
         return sorted(self.players.values(), key=lambda p: (-p["score"], p["t"]))
 
+    def _repeat_bonus(self):
+        """The most repeated words (the same top n, n >= 2; none when more than BONUS_WORDS have it): each gives its
+        author +n; all BONUS_WORDS of them one player's - the sum x2."""
+        top = max((f["n"] for f in self.found.values()), default=0)
+        words = sorted((f for f in self.found.values() if f["n"] == top), key=lambda f: f["t"])
+        if top < 2 or len(words) > BONUS_WORDS:
+            return None
+        combo = len(words) == BONUS_WORDS and len({f["id"] for f in words}) == 1
+        points = {}
+        for f in words:
+            points[f["id"]] = points.get(f["id"], 0) + f["n"] * (2 if combo else 1)
+        return {"items": [{"word": f["word"].upper(), "uid": f["id"], "name": f["name"], "avatar": f["avatar"], "n": f["n"]}
+                          for f in words],
+                "combo": combo, "points": points,
+                "sec": 6 + 0.5 * len(words) + (5 if combo else 0)}   # the overlay's animation, with a margin
+
     def _finish(self, now, reason="timeout"):
+        """Time is up: the repeat bonus first (its BONUS phase), then the winner."""
         if self.phase != PLAYING:
             return
+        self.bonus = self._repeat_bonus()
+        if not self.bonus:
+            return self._close(now, reason)
+        self.phase, self.finish_reason = BONUS, reason
+        self.phase_until = now + self.bonus["sec"]
+        self.emit("bonus", items=self.bonus["items"], combo=self.bonus["combo"])
+        print(f"[anagram] round {self.round_id} bonus: "
+              + ", ".join(f"{i['name']} {i['word']} +{i['n']}" for i in self.bonus["items"]) + (" x2" if self.bonus["combo"] else ""))
+        self.dirty = True
+
+    def _close(self, now, reason):
+        if self.phase not in (PLAYING, BONUS):
+            return
+        for uid, pts in ((self.bonus or {}).get("points") or {}).items():
+            if uid in self.players:
+                self.players[uid]["score"] = round(self.players[uid]["score"] + pts, 1)
         self.phase = WINNER
         self.finished_at = now
         self.phase_until = now + config.WINNER_SEC
@@ -238,7 +280,9 @@ class AnagramGame(BaseGame):
             "round": self.round_id, "word": self.word, "reason": reason, "winner": top["name"] if top else None,
             "score": top["score"] if top else 0, "players": len(self.players), "found": len(self.found),
             "possible": len(self.possible), "podium": [p["name"] for p in self.podium],
-            "longest": [longest["word"], longest["name"]] if longest else None, "at": int(now)}])[-300:]
+            "longest": [longest["word"], longest["name"]] if longest else None,
+            "bonus": [[i["word"], i["name"], i["n"]] for i in self.bonus["items"]] if self.bonus else None,
+            "at": int(now)}])[-300:]
         self.store.save(self.ROUNDS, self.history)
         if self.live:
             who = self.live.user(top["id"], top["name"]) if top else None
@@ -320,13 +364,17 @@ class AnagramGame(BaseGame):
                 p = self.players[viewer.id] = {"id": viewer.id, "name": viewer.name, "avatar": viewer.avatar,
                                                "score": 0, "t": now, "words": []}
             p["name"], p["avatar"] = viewer.name, viewer.avatar or p["avatar"]
+            first = len(word) >= FIRST_MIN and len(word) not in self.firsts
+            points = len(word) * (2 if first else 1)
+            if first:
+                self.firsts.add(len(word))
             p["words"].append(word)
-            p["score"] += len(word)
+            p["score"] += points
             p["t"] = now
             self.found[word] = {"word": word, "id": viewer.id, "name": viewer.name, "avatar": viewer.avatar,
                                 "n": 1, "t": now, "ids": [viewer.id], "last": "", "last_avatar": "", "last_t": 0.0}
-            self.emit("try", kind="ok", word=word.upper(), points=len(word), **who)
-            print(f"[anagram] {viewer.name}: {word} +{len(word)}")
+            self.emit("try", kind="ok", word=word.upper(), points=points, first=first, **who)
+            print(f"[anagram] {viewer.name}: {word} +{points}" + (" (first of its length: x2)" if first else ""))
         self.stats.get(viewer.id, viewer.name, viewer.avatar)["guesses"] += 1
         self.dirty = True
 
@@ -417,6 +465,8 @@ class AnagramGame(BaseGame):
             self._start_playing(now)
         elif self.phase == PLAYING and now >= self.ends_at:
             self._finish(now)
+        elif self.phase == BONUS and now >= self.phase_until:
+            self._close(now, self.finish_reason)
         elif self.phase == WINNER and now >= self.phase_until:
             if not self.reveal_sec:
                 self.phase = FINISHED
@@ -450,6 +500,8 @@ class AnagramGame(BaseGame):
         if action == "start_round":
             if self.phase == PLAYING:
                 self._finish(now, "skip")
+            elif self.phase == BONUS:
+                self._close(now, self.finish_reason)
             else:
                 self._start_countdown(now)
         elif action == "finish_round":
@@ -477,7 +529,7 @@ class AnagramGame(BaseGame):
 
     def snapshot(self):
         now = time.time()
-        shown = self.phase in (PLAYING, WINNER, REVEAL, FINISHED)
+        shown = self.phase in (PLAYING, BONUS, WINNER, REVEAL, FINISHED)
         longest = max(self.found.values(), key=lambda f: (len(f["word"]), -f["t"]), default=None)
         return {
             "error": self.error,
@@ -498,6 +550,7 @@ class AnagramGame(BaseGame):
             "chroma": self.chroma_top if self.chroma else 0, "chromaTop": self.chroma_top,
             "frame": self.frame, "chatZone": self.chat_zone, "screen": self.screen,
             "mult": self.mult, "maxMult": MAX_MULT,
+            "bonus": {k: self.bonus[k] for k in ("items", "combo")} if self.phase == BONUS and self.bonus else None,
             "breakSec": self.reveal_sec, "resultsSec": min(config.RESULTS_SEC, self.reveal_sec),
             "promo": config.PROMO_LINES_BY_LANG.get(self.lang, config.PROMO_LINES),
             "lang": self.round_lang, "languages": sorted(self.dicts),
@@ -511,6 +564,7 @@ class AnagramGame(BaseGame):
             "started_at": self.started_at, "ends_at": self.ends_at, "phase_until": self.phase_until,
             "finished_at": self.finished_at, "found": self.found, "players": self.players,
             "winner": self.winner, "podium": self.podium, "saved_at": self.paused_at or time.time(),
+            "firsts": sorted(self.firsts), "bonus": self.bonus, "finish_reason": self.finish_reason,
         })
 
     def load(self):
@@ -530,6 +584,8 @@ class AnagramGame(BaseGame):
             self.phase_until, self.finished_at = d["phase_until"], d.get("finished_at", 0.0)
             self.found, self.players = d.get("found", {}), d.get("players", {})
             self.winner, self.podium = d.get("winner"), d.get("podium", [])
+            self.firsts, self.bonus = set(d.get("firsts", [])), d.get("bonus")
+            self.finish_reason = d.get("finish_reason", "timeout")
             self.paused_at = d.get("saved_at")           # timers resume on activation
             print(f"[anagram] restored round {self.round_id} ({self.phase})")
         except Exception as e:
