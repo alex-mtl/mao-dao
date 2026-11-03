@@ -52,9 +52,6 @@ html.chroma #stage { gap: calc(var(--u) * 1); }        /* the answer line right 
 .pa { position: relative; flex: none; width: calc(var(--u) * 6.4); height: calc(var(--u) * 6.4); margin-right: calc(var(--u) * 6.6); }
 .pa > .av { position: absolute; inset: 0; width: 100%; height: 100%; font-size: calc(var(--u) * 3); border: calc(var(--u) * .35) solid #fff;
             transition: opacity .3s; }
-/* someone named this player's word again: their avatar (green ring) covers the author's for a few seconds */
-.pa > .av.o { border-color: var(--lime); opacity: 0; }
-.pl.over .pa > .av.o { opacity: 1; }
 /* points: a seven-segment display in the "cold" color of Guess the Word's table, unlit segments dimly visible */
 .sc { position: absolute; z-index: 2; left: calc(var(--u) * 5.2); top: calc(var(--u) * -1); display: inline-flex; align-items: stretch;
       gap: calc(var(--u) * .3); height: calc(var(--u) * 3.2); padding: calc(var(--u) * .35) calc(var(--u) * .5);
@@ -74,6 +71,15 @@ html.chroma #stage { gap: calc(var(--u) * 1); }        /* the answer line right 
 .ws { gap: calc(var(--u) * 1.6 * var(--wf, 1)); }        /* --wf: a line squeezed to take one more word (anagram.js) */
 .w.hidden { visibility: hidden; }
 .w.hit { animation: hit 1s; }
+/* who named the word last: their avatar and nick glow right before the word while it flashes */
+.w { position: relative; }
+.namer { position: absolute; z-index: 3; right: calc(100% + var(--u) * .6); top: 50%; margin-top: calc(var(--u) * -2); display: flex; align-items: center; gap: calc(var(--u) * .8);
+         padding: calc(var(--u) * .3) calc(var(--u) * 1.2) calc(var(--u) * .3) calc(var(--u) * .3); border-radius: 999px;
+         background: rgb(10, 0, 25); border: 1px solid var(--lime); box-shadow: 0 0 .8em var(--lime);
+         font: 700 calc(var(--u) * 2.8) var(--font-text); color: #fff; white-space: nowrap; pointer-events: none;
+         animation: namerOut .4s var(--out, 2.6s) forwards; }
+.namer.in { animation: namerIn .3s ease-out, namerOut .4s var(--out, 2.6s) forwards; }
+.namer .av { width: calc(var(--u) * 3.4); height: calc(var(--u) * 3.4); font-size: calc(var(--u) * 1.7); border: 0; }
 /* ×2 / ×3: Guess the Word's green "+N" (its color in the chroma-key mode too), small, right at the word */
 .x { font: 800 calc(var(--u) * 2.6) var(--font-display); color: var(--lime); margin-left: calc(var(--u) * .1); align-self: flex-start;
      margin-top: calc(var(--u) * .4); }
@@ -93,4 +99,6 @@ html.chroma #stage { gap: calc(var(--u) * 1); }        /* the answer line right 
 @keyframes flipIn { from { opacity: 0; transform: rotateX(90deg) translateY(-30%); } }
 @keyframes tryIn { from { opacity: 0; transform: translateY(-35%); } }
 @keyframes hit { 0%, 100% { box-shadow: none; } 25% { box-shadow: 0 0 0 calc(var(--u) * .6) var(--lime), 0 0 1.4em var(--lime); } }
+@keyframes namerIn { from { opacity: 0; transform: translateX(30%) scale(.8); } }
+@keyframes namerOut { to { opacity: 0; } }
 @keyframes floatUp { to { opacity: 0; transform: translateY(-120%); } }

@@ -206,15 +206,17 @@
   // the state brings the table at once; a word just named waits there (hidden / with its old ×N) until it lands
   // from the answer line
   const held = new Map();                         // WORD -> {kind, n before}
-  const over = new Map();                         // player id -> {nick, until}: who named their word again
-  const OVER_MS = 5000;
+  // a repeated word flashes with the one who named it last next to it (avatar + nick) for NAMER_MS; the author's
+  // own avatar stays as it is
+  const namers = new Map();                       // WORD -> {name, avatar, at, until}
+  const NAMER_MS = 3000;
   function hold(e) {
     if (e.kind === 'ok') held.set(e.word, { kind: 'ok' });
     else if (e.kind === 'rep' && shownN(e.n) !== shownN(e.n - 1)) held.set(e.word, { kind: 'rep', n: e.n - 1 });
   }
   function land(e, from) {
     held.delete(e.word);
-    if (e.kind === 'rep') over.set(e.byId, { nick: clean(e.name), avatar: e.avatar, until: Date.now() + OVER_MS });
+    if (e.kind === 'rep') namers.set(e.word, { name: clean(e.name), avatar: e.avatar, at: Date.now(), until: Date.now() + NAMER_MS });
     renderTable();
     const chip = $('table').querySelector(`.w[data-w="${CSS.escape(e.word)}"]`);
     if (!chip) return;
@@ -240,11 +242,13 @@
     }));
     setTimeout(() => { f.remove(); chip.classList.remove('hidden'); chip.classList.add('hit'); }, 680);
   }
-  setInterval(() => {                             // a covering nick goes back to the author's
+  setInterval(() => {                             // the namer's pill is gone when its time is up
     const now = Date.now();
-    let changed = false;
-    over.forEach((o, id) => { if (now >= o.until) { over.delete(id); changed = true; } });
-    if (changed) document.querySelectorAll('.pl.over').forEach(b => { if (!over.has(b.dataset.id)) b.classList.remove('over'); });
+    namers.forEach((m, w) => {
+      if (now < m.until) return;
+      namers.delete(w);
+      $('table').querySelectorAll(`.w[data-w="${CSS.escape(w)}"] .namer`).forEach(n => n.remove());
+    });
   }, 250);
 
   function chip(w) {
@@ -254,20 +258,22 @@
     const n = shownN(h && h.kind === 'rep' ? h.n : w.n);
     if (n > 1) c.append(el('span', 'x', '×' + n));
     if (h && h.kind === 'ok') c.classList.add('hidden');
+    const m = namers.get(w.w), now = Date.now();
+    if (m && now < m.until) {                     // the table is redrawn often: the pill keeps its own clock
+      const pill = el('span', 'namer' + (now - m.at < 150 ? ' in' : ''));
+      pill.append(avatar(m.name, m.avatar), el('span', '', m.name));
+      pill.style.setProperty('--out', Math.max(0, m.until - now - 400) + 'ms');
+      c.append(pill);
+    }
     return c;
   }
-  // a player: the first line - avatar, points, nick and as many words as fit; the rest on lines of up to
-  // WORDS_PER_LINE words
+  // a player: the avatar with the points, then the words, up to WORDS_PER_LINE a line
   const WORDS_PER_LINE = 5, SQUEEZE = [0.94, 0.88, 0.82];
   function fill(block, p) {
     block.replaceChildren();
-    // no nick: the avatar with the points on its top right corner; who repeated the word covers it for a while
+    // no nick: the avatar with the points on its top right corner
     const pa = el('span', 'pa');
-    const o = over.get(p.id);
-    pa.append(avatar(p.name, p.avatar));
-    if (o) pa.append(avatar(o.nick, o.avatar, 'o'));
-    pa.append(lcd(p.score));
-    block.classList.toggle('over', !!o);
+    pa.append(avatar(p.name, p.avatar), lcd(p.score));
     // as few lines as possible: each word goes to the first line with room for it (squeezed a little if need be),
     // a new line only when none has
     const lines = [];
@@ -338,7 +344,7 @@
     switch (e.type) {
       case 'try': hold(e); pushTry(e); break;
       case 'countdown':
-        held.clear(); over.clear(); tries.length = 0;
+        held.clear(); namers.clear(); tries.length = 0;
         break;
       case 'round_start':
         voice('round', t('g.v.round', { n: e.round }), 'urgent', 1);
