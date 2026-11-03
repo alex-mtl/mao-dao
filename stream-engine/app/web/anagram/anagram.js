@@ -458,11 +458,11 @@
   const TILT = 'rotateX(12deg)';
   const wobble = o => o.animate([{ transform: `${TILT} rotateY(-18deg)` }, { transform: `${TILT} rotateY(18deg)` }],
     { duration: 700, direction: 'alternate', iterations: Infinity, easing: 'ease-in-out' });
-  async function flip(o, text) {                  // edge-on, the new text, back
+  async function flip(o, text, k = 1) {           // edge-on, the new text, back (k: the speed)
     o.getAnimations().forEach(a => a.cancel());
-    await anim(o, [{ transform: `${TILT} rotateY(0)` }, { transform: `${TILT} rotateY(90deg)` }], { duration: 140, easing: 'ease-in' });
+    await anim(o, [{ transform: `${TILT} rotateY(0)` }, { transform: `${TILT} rotateY(90deg)` }], { duration: 140 / k, easing: 'ease-in' });
     o.set(text);
-    await anim(o, [{ transform: `${TILT} rotateY(-90deg)` }, { transform: `${TILT} rotateY(0)` }], { duration: 240, easing: 'ease-out' });
+    await anim(o, [{ transform: `${TILT} rotateY(-90deg)` }, { transform: `${TILT} rotateY(0)` }], { duration: 240 / k, easing: 'ease-out' });
   }
   function holder(x, y, glow) {
     const h = el('div', 'fxabs ' + glow), pp = el('div', 'persp');
@@ -470,6 +470,7 @@
     return h;
   }
 
+  // ~3 s in all: the game goes on meanwhile, only another x2 waits its turn
   async function firstAnim(e, from) {
     const gen = fxGen, alive = () => gen === fxGen, u = U(), board = rel($('board'));
     const cx = board.x, wy = board.y - board.h * .2, cy = board.y + board.h * .12;
@@ -482,18 +483,18 @@
     const b = rel(big), a = from ? rel(from) : null;
     anim(big, [{ transform: a ? `translate(calc(-50% + ${a.x - b.x}px), calc(-50% + ${a.y - b.y}px)) scale(${a.w / b.w})` : 'translate(-50%,-50%) scale(.2)', opacity: a ? 1 : 0 },
       { transform: 'translate(-50%,-50%) scale(1.12)', opacity: 1, offset: .75 }, { transform: 'translate(-50%,-50%) scale(1)', opacity: 1 }],
-      { duration: 650, easing: 'cubic-bezier(.3,1.2,.5,1)' });
-    await wait(650); if (!alive()) return;
+      { duration: 350, easing: 'cubic-bezier(.3,1.2,.5,1)' });
+    await wait(250); if (!alive()) return;
     // each letter turns over into its count: 1, 2 ... N
-    const ts = [...big.children], n = ts.length;
+    const ts = [...big.children], n = ts.length, step = Math.min(100, 450 / n);   // all the letters in ~0.45 s
     for (let i = 0; i < n; i++) {
       fx('digit', i);
-      await anim(ts[i], [{ transform: 'rotateY(0)' }, { transform: 'rotateY(90deg)' }], { duration: 90, easing: 'ease-in' });
+      await anim(ts[i], [{ transform: 'rotateY(0)' }, { transform: 'rotateY(90deg)' }], { duration: step * .5, easing: 'ease-in' });
       ts[i].textContent = String(i + 1); ts[i].classList.add('num');
-      anim(ts[i], [{ transform: 'rotateY(-90deg)' }, { transform: 'rotateY(0)' }], { duration: 140, easing: 'ease-out' });
-      await wait(60); if (!alive()) return;
+      anim(ts[i], [{ transform: 'rotateY(-90deg)' }, { transform: 'rotateY(0)' }], { duration: step, easing: 'ease-out' });
+      await wait(step * .5); if (!alive()) return;
     }
-    await wait(350); if (!alive()) return;
+    await wait(100); if (!alive()) return;
     // the digits run together into one 3D N
     const nx = cx + 10 * u, h = holder(nx, cy, 'glow-gold'), o = obj3d(String(n), 'gold', 30);
     h.pp.append(o); o.style.opacity = 0;
@@ -501,43 +502,41 @@
     await Promise.all(ts.map(t => {
       const r = rel(t);
       return anim(t, [{ transform: 'none', opacity: 1 }, { transform: `translate(${nx - r.x}px, ${cy - r.y}px) scale(.4)`, opacity: 0 }],
-        { duration: 380, easing: 'cubic-bezier(.6,0,.9,.5)' });
+        { duration: 250, easing: 'cubic-bezier(.6,0,.9,.5)' });
     }));
     if (!alive()) return;
     big.remove();
     fx('ding');
     sparks(nx, cy, ['#ffd84a', '#fff', '#ff9800'], 14, 22);
     await anim(o, [{ transform: `${TILT} rotateY(-90deg) scale(.4)`, opacity: 0 }, { transform: `${TILT} rotateY(0) scale(1.15)`, opacity: 1, offset: .7 },
-      { transform: `${TILT} rotateY(0) scale(1)`, opacity: 1 }], { duration: 450, easing: 'ease-out' });
+      { transform: `${TILT} rotateY(0) scale(1)`, opacity: 1 }], { duration: 200, easing: 'ease-out' });
     o.style.opacity = '';
     // the player, highlighted, left of the number
     const who = el('div', 'fxwho');
     who.append(avatar(e.name, e.avatar), el('span', 'nm', clean(e.name)));
     h.append(who);
     who.animate([{ opacity: 0, transform: 'translateY(-50%) scale(0)' }, { opacity: 1, transform: 'translateY(-50%) scale(1.15)', offset: .7 },
-      { opacity: 1, transform: 'translateY(-50%) scale(1)' }], { duration: 420, fill: 'backwards', easing: 'ease-out' });
+      { opacity: 1, transform: 'translateY(-50%) scale(1)' }], { duration: 300, fill: 'backwards', easing: 'ease-out' });
     wobble(o);
-    await wait(450); if (!alive()) return;
+    await wait(100); if (!alive()) return;
     // a 3D ×2 spins in above it, grows and smashes into it: the N doubles
     const hx = holder(nx, cy - 24 * u, 'glow-gold'), ox = obj3d('×2', 'gold', 20);
     hx.pp.append(ox);
-    fx('spin', 1.1);
+    fx('spin', .5);
     await anim(ox, [{ transform: `${TILT} rotateY(-90deg) scale(.1)`, opacity: 0 }, { opacity: 1, offset: .15 },
-      { transform: `${TILT} rotateY(720deg) scale(1.2)`, opacity: 1 }], { duration: 1100, easing: 'cubic-bezier(.2,.7,.25,1)' });
+      { transform: `${TILT} rotateY(360deg) scale(1.2)`, opacity: 1 }], { duration: 450, easing: 'cubic-bezier(.2,.7,.25,1)' });
     if (!alive()) return;
-    wobble(ox);
-    await wait(250); if (!alive()) return;
+    await wait(50); if (!alive()) return;
     await anim(hx, [{ transform: 'translate(-50%,-50%) scale(1)', opacity: 1 }, { transform: `translate(-50%, calc(-50% + ${24 * u}px)) scale(.3)`, opacity: 0 }],
-      { duration: 280, easing: 'cubic-bezier(.6,0,.9,.5)' });
+      { duration: 180, easing: 'cubic-bezier(.6,0,.9,.5)' });
     hx.remove();
     sparks(nx, cy, ['#ffd84a', '#fff'], 20, 30);
     fx('x2');
-    await flip(o, String(e.points));
-    o.animate([{ transform: `${TILT} scale(1)` }, { transform: `${TILT} scale(1.25)` }, { transform: `${TILT} scale(1)` }], { duration: 400 });
-    await wait(400); wobble(o);
-    await wait(900); if (!alive()) return;
+    await flip(o, String(e.points), 1.6);
+    o.animate([{ transform: `${TILT} scale(1)` }, { transform: `${TILT} scale(1.25)` }, { transform: `${TILT} scale(1)` }], { duration: 300 });
+    await wait(200); if (!alive()) return;
     fx('whoosh');
-    await flyTo(h, scoreOf(e.uid));
+    await flyTo(h, scoreOf(e.uid), 320);
     if (!alive()) return;
     h.remove();
     landScore(e.uid, e.points);
