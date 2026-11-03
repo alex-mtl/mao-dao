@@ -267,8 +267,8 @@
     }
     return c;
   }
-  // a player: the avatar with the points, then the words, up to WORDS_PER_LINE a line
-  const WORDS_PER_LINE = 5, SQUEEZE = [0.94, 0.88, 0.82];
+  // a player: the avatar with the points, then the words - a line takes as many as fit its width
+  const SQUEEZE = [0.94, 0.88, 0.82];
   function fill(block, p) {
     block.replaceChildren();
     // no nick: the avatar with the points on its top right corner
@@ -286,7 +286,6 @@
     };
     const fits = L => L.line.scrollWidth <= L.line.clientWidth + 1;
     const place = (L, c) => {
-      if (L.n >= WORDS_PER_LINE) return false;
       L.ws.append(c);
       if (fits(L)) { L.n++; return true; }
       const k = SQUEEZE.find(x => x < L.wf && (L.ws.style.setProperty('--wf', x), fits(L)));
