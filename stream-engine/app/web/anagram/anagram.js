@@ -104,6 +104,15 @@
     },
     timeout() { A.tone(220, 0, 0.6, 'sawtooth', 0.15, 110); A.tone(233, 0, 0.6, 'square', 0.08, 116); },
     streak(n) { [392, 523, 659, 784, 1047].slice(0, Math.min(5, 2 + n)).forEach((f, i) => A.tone(f, i * 0.09, 0.4, 'sawtooth', 0.08)); },
+    // the bonuses' animations
+    rise() { A.tone(300, 0, 0.5, 'sine', 0.07, 900); },
+    spin(d) { A.tone(220, 0, d, 'triangle', 0.06, 880); for (let i = 0; i < 6; i++) A.noise(i * d / 6, 0.12, 0.05, 1500); },
+    ding() { A.tone(1319, 0, 0.5, 'sine', 0.14); A.tone(1760, 0.06, 0.6, 'sine', 0.1); A.tone(2637, 0.06, 0.4, 'triangle', 0.04); },
+    whoosh() { A.noise(0, 0.35, 0.12, 600); },
+    coin() { A.tone(988, 0, 0.08, 'square', 0.07); A.tone(1319, 0.07, 0.3, 'square', 0.07); },
+    burst() { A.noise(0, 0.18, 0.35, 300); A.tone(140, 0, 0.2, 'sine', 0.25, 60); },
+    plusN() { [784, 988, 1175].forEach((f, i) => A.tone(f, i * 0.06, 0.25, 'triangle', 0.1)); },
+    x2() { [523, 659, 784, 1047].forEach((f, i) => { A.tone(f, i * 0.07, 0.4, 'sawtooth', 0.05); A.tone(f / 2, i * 0.07, 0.4, 'triangle', 0.1); }); },
   };
   let lastBlip = 0;
   function fx(kind, arg) {
@@ -227,6 +236,7 @@
   // the author's own avatar stays as it is
   const namers = new Map();                       // WORD -> {name, avatar, at, until}
   function hold(e) {
+    if (e.kind === 'ok' && e.first) addAdj(e.uid, -e.points);   // its points come with the x2 animation
     if (e.kind === 'ok') held.set(e.word, { kind: 'ok' });
     else if (e.kind === 'rep' && shownN(e.n) !== shownN(e.n - 1)) held.set(e.word, { kind: 'rep', n: e.n - 1 });
   }
@@ -238,7 +248,10 @@
     if (!chip) return;
     const block = chip.closest('.pl');
     const sc = block && block.querySelector('.sc');
-    if (sc) {
+    if (e.first) {                                // the first word of its length: the x2 animation brings the points
+      const r = from && from.getBoundingClientRect();
+      queueFx(() => firstAnim(e, r && r.width ? r : null));
+    } else if (sc) {
       sc.classList.remove('pop'); void sc.offsetWidth; sc.classList.add('pop');
       sc.append(el('span', 'plus', '+' + score(e.points)));
     }
@@ -274,7 +287,7 @@
     c.dataset.w = w.w;
     const n = shownN(h && h.kind === 'rep' ? h.n : w.n);
     if (n > 1) c.append(el('span', 'x', '×' + n));
-    if (h && h.kind === 'ok') c.classList.add('hidden');
+    if ((h && h.kind === 'ok') || inAir.has(w.w)) c.classList.add('hidden');
     const m = namers.get(w.w), now = Date.now();
     if (m && now < m.until) {                     // the table is redrawn often: the pill keeps its own clock
       const pill = el('span', 'namer' + (now - m.at < 150 ? ' in' : ''));
@@ -290,7 +303,7 @@
     block.replaceChildren();
     // no nick: the avatar with the points on its top right corner
     const pa = el('span', 'pa');
-    pa.append(avatar(p.name, p.avatar), lcd(p.score));
+    pa.append(avatar(p.name, p.avatar), lcd(p.score + (adj.get(p.id) || 0)));
     // as few lines as possible: each word goes to the first line with room for it (squeezed a little if need be),
     // a new line only when none has
     const lines = [];
@@ -370,6 +383,246 @@
   }
 
 
+  // ------------------------------------------------------------ bonuses
+  // the first word of a length: the word pops up in gold tiles, the player's avatar and nick by a 3D "×2" that
+  // spins, grows and turns into the points, which fly to the player's score; the end of the round (BONUS phase):
+  // the most repeated words rise to the centre with their owners' avatars, burst, their green ×N becomes a 3D "+N"
+  // (three words of one player: the sum, then ×2). The table shows a score without the points still in the air.
+  const adj = new Map();                          // player id -> points to add to the score shown (- in the air, + landed early)
+  const inAir = new Set();                        // WORD: its copy is in the air, hidden in the table
+  let fxGen = 0, fxChain = Promise.resolve();
+  function addAdj(id, d) { const v = (adj.get(id) || 0) + d; if (Math.abs(v) < 1e-9) adj.delete(id); else adj.set(id, v); }
+  function queueFx(fn) { const gen = fxGen; fxChain = fxChain.then(() => gen === fxGen && fn()).catch(err => console.warn('[anagram] fx', err)); }
+  function resetFx() {
+    if (!adj.size && !inAir.size && !$('fx').children.length) return;
+    fxGen++; fxChain = Promise.resolve();
+    $('fx').replaceChildren(); $('dim').getAnimations().forEach(a => a.cancel());
+    adj.clear(); inAir.clear();
+    renderTable();
+  }
+  const wait = ms => new Promise(r => setTimeout(r, ms));
+  const anim = (n, k, o) => n.animate(k, Object.assign({ fill: 'forwards' }, o)).finished;
+  const U = () => $('uProbe').offsetWidth / 100;  // var(--u) in px
+  // a point / box in the stage's own coordinates (the stage may be scaled in the chroma key mode)
+  function rel(r) {
+    const st = $('stage'), s = st.getBoundingClientRect(), k = s.width / st.offsetWidth || 1;
+    if (r instanceof Element) r = r.getBoundingClientRect();
+    return { x: (r.left - s.left + r.width / 2) / k, y: (r.top - s.top + r.height / 2) / k, w: r.width / k, h: r.height / k };
+  }
+  function place(node, x, y) { node.style.left = x + 'px'; node.style.top = y + 'px'; }
+  const rowOf = id => { const b = blocks.get(id); return b && b.isConnected ? b : null; };
+  const scoreOf = id => { const b = rowOf(id); return b && b.querySelector('.sc'); };
+  const chipOf = (id, w) => { const b = rowOf(id); return b && b.querySelector(`.w[data-w="${CSS.escape(w)}"]`); };
+  async function flyTo(node, target, ms = 520) {
+    const a = rel(node);
+    if (!target) return anim(node, [{ opacity: 1 }, { opacity: 0 }], { duration: 300 });
+    const b = rel(target);
+    return anim(node, [{ transform: 'translate(-50%,-50%) scale(1)', opacity: 1 },
+      { transform: `translate(calc(-50% + ${b.x - a.x}px), calc(-50% + ${b.y - a.y}px)) scale(.1)`, opacity: .5 }],
+      { duration: ms, easing: 'cubic-bezier(.55,0,.85,.4)' });
+  }
+  function landScore(id, pts) {                   // the points reach the score: it shows them and pops
+    addAdj(id, pts);
+    renderTable();
+    const sc = scoreOf(id);
+    if (!sc) return;
+    sc.classList.remove('pop'); void sc.offsetWidth; sc.classList.add('pop');
+    sc.append(el('span', 'plus', '+' + score(pts)));
+    fx('coin');
+  }
+  function sparks(x, y, colors, n, dist) {
+    const u = U();
+    for (let i = 0; i < n; i++) {
+      const s = el('div', 'spark'), c = colors[i % colors.length];
+      s.style.background = c; s.style.boxShadow = `0 0 ${u * 1.5}px ${c}`; place(s, x, y); $('fx').append(s);
+      const a = Math.random() * Math.PI * 2, d = (dist * .5 + Math.random() * dist) * u;
+      anim(s, [{ transform: 'translate(-50%,-50%) scale(1)', opacity: 1 },
+        { transform: `translate(calc(-50% + ${Math.cos(a) * d}px), calc(-50% + ${Math.sin(a) * d}px)) scale(.2)`, opacity: 0 }],
+        { duration: 600 + Math.random() * 400, easing: 'cubic-bezier(.1,.8,.3,1)' }).then(() => s.remove());
+    }
+  }
+  // a 3D figure: the text in stacked layers (translateZ), a real extruded object that can spin
+  function obj3d(text, kind, fs) {
+    const u = U(), L = 16, o = el('div', 'o3d ' + kind), hue = kind === 'gold' ? 36 : 110;
+    o.style.setProperty('--fs', fs);
+    for (let i = L - 1; i >= 0; i--) {
+      const s = el('span', 'ly ' + (i ? 'side' : 'front'), text);
+      s.style.transform = `translateZ(${-i * fs * .012 * u}px)`;
+      if (i) s.style.color = `hsl(${hue} 100% ${42 - i * 1.6}%)`;
+      o.append(s);
+    }
+    o.set = t => o.querySelectorAll('.ly').forEach(s => { s.textContent = t; });
+    return o;
+  }
+  const TILT = 'rotateX(12deg)';
+  const wobble = o => o.animate([{ transform: `${TILT} rotateY(-18deg)` }, { transform: `${TILT} rotateY(18deg)` }],
+    { duration: 700, direction: 'alternate', iterations: Infinity, easing: 'ease-in-out' });
+  async function flip(o, text) {                  // edge-on, the new text, back
+    o.getAnimations().forEach(a => a.cancel());
+    await anim(o, [{ transform: `${TILT} rotateY(0)` }, { transform: `${TILT} rotateY(90deg)` }], { duration: 140, easing: 'ease-in' });
+    o.set(text);
+    await anim(o, [{ transform: `${TILT} rotateY(-90deg)` }, { transform: `${TILT} rotateY(0)` }], { duration: 240, easing: 'ease-out' });
+  }
+  function holder(x, y, glow) {
+    const h = el('div', 'fxabs ' + glow), pp = el('div', 'persp');
+    h.append(pp); place(h, x, y); $('fx').append(h); h.pp = pp;
+    return h;
+  }
+
+  async function firstAnim(e, from) {
+    const gen = fxGen, alive = () => gen === fxGen, u = U(), board = rel($('board'));
+    const cx = board.x, wy = board.y - board.h * .2, cy = board.y + board.h * .12;
+    // the word itself, from the answer line, in big gold tiles
+    const big = el('div', 'fxabs fxtiles');
+    big.style.setProperty('--tw', `calc(var(--u) * ${Math.min(9, 80 / (e.word.length * 1.12)).toFixed(2)})`);
+    [...e.word].forEach(c => big.append(el('span', 't', c)));
+    place(big, cx, wy); $('fx').append(big);
+    fx('rise');
+    const b = rel(big), a = from ? rel(from) : null;
+    anim(big, [{ transform: a ? `translate(calc(-50% + ${a.x - b.x}px), calc(-50% + ${a.y - b.y}px)) scale(${a.w / b.w})` : 'translate(-50%,-50%) scale(.2)', opacity: a ? 1 : 0 },
+      { transform: 'translate(-50%,-50%) scale(1.12)', opacity: 1, offset: .75 }, { transform: 'translate(-50%,-50%) scale(1)', opacity: 1 }],
+      { duration: 650, easing: 'cubic-bezier(.3,1.2,.5,1)' });
+    // the player, highlighted, left of the ×2
+    const h = holder(cx + 10 * u, cy, 'glow-gold'), o = obj3d('×2', 'gold', 30);
+    h.pp.append(o);
+    const who = el('div', 'fxwho');
+    who.append(avatar(e.name, e.avatar), el('span', 'nm', clean(e.name)));
+    h.append(who);
+    who.animate([{ opacity: 0, transform: 'translateY(-50%) scale(0)' }, { opacity: 1, transform: 'translateY(-50%) scale(1.15)', offset: .7 },
+      { opacity: 1, transform: 'translateY(-50%) scale(1)' }], { duration: 420, delay: 250, fill: 'backwards', easing: 'ease-out' });
+    await wait(300); if (!alive()) return;
+    sparks(cx + 10 * u, cy, ['#ffd84a', '#fff', '#ff9800'], 14, 22);
+    fx('spin', 1.3);
+    await anim(o, [{ transform: `${TILT} rotateY(-90deg) scale(.12)`, opacity: 0 }, { opacity: 1, offset: .12 },
+      { transform: `${TILT} rotateY(720deg) scale(1)`, opacity: 1 }], { duration: 1300, easing: 'cubic-bezier(.2,.7,.25,1)' });
+    if (!alive()) return;
+    fx('ding');
+    await flip(o, String(e.points));
+    sparks(cx + 10 * u, cy, ['#ffd84a', '#fff'], 16, 26);
+    wobble(o);
+    await wait(1100); if (!alive()) return;
+    fx('whoosh');
+    await Promise.all([flyTo(h, scoreOf(e.uid)), flyTo(big, chipOf(e.uid, e.word))]);
+    if (!alive()) return;
+    h.remove(); big.remove();
+    landScore(e.uid, e.points);
+    const c = chipOf(e.uid, e.word);
+    if (c) { c.classList.remove('hit'); void c.offsetWidth; c.classList.add('hit'); }
+  }
+
+  async function endBonus(ev) {
+    const gen = fxGen, alive = () => gen === fxGen, items = ev.items || [];
+    if (!items.length) return;
+    const fxL = $('fx'), u = U(), board = rel($('board')), k = items.length;
+    const S = k === 1 ? 2.4 : 1.7, avS = (k === 1 ? 16 : 11) * u, gap = 3 * u, cy = board.y, W = $('stage').offsetWidth;
+    await anim($('dim'), [{ opacity: 0 }, { opacity: 1 }], { duration: 350 });
+    if (!alive()) return;
+    const objs = items.map((it, i) => {
+      const orig = chipOf(it.uid, it.word), r = orig ? rel(orig) : { x: board.x, y: board.y, w: 0, h: 0 };
+      const clone = tiles(it.word); clone.classList.add('fxabs');
+      const n = shownN(it.n);
+      if (n > 1) clone.append(el('span', 'x', '×' + n));
+      place(clone, r.x, r.y); fxL.append(clone);
+      const w = r.w || clone.offsetWidth;
+      inAir.add(it.word);
+      const oa = rowOf(it.uid) && rowOf(it.uid).querySelector('.pa > .av'), ra = oa ? rel(oa) : { x: board.x, y: board.y, w: 6 * u };
+      const av = avatar(it.name, it.avatar); place(av, ra.x, ra.y); av.style.width = av.style.height = ra.w + 'px'; fxL.append(av);
+      const ty = cy + (i - (k - 1) / 2) * board.h * .24, ww = w * S, left = W / 2 - (avS + gap + ww) / 2;
+      return { it, clone, av, r: { ...r, w }, ra, ty, tx: left + avS + gap + ww / 2, ax: left + avS / 2 };
+    });
+    renderTable();                                // the words in the air are hidden in the table
+    // the words rise to the centre, growing; the owners' avatars grow beside them
+    fx('rise');
+    const ease = 'cubic-bezier(.3,1.25,.5,1)';
+    await Promise.all(objs.map((o, i) => wait(i * 200).then(() => Promise.all([
+      anim(o.clone, [{ left: o.r.x + 'px', top: o.r.y + 'px', transform: 'translate(-50%,-50%) scale(1)' },
+        { left: o.tx + 'px', top: o.ty + 'px', transform: `translate(-50%,-50%) scale(${S})` }], { duration: 900, easing: ease }),
+      anim(o.av, [{ left: o.ra.x + 'px', top: o.ra.y + 'px', width: o.ra.w + 'px', height: o.ra.w + 'px', fontSize: o.ra.w * .45 + 'px' },
+        { left: o.ax + 'px', top: o.ty + 'px', width: avS + 'px', height: avS + 'px', fontSize: avS * .45 + 'px' }], { duration: 900, easing: ease }),
+    ]))));
+    if (!alive()) return;
+    objs.forEach(o => o.clone.animate([{ filter: 'brightness(1)' }, { filter: 'brightness(1.6)' }], { duration: 300, direction: 'alternate', iterations: 3 }));
+    await wait(900); if (!alive()) return;
+    // the word bursts, its green ×N becomes a 3D "+N"
+    await Promise.all(objs.map((o, i) => wait(i * 180).then(async () => {
+      const xEl = o.clone.querySelector('.x'), xr = xEl ? rel(xEl) : { x: o.tx, y: o.ty };
+      o.clone.querySelectorAll('.t').forEach(t => {
+        const a = Math.random() * Math.PI * 2, d = (14 + Math.random() * 16) * u / S;
+        t.animate([{ transform: 'none', opacity: 1 }, { transform: `translate(${Math.cos(a) * d}px,${Math.sin(a) * d}px) rotate(${(Math.random() - .5) * 600}deg) scale(.3)`, opacity: 0 }],
+          { duration: 550, easing: 'cubic-bezier(.2,.8,.4,1)', fill: 'forwards' });
+      });
+      sparks(o.tx, o.ty, ['#39ff14', '#fff', '#b8ff9a'], 22, k === 1 ? 32 : 22);
+      fx('burst'); setTimeout(() => fx('plusN'), 250);
+      if (xEl) xEl.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 150, fill: 'forwards' });
+      const h = holder(xr.x, xr.y, 'glow-lime'), ob = obj3d('+' + o.it.n, 'lime', k === 1 ? 24 : 15);
+      h.pp.append(ob); o.num = h;
+      anim(h, [{ left: xr.x + 'px', top: xr.y + 'px' }, { left: o.tx + 'px', top: o.ty + 'px' }], { duration: 650, easing: 'cubic-bezier(.3,1,.5,1)' });
+      await anim(ob, [{ transform: `${TILT} rotateY(-140deg) scale(.2)` }, { transform: `${TILT} rotateY(360deg) scale(1)` }],
+        { duration: 950, easing: 'cubic-bezier(.2,.8,.3,1)' });
+      wobble(ob);
+      o.clone.remove();
+    })));
+    await wait(700); if (!alive()) return;
+    if (!ev.combo) {
+      await Promise.all(objs.map((o, i) => wait(i * 220).then(async () => {
+        const target = scoreOf(o.it.uid);
+        fx('whoosh');
+        await Promise.all([flyTo(o.num, target), flyTo(o.av, target)]);
+        if (!alive()) return;
+        o.num.remove(); o.av.remove();
+        landScore(o.it.uid, o.it.n);
+      })));
+    } else {
+      // all three are one player's: the numbers merge into the sum, then ×2
+      const id = items[0].uid, sum = items.reduce((s, it) => s + it.n, 0), nx = W / 2 + 9 * u, ax = W / 2 - 24 * u;
+      fx('whoosh');
+      await Promise.all(objs.map(o => {
+        const a = rel(o.num);
+        return Promise.all([
+          anim(o.num, [{ transform: 'translate(-50%,-50%) scale(1)', opacity: 1 },
+            { transform: `translate(calc(-50% + ${nx - a.x}px), calc(-50% + ${cy - a.y}px)) scale(.7)`, opacity: 0 }], { duration: 480, easing: 'ease-in' }),
+          anim(o.av, [{ left: o.ax + 'px', top: o.ty + 'px', width: avS + 'px', height: avS + 'px', fontSize: avS * .45 + 'px' },
+            { left: ax + 'px', top: cy + 'px', width: 18 * u + 'px', height: 18 * u + 'px', fontSize: 8 * u + 'px' }], { duration: 480, easing: 'ease-in-out' }),
+        ]);
+      }));
+      if (!alive()) return;
+      objs.slice(1).forEach(o => o.av.remove());
+      objs.forEach(o => o.num.remove());
+      const av = objs[0].av; av.style.boxShadow = `0 0 ${3 * u}px rgba(255,216,74,.8)`;
+      const h = holder(nx, cy, 'glow-lime'), ob = obj3d('+' + sum, 'lime', 26);
+      h.pp.append(ob);
+      sparks(nx, cy, ['#39ff14', '#fff'], 20, 28);
+      fx('plusN');
+      await anim(ob, [{ transform: `${TILT} rotateY(0) scale(.6)` }, { transform: `${TILT} rotateY(360deg) scale(1)` }], { duration: 700, easing: 'cubic-bezier(.2,.8,.3,1)' });
+      wobble(ob);
+      await wait(400); if (!alive()) return;
+      const hx = holder(nx + 4 * u, cy - 26 * u, 'glow-gold'), ox = obj3d('×2', 'gold', 20);
+      hx.pp.append(ox);
+      fx('spin', 1.1);
+      await anim(ox, [{ transform: `${TILT} rotateY(-90deg) scale(.1)`, opacity: 0 }, { opacity: 1, offset: .15 },
+        { transform: `${TILT} rotateY(720deg) scale(1.2)`, opacity: 1 }], { duration: 1100, easing: 'cubic-bezier(.2,.7,.25,1)' });
+      wobble(ox);
+      await wait(350); if (!alive()) return;
+      await anim(hx, [{ transform: 'translate(-50%,-50%) scale(1)' }, { transform: `translate(calc(-50% - ${4 * u}px), calc(-50% + ${26 * u}px)) scale(.3)`, opacity: 0 }],
+        { duration: 300, easing: 'cubic-bezier(.6,0,.9,.5)' });
+      hx.remove();
+      sparks(nx, cy, ['#ffd84a', '#39ff14', '#fff'], 28, 36);
+      fx('x2');
+      await flip(ob, '+' + sum * 2);
+      ob.animate([{ transform: `${TILT} scale(1)` }, { transform: `${TILT} scale(1.25)` }, { transform: `${TILT} scale(1)` }], { duration: 400 });
+      await wait(450); wobble(ob);
+      await wait(900); if (!alive()) return;
+      fx('whoosh');
+      const target = scoreOf(id);
+      await Promise.all([flyTo(h, target), flyTo(av, target)]);
+      if (!alive()) return;
+      h.remove(); av.remove();
+      landScore(id, sum * 2);
+    }
+    inAir.clear(); renderTable();
+    await anim($('dim'), [{ opacity: 1 }, { opacity: 0 }], { duration: 400 });
+  }
+
   // ------------------------------------------------------------ events from the server
   function onEvent(e) {
     const name = clean(e.name), NAME = name.toUpperCase();
@@ -377,7 +630,11 @@
     switch (e.type) {
       case 'try': hold(e); pushTry(e); break;
       case 'countdown':
-        held.clear(); namers.clear(); tries.length = 0;
+        held.clear(); namers.clear(); tries.length = 0; resetFx();
+        break;
+      case 'bonus':                               // the end of the round: the x2 animations still running give way
+        resetFx();
+        endBonus(e).catch(err => console.warn('[anagram] bonus', err));
         break;
       case 'round_start':
         voice('round', t('g.v.round', { n: e.round }), 'urgent', 1);
@@ -696,6 +953,7 @@
     $('roundChip').textContent = t('g.round', { n: s.roundId });
     $('playersChip').textContent = '👥 ' + s.stats.players;
     renderWord(s);
+    if (s.phase !== 'playing' && s.phase !== 'bonus') resetFx();   // the state has the final scores
     if (roundChanged) { blocks.clear(); $('table').replaceChildren(); renderTable(); }
     else renderTableSoon();
     $('winner').hidden = s.phase !== 'winner';
