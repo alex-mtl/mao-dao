@@ -176,7 +176,7 @@
   // ------------------------------------------------------------ the answer line
   // one answer at a time, shown for a while that follows the pace; at most TRY_WAIT wait their turn - older
   // ones don't queue up: a scoring one lands in the table right away (no flight), a rejected one is dropped
-  const TRY_WAIT = 2;
+  const TRY_WAIT = 1;
   const tries = []; let trying = false;
   function pushTry(e) {
     paceTimes.push(Date.now());
@@ -211,7 +211,7 @@
     cur.append(left, who);
     box.replaceChildren(cur);
     if (e.kind === 'bad') { box.classList.add('shake'); fx('bad'); }
-    const ms = tries.length ? pace(550, 180) : pace(1100, 300);
+    const ms = tries.length ? pace(550, 120) : pace(1100, 200);
     if (e.kind === 'ok' || e.kind === 'rep') {
       fx(e.kind, e.points);
       setTimeout(() => land(e, tw), ms * .55);
@@ -223,7 +223,7 @@
   // the state brings the table at once; a word just named waits there (hidden / with its old ×N) until it lands
   // from the answer line
   const held = new Map();                         // WORD -> {kind, n before}
-  // a repeated word flashes with the one who named it last next to it (avatar + nick), 3 s (calm) .. 1.5 s (busy);
+  // a repeated word flashes with the one who named it last next to it (avatar + nick), 3 s (calm) .. 1 s (busy);
   // the author's own avatar stays as it is
   const namers = new Map();                       // WORD -> {name, avatar, at, until}
   function hold(e) {
@@ -232,7 +232,7 @@
   }
   function land(e, from) {
     held.delete(e.word);
-    if (e.kind === 'rep') namers.set(e.word, { name: clean(e.name), avatar: e.avatar, at: Date.now(), until: Date.now() + pace(3000, 1500) });
+    if (e.kind === 'rep') namers.set(e.word, { name: clean(e.name), avatar: e.avatar, at: Date.now(), until: Date.now() + pace(3000, 1000) });
     renderTable();
     const chip = $('table').querySelector(`.w[data-w="${CSS.escape(e.word)}"]`);
     if (!chip) return;
@@ -250,7 +250,7 @@
     const a = from && from.getBoundingClientRect(), b = chip.getBoundingClientRect();
     if (!a || !a.width || !b.width) { chip.classList.add('hit'); return; }   // landed with no flight (busy chat)
     chip.classList.add('hidden');
-    const fly = pace(650, 180);
+    const fly = pace(650, 100);
     const f = from.cloneNode(true); f.className = 'flyer';
     Object.assign(f.style, { left: a.left + 'px', top: a.top + 'px', transitionDuration: fly + 'ms' });
     document.body.append(f);
@@ -360,14 +360,13 @@
       if (then[i] === id || !b) return;
       b.getAnimations().forEach(a => { if (!(a instanceof CSSAnimation)) a.cancel(); });
       const d = before.get(id) - b.getBoundingClientRect().top;
-      if (Math.abs(d) > 1) b.animate([{ transform: `translateY(${d}px)` }, { transform: 'none' }], { duration: pace(550, 150), easing: 'cubic-bezier(.3,.9,.3,1)' });
+      if (Math.abs(d) > 1) b.animate([{ transform: `translateY(${d}px)` }, { transform: 'none' }], { duration: pace(550, 100), easing: 'cubic-bezier(.3,.9,.3,1)' });
     });
   }
-  // a busy chat sends a state on every word: the table is redrawn at most every TABLE_MS
-  const TABLE_MS = 250;
+  // a busy chat sends a state on every word: the table is redrawn at most every 250 ms (calm) .. 100 ms (busy)
   let tableTimer = 0, tableAt = 0;
   function renderTableSoon() {
-    if (!tableTimer) tableTimer = setTimeout(renderTable, Math.max(0, tableAt + TABLE_MS - Date.now()));
+    if (!tableTimer) tableTimer = setTimeout(renderTable, Math.max(0, tableAt + pace(250, 100) - Date.now()));
   }
 
 
