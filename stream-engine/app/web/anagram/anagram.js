@@ -106,6 +106,7 @@
     streak(n) { [392, 523, 659, 784, 1047].slice(0, Math.min(5, 2 + n)).forEach((f, i) => A.tone(f, i * 0.09, 0.4, 'sawtooth', 0.08)); },
     // the bonuses' animations
     rise() { A.tone(300, 0, 0.5, 'sine', 0.07, 900); },
+    digit(i) { A.tone(600 + i * 90, 0, 0.08, 'square', 0.06); },
     spin(d) { A.tone(220, 0, d, 'triangle', 0.06, 880); for (let i = 0; i < 6; i++) A.noise(i * d / 6, 0.12, 0.05, 1500); },
     ding() { A.tone(1319, 0, 0.5, 'sine', 0.14); A.tone(1760, 0.06, 0.6, 'sine', 0.1); A.tone(2637, 0.06, 0.4, 'triangle', 0.04); },
     whoosh() { A.noise(0, 0.35, 0.12, 600); },
@@ -387,22 +388,19 @@
   // the first word of a length: the word pops up in gold tiles, the player's avatar and nick by a 3D "×2" that
   // spins, grows and turns into the points, which fly to the player's score; the end of the round (BONUS phase):
   // the most repeated words rise to the centre with their owners' avatars, burst, their green ×N becomes a 3D "+N"
-  // (three words of one player: the sum, then ×2). The table shows a score without the points still in the air.
+  // (three words of one player: the sum, then ×2). No backing: the figures fly over the table as it is. The table shows a score without the points still in the air.
   const adj = new Map();                          // player id -> points to add to the score shown (- in the air, + landed early)
   const inAir = new Set();                        // WORD: its copy is in the air, hidden in the table
   let fxGen = 0, fxChain = Promise.resolve();
   function addAdj(id, d) { const v = (adj.get(id) || 0) + d; if (Math.abs(v) < 1e-9) adj.delete(id); else adj.set(id, v); }
   function queueFx(fn) { const gen = fxGen; fxChain = fxChain.then(() => gen === fxGen && fn()).catch(err => console.warn('[anagram] fx', err)); }
-  const undim = () => $('dim').getAnimations().forEach(a => a.cancel());
   function resetFx() {
-    undim();                                      // the dimmer always goes, even with nothing else in the air
     if (!adj.size && !inAir.size && !$('fx').children.length) return;
     fxGen++; fxChain = Promise.resolve();
     $('fx').replaceChildren();
     adj.clear(); inAir.clear();
     renderTable();
   }
-  let dimTimer = 0;
   const wait = ms => new Promise(r => setTimeout(r, ms));
   const anim = (n, k, o) => n.animate(k, Object.assign({ fill: 'forwards' }, o)).finished;
   const U = () => $('uProbe').offsetWidth / 100;  // var(--u) in px
@@ -485,29 +483,63 @@
     anim(big, [{ transform: a ? `translate(calc(-50% + ${a.x - b.x}px), calc(-50% + ${a.y - b.y}px)) scale(${a.w / b.w})` : 'translate(-50%,-50%) scale(.2)', opacity: a ? 1 : 0 },
       { transform: 'translate(-50%,-50%) scale(1.12)', opacity: 1, offset: .75 }, { transform: 'translate(-50%,-50%) scale(1)', opacity: 1 }],
       { duration: 650, easing: 'cubic-bezier(.3,1.2,.5,1)' });
-    // the player, highlighted, left of the ×2
-    const h = holder(cx + 10 * u, cy, 'glow-gold'), o = obj3d('×2', 'gold', 30);
-    h.pp.append(o);
+    await wait(650); if (!alive()) return;
+    // each letter turns over into its count: 1, 2 ... N
+    const ts = [...big.children], n = ts.length;
+    for (let i = 0; i < n; i++) {
+      fx('digit', i);
+      await anim(ts[i], [{ transform: 'rotateY(0)' }, { transform: 'rotateY(90deg)' }], { duration: 90, easing: 'ease-in' });
+      ts[i].textContent = String(i + 1); ts[i].classList.add('num');
+      anim(ts[i], [{ transform: 'rotateY(-90deg)' }, { transform: 'rotateY(0)' }], { duration: 140, easing: 'ease-out' });
+      await wait(60); if (!alive()) return;
+    }
+    await wait(350); if (!alive()) return;
+    // the digits run together into one 3D N
+    const nx = cx + 10 * u, h = holder(nx, cy, 'glow-gold'), o = obj3d(String(n), 'gold', 30);
+    h.pp.append(o); o.style.opacity = 0;
+    fx('whoosh');
+    await Promise.all(ts.map(t => {
+      const r = rel(t);
+      return anim(t, [{ transform: 'none', opacity: 1 }, { transform: `translate(${nx - r.x}px, ${cy - r.y}px) scale(.4)`, opacity: 0 }],
+        { duration: 380, easing: 'cubic-bezier(.6,0,.9,.5)' });
+    }));
+    if (!alive()) return;
+    big.remove();
+    fx('ding');
+    sparks(nx, cy, ['#ffd84a', '#fff', '#ff9800'], 14, 22);
+    await anim(o, [{ transform: `${TILT} rotateY(-90deg) scale(.4)`, opacity: 0 }, { transform: `${TILT} rotateY(0) scale(1.15)`, opacity: 1, offset: .7 },
+      { transform: `${TILT} rotateY(0) scale(1)`, opacity: 1 }], { duration: 450, easing: 'ease-out' });
+    o.style.opacity = '';
+    // the player, highlighted, left of the number
     const who = el('div', 'fxwho');
     who.append(avatar(e.name, e.avatar), el('span', 'nm', clean(e.name)));
     h.append(who);
     who.animate([{ opacity: 0, transform: 'translateY(-50%) scale(0)' }, { opacity: 1, transform: 'translateY(-50%) scale(1.15)', offset: .7 },
-      { opacity: 1, transform: 'translateY(-50%) scale(1)' }], { duration: 420, delay: 250, fill: 'backwards', easing: 'ease-out' });
-    await wait(300); if (!alive()) return;
-    sparks(cx + 10 * u, cy, ['#ffd84a', '#fff', '#ff9800'], 14, 22);
-    fx('spin', 1.3);
-    await anim(o, [{ transform: `${TILT} rotateY(-90deg) scale(.12)`, opacity: 0 }, { opacity: 1, offset: .12 },
-      { transform: `${TILT} rotateY(720deg) scale(1)`, opacity: 1 }], { duration: 1300, easing: 'cubic-bezier(.2,.7,.25,1)' });
-    if (!alive()) return;
-    fx('ding');
-    await flip(o, String(e.points));
-    sparks(cx + 10 * u, cy, ['#ffd84a', '#fff'], 16, 26);
+      { opacity: 1, transform: 'translateY(-50%) scale(1)' }], { duration: 420, fill: 'backwards', easing: 'ease-out' });
     wobble(o);
-    await wait(1100); if (!alive()) return;
-    fx('whoosh');
-    await Promise.all([flyTo(h, scoreOf(e.uid)), flyTo(big, chipOf(e.uid, e.word))]);
+    await wait(450); if (!alive()) return;
+    // a 3D ×2 spins in above it, grows and smashes into it: the N doubles
+    const hx = holder(nx, cy - 24 * u, 'glow-gold'), ox = obj3d('×2', 'gold', 20);
+    hx.pp.append(ox);
+    fx('spin', 1.1);
+    await anim(ox, [{ transform: `${TILT} rotateY(-90deg) scale(.1)`, opacity: 0 }, { opacity: 1, offset: .15 },
+      { transform: `${TILT} rotateY(720deg) scale(1.2)`, opacity: 1 }], { duration: 1100, easing: 'cubic-bezier(.2,.7,.25,1)' });
     if (!alive()) return;
-    h.remove(); big.remove();
+    wobble(ox);
+    await wait(250); if (!alive()) return;
+    await anim(hx, [{ transform: 'translate(-50%,-50%) scale(1)', opacity: 1 }, { transform: `translate(-50%, calc(-50% + ${24 * u}px)) scale(.3)`, opacity: 0 }],
+      { duration: 280, easing: 'cubic-bezier(.6,0,.9,.5)' });
+    hx.remove();
+    sparks(nx, cy, ['#ffd84a', '#fff'], 20, 30);
+    fx('x2');
+    await flip(o, String(e.points));
+    o.animate([{ transform: `${TILT} scale(1)` }, { transform: `${TILT} scale(1.25)` }, { transform: `${TILT} scale(1)` }], { duration: 400 });
+    await wait(400); wobble(o);
+    await wait(900); if (!alive()) return;
+    fx('whoosh');
+    await flyTo(h, scoreOf(e.uid));
+    if (!alive()) return;
+    h.remove();
     landScore(e.uid, e.points);
     const c = chipOf(e.uid, e.word);
     if (c) { c.classList.remove('hit'); void c.offsetWidth; c.classList.add('hit'); }
@@ -518,8 +550,6 @@
     if (!items.length) return;
     const fxL = $('fx'), u = U(), board = rel($('board')), k = items.length;
     const S = k === 1 ? 2.4 : 1.7, avS = (k === 1 ? 16 : 11) * u, gap = 3 * u, cy = board.y, W = $('stage').offsetWidth;
-    await anim($('dim'), [{ opacity: 0 }, { opacity: 1 }], { duration: 350 });
-    if (!alive()) return;
     const objs = items.map((it, i) => {
       const orig = chipOf(it.uid, it.word), r = orig ? rel(orig) : { x: board.x, y: board.y, w: 0, h: 0 };
       const clone = tiles(it.word); clone.classList.add('fxabs');
@@ -625,8 +655,6 @@
       landScore(id, sum * 2);
     }
     inAir.clear(); renderTable();
-    await anim($('dim'), [{ opacity: 1 }, { opacity: 0 }], { duration: 400 });
-    undim();
   }
 
   // ------------------------------------------------------------ events from the server
@@ -640,9 +668,7 @@
         break;
       case 'bonus':                               // the end of the round: the x2 animations still running give way
         resetFx();
-        clearTimeout(dimTimer);
-        dimTimer = setTimeout(undim, 15000);      // a safety net: the dimmer never outlives the bonus
-        endBonus(e).catch(err => { console.warn('[anagram] bonus', err); undim(); });
+        endBonus(e).catch(err => console.warn('[anagram] bonus', err));
         break;
       case 'round_start':
         voice('round', t('g.v.round', { n: e.round }), 'urgent', 1);
