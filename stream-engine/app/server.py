@@ -25,6 +25,7 @@ Pages use relative addresses; the engine adds <base href=".../r/{token}/"> to ev
 import hashlib
 import os
 import secrets
+import time
 
 from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse, Response
@@ -41,14 +42,22 @@ WEB = os.path.join(os.path.dirname(__file__), "web")
 CONTROL_ONLY = ("", "index.html", "debug", "demo")   # the menu and debug pages need the control token
 
 
+_version = {"t": 0.0, "v": ""}
+VERSION_SEC = 5
+
+
 def web_version():
-    """Hash of all page files: open overlays reload themselves when it changes."""
-    h = hashlib.sha1()
-    for root, _, files in sorted(os.walk(WEB)):
-        for f in sorted(files):
-            with open(os.path.join(root, f), "rb") as fh:
-                h.update(f.encode() + fh.read())
-    return h.hexdigest()[:12]
+    """Hash of the page files (names, sizes, change times): open overlays reload themselves when it changes.
+    Re-read at most every VERSION_SEC, so a deploy of page files alone (no engine restart) reaches them too."""
+    now = time.time()
+    if now - _version["t"] >= VERSION_SEC:
+        h = hashlib.sha1()
+        for root, _, files in sorted(os.walk(WEB)):
+            for f in sorted(files):
+                st = os.stat(os.path.join(root, f))
+                h.update(f"{os.path.relpath(os.path.join(root, f), WEB)}|{st.st_size}|{st.st_mtime_ns}".encode())
+        _version.update(t=now, v=h.hexdigest()[:12])
+    return _version["v"]
 
 
 def tt_bat(url):
@@ -80,7 +89,6 @@ def page(path, token):
 
 def create_app(manager):
     app = FastAPI(title="Guess the Word stream engine", docs_url=None, redoc_url=None)
-    version = web_version()
 
     @app.middleware("http")
     async def no_cache(request, call_next):
@@ -99,7 +107,7 @@ def create_app(manager):
             raise HTTPException(404, "not found")
         current_room.set(room.id)                      # this request's log lines say whose they are
         hub = room.ensure_hub()
-        hub.web_version = version
+        hub.web_version = web_version
         return room, kind, hub
 
     def info(room):
@@ -396,7 +404,7 @@ def create_app(manager):
             await websocket.close(code=4404)
             return
         hub = room.ensure_hub()
-        hub.web_version = version
+        hub.web_version = web_version
         await websocket.accept()
         hub.clients.add(websocket)
         try:

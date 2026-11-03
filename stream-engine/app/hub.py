@@ -467,7 +467,7 @@ class Hub:
                 "feedSeq": self.feed_seq,
                 "feed": [e for e in self.feed if e["seq"] > feed_since] if feed_since is not None else [],
                 "tiktok": self.tiktok_status, "tgBot": self.tg.bot if self.tg and self.tg.word else "",
-                "version": getattr(self, "web_version", ""),
+                "version": self.web_version() if callable(getattr(self, "web_version", None)) else "",
                 "lang": self.lang, "voiceRate": self.global_settings.get("VOICE_RATE"),
                 "toasts": self.toasts.values(),
                 "giftPromos": self.gift_promos(),

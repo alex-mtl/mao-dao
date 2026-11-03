@@ -179,6 +179,27 @@ class SharedFrameTest(TinyAssets):
         self.assertEqual(hub2.games["anagram"].frame, 16)
 
 
+class WebVersionTest(unittest.TestCase):
+    def test_page_files_deployed_alone_reach_open_overlays(self):
+        """A deploy of page files with no engine restart changes the version the overlays get (they reload)."""
+        from app import server
+        d = tempfile.mkdtemp()
+        with open(os.path.join(d, "a.js"), "w") as f:
+            f.write("1")
+        web, server.WEB = server.WEB, d
+        try:
+            server._version["t"] = 0
+            v1 = server.web_version()
+            with open(os.path.join(d, "a.js"), "w") as f:
+                f.write("22")
+            self.assertEqual(server.web_version(), v1)      # re-read at most every VERSION_SEC
+            server._version["t"] = 0
+            self.assertNotEqual(server.web_version(), v1)
+        finally:
+            server.WEB = web
+            server._version["t"] = 0
+
+
 class SwitchTest(unittest.TestCase):
     def test_guess_stands_still_while_anagram_plays(self):
         """Starting Anagram pauses a Guess the Word round: only the active game ticks; its monitor shows the pause
