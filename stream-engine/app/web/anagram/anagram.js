@@ -301,10 +301,16 @@
     });
   }
   const blocks = new Map();                       // player id -> its element (kept: rows move, not blink)
+  // a player's row slides only when they change places with another player; a row that just grows or shrinks
+  // (words land, lines repack) and the rows under it simply take their new place - no animation that starts
+  // again and again while the chat is busy
   function renderTable() {
+    clearTimeout(tableTimer); tableTimer = 0; tableAt = Date.now();
     if (!S) return;
     const box = $('table');
-    const before = new Map([...blocks].map(([id, b]) => [id, b.isConnected ? b.getBoundingClientRect().top : null]));
+    const shown = [...box.children].filter(b => b.dataset.id);
+    const rankWas = new Map(shown.map((b, i) => [b.dataset.id, i]));   // in the old order
+    const before = new Map(shown.map(b => [b.dataset.id, b.getBoundingClientRect().top]));   // where it is seen now
     const list = S.players || [];
     if (!list.length) {
       blocks.clear();
@@ -325,16 +331,28 @@
       fill(b, p);
     });
     blocks.forEach((b, id) => { if (!keep.has(id)) { b.remove(); blocks.delete(id); } });
-    // only whole players: one who doesn't fit above the chat zone is not shown at all
-    const limit = box.getBoundingClientRect().bottom;
-    [...box.children].forEach(b => { if (b.getBoundingClientRect().bottom > limit + 1) b.remove(); });
-    before.forEach((top, id) => {
+    // only whole players: one who doesn't fit above the chat zone is not shown at all (measured on the layout,
+    // a row in the middle of its slide counts where it stands)
+    const limit = box.offsetTop + box.clientHeight;
+    [...box.children].forEach(b => { if (b.offsetTop + b.offsetHeight > limit + 1) b.remove(); });
+    // the rows shown before and now, in the old and in the new order: a row slides only if its place among them changed
+    const order = [...box.children].map(b => b.dataset.id);
+    const now = order.filter(id => rankWas.has(id)), then = [...rankWas.keys()].filter(id => order.includes(id));
+    now.forEach((id, i) => {
       const b = blocks.get(id);
-      if (top === null || !b || !b.isConnected) return;
-      const d = top - b.getBoundingClientRect().top;
+      if (then[i] === id || !b) return;
+      b.getAnimations().forEach(a => { if (!(a instanceof CSSAnimation)) a.cancel(); });
+      const d = before.get(id) - b.getBoundingClientRect().top;
       if (Math.abs(d) > 1) b.animate([{ transform: `translateY(${d}px)` }, { transform: 'none' }], { duration: 550, easing: 'cubic-bezier(.3,.9,.3,1)' });
     });
   }
+  // a busy chat sends a state on every word: the table is redrawn at most every TABLE_MS
+  const TABLE_MS = 250;
+  let tableTimer = 0, tableAt = 0;
+  function renderTableSoon() {
+    if (!tableTimer) tableTimer = setTimeout(renderTable, Math.max(0, tableAt + TABLE_MS - Date.now()));
+  }
+
 
   // ------------------------------------------------------------ events from the server
   function onEvent(e) {
@@ -662,8 +680,8 @@
     $('roundChip').textContent = t('g.round', { n: s.roundId });
     $('playersChip').textContent = '👥 ' + s.stats.players;
     renderWord(s);
-    if (roundChanged) { blocks.clear(); $('table').replaceChildren(); }
-    renderTable();
+    if (roundChanged) { blocks.clear(); $('table').replaceChildren(); renderTable(); }
+    else renderTableSoon();
     $('winner').hidden = s.phase !== 'winner';
     $('reveal').hidden = s.phase !== 'reveal';
     if (s.phase === 'winner') renderWinner(s);

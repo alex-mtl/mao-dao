@@ -147,7 +147,8 @@ engine game `anagram`, page `app/web/anagram/`). Mockup with the animations: `st
   counts nothing ("уже твоё"); the round's word itself counts nothing ("это слово раунда"). Setting "Repeats of a word" (`mult`): off = every repeat adds 0.1 and ×N shows the real number of namers. The table: players by points (ties: who got there first); no nicks: the avatar with the points (a cyan seven-segment display, 00.0) on its corner, then the
   words; as many per line as fit its width, as few lines as possible: a word goes to the first line with room for it (squeezed to 82% if
   need be), a new line only when none has. A repeat: the
-  word flashes with the last namer's avatar and nick glowing right before it for 3 s (the author's avatar stays), ×N on it. The round's word stands right under the camera zone.
+  word flashes with the last namer's avatar and nick glowing right before it for 3 s (the author's avatar stays), ×N on it. A row slides only
+  when its player changes places with another one; the table is redrawn at most every 250 ms. The round's word stands right under the camera zone.
 - **Round end**: most points win (`winner`; nobody scored = `timeout`), podium by points. Stream champions = rounds
   won (`anagram/players.json`, `AnagramStats`, reset with a new LIVE), shown like Guess the Word's: the "On screen" tab
   (the same `SCREEN` options, on the anagram game), tops of planes / balloons from the likes, the bot's name.
