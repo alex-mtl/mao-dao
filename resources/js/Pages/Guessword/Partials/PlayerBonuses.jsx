@@ -10,7 +10,7 @@ const when = (s) => (s ? new Date(s.replace(' ', 'T') + 'Z').toLocaleString([], 
 
 /**
  * The monitor's "Players' bonuses" tab: who has what on account in this room (Laravel keeps it, the engine
- * spends it in the chat) - players on the left, the picked one's bonuses with +/- and "give" on the right.
+ * spends it in the chat) - players on the left, the picked one's bonuses with +/- on the right.
  * url: the room's bonuses address (GET the list, POST {viewer, kind, delta, name}); call: the engine's API
  * (the stream's viewers, for their nicknames and avatars); boosts: who has the boost active this stream.
  */
@@ -21,7 +21,6 @@ export default function PlayerBonuses({ url, call, boosts }) {
     const [sel, setSel] = useState(null);               // {viewer, name}
     const [q, setQ] = useState('');
     const [login, setLogin] = useState('');
-    const [give, setGive] = useState({ kind: 'cake', n: 1 });
     const [busy, setBusy] = useState(false);
     const [msg, setMsg] = useState(null);
 
@@ -134,19 +133,6 @@ export default function PlayerBonuses({ url, call, boosts }) {
                                 ))}
                             </tbody>
                         </table>
-                        <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-warm-100 pt-3">
-                            <span className="text-sm font-semibold text-ink-700">{t('guessword.bon_give')}</span>
-                            <select value={give.kind} onChange={(e) => setGive({ ...give, kind: e.target.value })}
-                                    className="h-9 min-w-0 flex-1 basis-40 rounded-lg border-warm-300 bg-surface py-0 text-sm text-ink-900">
-                                {kinds.map((k) => <option key={k} value={k}>{t('guessword.act_' + k)}</option>)}
-                            </select>
-                            <input type="number" min={1} max={1000} value={give.n} onChange={(e) => setGive({ ...give, n: e.target.value })}
-                                   className="h-9 w-20 rounded-lg border-warm-300 bg-surface text-sm text-ink-900" />
-                            <button type="button" disabled={busy || !(+give.n > 0)} onClick={() => change(give.kind, Math.min(1000, Math.floor(+give.n)))}
-                                    className="h-9 rounded-lg border border-primary-500 bg-primary-500 px-3 text-sm font-semibold text-white disabled:opacity-40">
-                                {t('guessword.bon_give_btn')}
-                            </button>
-                        </div>
                         <p className="mt-2 text-xs text-ink-500">{t('guessword.bon_note')}</p>
                         {data.log?.length > 0 && (
                             <>

@@ -88,7 +88,7 @@ viewer can launch themselves is a bonus kind (`config('guessword.bonus_kinds')` 
   one; nothing is spent when it can't happen (3 words for the round between rounds, a boost they already have).
 - **Room page**: the monitor's tab "🎁 Players' bonuses" (`Partials/PlayerBonuses.jsx`; `GET/POST
   /guessword/room/bonuses`, super admins `/guessword/rooms/{room}/bonuses`): players on the left, the picked one's
-  bonuses with −/+ and "give N of a kind", their history; any viewer of the stream or a typed @login can be given
+  bonuses with −/+, their history; any viewer of the stream or a typed @login can be given
   something. The old "Pending" box of the "Planned" tab is gone; who has the stream boost now is shown in this tab.
 - **Console**: `php artisan guessword:hints <tiktok login> [n=1] [--kind=hint|cake|...] [--room=<id | gw<id> |
   streamer's login>]` (alias `guessword:bonus`; `--room` not needed with one room, negative n takes away).

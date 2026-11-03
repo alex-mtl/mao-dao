@@ -391,8 +391,6 @@ return [
     'bon_login_ph' => '@login de TikTok',
     'bon_open' => 'Abrir',
     'bon_pick' => 'Elige un jugador a la izquierda para ver todo lo que tiene en reserva.',
-    'bon_give' => 'Dar',
-    'bon_give_btn' => '+ Dar',
     'bon_history' => 'Historial',
     'bon_failed' => 'No se pudo guardar',
     'bon_note' => 'El jugador usa una pista escribiendo «hint» o «подсказка» en el chat, lo demás con un emote del club vinculado a ese bono (ajustes del juego → «Emotes del club»). De uno en uno.',

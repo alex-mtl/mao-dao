@@ -391,8 +391,6 @@ return [
     'bon_login_ph' => '@login TikTok',
     'bon_open' => 'Ouvrir',
     'bon_pick' => 'Choisissez un joueur à gauche pour voir tout ce qu’il a en réserve.',
-    'bon_give' => 'Donner',
-    'bon_give_btn' => '+ Donner',
     'bon_history' => 'Historique',
     'bon_failed' => 'Échec de l’enregistrement',
     'bon_note' => 'Le joueur utilise un indice en écrivant « hint » ou « подсказка » dans le chat, le reste avec une émote du club liée à ce bonus (réglages du jeu → « Émotes du club »). Un à la fois.',

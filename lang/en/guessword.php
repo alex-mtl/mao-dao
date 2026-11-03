@@ -391,8 +391,6 @@ return [
     'bon_login_ph' => '@TikTok login',
     'bon_open' => 'Open',
     'bon_pick' => 'Pick a player on the left to see everything on their account.',
-    'bon_give' => 'Give',
-    'bon_give_btn' => '+ Give',
     'bon_history' => 'History',
     'bon_failed' => 'Could not save',
     'bon_note' => 'A player spends a hint by typing "hint" in the chat, anything else with a club emote bound to that bonus (game settings → "Club emotes"). One at a time.',
