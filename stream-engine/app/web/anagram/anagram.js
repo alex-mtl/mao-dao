@@ -652,7 +652,6 @@
     if (s.error) { $('errText').textContent = t('g.err') + s.error; return; }
     $('roundChip').textContent = t('g.round', { n: s.roundId });
     $('playersChip').textContent = '👥 ' + s.stats.players;
-    $('found').textContent = s.stats.possible ? t('a.found', { n: s.stats.found, m: s.stats.possible }) : '';
     renderWord(s);
     wordBottom();
     if (roundChanged) { blocks.clear(); $('table').replaceChildren(); }

@@ -44,9 +44,9 @@ html.chroma:not(.alpha) #try { background: rgb(10, 0, 25); }
 #try.fade .cur > * { transition: opacity .4s; opacity: 0; }
 
 /* the players' table */
-#board { flex: 1; min-height: 0; padding: calc(var(--u) * 1.6) calc(var(--u) * 1.6); overflow: hidden; display: flex; flex-direction: column;
+html.chroma #stage { gap: calc(var(--u) * 1); }        /* the answer line right on top of the table */
+#board { flex: 1; min-height: 0; padding: calc(var(--u) * 1) calc(var(--u) * 1.6) calc(var(--u) * 1.6); overflow: hidden; display: flex; flex-direction: column;
          gap: calc(var(--u) * 1); }
-#found { flex: none; text-align: right; font: 700 calc(var(--u) * 2.8) var(--font-text); color: var(--muted); padding: 0 calc(var(--u) * 1); }
 #table { flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column; gap: calc(var(--u) * 1); }
 #table .empty { color: var(--muted); font-weight: 700; text-align: center; padding: 1em 0; font-size: calc(var(--u) * 3.6); }
 .pl { flex: none; border-radius: calc(var(--u) * 2.2); padding: calc(var(--u) * .7) calc(var(--u) * 1.4); background: rgba(255,255,255,.05);
