@@ -289,6 +289,7 @@ return [
     'mon_setter' => 'palabra de :name',
     'mon_setter_bot' => 'palabra del bot',
     'mon_paused' => 'En pausa',
+    'mon_away' => 'En pausa: hay otro juego en curso',
     'mon_of' => 'de :d · van :e',
     'mon_closest' => 'Más cerca',
     'mon_players_words' => 'Jugadores / palabras',

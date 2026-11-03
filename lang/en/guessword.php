@@ -289,6 +289,7 @@ return [
     'mon_setter' => 'word by :name',
     'mon_setter_bot' => 'word by the bot',
     'mon_paused' => 'Paused',
+    'mon_away' => 'Paused: another game is on',
     'mon_of' => 'of :d · :e in',
     'mon_closest' => 'Closest',
     'mon_players_words' => 'Players / words',

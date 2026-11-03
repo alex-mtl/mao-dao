@@ -140,5 +140,24 @@ class AnagramTest(unittest.TestCase):
         self.assertEqual((g2.phase, g2.word, g2.round_id), (ana.COUNTDOWN, ROUND, 2))
 
 
+class SwitchTest(unittest.TestCase):
+    def test_guess_stands_still_while_anagram_plays(self):
+        """Starting Anagram pauses a Guess the Word round: only the active game ticks; its monitor shows the pause
+        with the timers stopped, and they go on from there when Guess the Word is back."""
+        from app.games.guess import game as guess_mod
+        from app.games.guess.game import GuessGame
+        g = GuessGame(JsonStore(tempfile.mkdtemp()))
+        now = time.time()
+        g.phase, g.started_at, g.ends_at = guess_mod.PLAYING, now - 100, now + 500
+        g.on_deactivate()
+        g.paused_at -= 60                              # Anagram has been on for a minute
+        c = g.monitor()["current"]
+        self.assertTrue(c["away"] and c["paused"])
+        self.assertAlmostEqual(c["left"], 560, delta=1)
+        g.on_activate()
+        self.assertAlmostEqual(g.ends_at - time.time(), 560, delta=1)
+        self.assertFalse(g.monitor()["current"]["away"])
+
+
 if __name__ == "__main__":
     unittest.main()

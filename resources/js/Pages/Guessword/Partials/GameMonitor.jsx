@@ -161,7 +161,7 @@ function Now({ c, left, run, control, t }) {
                      sub={(c.setter ? t('guessword.mon_setter', { name: c.setter }) : t('guessword.mon_setter_bot')) + ' · ' + t('guessword.opt_level_' + c.level)}>
                     <Secret word={c.word} big />
                 </Kpi>
-                <Kpi label={c.paused ? '⏸ ' + t('guessword.mon_paused') : t('guessword.mon_phase_' + c.phase)}
+                <Kpi label={c.away ? '⏸ ' + t('guessword.mon_away') : c.paused ? '⏸ ' + t('guessword.mon_paused') : t('guessword.mon_phase_' + c.phase)}
                      sub={playing ? t('guessword.mon_of', { d: clock(c.duration), e: clock(c.elapsed + (c.paused ? 0 : run)) }) : null}>
                     {playing ? clock(left) : c.phase === 'idle' || c.phase === 'finished' ? '—' : clock(c.phaseLeft)}
                 </Kpi>
@@ -173,7 +173,7 @@ function Now({ c, left, run, control, t }) {
             </div>
 
             <div className="mt-3 flex flex-wrap gap-2">
-                {c.paused
+                {c.away ? null : c.paused
                     ? <button type="button" className={btn + ' !border-primary-500 !bg-primary-500 !text-white'} onClick={() => control('resume')}>▶ {t('guessword.mon_resume')}</button>
                     : <button type="button" className={btn} onClick={() => control('pause')}>⏸ {t('guessword.mon_pause')}</button>}
                 <button type="button" className={btn} disabled={!playing} onClick={() => control('extend', { min: 5 })}>+5 {t('guessword.mon_min')}</button>

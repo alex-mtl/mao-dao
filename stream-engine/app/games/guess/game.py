@@ -1422,6 +1422,8 @@ class GuessGame(BaseGame):
         """Everything the room page's monitor shows: the round now, this stream's rounds, what's planned."""
         now = time.time()
         f = self.frozen
+        away = self.paused_at if f is None else None     # another game is on: the round stands still since then
+        at = away or now
         names = getattr(self, "names", {})
         players = sorted(self.players.values(), key=lambda p: (not p.best, p.best or 0, p.best_t))
         top = sorted(self.guesses.values(), key=lambda g: g["rank"])[:20]
@@ -1430,10 +1432,11 @@ class GuessGame(BaseGame):
             "word": (self.secret or "").upper(), "setter": self.setter["name"] if self.setter else None,
             "difficulty": self._difficulty(),
             "lang": self.round_lang, "level": self.round_level,
-            "paused": f is not None, "left": max(0, round(f["ends"] if f else self.ends_at - now)),
-            "elapsed": round(f["elapsed"] if f else (now - self.started_at if self.started_at else 0)),
+            "paused": f is not None or bool(away), "away": bool(away),
+            "left": max(0, round(f["ends"] if f else self.ends_at - at)),
+            "elapsed": round(f["elapsed"] if f else (at - self.started_at if self.started_at else 0)),
             "duration": round(self.ends_at - self.started_at) if self.started_at else self.round_sec,
-            "phaseLeft": max(0, round(f["phase"] if f else self.phase_until - now)),
+            "phaseLeft": max(0, round(f["phase"] if f else self.phase_until - at)),
             "players": len(self.players), "guesses": sum(p.guesses for p in self.players.values()),
             "pace": sum(1 for x in self.guess_times if x > now - 60),
             "top": [{"word": g["word"].upper(), "rank": g["rank"], "name": g["name"], "avatar": g["avatar"],

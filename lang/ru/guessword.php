@@ -289,6 +289,7 @@ return [
     'mon_setter' => 'загадал(а): :name',
     'mon_setter_bot' => 'загадал бот',
     'mon_paused' => 'Пауза',
+    'mon_away' => 'Пауза: идёт другая игра',
     'mon_of' => 'из :d · идёт :e',
     'mon_closest' => 'Ближе всех',
     'mon_players_words' => 'Игроки / слова',
