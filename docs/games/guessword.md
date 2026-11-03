@@ -148,7 +148,9 @@ engine game `anagram`, page `app/web/anagram/`). Mockup with the animations: `st
   words; as many per line as fit its width, as few lines as possible: a word goes to the first line with room for it (squeezed to 82% if
   need be), a new line only when none has. A repeat: the
   word flashes with the last namer's avatar and nick glowing right before it for 3 s (the author's avatar stays), ×N on it. A row slides only
-  when its player changes places with another one; the table is redrawn at most every 250 ms. The round's word stands right under the camera zone.
+  when its player changes places with another one; the table is redrawn at most every 250 ms. Timings follow the chat's
+  pace like Guess the Word's (heat 0..1 from answers a second): the answer line, the flight, the slide, the namer pill get
+  shorter; at most 2 answers wait for the line, older scoring ones land in the table at once. The round's word stands right under the camera zone.
 - **Round end**: most points win (`winner`; nobody scored = `timeout`), podium by points. Stream champions = rounds
   won (`anagram/players.json`, `AnagramStats`, reset with a new LIVE), shown like Guess the Word's: the "On screen" tab
   (the same `SCREEN` options, on the anagram game), tops of planes / balloons from the likes, the bot's name.

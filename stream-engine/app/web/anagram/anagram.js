@@ -160,12 +160,26 @@
     setTimeout(() => m.remove(), 2900);
   }
 
+  // ------------------------------------------------------------ the chat's pace (as in guess.js)
+  // answers in the last PACE_WINDOW_MS -> heat 0 (calm, under PACE_CALM a second) .. 1 (busy, PACE_BUSY and more),
+  // smoothed; every timing goes from its calm value to its busy one, so a busy chat sees everything at once
+  const PACE_WINDOW_MS = 10000, PACE_CALM = 1, PACE_BUSY = 4;
+  let paceTimes = [], heat = 0;
+  const pace = (calm, busy) => calm + (busy - calm) * heat;
+  setInterval(() => {
+    const now = Date.now();
+    paceTimes = paceTimes.filter(x => now - x < PACE_WINDOW_MS);
+    const wps = paceTimes.length / (PACE_WINDOW_MS / 1000);
+    heat += (Math.min(1, Math.max(0, (wps - PACE_CALM) / (PACE_BUSY - PACE_CALM))) - heat) * 0.3;
+  }, 500);
+
   // ------------------------------------------------------------ the answer line
-  // answers come faster than they can be read: one at a time, each at least TRY_MS (TRY_BUSY_MS when more wait);
-  // a rejected answer that waited too long is dropped, a scoring one never is
-  const TRY_MS = 1100, TRY_BUSY_MS = 550, TRY_STALE_MS = 3000;
+  // one answer at a time, shown for a while that follows the pace; at most TRY_WAIT wait their turn - older
+  // ones don't queue up: a scoring one lands in the table right away (no flight), a rejected one is dropped
+  const TRY_WAIT = 2;
   const tries = []; let trying = false;
   function pushTry(e) {
+    paceTimes.push(Date.now());
     tries.push(Object.assign({ at: Date.now() }, e));
     if (!trying) nextTry();
   }
@@ -179,8 +193,11 @@
     return letters('miss') ? t('a.miss', { l: letters('miss') }) : t('a.extra', { l: letters('extra') });
   }
   function nextTry() {
-    let e;
-    while ((e = tries.shift()) && (e.kind !== 'ok' && e.kind !== 'rep') && Date.now() - e.at > TRY_STALE_MS) {}
+    while (tries.length > TRY_WAIT + 1) {
+      const old = tries.shift();
+      if (old.kind === 'ok' || old.kind === 'rep') land(old, null);
+    }
+    const e = tries.shift();
     trying = !!e;
     if (!e) return;
     const box = $('try');
@@ -194,10 +211,10 @@
     cur.append(left, who);
     box.replaceChildren(cur);
     if (e.kind === 'bad') { box.classList.add('shake'); fx('bad'); }
-    const ms = tries.length ? TRY_BUSY_MS : TRY_MS;
+    const ms = tries.length ? pace(550, 180) : pace(1100, 300);
     if (e.kind === 'ok' || e.kind === 'rep') {
       fx(e.kind, e.points);
-      setTimeout(() => land(e, tw), Math.min(700, ms - 150));
+      setTimeout(() => land(e, tw), ms * .55);
     }
     setTimeout(() => { if (!tries.length) box.classList.add('fade'); nextTry(); }, ms);
   }
@@ -206,17 +223,16 @@
   // the state brings the table at once; a word just named waits there (hidden / with its old ×N) until it lands
   // from the answer line
   const held = new Map();                         // WORD -> {kind, n before}
-  // a repeated word flashes with the one who named it last next to it (avatar + nick) for NAMER_MS; the author's
-  // own avatar stays as it is
+  // a repeated word flashes with the one who named it last next to it (avatar + nick), 3 s (calm) .. 1.5 s (busy);
+  // the author's own avatar stays as it is
   const namers = new Map();                       // WORD -> {name, avatar, at, until}
-  const NAMER_MS = 3000;
   function hold(e) {
     if (e.kind === 'ok') held.set(e.word, { kind: 'ok' });
     else if (e.kind === 'rep' && shownN(e.n) !== shownN(e.n - 1)) held.set(e.word, { kind: 'rep', n: e.n - 1 });
   }
   function land(e, from) {
     held.delete(e.word);
-    if (e.kind === 'rep') namers.set(e.word, { name: clean(e.name), avatar: e.avatar, at: Date.now(), until: Date.now() + NAMER_MS });
+    if (e.kind === 'rep') namers.set(e.word, { name: clean(e.name), avatar: e.avatar, at: Date.now(), until: Date.now() + pace(3000, 1500) });
     renderTable();
     const chip = $('table').querySelector(`.w[data-w="${CSS.escape(e.word)}"]`);
     if (!chip) return;
@@ -231,16 +247,17 @@
       const x = chip.querySelector('.x'); if (x && shownN(e.n) !== shownN(e.n - 1)) x.classList.add('pop');
       return;
     }
-    const a = from.getBoundingClientRect(), b = chip.getBoundingClientRect();
-    if (!a.width || !b.width) return;
+    const a = from && from.getBoundingClientRect(), b = chip.getBoundingClientRect();
+    if (!a || !a.width || !b.width) { chip.classList.add('hit'); return; }   // landed with no flight (busy chat)
     chip.classList.add('hidden');
+    const fly = pace(650, 180);
     const f = from.cloneNode(true); f.className = 'flyer';
-    Object.assign(f.style, { left: a.left + 'px', top: a.top + 'px' });
+    Object.assign(f.style, { left: a.left + 'px', top: a.top + 'px', transitionDuration: fly + 'ms' });
     document.body.append(f);
     requestAnimationFrame(() => requestAnimationFrame(() => {
       f.style.transform = `translate(${b.left - a.left}px, ${b.top - a.top}px) scale(${(b.width / a.width).toFixed(3)})`;
     }));
-    setTimeout(() => { f.remove(); chip.classList.remove('hidden'); chip.classList.add('hit'); }, 680);
+    setTimeout(() => { f.remove(); chip.classList.remove('hidden'); chip.classList.add('hit'); }, fly + 30);
   }
   setInterval(() => {                             // the namer's pill is gone when its time is up
     const now = Date.now();
@@ -343,7 +360,7 @@
       if (then[i] === id || !b) return;
       b.getAnimations().forEach(a => { if (!(a instanceof CSSAnimation)) a.cancel(); });
       const d = before.get(id) - b.getBoundingClientRect().top;
-      if (Math.abs(d) > 1) b.animate([{ transform: `translateY(${d}px)` }, { transform: 'none' }], { duration: 550, easing: 'cubic-bezier(.3,.9,.3,1)' });
+      if (Math.abs(d) > 1) b.animate([{ transform: `translateY(${d}px)` }, { transform: 'none' }], { duration: pace(550, 150), easing: 'cubic-bezier(.3,.9,.3,1)' });
     });
   }
   // a busy chat sends a state on every word: the table is redrawn at most every TABLE_MS
