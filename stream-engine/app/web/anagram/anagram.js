@@ -268,27 +268,31 @@
     if (o) pa.append(avatar(o.nick, o.avatar, 'o'));
     pa.append(lcd(p.score));
     block.classList.toggle('over', !!o);
-    let line = el('div', 'line'), ws = el('div', 'ws'), n = 0;
-    line.append(pa, ws);
-    block.append(line);
-    const fits = () => line.scrollWidth <= line.clientWidth + 1;
-    let wf = 1;                                   // the line's word size (squeezed a little to take one more word)
+    // as few lines as possible: each word goes to the first line with room for it (squeezed a little if need be),
+    // a new line only when none has
+    const lines = [];
+    const addLine = (...head) => {
+      const L = { line: el('div', 'line'), ws: el('div', 'ws'), n: 0, wf: 1 };
+      L.line.append(...head, L.ws);
+      block.append(L.line);
+      lines.push(L);
+      return L;
+    };
+    const fits = L => L.line.scrollWidth <= L.line.clientWidth + 1;
+    const place = (L, c) => {
+      if (L.n >= WORDS_PER_LINE) return false;
+      L.ws.append(c);
+      if (fits(L)) { L.n++; return true; }
+      const k = SQUEEZE.find(x => x < L.wf && (L.ws.style.setProperty('--wf', x), fits(L)));
+      if (k) { L.wf = k; L.n++; return true; }
+      L.ws.style.setProperty('--wf', L.wf);
+      c.remove();
+      return false;
+    };
+    addLine(pa);
     p.words.forEach(w => {
       const c = chip(w);
-      ws.append(c);
-      n++;
-      if (n > 1 && (n > WORDS_PER_LINE || !fits())) {
-        const k = n <= WORDS_PER_LINE && SQUEEZE.find(x => x < wf && (ws.style.setProperty('--wf', x), fits()));
-        if (k) { wf = k; return; }
-        ws.style.setProperty('--wf', wf);         // doesn't fit even squeezed: a new line
-        c.remove();
-        line = el('div', 'line'); ws = el('div', 'ws');
-        line.append(ws);
-        block.append(line);
-        ws.append(c);
-        n = 1;
-        wf = 1;
-      }
+      if (!lines.some(L => place(L, c))) { const L = addLine(); L.ws.append(c); L.n = 1; }
     });
   }
   const blocks = new Map();                       // player id -> its element (kept: rows move, not blink)
