@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Анаграмма — макет</title>
+<link href="https://fonts.googleapis.com/css2?family=Russo+One&family=Exo+2:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root { --bg:#07020f; --line:rgba(160,120,255,.28); --text:#f4f0ff; --muted:#a99bd0; --cyan:#00f0ff;
+          --magenta:#ff2bd6; --lime:#39ff14; --gold:#ffd84a; --pink:#ff2d75;
+          --font-d:'Russo One','Segoe UI',sans-serif; --font-t:'Exo 2','Segoe UI',sans-serif; --u:4.4px; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #05010b; color: var(--text); font-family: var(--font-t); display: flex; gap: 28px;
+         padding: 20px; align-items: flex-start; flex-wrap: wrap; }
+
+  /* ---- 9:16 game frame ---- */
+  #frame { position: relative; flex: none; width: calc(var(--u) * 100); height: calc(var(--u) * 177.78); overflow: hidden;
+           outline: 1px solid #00ff00; background: radial-gradient(120% 80% at 50% 0%, #1d0640 0%, var(--bg) 55%); }
+  #cam { position: absolute; left: 0; right: 0; top: 0; height: calc(var(--u) * 58); display: grid; place-items: center;
+         background: repeating-linear-gradient(45deg, #1b1e26 0 12px, #171a21 12px 24px); color: #5d6375;
+         font: 700 calc(var(--u) * 3.4) var(--font-t); letter-spacing: .1em; }
+  #top { position: absolute; left: calc(var(--u) * 2); right: calc(var(--u) * 2); top: calc(var(--u) * .8); z-index: 5;
+         display: flex; justify-content: space-between; align-items: center; }
+  .chip { font: calc(var(--u) * 2.8) var(--font-d); padding: .3em .8em; border-radius: 999px; border: 1px solid var(--line);
+          background: rgb(10,0,25); letter-spacing: .06em; }
+  #timer { font: calc(var(--u) * 6.5)/1 var(--font-d); color: var(--cyan); font-variant-numeric: tabular-nums;
+           text-shadow: 0 0 .2em var(--cyan), 0 0 .6em rgba(0,240,255,.6); }
+  #timer.low { color: var(--pink); text-shadow: 0 0 .2em var(--pink), 0 0 .7em var(--pink); animation: pulse 1s infinite; }
+
+  #game { position: absolute; left: 0; right: 0; top: calc(var(--u) * 58); bottom: 0; display: flex; flex-direction: column;
+          gap: calc(var(--u) * 1.6); padding: calc(var(--u) * 2.2) calc(var(--u) * 2.4) calc(var(--u) * 2); }
+
+  /* letter tile: --tw = its width */
+  .t { width: var(--tw); height: calc(var(--tw) * 1.18); flex: none; display: grid; place-items: center;
+       font: calc(var(--tw) * .68)/1 var(--font-d); border-radius: calc(var(--tw) * .16);
+       border: max(1px, calc(var(--tw) * .06)) solid rgba(255,255,255,.55); background: rgba(255,255,255,.06); color: #fff; }
+  .t.miss  { background: #e3133c; border-color: #ff6a86; }                    /* no such letter in the round's word */
+  .t.extra { background: #5b5668; border-color: #858097; color: #d6d0e4; }    /* the letter is there, but used up */
+
+  #word { display: flex; justify-content: center; gap: calc(var(--tw) * .12); }
+  #word .t { border-color: var(--cyan); background: rgba(0,240,255,.10); box-shadow: 0 0 .5em rgba(0,240,255,.45), inset 0 0 .4em rgba(0,240,255,.25);
+             text-shadow: 0 0 .3em var(--cyan); }
+  #word .t.in { animation: flipIn .5s backwards; }
+
+  /* the attempt line: avatar, nick, the word letter by letter, the verdict */
+  #try { position: relative; height: calc(var(--u) * 11); border-radius: calc(var(--u) * 2.5); border: 1px solid var(--line);
+         background: rgba(0,0,0,.30); display: flex; flex-direction: column; justify-content: center; align-items: center; gap: calc(var(--u) * .7); }
+  #try .idle { color: var(--muted); font: 700 calc(var(--u) * 3.3) var(--font-t); }
+  #try .who { display: flex; align-items: center; gap: calc(var(--u) * 1.2); font: 700 calc(var(--u) * 2.9) var(--font-t); color: #e4dcff; }
+  #try .who .av { width: calc(var(--u) * 3.8); height: calc(var(--u) * 3.8); font-size: calc(var(--u) * 1.9); }
+  #try .tw { display: flex; gap: calc(var(--tw) * .12); --tw: calc(var(--u) * 5); }
+  #try .lab { font: calc(var(--u) * 2.6) var(--font-d); padding: .25em .7em; border-radius: 999px; margin-left: calc(var(--u) * 1); white-space: nowrap; }
+  .lab.ok { color: #0b0614; background: var(--lime); }
+  .lab.bad { color: #fff; background: #e3133c; }
+  .lab.dict { color: #d6d0e4; background: #5b5668; }
+  .lab.rep { color: #0b0614; background: var(--gold); }
+  #try .cur { display: contents; }
+  #try .cur.in > * { animation: tryIn .25s ease-out; }
+  #try.shake .tw { animation: shake .4s; }
+  #try.fade .cur > * { transition: opacity .4s; opacity: 0; }
+
+  /* ---- players' table ---- */
+  #table { flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column; gap: calc(var(--u) * 1); }
+  .pl { flex: none; border-radius: calc(var(--u) * 2.2); padding: calc(var(--u) * .9) calc(var(--u) * 1.4); background: rgba(255,255,255,.05);
+        border: 1px solid transparent; }
+  .pl.lead { background: linear-gradient(90deg, rgba(255,216,74,.20), rgba(255,255,255,.04)); border-color: rgba(255,216,74,.35); }
+  .pl.enter { animation: rowIn .45s ease-out; }
+  .line { display: flex; align-items: center; gap: calc(var(--u) * 1.4); min-height: calc(var(--u) * 6.4); }
+  .line + .line { margin-top: calc(var(--u) * .6); }
+  .av { width: calc(var(--u) * 6.4); height: calc(var(--u) * 6.4); border-radius: 50%; flex: none; display: grid; place-items: center;
+        font: calc(var(--u) * 3) var(--font-d); color: #0b0614; border: calc(var(--u) * .35) solid #fff; }
+  .av.sm { width: calc(var(--u) * 4.4); height: calc(var(--u) * 4.4); font-size: calc(var(--u) * 2.1); border-width: calc(var(--u) * .25);
+           margin-left: calc(var(--u) * 1); opacity: .85; }
+  .nk { display: inline-grid; max-width: calc(var(--u) * 24); font: 800 calc(var(--u) * 3.5) var(--font-t); }
+  .nk > span { grid-area: 1 / 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; transition: opacity .3s, filter .3s, transform .3s; }
+  .nk .o { opacity: 0; color: var(--lime); transform: translateY(40%); filter: blur(2px); }
+  .pl.over .nk .n { opacity: 0; filter: blur(2px); transform: translateY(-40%); }
+  .pl.over .nk .o { opacity: 1; filter: none; transform: none; }
+  .sc { position: relative; font: calc(var(--u) * 3.8) var(--font-d); color: var(--gold); min-width: calc(var(--u) * 6);
+        text-shadow: 0 0 .3em rgba(255,216,74,.6); font-variant-numeric: tabular-nums; }
+  .sc.pop { animation: pop .6s; }
+  .plus { position: absolute; left: 100%; top: -10%; font: calc(var(--u) * 3) var(--font-d); color: var(--lime); white-space: nowrap;
+          pointer-events: none; animation: floatUp 1.1s ease-out forwards; }
+  .ws { margin-left: auto; display: flex; align-items: center; gap: calc(var(--u) * 2); }
+  .w { display: flex; align-items: center; gap: calc(var(--tw) * .12); --tw: calc(var(--u) * 3.3); border-radius: calc(var(--u) * 1); }
+  .w.hidden { visibility: hidden; }
+  .w.hit { animation: hit 1s; }
+  .x { font: calc(var(--u) * 3) var(--font-d); color: var(--lime); margin-left: calc(var(--u) * .6);
+       text-shadow: 0 0 .3em var(--lime), 0 0 .8em rgba(57,255,20,.55); }
+  .x.pop { animation: pop .6s; }
+
+  .flyer { position: absolute; z-index: 20; display: flex; gap: calc(var(--tw) * .12); pointer-events: none; transform-origin: 0 0;
+           transition: transform .7s cubic-bezier(.3,.9,.3,1); }
+
+  /* ---- round end ---- */
+  #end { position: absolute; left: 0; right: 0; top: calc(var(--u) * 58); bottom: 0; z-index: 30; display: none;
+         flex-direction: column; align-items: center; justify-content: center; gap: calc(var(--u) * 2.4);
+         background: rgba(7,2,15,.92); animation: fadeIn .5s; }
+  #end.on { display: flex; }
+  #end h2 { margin: 0; font: calc(var(--u) * 9) var(--font-d); color: var(--pink); text-shadow: 0 0 .3em var(--pink); letter-spacing: .1em; }
+  .pod { display: flex; align-items: flex-end; gap: calc(var(--u) * 3); }
+  .pod > div { display: flex; flex-direction: column; align-items: center; gap: calc(var(--u) * 1); font: 800 calc(var(--u) * 3.2) var(--font-t); }
+  .pod .av { width: calc(var(--u) * 12); height: calc(var(--u) * 12); font-size: calc(var(--u) * 5.5); }
+  .pod .p1 .av { width: calc(var(--u) * 16); height: calc(var(--u) * 16); border-color: var(--gold); box-shadow: 0 0 1.2em var(--gold); }
+  .pod b { font: calc(var(--u) * 4) var(--font-d); color: var(--gold); }
+  #end .best { font: 700 calc(var(--u) * 3.2) var(--font-t); color: var(--muted); text-align: center; }
+  #end .best .w { justify-content: center; margin-top: calc(var(--u) * 1); --tw: calc(var(--u) * 4.2); }
+
+  @keyframes flipIn { from { opacity: 0; transform: rotateX(90deg) translateY(-30%); } }
+  @keyframes tryIn { from { opacity: 0; transform: translateY(-35%); } }
+  @keyframes shake { 20%,60% { transform: translateX(-4%); } 40%,80% { transform: translateX(4%); } }
+  @keyframes rowIn { from { opacity: 0; transform: translateX(-12%); } }
+  @keyframes pop { 40% { transform: scale(1.45); } }
+  @keyframes hit { 0%,100% { box-shadow: none; } 25% { box-shadow: 0 0 0 calc(var(--u) * .6) var(--lime), 0 0 1.4em var(--lime); } }
+  @keyframes floatUp { to { opacity: 0; transform: translateY(-120%); } }
+  @keyframes pulse { 50% { opacity: .55; } }
+  @keyframes fadeIn { from { opacity: 0; } }
+
+  /* ---- demo controls ---- */
+  .ctl { display: flex; flex-direction: column; gap: 8px; width: 420px; }
+  .ctl h1 { margin: 0 0 4px; font: 22px var(--font-d); }
+  .ctl h3 { margin: 12px 0 2px; font: 14px var(--font-d); color: var(--muted); letter-spacing: .08em; }
+  button { padding: 9px 12px; border-radius: 8px; border: 1px solid #444; background: #1c1630; color: #eee; font: 600 14px var(--font-t);
+           cursor: pointer; text-align: left; }
+  button:hover { border-color: var(--cyan); }
+  button.main { background: #2a0f4f; border-color: var(--magenta); font-weight: 800; }
+  .row { display: flex; gap: 6px; }
+  .row > * { flex: 1; }
+  input, select { padding: 8px 10px; border-radius: 8px; border: 1px solid #444; background: #120c22; color: #fff; font: 600 14px var(--font-t); }
+  label { font-size: 13px; color: var(--muted); display: flex; gap: 6px; align-items: center; }
+  .hint { color: var(--muted); font-size: 13px; line-height: 1.5; margin: 0; }
+  .hint b { color: #fff; }
+  .legend { display: flex; gap: 10px; align-items: center; font-size: 13px; color: var(--muted); flex-wrap: wrap; }
+  .legend .t { --tw: 22px; }
+</style>
+</head>
+<body>
+
+<div id="frame">
+  <div id="cam">КАМЕРА СТРИМЕРА</div>
+  <div id="top"><span class="chip" id="roundChip">РАУНД 1</span><span id="timer">10:00</span><span class="chip" id="cntChip">👤 0</span></div>
+  <div id="game">
+    <div id="word"></div>
+    <div id="try"><span class="idle">Составь слово из этих букв — пиши в чат!</span></div>
+    <div id="table"></div>
+  </div>
+  <div id="end"></div>
+</div>
+
+<div class="ctl">
+  <h1>Анаграмма — макет</h1>
+  <button class="main" id="auto">▶ Автодемо: весь раунд по шагам</button>
+  <button id="start">↺ Новый раунд (слово появляется по буквам)</button>
+
+  <h3>СОБЫТИЯ ПО ОДНОМУ</h3>
+  <button data-say="Krestik|свет">Krestik: «свет» — хорошее слово, первое</button>
+  <button data-say="Нина|трасса">Нина: «трасса» — лишние С и А (серые)</button>
+  <button data-say="фог|партия">фог: «партия» — нет буквы Я (красная)</button>
+  <button data-say="Сергей|свет">Сергей: «свет» — повтор → у Krestik ×2</button>
+  <button data-say="Krestik|лист">Krestik: «лист» — второе слово, той же строкой</button>
+  <button data-say="Krestik|стрела">Krestik: «стрела», потом «редис» — перенос на вторую строку</button>
+  <button data-say="Нина|писатель">Нина: «писатель» — 8 очков, обгоняет</button>
+  <button data-say="Valeria|тепрал">Valeria: «тепрал» — буквы есть, но нет в словаре</button>
+  <button data-say="Krestik|свет">Krestik: «свет» ещё раз — своё слово, не считается</button>
+  <button id="toEnd">⏩ Перемотать на последние 10 секунд</button>
+
+  <h3>СВОЁ СЛОВО</h3>
+  <div class="row">
+    <select id="nick"></select>
+    <input id="inp" placeholder="слово и Enter">
+  </div>
+  <label><input type="checkbox" id="anyWord"> считать любое слово словарным (в макете словарь маленький)</label>
+
+  <h3>ЦВЕТА БУКВ</h3>
+  <div class="legend">
+    <span class="t">С</span> есть в слове
+    <span class="t miss">Я</span> такой буквы нет
+    <span class="t extra">С</span> буква есть, но уже использована
+  </div>
+  <p class="hint">Очки: за слово — столько, сколько в нём букв. Каждый повтор этого слова другим игроком даёт
+    <b>первому</b> ещё столько же (у слова растёт ×2, ×3…). Таблица сортируется по очкам; у игрока первая строка —
+    аватар, ник, очки и слова; если слова не влезают — продолжение строкой ниже с маленькой аватаркой, до 4 слов в строке.</p>
+</div>
+
+<script>
+const ROUND = 'ПРЕДСТАВИТЕЛЬ';
+const DICT = new Set(('свет лист стрела редис деталь ветер писатель плита сталь привет перед лапти тело дети пест сила ' +
+  'тесла вера ведьма пила липа сев рис лев лес ваза вид вес пар пир тир сито тесто вата трава').split(' '));
+const COLORS = { Krestik: '#ff2bd6', 'Нина': '#00f0ff', 'фог': '#ffb800', 'Сергей': '#c6ff00', Tati: '#9d4dff',
+                 ANESYA: '#ff7a00', Valeria: '#5b7cff', Maksim: '#ff2d75' };
+const $ = s => document.querySelector(s);
+const frame = $('#frame'), table = $('#table'), tryBox = $('#try');
+const U = () => parseFloat(getComputedStyle(frame).getPropertyValue('--u'));
+const norm = s => s.trim().toUpperCase().replace(/Ё/g, 'Е');
+const el = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; };
+
+let players, owners, timeLeft, tick, running, demoTimers = [];
+
+function tiles(word, marks, cls = 'w') {
+  const box = el('div', cls);
+  [...word].forEach((ch, i) => box.append(el('span', 't' + (marks && marks[i] !== 'ok' ? ' ' + marks[i] : ''), ch)));
+  return box;
+}
+function avatar(nick, small) {
+  const a = el('span', 'av' + (small ? ' sm' : ''), nick[0].toUpperCase());
+  a.style.background = COLORS[nick] || '#aaa';
+  return a;
+}
+// which letters of the attempt the round's word can give: ok / extra (used up) / miss (no such letter)
+function check(word) {
+  const left = {};
+  for (const ch of ROUND) left[ch] = (left[ch] || 0) + 1;
+  return [...word].map(ch => !(ch in left) ? 'miss' : left[ch]-- > 0 ? 'ok' : 'extra');
+}
+
+/* ---- round ---- */
+function startRound() {
+  demoTimers.forEach(clearTimeout); demoTimers = [];
+  players = []; owners = new Map(); queue = []; busy = false;
+  table.replaceChildren(); $('#end').classList.remove('on');
+  tryBox.replaceChildren(el('span', 'idle', 'Составь слово из этих букв — пиши в чат!'));
+  const w = $('#word');
+  const gap = .12, avail = 100 - 4.8;
+  w.style.setProperty('--tw', `calc(var(--u) * ${Math.min(8, avail / (ROUND.length * (1 + gap)))})`);
+  w.replaceChildren(...[...ROUND].map((ch, i) => { const t = el('span', 't in', ch); t.style.animationDelay = i * 70 + 'ms'; return t; }));
+  timeLeft = 600; running = true; drawTimer(); counter();
+  clearInterval(tick); tick = setInterval(() => { if (!running) return; timeLeft--; drawTimer(); if (timeLeft <= 0) endRound(); }, 1000);
+}
+function drawTimer() {
+  const t = Math.max(0, timeLeft);
+  $('#timer').textContent = `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`;
+  $('#timer').classList.toggle('low', t <= 30);
+}
+const counter = () => $('#cntChip').textContent = '👤 ' + players.length;
+
+/* ---- the attempt line: one attempt at a time, each stays at least ~1.1 s ---- */
+let queue = [], busy = false;
+function say(nick, raw) { if (!running) return; queue.push([nick, norm(raw)]); if (!busy) next(); }
+function next() {
+  const item = queue.shift();
+  if (!item) { busy = false; return; }
+  busy = true;
+  const [nick, w] = item;
+  const marks = check(w);
+  const bad = marks.filter(m => m !== 'ok');
+  let lab, kind, after;
+  if (bad.length) {
+    const miss = [...new Set([...w].filter((c, i) => marks[i] === 'miss'))], extra = [...new Set([...w].filter((c, i) => marks[i] === 'extra'))];
+    lab = miss.length ? 'нет буквы ' + miss.join(', ') : 'лишняя ' + extra.join(', ');
+    kind = 'bad';
+  } else if (!DICT.has(w.toLowerCase()) && !$('#anyWord').checked) {
+    lab = 'нет в словаре'; kind = 'dict';
+  } else {
+    const owner = owners.get(w);
+    if (!owner) { lab = '+' + w.length; kind = 'ok'; after = () => addWord(nick, w); }
+    else if (owner.nick === nick) { lab = 'уже твоё'; kind = 'dict'; }
+    else { lab = '×' + (owner.words.find(x => x.w === w).mult + 1); kind = 'rep'; after = () => repeat(owner, w, nick); }
+  }
+  showTry(nick, w, marks, lab, kind);
+  if (kind === 'bad') tryBox.classList.add('shake');
+  setTimeout(() => {
+    tryBox.classList.remove('shake');
+    if (after) after(); else tryBox.classList.add('fade');
+    setTimeout(() => { tryBox.classList.remove('fade'); next(); }, after ? 450 : 400);
+  }, 800);
+}
+function showTry(nick, w, marks, lab, kind) {
+  const cur = el('div', 'cur in');
+  const who = el('div', 'who'); who.append(avatar(nick, true), el('span', '', nick));
+  const line = el('div', 'who');
+  const tw = tiles(w, marks, 'tw');
+  line.append(tw, el('span', 'lab ' + kind, lab));
+  cur.append(who, line);
+  tryBox.replaceChildren(cur);
+}
+
+/* ---- table ---- */
+function addWord(nick, w) {
+  let p = players.find(x => x.nick === nick);
+  if (!p) { p = { nick, score: 0, words: [], at: performance.now(), el: null }; players.push(p); counter(); }
+  const item = { w, mult: 1, owner: p };
+  p.words.push(item); owners.set(w, p);
+  p.score += w.length;
+  const from = tryBox.querySelector('.tw');
+  render({ hide: w, scored: p, plus: w.length });
+  fly(from, table.querySelector(`.w[data-w="${w}"]`));
+}
+function repeat(owner, w, nick) {
+  const item = owner.words.find(x => x.w === w);
+  const chipEl = table.querySelector(`.w[data-w="${w}"]`);
+  chipEl.classList.remove('hit'); void chipEl.offsetWidth; chipEl.classList.add('hit');
+  tryBox.classList.add('fade');
+  // the repeater's nick covers the first finder's for 5 s, then the ×N mark and the points
+  owner.overNick = nick;
+  owner.el.classList.add('over');
+  owner.el.querySelector('.nk .o').textContent = nick;
+  clearTimeout(owner.overT);
+  owner.overT = setTimeout(() => owner.el.classList.remove('over'), 5000);
+  setTimeout(() => {
+    item.mult++; owner.score += w.length;
+    render({ scored: owner, plus: w.length, xpop: w });
+  }, 600);
+}
+function pack(p) {
+  // greedy: as many words per line as fit (at most 4); the first line also holds avatar, nick and score
+  const u = 3.3 * 1.12, inner = 100 - 4.8 - 2.8;
+  const first = inner - (6.4 + 1.4 + Math.min(24, p.nick.length * 2.2) + 1.4 + 6 + 2.8);
+  const cont = inner - (5.4 + 1.4);
+  const lines = [[]];
+  let room = first;
+  for (const x of p.words) {
+    const wd = x.w.length * u + (x.mult > 1 ? 5.5 : 0) + 2;
+    const line = lines[lines.length - 1];
+    if (line.length && (wd > room || line.length >= 4)) { lines.push([x]); room = cont - wd; }
+    else { line.push(x); room -= wd; }
+  }
+  return lines;
+}
+function build(p) {
+  const e = p.el;
+  e.replaceChildren();
+  pack(p).forEach((ws, i) => {
+    const line = el('div', 'line');
+    if (i === 0) {
+      const nk = el('span', 'nk'); nk.append(el('span', 'n', p.nick), el('span', 'o', p.overNick || ''));
+      line.append(avatar(p.nick), nk, el('span', 'sc', p.score));
+    } else line.append(avatar(p.nick, true));
+    const box = el('div', 'ws');
+    ws.forEach(x => {
+      const c = tiles(x.w); c.dataset.w = x.w;
+      if (x.mult > 1) c.append(el('span', 'x', '×' + x.mult));
+      box.append(c);
+    });
+    line.append(box); e.append(line);
+  });
+}
+function render({ hide, scored, plus, xpop } = {}) {
+  const before = new Map(players.filter(p => p.el).map(p => [p, p.el.getBoundingClientRect().top]));
+  players.sort((a, b) => b.score - a.score || a.at - b.at);
+  players.forEach((p, i) => {
+    if (!p.el) { p.el = el('div', 'pl enter'); setTimeout(() => p.el.classList.remove('enter'), 500); }
+    build(p);
+    p.el.classList.toggle('lead', i === 0);
+    table.append(p.el);
+  });
+  before.forEach((top, p) => {
+    const d = top - p.el.getBoundingClientRect().top;
+    if (Math.abs(d) > 1) p.el.animate([{ transform: `translateY(${d}px)` }, { transform: 'none' }], { duration: 550, easing: 'cubic-bezier(.3,.9,.3,1)' });
+  });
+  if (hide) table.querySelector(`.w[data-w="${hide}"]`).classList.add('hidden');
+  if (scored) {
+    const sc = scored.el.querySelector('.sc');
+    sc.classList.add('pop'); sc.append(el('span', 'plus', '+' + plus));
+  }
+  if (xpop) { const x = table.querySelector(`.w[data-w="${xpop}"] .x`); if (x) x.classList.add('pop'); }
+}
+// the accepted word flies from the attempt line to its place in the table
+function fly(from, to) {
+  if (!from || !to) { to && to.classList.remove('hidden'); return; }
+  const fr = frame.getBoundingClientRect(), a = from.getBoundingClientRect(), b = to.getBoundingClientRect();
+  const f = from.cloneNode(true); f.className = 'flyer'; f.style.setProperty('--tw', `calc(var(--u) * 5)`);
+  f.style.left = a.left - fr.left + 'px'; f.style.top = a.top - fr.top + 'px';
+  frame.append(f);
+  const s = b.width / a.width;
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    f.style.transform = `translate(${b.left - a.left}px, ${b.top - a.top}px) scale(${s})`;
+  }));
+  setTimeout(() => { f.remove(); to.classList.remove('hidden'); to.classList.add('hit'); }, 720);
+}
+
+/* ---- end ---- */
+function endRound() {
+  running = false; clearInterval(tick); timeLeft = 0; drawTimer();
+  const end = $('#end');
+  end.replaceChildren(el('h2', '', 'ВРЕМЯ!'));
+  const top = players.slice(0, 3), pod = el('div', 'pod');
+  [1, 0, 2].forEach(i => {
+    const p = top[i]; if (!p) return;
+    const d = el('div', 'p' + (i + 1)); d.append(avatar(p.nick), el('span', '', p.nick), el('b', '', p.score));
+    pod.append(d);
+  });
+  end.append(pod);
+  const all = players.flatMap(p => p.words);
+  if (all.length) {
+    const best = all.reduce((a, b) => b.w.length > a.w.length ? b : a);
+    const d = el('div', 'best', `самое длинное слово — ${best.owner.nick}`); d.append(tiles(best.w));
+    end.append(d);
+  }
+  end.classList.add('on');
+}
+
+/* ---- demo ---- */
+const SCRIPT = [
+  [1500, 'Krestik|свет'], [1600, 'Нина|трасса'], [1600, 'фог|партия'], [1600, 'Нина|деталь'], [1900, 'Сергей|свет'],
+  [2600, 'Krestik|лист'], [1700, 'Tati|ветер'], [1700, 'Krestik|стрела'], [1700, 'Krestik|редис'], [1900, 'ANESYA|свет'],
+  [2400, 'Нина|писатель'], [1600, 'фог|ветка'], [1600, 'Valeria|тепрал'], [1600, 'Krestik|свет'], [1700, 'Maksim|деталь'],
+  [2400, 'фог|сталь'], [1600, 'Tati|деталь'], [2200, '!end'],
+];
+function auto() {
+  startRound();
+  let t = 1200;
+  for (const [d, s] of SCRIPT) {
+    t += d;
+    demoTimers.push(setTimeout(() => {
+      if (s === '!end') { timeLeft = 6; drawTimer(); return; }
+      say(...s.split('|'));
+    }, t));
+  }
+}
+
+$('#auto').onclick = auto;
+$('#start').onclick = startRound;
+$('#toEnd').onclick = () => { timeLeft = Math.min(timeLeft, 10); drawTimer(); };
+document.querySelectorAll('[data-say]').forEach(b => b.onclick = () => {
+  const [n, w] = b.dataset.say.split('|');
+  say(n, w);
+  if (w === 'стрела') setTimeout(() => say('Krestik', 'редис'), 300);
+});
+Object.keys(COLORS).forEach(n => $('#nick').append(new Option(n, n)));
+$('#inp').onkeydown = e => { if (e.key === 'Enter' && e.target.value.trim()) { say($('#nick').value, e.target.value); e.target.value = ''; } };
+startRound();
+</script>
+</body>
+</html>
