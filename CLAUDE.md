@@ -535,7 +535,9 @@ up first (`/home/ubuntu/quiz-<timestamp>-pre-<what>.tgz`); never data
 - systemd service `guessword-engine` (user `guessword`), code in
   `/var/www/quiz/stream-engine` (files owned `ubuntu:ubuntu`), venv `.venv`,
   listens on `127.0.0.1:8770`, nginx serves it at `/guessword/engine/`; data in
-  `/var/lib/guessword-engine` (never touch).
+  `/var/lib/guessword-engine` (never touch). Environment: `/etc/guessword-engine.env`
+  (root-only; back it up before editing). It holds `PLATFORM_URL=https://mao-dao.com` —
+  the engine syncs viewers' bonuses with Laravel's DB (docs/games/guessword.md).
 - Before replacing, check the server copies equal the previous commit
   (`md5sum` vs `git show HEAD~1:<file>`), so nobody's hot-fix is overwritten.
 - Copy the changed files (tar → `scp` → extract into `/var/www/quiz`, then

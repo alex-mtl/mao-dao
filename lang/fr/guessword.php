@@ -393,7 +393,7 @@ return [
     'bon_pick' => 'Choisissez un joueur à gauche pour voir tout ce qu’il a en réserve.',
     'bon_history' => 'Historique',
     'bon_failed' => 'Échec de l’enregistrement',
-    'bon_note' => 'Le joueur utilise un indice en écrivant « hint » ou « подсказка » dans le chat, le reste avec une émote du club liée à ce bonus (réglages du jeu → « Émotes du club »). Un à la fois.',
+    'bon_note' => 'Le joueur utilise un indice en écrivant « hint » ou « подсказка » dans le chat, le reste avec une émote du club liée à ce bonus (réglages → « Cadeaux » → « Émotes du club »). Un à la fois.',
     'bon_stream_boosts' => 'Boost jusqu’à la fin du live',
     'bon_src_host' => 'hôte',
     'bon_src_console' => 'depuis le serveur',

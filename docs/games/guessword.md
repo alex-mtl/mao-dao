@@ -62,6 +62,17 @@ room only by its secret tokens. Super admins alone also see every room: `/guessw
 room is `gw<id>`. Laravel sends the whole room each time (`PUT /internal/rooms/{id}`); the engine
 keeps its own copy in `rooms.json` so rooms come back after a restart.
 
+The other way round the engine calls Laravel only for viewers' bonuses (`/internal/guessword/bonuses`, same
+secret, engine env `PLATFORM_URL`; see "Players' bonuses" below). These routes have no session/auth and are
+excluded from CSRF in `bootstrap/app.php`.
+
+Browser / Studio addresses go through nginx: `GUESSWORD_ENGINE_PUBLIC_PATH` (default
+`/guessword/engine`) → the engine (its `BASE_PATH`). Two links per room:
+
+- **Studio link** `/guessword/engine/r/<overlay_token>/guess/?tt=1&alpha=1` — read-only pages; can be
+  regenerated (the old one stops working);
+- **control link** `/guessword/engine/r/<control_token>/` — the game's menu, embedded on the room page.
+
 ## Players' bonuses (since 2026-11-03)
 
 What a viewer has "on account" in a streamer's room: free hints, cakes, boosts... Any engine gift action a
@@ -93,12 +104,16 @@ viewer can launch themselves is a bonus kind (`config('guessword.bonus_kinds')` 
 - **Console**: `php artisan guessword:hints <tiktok login> [n=1] [--kind=hint|cake|...] [--room=<id | gw<id> |
   streamer's login>]` (alias `guessword:bonus`; `--room` not needed with one room, negative n takes away).
 
-Browser / Studio addresses go through nginx: `GUESSWORD_ENGINE_PUBLIC_PATH` (default
-`/guessword/engine`) → the engine (its `BASE_PATH`). Two links per room:
+**For the streamer** (how it is used):
 
-- **Studio link** `/guessword/engine/r/<overlay_token>/guess/?tt=1&alpha=1` — read-only pages; can be
-  regenerated (the old one stops working);
-- **control link** `/guessword/engine/r/<control_token>/` — the game's menu, embedded on the room page.
+1. Give a bonus: the room page → "Game monitor" («Ход игры») → tab "🎁 Players' bonuses" → pick the player (or a
+   viewer of the stream / type the @login) → "+" next to the kind ("−" takes one away).
+2. Let viewers spend it: settings → tab "Gifts" («Подарки») → "Club emotes" → bind an emote to the kind (e.g. the cake emote → "🎂 Cake").
+   The viewer sends that emote alone in the chat; hints also by typing "подсказка".
+3. A gift still gives what the gift rules say; extra hints of a combo still land on the account, now in the DB.
+
+The bot still gets the hint balances only ("мои подсказки" / the bot's balance show hints); a stream boost from a
+gift (`boost_ids`, till the stream ends) is not a bonus on account — the tab only shows who has it.
 
 ## "On screen" tab (live overlay elements)
 
@@ -125,7 +140,8 @@ engine they are guess options (`GuessGame.SCREEN`, saved with the room) and go t
 | `GUESSWORD_BOT_URL` | the Telegram bot's Function URL |
 | `GUESSWORD_BOT_PLATFORM_SECRET` | = SSM `/tiktok-tg-bot/platform-secret` |
 
-The engine itself needs `TG_BOT_URL` and `RANKER_URLS` in its environment (see `stream-engine/README.md`).
+The engine itself needs `TG_BOT_URL`, `RANKER_URLS` and `PLATFORM_URL` (= `https://mao-dao.com` on the server,
+in `/etc/guessword-engine.env`) in its environment (see `stream-engine/README.md`).
 
 ## Laravel ↔ bot
 
@@ -318,8 +334,9 @@ lookup, game logic). Order of work when audiences grow, each step only when a me
 
 ## Tests
 
-`tests/Feature/Guessword/` (Pest, engine faked with `Http::fake`); the engine has its own unittest
-suite in `stream-engine/tests/`.
+`tests/Feature/Guessword/` (Pest, engine faked with `Http::fake`; bonuses: `GuesswordBonusesTest`); the
+engine has its own unittest suite in `stream-engine/tests/` (bonuses: `test_bonuses.py`, runs without the
+word assets).
 
 ## The streamer app (client accounts)
 

@@ -393,7 +393,7 @@ return [
     'bon_pick' => 'Pick a player on the left to see everything on their account.',
     'bon_history' => 'History',
     'bon_failed' => 'Could not save',
-    'bon_note' => 'A player spends a hint by typing "hint" in the chat, anything else with a club emote bound to that bonus (game settings → "Club emotes"). One at a time.',
+    'bon_note' => 'A player spends a hint by typing "hint" in the chat, anything else with a club emote bound to that bonus (settings → "Gifts" → "Club emotes"). One at a time.',
     'bon_stream_boosts' => 'Boost till the stream ends now',
     'bon_src_host' => 'host',
     'bon_src_console' => 'from the server',

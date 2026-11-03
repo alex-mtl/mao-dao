@@ -393,7 +393,7 @@ return [
     'bon_pick' => 'Elige un jugador a la izquierda para ver todo lo que tiene en reserva.',
     'bon_history' => 'Historial',
     'bon_failed' => 'No se pudo guardar',
-    'bon_note' => 'El jugador usa una pista escribiendo «hint» o «подсказка» en el chat, lo demás con un emote del club vinculado a ese bono (ajustes del juego → «Emotes del club»). De uno en uno.',
+    'bon_note' => 'El jugador usa una pista escribiendo «hint» o «подсказка» en el chat, lo demás con un emote del club vinculado a ese bono (ajustes → «Regalos» → «Emotes del club»). De uno en uno.',
     'bon_stream_boosts' => 'Impulso hasta el fin del directo',
     'bon_src_host' => 'anfitrión',
     'bon_src_console' => 'desde el servidor',

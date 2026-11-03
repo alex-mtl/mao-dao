@@ -11,7 +11,11 @@ Plan: `../../Stream Games — Requirements and Implementation Plan.md`, section 
 ## Addresses
 
 - `/internal/*` — the platform's API, header `X-Internal-Secret` (see the docstring of `app/server.py`):
-  create/update a room (`PUT /internal/rooms/{id}`), start/stop, settings, status.
+  create/update a room (`PUT /internal/rooms/{id}`), start/stop, settings, status, a viewer's bonuses
+  (`POST /internal/rooms/{id}/bonuses`).
+- The engine → the platform: `PLATFORM_URL/internal/guessword/bonuses` — viewers' bonuses on account (hints,
+  cakes, boosts...), the platform's DB keeps them; one loop syncs every room (`app/bonuses.py`,
+  `RoomManager.bonus_sync`; docs/games/guessword.md, "Players' bonuses").
 - `/r/{control_token}/` — the room's menu, settings, debug and game pages.
 - `/r/{overlay_token}/guess/?tt=1&alpha=1` — the TikTok LIVE Studio page (game pages, state, websocket only).
 - Pages use relative addresses; the engine adds `<base href="BASE_PATH/r/{token}/">`.
@@ -24,7 +28,8 @@ Plan: `../../Stream Games — Requirements and Implementation Plan.md`, section 
 | `DATA_DIR` | data: `rooms.json` (room registry, holds Euler keys, mode 600), `rooms/<id>/`, `logs/` |
 | `ASSETS_DIR` | word lists: `<lang>/{vocab.txt, meta.json, secret_nouns.txt}` (no embeddings needed) |
 | `BASE_PATH` | where nginx publishes the engine, e.g. `/guessword/engine` |
-| `INTERNAL_SECRET` | the platform's secret for `/internal/*` (empty = internal API off) |
+| `INTERNAL_SECRET` | the platform's secret for `/internal/*` (empty = internal API off); also sent on the engine's own calls to the platform |
+| `PLATFORM_URL` | the platform (e.g. `https://mao-dao.com`): viewers' bonuses are kept there (`app/bonuses.py`); empty = only the local copy |
 | `RANKER_URLS` | `en=https://…,ru=https://…` — the word-ranker Lambdas |
 | `TG_BOT_URL` | the Telegram bot's Function URL (each room gives its own key, `tg_key`) |
 | `DEBUG_CONTROLS` | `1` = debug buttons in the control pages |
