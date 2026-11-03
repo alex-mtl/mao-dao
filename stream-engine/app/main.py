@@ -27,6 +27,7 @@ async def run():
         print(f"[dev] room {rid}: menu http://localhost:{config.PORT}{config.BASE_PATH}/r/dev{i}/ "
               f"overlay http://localhost:{config.PORT}{config.BASE_PATH}/r/view{i}/guess/")
     manager.restore()
+    bonuses = asyncio.get_running_loop().create_task(manager.bonus_sync())   # noqa: F841 (kept alive)
     server = uvicorn.Server(uvicorn.Config(create_app(manager), host=config.HOST, port=config.PORT,
                                            log_level="warning", ws_ping_interval=20))
     print(f"[engine] {len(manager.rooms)} rooms, listening on {config.HOST}:{config.PORT}")

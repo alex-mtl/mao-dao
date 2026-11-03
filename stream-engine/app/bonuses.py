@@ -5,13 +5,13 @@ in the chat ("подсказка", a club emote) and sends every change it makes
 
   engine -> Laravel  POST {PLATFORM_URL}/internal/guessword/bonuses {room, ops: [{op, viewer, kind, delta, source, name}]}
                      -> {balances: {viewer: {kind: n}}} of the viewers touched (applied once per op id)
-  engine -> Laravel  GET  {PLATFORM_URL}/internal/guessword/bonuses?room=gw1 -> {balances} (on start, every PULL_SEC)
+  engine -> Laravel  GET  {PLATFORM_URL}/internal/guessword/bonuses?room=gw1 -> {balances} (at the process start for
+                     every room, running or not, then every PULL_SEC)
   Laravel -> engine  POST /internal/rooms/{id}/bonuses {id, balances: {kind: n}} (the host changed them on the panel)
 
 Operations not yet accepted wait in the room's bonus_outbox.json (kept across restarts) and are counted on top of
 whatever Laravel says. Without PLATFORM_URL (a home copy, tests) the copy here is all there is."""
 
-import asyncio
 import secrets
 import time
 
@@ -21,6 +21,7 @@ from . import config
 KINDS = ["hint", "cake", "boost", "multi", "balloon", "plane", "bomber", "snowball"]
 FLUSH_SEC = 2
 PULL_SEC = 600
+RETRY_SEC = 30
 
 
 def account_id(viewer_id):
@@ -126,11 +127,11 @@ class BonusAccounts:
 
 
 class BonusSync:
-    """the room's loop: pull everything on start (and every PULL_SEC), push our operations every FLUSH_SEC"""
+    """a room's sync: pull everything first (and every PULL_SEC), then push our operations every FLUSH_SEC"""
 
     def __init__(self, accounts, room_id):
         self.acc, self.room_id = accounts, room_id
-        self.pulled_t = 0.0
+        self.pulled_t = self.retry_t = 0.0
 
     async def api(self, method, body=None):
         import httpx
@@ -173,12 +174,11 @@ class BonusSync:
             self.acc.set_viewer(viewer, b)
         return True
 
-    async def run(self):
-        if not config.PLATFORM_URL or not config.INTERNAL_SECRET:
-            return
-        while True:
-            if time.time() - self.pulled_t > PULL_SEC:
-                await self.pull()
-            if self.pulled_t:                    # nothing goes out before Laravel's balances came
-                await self.flush()
-            await asyncio.sleep(FLUSH_SEC)
+    async def step(self):
+        """one turn of the loop (RoomManager.bonus_sync, every FLUSH_SEC for every room)"""
+        now = time.time()
+        if now - self.pulled_t > PULL_SEC and now >= self.retry_t:
+            if not await self.pull():
+                self.retry_t = now + RETRY_SEC           # the platform is down: not every 2 s
+        if self.pulled_t:                        # nothing goes out before Laravel's balances came
+            await self.flush()

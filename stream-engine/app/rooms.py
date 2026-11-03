@@ -82,11 +82,7 @@ class Room:
             if config.RANKER_URLS and key:
                 from .ranker_client import RankerClient
                 jobs.append(RankerClient(hub, config.RANKER_URLS, key).run())
-            g = hub.games.get("guess")
-            if g and config.PLATFORM_URL:                    # viewers' bonuses: the platform keeps them
-                from .bonuses import BonusSync
-                jobs.append(BonusSync(g.bonuses, self.id).run())
-            self.tasks =[asyncio.get_running_loop().create_task(j) for j in jobs]
+            self.tasks = [asyncio.get_running_loop().create_task(j) for j in jobs]
             self.started_at = time.time()
             print(f"[room] started (@{self.cfg.get('username') or 'simulation'})")
         finally:
@@ -221,6 +217,28 @@ class RoomManager:
         for rid, cfg in self._load().items():
             if cfg.get("running") and rid in self.rooms:
                 self.rooms[rid].start(self._give_up_for(rid))
+
+    async def bonus_sync(self):
+        """viewers' bonuses of every room, running or not, go to the platform and back (app/bonuses.py)"""
+        if not config.PLATFORM_URL or not config.INTERNAL_SECRET:
+            return
+        from .bonuses import FLUSH_SEC, BonusSync
+        syncs = {}
+        while True:
+            for rid, room in list(self.rooms.items()):
+                token = current_room.set(rid)
+                try:
+                    g = room.ensure_hub().games.get("guess")
+                    if g is None:
+                        continue
+                    if rid not in syncs or syncs[rid].acc is not g.bonuses:
+                        syncs[rid] = BonusSync(g.bonuses, rid)
+                    await syncs[rid].step()
+                except Exception as e:
+                    print(f"[bonuses] {type(e).__name__}: {e}")
+                finally:
+                    current_room.reset(token)
+            await asyncio.sleep(FLUSH_SEC)
 
     async def stop_all(self):
         """process shutdown: stop everything but remember what ran, to start it again after the restart"""

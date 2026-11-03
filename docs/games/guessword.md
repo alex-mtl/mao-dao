@@ -74,8 +74,8 @@ viewer can launch themselves is a bonus kind (`config('guessword.bonus_kinds')` 
 - **The engine keeps a copy** (`DATA_DIR/rooms/<room>/bonuses.json`) to answer the chat at once, and sends every
   change it makes (a gift's extra hints, the setter's hint, spending) as an operation with an id:
   `POST {PLATFORM_URL}/internal/guessword/bonuses {room, ops}` every 2 s while it has some (outbox
-  `bonus_outbox.json`, kept across restarts; Laravel applies each op id once and answers the balances). On every
-  room start, and every 10 min, it pulls everything (`GET .../internal/guessword/bonuses?room=gw1`). Header
+  `bonus_outbox.json`, kept across restarts; Laravel applies each op id once and answers the balances). For every
+  room, running or not, it pulls everything when the process starts and every 10 min (`GET .../internal/guessword/bonuses?room=gw1`, `RoomManager.bonus_sync`). Header
   `X-Internal-Secret` both ways (engine `INTERNAL_SECRET` = `GUESSWORD_ENGINE_SECRET`); engine env `PLATFORM_URL`
   (e.g. `https://mao-dao.com`) — empty = the copy is all there is (home copy, tests).
 - **The host's changes** go to Laravel, which pushes the viewer's balances to the engine

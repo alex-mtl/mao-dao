@@ -196,6 +196,7 @@ def create_app(manager):
             vid = account_id(str(body.get("id") or ""))
             if not g or not vid or not isinstance(body.get("balances"), dict):
                 raise HTTPException(400, "need a viewer id and balances")
+            g.bonuses.migrate_ops(rid)                 # what this copy had before goes first (once)
             g.bonuses.set_viewer(vid, {k: int(n) for k, n in body["balances"].items() if k in BONUS_KINDS})
             real = account_id(identities().lookup(vid))
             if real != vid:                            # an old @id or a nickname: moved to the current one,
