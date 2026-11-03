@@ -1,6 +1,7 @@
 <?php
 
 use App\Games\Guessword\Http\Controllers\ArchiveController;
+use App\Games\Guessword\Http\Controllers\BonusesController;
 use App\Games\Guessword\Http\Controllers\ClientAccountsController;
 use App\Games\Guessword\Http\Controllers\ClientController;
 use App\Games\Guessword\Http\Controllers\GuesswordController;
@@ -17,6 +18,9 @@ Route::middleware('auth')->group(function () {
     Route::post('/guessword/room/start', [GuesswordController::class, 'start'])->name('guessword.room.start');
     Route::post('/guessword/room/stop', [GuesswordController::class, 'stop'])->name('guessword.room.stop');
     Route::post('/guessword/room/link', [GuesswordController::class, 'regenerateLink'])->name('guessword.room.link');
+    // viewers' bonuses on account (the monitor's "Players' bonuses" tab)
+    Route::get('/guessword/room/bonuses', [BonusesController::class, 'index'])->name('guessword.room.bonuses');
+    Route::post('/guessword/room/bonuses', [BonusesController::class, 'change'])->name('guessword.room.bonuses.change');
 
     // the archive of LIVEs and the digest built in the browser (ArchiveController)
     Route::get('/guessword/archive', [ArchiveController::class, 'index'])->name('guessword.archive');
@@ -30,6 +34,8 @@ Route::middleware('auth')->group(function () {
     Route::post('/guessword/rooms/{room}/start', [GuesswordController::class, 'start'])->name('guessword.rooms.start');
     Route::post('/guessword/rooms/{room}/stop', [GuesswordController::class, 'stop'])->name('guessword.rooms.stop');
     Route::post('/guessword/rooms/{room}/link', [GuesswordController::class, 'regenerateLink'])->name('guessword.rooms.link');
+    Route::get('/guessword/rooms/{room}/bonuses', [BonusesController::class, 'index'])->name('guessword.rooms.bonuses');
+    Route::post('/guessword/rooms/{room}/bonuses', [BonusesController::class, 'change'])->name('guessword.rooms.bonuses.change');
     Route::get('/guessword/rooms/{room}/archive', [ArchiveController::class, 'index'])->name('guessword.rooms.archive');
     Route::get('/guessword/rooms/{room}/archive/lives/{file}', [ArchiveController::class, 'roomEvents'])->name('guessword.rooms.archive.events');
 
@@ -48,6 +54,10 @@ Route::middleware('throttle:20,1')->group(function () {
     Route::post('/guessword/client/api/session', [ClientController::class, 'session'])->name('guessword.client.session');
     Route::get('/guessword/client/enter/{code}', [ClientController::class, 'enter'])->name('guessword.client.enter');
 });
+// the engine: viewers' bonuses (stream-engine/app/bonuses.py), header X-Internal-Secret
+Route::get('/internal/guessword/bonuses', [BonusesController::class, 'engineBalances'])->name('internal.guessword.bonuses');
+Route::post('/internal/guessword/bonuses', [BonusesController::class, 'engineOps'])->name('internal.guessword.bonuses.ops');
+
 // asked on every load of the overlay in OBS / LIVE Studio
 Route::post('/guessword/client/api/overlay', [ClientController::class, 'overlay'])
     ->middleware('throttle:120,1')->name('guessword.client.overlay');

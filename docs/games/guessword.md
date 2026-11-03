@@ -62,9 +62,36 @@ room only by its secret tokens. Super admins alone also see every room: `/guessw
 room is `gw<id>`. Laravel sends the whole room each time (`PUT /internal/rooms/{id}`); the engine
 keeps its own copy in `rooms.json` so rooms come back after a restart.
 
-**Hints on a viewer's account by hand**: `php artisan guessword:hints <tiktok login> [n=1] [--room=<id |
-gw<id> | streamer's login>]` (`Console/AddHintsCommand`; `--room` not needed with one room, negative n takes
-away) → engine `POST /internal/rooms/{id}/credits {id, n}`; the engine changes its account file itself.
+## Players' bonuses (since 2026-11-03)
+
+What a viewer has "on account" in a streamer's room: free hints, cakes, boosts... Any engine gift action a
+viewer can launch themselves is a bonus kind (`config('guessword.bonus_kinds')` = `stream-engine/app/bonuses.py`
+`KINDS`: hint, cake, boost, multi, balloon, plane, bomber, snowball; a new kind = one line in both).
+
+- **Laravel is the source of truth**: `guessword_bonuses` (room, viewer = TikTok @id lower case, kind, amount,
+  the last nickname) and `guessword_bonus_log` (every change: delta, balance after, source host / console / gift /
+  spend / setter / migration / rename, the host who did it, the engine's op id). `Services\Bonuses`.
+- **The engine keeps a copy** (`DATA_DIR/rooms/<room>/bonuses.json`) to answer the chat at once, and sends every
+  change it makes (a gift's extra hints, the setter's hint, spending) as an operation with an id:
+  `POST {PLATFORM_URL}/internal/guessword/bonuses {room, ops}` every 2 s while it has some (outbox
+  `bonus_outbox.json`, kept across restarts; Laravel applies each op id once and answers the balances). On every
+  room start, and every 10 min, it pulls everything (`GET .../internal/guessword/bonuses?room=gw1`). Header
+  `X-Internal-Secret` both ways (engine `INTERNAL_SECRET` = `GUESSWORD_ENGINE_SECRET`); engine env `PLATFORM_URL`
+  (e.g. `https://mao-dao.com`) — empty = the copy is all there is (home copy, tests).
+- **The host's changes** go to Laravel, which pushes the viewer's balances to the engine
+  (`POST /internal/rooms/{id}/bonuses {id, balances}`; when the engine is down it gets them on the next pull).
+- **First sync** sends what the engine had (the old `guess/hint_credits.json` included) as `migrate-<room>-<kind>-
+  <viewer>` ops, once (`bonus_migrated.json`).
+- **Spending**: a hint with "подсказка" / "hint" or a club emote bound to `hint` (as before); every other kind only
+  by a club emote the streamer binds to it in the emote settings (`EMOTE_ACTIONS` = the bonus kinds). The emote
+  does the gift action for that viewer (`Hub.use_bonus`: the cake show with their avatar, a plane...) and spends
+  one; nothing is spent when it can't happen (3 words for the round between rounds, a boost they already have).
+- **Room page**: the monitor's tab "🎁 Players' bonuses" (`Partials/PlayerBonuses.jsx`; `GET/POST
+  /guessword/room/bonuses`, super admins `/guessword/rooms/{room}/bonuses`): players on the left, the picked one's
+  bonuses with −/+ and "give N of a kind", their history; any viewer of the stream or a typed @login can be given
+  something. The old "Pending" box of the "Planned" tab is gone; who has the stream boost now is shown in this tab.
+- **Console**: `php artisan guessword:hints <tiktok login> [n=1] [--kind=hint|cake|...] [--room=<id | gw<id> |
+  streamer's login>]` (alias `guessword:bonus`; `--room` not needed with one room, negative n takes away).
 
 Browser / Studio addresses go through nginx: `GUESSWORD_ENGINE_PUBLIC_PATH` (default
 `/guessword/engine`) → the engine (its `BASE_PATH`). Two links per room:
@@ -138,7 +165,7 @@ working for anyone whose nickname differs from their `@id`.
 `stream-engine/app/identities.py` (one registry for all rooms, `DATA_DIR/identities.json`) maps the numeric id
 (never changes) → the current `@id`, plus every id a viewer ever had (old handles, nickname stand-ins) → the
 numeric id. Every event goes through it in `Hub._seen()`; `lookup()` finds a viewer by any of their ids
-(`add_credits` uses it, so the bot / `guessword:hints` may name an old id). A viewer seen only in the chat gets
+(`add_credits` uses it, so the bot may name an old id; bonuses given on the platform to an old id move to the current one). A viewer seen only in the chat gets
 their nickname as a stand-in id; when the real `@id` arrives the registry records a rename and every room merges
 its data (`GuessGame.rename_viewer`, balloons, the room's recent viewers) — never two records of one person.
 A nickname several viewers use finds nobody and is never merged. On first start the registry is filled from the

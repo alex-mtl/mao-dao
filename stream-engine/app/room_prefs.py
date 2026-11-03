@@ -3,7 +3,7 @@
 - Toasts: each toast / voice line of the pages can be hidden, silenced, and said at its own speed.
 - GiftRules: which gift triggers which action (a hint, 3 words, a balloon, a plane...).
 - GiftCatalog: every gift seen on any stream of the platform (name -> coins), for the page's selectors.
-- EmoteRules: which of the streamer's club emotes, sent alone in the chat, does what (a hint from the account).
+- EmoteRules: which of the streamer's club emotes, sent alone in the chat, does what (a bonus from the account).
 - EmotesSeen: the club emotes seen in this room's chat (id -> image), for the page to pick from.
 
 Hub-level (shared by the room's games); kept in the hub's session file with the other options."""
@@ -13,6 +13,7 @@ import os
 import time
 
 from . import config
+from .bonuses import KINDS as BONUS_KINDS
 
 # toast / voice line ids the pages know -> default speech rate (1 = key phrases said at normal speed,
 # None = the room's voice rate). Battle lines start with "b_"; greet / balloon / plane are on every page.
@@ -101,8 +102,9 @@ class GiftRules:
         return {action for action, rule in self._v.items() if rule == "any"}
 
 
-# what a club emote sent alone can do: "hint" = like typing "подсказка" (spends a hint on account)
-EMOTE_ACTIONS = ["hint"]
+# what a club emote sent alone can do: spend that bonus from the viewer's account ("hint" = like typing
+# "подсказка"; "cake" = the cake show for them...)
+EMOTE_ACTIONS = list(BONUS_KINDS)
 
 
 class EmoteRules:

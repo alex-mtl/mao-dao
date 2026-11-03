@@ -28,6 +28,8 @@ DATA_DIR = os.getenv("DATA_DIR", "data")
 # ---- the platform ----
 BASE_PATH = os.getenv("BASE_PATH", "").rstrip("/")   # where nginx publishes the engine, e.g. /guessword/engine
 INTERNAL_SECRET = os.getenv("INTERNAL_SECRET", "")   # the platform's calls to /internal/* carry it; empty = off
+# the platform itself, for the engine's own calls (viewers' bonuses, app/bonuses.py; the same secret); empty = off
+PLATFORM_URL = os.getenv("PLATFORM_URL", "").rstrip("/")
 DEV_ROOMS = _i("DEV_ROOMS", 0)                      # local testing: this many simulated rooms with fixed tokens
 ASSETS_DIR = os.getenv("ASSETS_DIR", "assets")
 RECONNECT_SEC = _f("RECONNECT_SEC", 15)

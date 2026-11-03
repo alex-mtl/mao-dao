@@ -48,10 +48,11 @@ class EngineClient
         return $this->http()->post('/internal/rooms/'.$room->engineId().'/stop')->throw()->json();
     }
 
-    /** puts $n hints on a viewer's account in the room (n < 0 takes away); returns {id, credits} */
-    public function addHints(GuesswordRoom $room, string $viewer, int $n): array
+    /** a viewer's bonuses as this database has them now [kind => n] (Bonuses::change) */
+    public function setBonuses(GuesswordRoom $room, string $viewer, array $balances): array
     {
-        return $this->http()->post('/internal/rooms/'.$room->engineId().'/credits', ['id' => $viewer, 'n' => $n])->throw()->json();
+        return $this->http()->post('/internal/rooms/'.$room->engineId().'/bonuses',
+            ['id' => $viewer, 'balances' => (object) $balances])->throw()->json();
     }
 
     /**

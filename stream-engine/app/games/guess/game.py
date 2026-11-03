@@ -18,6 +18,7 @@ from collections import deque
 import numpy as np
 
 from ... import config
+from ...bonuses import BonusAccounts
 from ...identities import identities
 from ..base import BaseGame, Viewer
 from . import hints
@@ -145,7 +146,6 @@ class GuessGame(BaseGame):
     USED = "guess/used_words.json"
     ROUNDS = "guess/rounds.json"
     BOOSTS = "guess/boosts.json"                  # viewers with "3 words" for the whole stream (a gift)
-    CREDITS = "guess/hint_credits.json"          # viewer id -> hint credits ("on account")
     CREDITS_EVER = "guess/hint_credits_ever.json"  # everyone who ever had hints on account
     CUSTOM = "guess/custom_words.json"           # words viewers picked via the bot ("загадывает"), in order
     MISSING = "guess/missing_words.jsonl"        # their words that aren't in the dictionary (to extend it)
@@ -198,10 +198,7 @@ class GuessGame(BaseGame):
                     self.used.setdefault(lang.split("-")[0], set()).add(r["word"])
                     break
         self.boost_ids = set(store.load(self.BOOSTS, []) or [])
-        self.credits = {}
-        for k, v in (store.load(self.CREDITS, {}) or {}).items():
-            if int(v) > 0:
-                self.credits[account_id(k)] = self.credits.get(account_id(k), 0) + int(v)
+        self.bonuses = BonusAccounts(store)          # hints, cakes... on viewers' accounts (Laravel keeps them)
         ever = store.load(self.CREDITS_EVER, None)
         # first start: everyone with hints now, plus those known to have had (and spent) them
         self.credits_ever = {account_id(k) for k in ever} if ever is not None \
@@ -334,7 +331,7 @@ class GuessGame(BaseGame):
             player = None
             self.word_hidden = bool(self.setter) or hide
             if self.setter:                              # the picker earns a hint, the bot keeps the word for them
-                self.add_credits(self.setter["id"], 1)
+                self.add_credits(self.setter["id"], 1, "setter", self.setter.get("name", ""))
                 self.unguessed_custom.append({"id": self.setter.get("cid", ""), "tiktok_id": self.setter["id"],
                                               "word": self.secret, "lang": self.round_lang})
         self.podium = self._podium()
@@ -396,7 +393,7 @@ class GuessGame(BaseGame):
         cmd = " ".join(re.sub(r"[^\w\s]", " ", (text or "").lower().replace("ё", "е")).split())
         if cmd in MY_HINTS_WORDS:                        # "мои подсказки": never a guess
             if account_id(viewer.id) in self.credits_ever:
-                n = self.credits.get(account_id(viewer.id), 0)
+                n = self.bonuses.get(viewer.id, "hint")
                 self.emit("credits_info", name=viewer.name, avatar=viewer.avatar, n=n)
                 print(f"[guess] {viewer.name} asked for their hints: {n}")
             return
@@ -692,7 +689,7 @@ class GuessGame(BaseGame):
                 self.hint_t[viewer.id] = now
                 n -= 1
             if n:
-                self.add_credits(viewer.id, n)
+                self.add_credits(viewer.id, n, "gift", viewer.name)
 
     def manual_action(self, viewer, action):
         """the streamer does a gift's action for a viewer (room page): -> done or not"""
@@ -702,7 +699,7 @@ class GuessGame(BaseGame):
             if self.phase == PLAYING and self._hint_wait(viewer, now) == 0 and self.give_hint(viewer.name, now, viewer=viewer):
                 self.hint_t[viewer.id] = now
             else:
-                self.add_credits(viewer.id, 1)           # not now: on their account
+                self.add_credits(viewer.id, 1, "host", viewer.name)   # not now: on their account
             return True
         if action == "multi" and self.phase == PLAYING:
             self.multi_ids.add(viewer.id)
@@ -740,14 +737,11 @@ class GuessGame(BaseGame):
         """identities: the viewer known as `old` (their nickname as a stand-in, or an old @handle) is `new` - what
         this room keeps under `old` is merged into `new`, so nobody is counted twice"""
         a_old, a_new = account_id(old), account_id(new)
-        if not (a_old in self.credits or a_old in self.credits_ever or old in self.boost_ids or old in self.players
+        if not (a_old in self.bonuses.bal or a_old in self.credits_ever or old in self.boost_ids or old in self.players
                 or old in self.stats.players or old in self.hint_t or old in self.multi_ids
                 or (self.setter and self.setter["id"] == a_old)):
             return                                       # nothing of theirs here
-        if a_old in self.credits and a_old != a_new:     # "Krestik" -> "krestik" is the same account
-            n = self.credits.pop(a_old)
-            self.credits[a_new] = self.credits.get(a_new, 0) + n
-            self.store.save(self.CREDITS, self.credits)
+        self.bonuses.rename(a_old, a_new)                # "Krestik" -> "krestik" is the same account
         if a_old in self.credits_ever:
             self.credits_ever.discard(a_old)
             self.credits_ever.add(a_new)
@@ -806,19 +800,19 @@ class GuessGame(BaseGame):
         print(f"[guess] viewer {old} -> {new} (merged)")
 
     # ------------------------------------------------------------------ hint credits
-    def add_credits(self, viewer_id, n=1):
+    @property
+    def credits(self):
+        """{viewer id: hints on account} (a copy: change them with add_credits)"""
+        return self.bonuses.of_kind("hint")
+
+    def add_credits(self, viewer_id, n=1, source="engine", name=""):
         """Put hints on a viewer's account (gift-free hints they spend with "подсказка")."""
         viewer_id = account_id(identities().lookup(account_id(viewer_id)))
         if not viewer_id:
             return 0
-        left = max(0, self.credits.get(viewer_id, 0) + int(n))
         if int(n) > 0:
             self._mark_credit_account(viewer_id)
-        if left:
-            self.credits[viewer_id] = left
-        else:
-            self.credits.pop(viewer_id, None)
-        self.store.save(self.CREDITS, self.credits)
+        left = self.bonuses.add(viewer_id, "hint", n, source, name)
         print(f"[guess] hint credits {viewer_id}: {left}")
         return left
 
@@ -835,7 +829,7 @@ class GuessGame(BaseGame):
 
     def _hint_from_account(self, viewer, ts, now):
         """A viewer asks for a hint from their account: in a round, with hints on account, sent after it started."""
-        if self.phase == PLAYING and self.credits.get(account_id(viewer.id), 0) > 0 \
+        if self.phase == PLAYING and self.bonuses.get(viewer.id, "hint") > 0 \
                 and not (ts and ts < self.started_at - 3):
             self.use_credit(viewer, now)
             return True
@@ -859,7 +853,7 @@ class GuessGame(BaseGame):
         h = self.give_hint(viewer.name, now, viewer=viewer)
         if h:
             self.hint_t[viewer.id] = now
-            left = self.add_credits(viewer.id, -1)
+            left = self.add_credits(viewer.id, -1, "spend", viewer.name)
             print(f"[guess] {viewer.name} used a hint credit ({left} left)")
         return h
 

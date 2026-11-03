@@ -166,6 +166,7 @@ export default function Room({ room, languages, notice, problem }) {
                         s={s}
                         mode={mode}
                         setMode={setMode}
+                        bonusesUrl={act(room, 'bonuses')}
                         footer={
                             <div className="sticky bottom-0 flex items-center gap-3 rounded-b-2xl border-t border-warm-200 bg-surface/95 px-5 py-3 backdrop-blur">
                                 <span className="text-sm text-ink-500">

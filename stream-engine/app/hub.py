@@ -273,10 +273,31 @@ class Hub:
         action = self.emote_rules.action_for(emotes[0][0]) if len(emotes) == 1 else None
         if action:
             print(f"[emote] {v.name}: {emotes[0][0]} -> {action}")
+            if action != "hint":                      # a cake, a plane, the boost... from their account
+                self.use_bonus(v, action)
+                return
             on_emote = getattr(self.game, "on_emote_action", None)
             if on_emote:
                 on_emote(v, action, ts)
                 self._save_if_needed()
+
+    def use_bonus(self, v: Viewer, kind):
+        """A viewer launches a bonus from their account (a club emote bound to it): the cake show, a plane, the
+        boost... as if their gift came. Spent only when it happened. Hints go through the game ("подсказка")."""
+        g = self.games.get("guess")
+        acc = getattr(g, "bonuses", None)
+        if not acc or acc.get(v.id, kind) <= 0:
+            return False
+        if kind in self.ANIMATIONS:
+            self._gift_animations(v, "", {kind}, 1)
+        elif kind == "boost" and v.id in g.boost_ids:
+            return False                              # has it already: nothing to spend on
+        elif self.game is not g or not g.manual_action(v, kind):
+            return False                              # e.g. 3 words for the round, between rounds
+        left = acc.add(v.id, kind, -1, "spend", v.name)
+        print(f"[bonus] {v.name} used {kind} from their account ({left} left)")
+        self._save_if_needed()
+        return True
 
     def join(self, v: Viewer):
         if self.closed:                               # shutting down: nothing changes any more

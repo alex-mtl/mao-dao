@@ -7,6 +7,7 @@ Internal API for the platform (Laravel), header X-Internal-Secret = INTERNAL_SEC
   POST   /internal/rooms/{id}/start|stop
   POST   /internal/rooms/{id}/settings       {game, options} and/or {lang}; {active} switches the game
   POST   /internal/rooms/{id}/credits        {id: TikTok login, n} hints on a viewer's account -> {id, credits}
+  POST   /internal/rooms/{id}/bonuses        {id, balances: {kind: n}} a viewer's bonuses as the platform has them now
   DELETE /internal/rooms/{id}                (its data folder stays)
   GET    /internal/rooms/{id}/options        games, their options and values (for the platform's form)
   GET    /internal/lives[?room=]             every room's LIVE logs (clips / digests): room, file, size, mtime
@@ -29,9 +30,11 @@ from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconn
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse, Response
 
 from . import config, live_log
+from .bonuses import KINDS as BONUS_KINDS
 from .context import current_room
 from .games.base import Viewer
 from .games.guess.game import account_id
+from .identities import identities
 from .room_prefs import EMOTE_ACTIONS, GIFT_ACTIONS, GIFT_MIN_COINS, catalog
 
 WEB = os.path.join(os.path.dirname(__file__), "web")
@@ -184,9 +187,24 @@ def create_app(manager):
             vid = account_id(str(body.get("id") or ""))
             if not g or not vid or not n:
                 raise HTTPException(400, "need a viewer id and n != 0")
-            left = g.add_credits(vid, n)
+            left = g.add_credits(vid, n, "console")
             print(f"[internal] hint credits {n:+d} -> {vid}: {left}")
             return {"id": vid, "credits": left}
+        elif action == "bonuses":                      # the host changed a viewer's bonuses on the platform:
+            body = await req.json()                    # {id, balances: {kind: n}} as Laravel has them now
+            g = room.ensure_hub().games.get("guess")
+            vid = account_id(str(body.get("id") or ""))
+            if not g or not vid or not isinstance(body.get("balances"), dict):
+                raise HTTPException(400, "need a viewer id and balances")
+            g.bonuses.set_viewer(vid, {k: int(n) for k, n in body["balances"].items() if k in BONUS_KINDS})
+            real = account_id(identities().lookup(vid))
+            if real != vid:                            # an old @id or a nickname: moved to the current one,
+                g.bonuses.rename(vid, real)            # the platform hears it as operations
+                vid = real
+            if g.bonuses.get(vid, "hint") > 0:
+                g._mark_credit_account(vid)            # "мои подсказки" answers them
+            print(f"[internal] bonuses of {vid}: {g.bonuses.of(vid)}")
+            return {"id": vid, "balances": g.bonuses.of(vid)}
         else:
             raise HTTPException(404, "unknown action")
         return info(room)

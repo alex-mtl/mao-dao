@@ -126,7 +126,7 @@ function LikesRow({ title, sub, value, onChange }) {
     );
 }
 
-export default function SettingsPanel({ s, mode, setMode, footer }) {
+export default function SettingsPanel({ s, mode, setMode, footer, bonusesUrl }) {
     const { t } = useLaravelReactI18n();
     const [tab, setTab] = useState({ battle: 'gifts', guess: 'game', streamer: 'frame' });
     const section = tab[mode];
@@ -197,7 +197,7 @@ export default function SettingsPanel({ s, mode, setMode, footer }) {
             </div>
 
             {monitor && !s.failed && s.info && <ScreenQuick s={s} />}
-            {monitor && <GameMonitor s={s} />}
+            {monitor && <GameMonitor s={s} bonusesUrl={bonusesUrl} />}
 
             <div className={'px-5 py-2' + (monitor ? ' hidden' : '')}>
                 {s.failed && <p className="py-4 text-sm text-danger-700">{t('guessword.settings_offline')}</p>}

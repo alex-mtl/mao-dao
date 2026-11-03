@@ -82,7 +82,11 @@ class Room:
             if config.RANKER_URLS and key:
                 from .ranker_client import RankerClient
                 jobs.append(RankerClient(hub, config.RANKER_URLS, key).run())
-            self.tasks = [asyncio.get_running_loop().create_task(j) for j in jobs]
+            g = hub.games.get("guess")
+            if g and config.PLATFORM_URL:                    # viewers' bonuses: the platform keeps them
+                from .bonuses import BonusSync
+                jobs.append(BonusSync(g.bonuses, self.id).run())
+            self.tasks =[asyncio.get_running_loop().create_task(j) for j in jobs]
             self.started_at = time.time()
             print(f"[room] started (@{self.cfg.get('username') or 'simulation'})")
         finally:

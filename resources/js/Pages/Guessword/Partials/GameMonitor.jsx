@@ -1,5 +1,6 @@
 import { useLaravelReactI18n } from 'laravel-react-i18n';
 import { useCallback, useEffect, useState } from 'react';
+import PlayerBonuses from './PlayerBonuses';
 import ViewerPicker, { Avatar } from './ViewerPicker';
 
 const clock = (s) => Math.floor(Math.max(0, s) / 60) + ':' + String(Math.round(Math.max(0, s)) % 60).padStart(2, '0');
@@ -89,7 +90,7 @@ const btn = 'h-9 rounded-lg border border-warm-300 bg-surface px-3 text-sm font-
  * The room page's monitor of the guess game (instead of the settings): the round now, the stream's rounds,
  * what's planned - and the host's controls (pause, +5 min, a hint, end the round, the word queue, a break).
  */
-export default function GameMonitor({ s }) {
+export default function GameMonitor({ s, bonusesUrl }) {
     const { t } = useLaravelReactI18n();
     const [tab, setTab] = useState('now');
     const [m, setM] = useState(null);
@@ -117,7 +118,8 @@ export default function GameMonitor({ s }) {
     const live = c.phase === 'playing' && !c.paused;
     const left = live ? c.left - run : c.left;
     const tabs = [['now', '🔴 ' + t('guessword.mon_now')], ['past', t('guessword.mon_past'), past.length],
-                  ['plan', t('guessword.mon_plan'), plan.queue.length + (plan.next ? 1 : 0)]];
+                  ['plan', t('guessword.mon_plan'), plan.queue.length + (plan.next ? 1 : 0)],
+                  ...(bonusesUrl ? [['bonuses', '🎁 ' + t('guessword.bon_tab')]] : [])];
 
     return (
         <div>
@@ -136,6 +138,7 @@ export default function GameMonitor({ s }) {
                 {tab === 'now' && <Now c={c} left={left} run={run} control={control} t={t} />}
                 {tab === 'past' && <Past past={past} t={t} />}
                 {tab === 'plan' && <Plan plan={plan} round={c.round} control={control} call={s.call} t={t} />}
+                {tab === 'bonuses' && bonusesUrl && <PlayerBonuses url={bonusesUrl} call={s.call} boosts={plan.boosts} />}
             </div>
 
             {msg && (
@@ -373,11 +376,6 @@ function Plan({ plan, round, control, call, t }) {
                                     className={'rounded-md px-2.5 py-1 text-sm font-semibold ' + ((plan.breakAfter || 0) === n ? 'bg-primary-500 text-white' : 'bg-warm-100 text-ink-600')}>{label}</button>
                         ))}
                     </div>
-                </Box>
-                <Box title={t('guessword.mon_pending')}>
-                    <div className="text-sm">💡 {t('guessword.mon_credits')}: {plan.credits.length
-                        ? plan.credits.map(([n, k]) => n + ' ' + k).join(', ') : '—'}</div>
-                    <div className="mt-1 text-sm">⚡ {t('guessword.mon_boosts')}: {plan.boosts.length ? plan.boosts.join(', ') : '—'}</div>
                 </Box>
             </div>
         </div>

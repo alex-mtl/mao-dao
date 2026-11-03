@@ -21,4 +21,9 @@ return [
     'bot_platform_secret' => env('GUESSWORD_BOT_PLATFORM_SECRET'),
 
     'languages' => ['en', 'ru', 'fr', 'es'],
+
+    // what a viewer can have "on account" in a room (App\Games\Guessword\Services\Bonuses): the engine's
+    // gift actions they launch themselves - "подсказка" or a club emote the streamer bound to the kind.
+    // A new kind = the engine's stream-engine/app/bonuses.py KINDS too.
+    'bonus_kinds' => ['hint', 'cake', 'boost', 'multi', 'balloon', 'plane', 'bomber', 'snowball'],
 ];
