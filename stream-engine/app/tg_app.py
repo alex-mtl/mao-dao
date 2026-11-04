@@ -35,7 +35,14 @@ AUTH_MAX_AGE = 24 * 3600          # initData older than this is refused (Telegra
 
 
 def check_init_data(init_data, bot_token, now=None, max_age=AUTH_MAX_AGE):
-    """Telegram Mini App initData -> its "user" dict, or None when the signature or the age is wrong.
+    """Telegram Mini App initData -> its "user" dict, or None when the signature or the age is wrong."""
+    fields = init_data_fields(init_data, bot_token, now, max_age)
+    return fields["user"] if fields else None
+
+
+def init_data_fields(init_data, bot_token, now=None, max_age=AUTH_MAX_AGE):
+    """Telegram Mini App initData -> its signed fields ("user" decoded; "start_param" = the link's ?startapp=),
+    or None when the signature or the age is wrong.
     https://core.telegram.org/bots/webapps#validating-data-received-via-the-mini-app"""
     if not init_data or not bot_token:
         return None
@@ -61,7 +68,7 @@ def check_init_data(init_data, bot_token, now=None, max_age=AUTH_MAX_AGE):
         user = json.loads(pairs.get("user") or "null")
     except (ValueError, TypeError):
         return None
-    return user if isinstance(user, dict) and user.get("id") else None
+    return dict(pairs, user=user) if isinstance(user, dict) and user.get("id") else None
 
 
 def viewer_of(user):
@@ -81,8 +88,9 @@ class Player:
 class TgApp:
     """The Mini App players of one room: who is connected, their words, the slim broadcast."""
 
-    def __init__(self, hub):
+    def __init__(self, hub, title=""):
         self.hub = hub
+        self.title = title            # the Telegram group's name ("" = the common room)
         self.players = {}             # websocket -> Player (one person may have two: phone + desktop)
         self.sent = ""                # the last state sent, as JSON (nothing changed -> nothing sent)
         self.empty_since = time.time()  # nobody has the page open since then (None = someone has)
@@ -128,7 +136,8 @@ class TgApp:
                 "podium": g.podium if reveal else [],
                 "hints": g.hints, "vocab": g.sem.size if g.sem else 0,
                 "players": len(g.players), "guesses": sum(p.guesses for p in g.players.values()),
-                "online": len(self.players), "top": top}
+                "online": len(self.players), "top": top,
+                "leaders": g.stats.leaderboard(10)}         # this room's (group's) wins since the last reset
 
     def mine(self, vid):
         g = self.game
@@ -143,42 +152,71 @@ class TgApp:
                 return i
         return 0
 
+    # ------------------------------------------------------------------ the group admin's panel
+    ADMIN_OPTIONS = ("round_min", "pause", "level")       # GuessGame.OPTIONS the panel may change
+    ADMIN_CMDS = ("pause", "resume", "skip", "extend")    # GuessGame.control commands the panel may send
+
+    def admin_state(self, done=None):
+        g = self.game
+        values = g.get_options()
+        return {"type": "admin", "title": self.title, "done": done,
+                "options": {k: {"value": values.get(k), "choices": g.OPTIONS[k]} for k in self.ADMIN_OPTIONS},
+                "paused": g.frozen is not None and not g.frozen.get("idle"), "phase": g.phase}
+
+    def admin(self, p, msg):
+        """a command from the group admin's panel -> the panel's new state"""
+        g = self.game
+        done = None
+        if isinstance(msg.get("set"), dict):
+            opts = {k: v for k, v in msg["set"].items() if k in self.ADMIN_OPTIONS and v in g.OPTIONS[k]}
+            if opts:
+                self.hub.set_options("guess", opts)
+                done = "set"
+        elif msg.get("cmd") in self.ADMIN_CMDS:
+            cmd = msg["cmd"]
+            if cmd == "pause" and g.frozen is not None and g.frozen.get("idle"):
+                g.frozen.pop("idle")                      # the idle pause becomes the admin's: players don't lift it
+                done = cmd
+            elif g.control(cmd, {"min": 5}):
+                done = cmd
+        elif msg.get("cmd") == "reset_leaders":
+            g.stats.reset()
+            g.stats.save()
+            g.dirty = True
+            done = "reset_leaders"
+        if done:
+            g.save()
+            print(f"[tg-app] admin {p.viewer.name}: {done} {msg.get('set') or ''}")
+        return self.admin_state(done)
+
     # ------------------------------------------------------------------ one player
-    async def session(self, ws):
-        """one websocket of the page, from the auth to the disconnect"""
-        try:
-            first = json.loads(await asyncio.wait_for(ws.receive_text(), 15))
-        except Exception:
-            await ws.close(code=4400)
-            return
-        user = None
-        if isinstance(first, dict):
-            user = check_init_data(first.get("auth"), config.TG_APP_BOT_TOKEN)
-            if not user and config.TG_APP_DEV and first.get("dev"):      # local testing outside Telegram
-                name = str(first["dev"])[:20]
-                user = {"id": int(hashlib.sha1(name.encode()).hexdigest()[:8], 16), "first_name": name}
-        if not user:
-            keys = sorted(dict(parse_qsl(first.get("auth") or "")).keys()) if isinstance(first, dict) else []
-            print(f"[tg-app] auth refused (initData fields: {keys or 'none'})")
-            await ws.send_text(json.dumps({"type": "reject", "reason": "auth"}))
-            await ws.close(code=4401)
-            return
+    async def session(self, ws, user, is_admin=False):
+        """one websocket of the page (already authenticated by tg_bot.gate), until the disconnect"""
         p = Player(ws, viewer_of(user))
+        p.admin = is_admin
         self.players[ws] = p
         self.empty_since = None
         self.wake()
-        print(f"[tg-app] {p.viewer.name} ({p.viewer.id}) in, {len(self.players)} online")
+        print(f"[tg-app] {p.viewer.name} ({p.viewer.id}) in{' as admin' if is_admin else ''}, "
+              f"{len(self.players)} online")
         try:
-            await self.send(ws, {"type": "hello", "me": {"id": p.viewer.id, "name": p.viewer.name}})
+            await self.send(ws, {"type": "hello", "me": {"id": p.viewer.id, "name": p.viewer.name},
+                                 "title": self.title, "admin": is_admin})
             await self.send(ws, dict(self.state(), now=time.time()))
             await self.send(ws, self.mine(p.viewer.id))
+            if is_admin:
+                await self.send(ws, self.admin_state())
             while True:
                 try:
                     msg = json.loads(await ws.receive_text())
                 except ValueError:
                     continue
-                if isinstance(msg, dict) and msg.get("word"):
+                if not isinstance(msg, dict):
+                    continue
+                if msg.get("word"):
                     await self.send(ws, self.guess(p, str(msg["word"])))
+                elif isinstance(msg.get("admin"), dict) and p.admin:
+                    await self.send(ws, self.admin(p, msg["admin"]))
         except Exception:
             pass                                          # disconnected
         finally:

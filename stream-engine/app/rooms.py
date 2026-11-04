@@ -69,7 +69,8 @@ class Room:
             jobs = [hub.ticker(), hub.saver(), hub.broadcaster()]
             if self.cfg.get("tg_app"):                    # players come from the Mini App, not from TikTok
                 from .tg_app import TgApp
-                self.tg_app = self.tg_app or TgApp(hub)
+                if not self.tg_app or self.tg_app.hub is not hub:   # a room dropped from memory has a new hub
+                    self.tg_app = TgApp(hub)
                 jobs.append(self.tg_app.broadcaster())
                 if self.cfg.get("simulate"):
                     jobs.append(hub.simulator())
@@ -141,6 +142,7 @@ class RoomManager:
 
     def __init__(self, data_root):
         self.root = data_root
+        self.tg_bot = None                                # app/tg_bot.TgBot when the Mini App is on
         os.makedirs(data_root, exist_ok=True)
         self.path = os.path.join(data_root, self.FILE)
         live_log.configure(data_root)                     # viewers' avatars of every room: data_root/avatars
@@ -234,6 +236,8 @@ class RoomManager:
         syncs = {}
         while True:
             for rid, room in list(self.rooms.items()):
+                if room.cfg.get("tg_app"):                # Telegram rooms: not the platform's, and loading them
+                    continue                              # here would undo their unloading (tg_bot.reaper)
                 token = current_room.set(rid)
                 try:
                     g = room.ensure_hub().games.get("guess")

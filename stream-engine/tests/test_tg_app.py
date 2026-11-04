@@ -23,10 +23,13 @@ WORDS = ["море", "океан", "волна", "пляж", "берег", "пе
          "стол", "стул", "окно", "дверь", "книга", "лампа", "кошка", "собака", "дерево", "город"]
 
 
-def signed(user, auth_date=None, token=TOKEN):
-    """initData as Telegram makes it (newer clients add "signature", and the hash covers it too)"""
+def signed(user, auth_date=None, token=TOKEN, start=None):
+    """initData as Telegram makes it (newer clients add "signature", and the hash covers it too);
+    start = the link's ?startapp= (start_param)"""
     pairs = {"query_id": "AAE", "user": json.dumps(user, ensure_ascii=False),
              "auth_date": str(int(auth_date or time.time())), "signature": "c2lnbmF0dXJl"}
+    if start:
+        pairs["start_param"] = start
     check = "\n".join(f"{k}={v}" for k, v in sorted(pairs.items()))
     secret = hmac.new(b"WebAppData", token.encode(), hashlib.sha256).digest()
     pairs["hash"] = hmac.new(secret, check.encode(), hashlib.sha256).hexdigest()

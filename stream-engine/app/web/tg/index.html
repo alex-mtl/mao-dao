@@ -63,6 +63,33 @@
                background: linear-gradient(135deg, var(--magenta), var(--violet));
                box-shadow: 0 0 1em rgba(255,43,214,.55); }
 #send button:active { transform: scale(.96); }
+
+#group { text-align: center; margin-top: calc(var(--u) * 1); font: 800 calc(var(--u) * 2.8) var(--font-display);
+         letter-spacing: .12em; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#group:empty { display: none; }
+.tabs span { cursor: pointer; }
+.tabs span:not(.neon-cyan) { color: var(--muted); }
+.tabs i { font-style: normal; color: var(--muted); margin: 0 .5em; }
+.lrow { display: flex; align-items: center; gap: calc(var(--u) * 2); padding: calc(var(--u) * .9) 0;
+        font: 700 calc(var(--u) * 3.8) var(--font-text); }
+.lrow .pos { flex: 0 0 calc(var(--u) * 7); font: 900 calc(var(--u) * 3.4) var(--font-display); color: var(--gold); }
+.lrow .n { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lrow .w { font: 900 calc(var(--u) * 3.4) var(--font-display); color: var(--lime); white-space: nowrap; }
+.lrow .p { font: 800 calc(var(--u) * 2.6) var(--font-display); color: var(--muted); white-space: nowrap; }
+
+#admin { padding: calc(var(--u) * 2) calc(var(--u) * 2.4); flex: none; }
+#admin[hidden] { display: none; }
+#admin .title { display: flex; justify-content: space-between; cursor: pointer; margin-bottom: 0; }
+#admin .body { margin-top: calc(var(--u) * 1.6); display: flex; flex-direction: column; gap: calc(var(--u) * 1.4); }
+#admin.closed .body { display: none; }
+.arow { display: flex; align-items: center; gap: calc(var(--u) * 1.2); flex-wrap: wrap; }
+.arow > b { flex: 0 0 calc(var(--u) * 22); font: 800 calc(var(--u) * 2.6) var(--font-display); color: var(--muted);
+            letter-spacing: .08em; }
+.abtn { border: 1.5px solid var(--line); background: rgba(0,0,0,.35); color: var(--text); cursor: pointer;
+        border-radius: 999px; padding: .35em .8em; font: 800 calc(var(--u) * 3) var(--font-display); }
+.abtn.on { border-color: var(--cyan); color: var(--cyan); box-shadow: 0 0 .6em rgba(0,240,255,.45); }
+.abtn.warn { border-color: var(--pink); color: var(--pink); }
+#adminNote { font: 700 calc(var(--u) * 2.8) var(--font-text); color: var(--lime); min-height: 1.2em; }
 </style>
 </head>
 <body>
@@ -73,7 +100,24 @@
       <div id="timer">–:––</div>
       <div id="playersChip" class="chip">👥 0</div>
     </div>
+    <div id="group"></div>
   </header>
+
+  <section id="admin" class="panel closed" hidden>
+    <div class="title" id="adminHead"><span class="neon-magenta">⚙️ ПАНЕЛЬ АДМИНА</span><span id="adminArrow">▼</span></div>
+    <div class="body">
+      <div class="arow"><b>РАУНД, МИН</b><span id="opt_round_min"></span></div>
+      <div class="arow"><b>ПАУЗА, СЕК</b><span id="opt_pause"></span></div>
+      <div class="arow"><b>СЛОВАРЬ</b><span id="opt_level"></span></div>
+      <div class="arow"><b>ИГРА</b>
+        <button class="abtn" id="aPause" type="button">⏸ ПАУЗА</button>
+        <button class="abtn" id="aExtend" type="button">+5 МИН</button>
+        <button class="abtn" id="aSkip" type="button">⏭ СЛЕДУЮЩИЙ</button>
+      </div>
+      <div class="arow"><b>ЛИДЕРЫ</b><button class="abtn warn" id="aReset" type="button">СБРОСИТЬ ТАБЛИЦУ</button></div>
+      <div id="adminNote"></div>
+    </div>
+  </section>
 
   <section id="roundEnd" class="panel" hidden></section>
 
@@ -82,7 +126,8 @@
   </section>
 
   <section id="recent" class="panel">
-    <div class="title"><span class="neon-cyan">ЛУЧШИЕ СЛОВА</span><small id="stats"></small></div>
+    <div class="title"><span class="tabs"><span id="tabWords" class="neon-cyan">ЛУЧШИЕ СЛОВА</span><i>|</i><span
+      id="tabLeaders">ЛИДЕРЫ</span></span><small id="stats"></small></div>
     <div id="guessList"><div class="empty">ПОДКЛЮЧАЕМСЯ…</div></div>
   </section>
 
@@ -147,10 +192,33 @@ function guessRow(t, isMe, isNew) {                              // the overlay'
   return row;
 }
 
+let tab = 'words';
+function setTab(t) {
+  tab = t;
+  $('tabWords').className = t === 'words' ? 'neon-cyan' : '';
+  $('tabLeaders').className = t === 'leaders' ? 'neon-cyan' : '';
+  drawList();
+}
+$('tabWords').onclick = () => setTab('words');
+$('tabLeaders').onclick = () => setTab('leaders');
+
+function drawLeaders() {                                         // this group's wins since the admin's last reset
+  const box = $('guessList'), rows = (state && state.leaders) || [];
+  if (!rows.length) { box.replaceChildren(el('div', 'empty', 'ПОБЕД ЕЩЁ НЕТ — УГАДАЙТЕ ПЕРВОЕ СЛОВО')); return; }
+  const medals = ['🥇', '🥈', '🥉'];
+  box.replaceChildren(...rows.map((r, i) => {
+    const row = el('div', 'lrow');
+    row.append(el('span', 'pos', medals[i] || String(i + 1)), avatar(r.name, r.avatar), el('span', 'n', r.name),
+               el('span', 'p', r.podiums ? `ПОДИУМ ${r.podiums}` : ''), el('span', 'w', `🏆 ${r.wins}`));
+    return row;
+  }));
+}
+
 function drawList() {
   const s = state; if (!s) return;
   const box = $('guessList');
   $('stats').textContent = `СЛОВ ${fmt(s.guesses)} · ОНЛАЙН ${s.online}`;
+  if (tab === 'leaders') { drawLeaders(); return; }
   if (!s.top.length) {
     box.replaceChildren(el('div', 'empty', s.phase === 'playing' ? 'СЛОВ ЕЩЁ НЕТ — БУДЬТЕ ПЕРВЫМ' : 'ЖДЁМ НАЧАЛА РАУНДА'));
     return;
@@ -215,7 +283,38 @@ function onState(s) {
 }
 
 const REASONS = { slow: 'НЕ ТАК БЫСТРО', one: 'ТОЛЬКО ОДНО СЛОВО', wait: 'РАУНД ЕЩЁ НЕ ИДЁТ',
-                  bad: 'ЭТО НЕ СЛОВО', unknown: 'НЕТ В СЛОВАРЕ', auth: 'ОТКРОЙТЕ ИГРУ ИЗ TELEGRAM' };
+                  bad: 'ЭТО НЕ СЛОВО', unknown: 'НЕТ В СЛОВАРЕ', auth: 'ОТКРОЙТЕ ИГРУ ИЗ TELEGRAM',
+                  not_admin: 'ПАНЕЛЬ — ТОЛЬКО ДЛЯ АДМИНОВ ГРУППЫ', no_room: 'ИГРА ЭТОЙ ГРУППЫ НЕ НАЙДЕНА' };
+const FATAL = { 4401: 'auth', 4403: 'not_admin', 4404: 'no_room' };
+
+// ---- the group admin's panel (the page opened by the bot's /settings button)
+const LABELS = { level: { 1: 'ПРОСТОЙ', 2: 'ОБЫЧНЫЙ', 3: 'СЛОЖНЫЙ' } };
+function adminSend(m) { if (ws && ws.readyState === 1) ws.send(JSON.stringify({ admin: m })); }
+function drawAdmin(a) {
+  $('admin').hidden = false;
+  for (const [k, o] of Object.entries(a.options)) {
+    $('opt_' + k).replaceChildren(...o.choices.map(v => {
+      const b = el('button', 'abtn' + (v === o.value ? ' on' : ''), (LABELS[k] && LABELS[k][v]) || String(v));
+      b.type = 'button';
+      b.onclick = () => adminSend({ set: { [k]: v } });
+      return b;
+    }));
+  }
+  $('aPause').textContent = a.paused ? '▶ ПРОДОЛЖИТЬ' : '⏸ ПАУЗА';
+  $('aPause').onclick = () => adminSend({ cmd: a.paused ? 'resume' : 'pause' });
+  const NOTES = { set: 'СОХРАНЕНО · СО СЛЕДУЮЩЕГО РАУНДА', pause: 'ИГРА НА ПАУЗЕ', resume: 'ИГРА ИДЁТ',
+                  extend: '+5 МИНУТ К РАУНДУ', skip: 'РАУНД ПРОПУЩЕН', reset_leaders: 'ТАБЛИЦА ЛИДЕРОВ СБРОШЕНА' };
+  $('adminNote').textContent = a.done ? NOTES[a.done] || '' : '';
+}
+$('adminHead').onclick = () => { $('admin').classList.toggle('closed');
+  $('adminArrow').textContent = $('admin').classList.contains('closed') ? '▼' : '▲'; };
+$('aExtend').onclick = () => adminSend({ cmd: 'extend' });
+$('aSkip').onclick = () => adminSend({ cmd: 'skip' });
+$('aReset').onclick = () => {
+  const go = () => adminSend({ cmd: 'reset_leaders' });
+  if (tg && tg.showConfirm) tg.showConfirm('Сбросить таблицу лидеров группы?', ok => ok && go());
+  else if (confirm('Сбросить таблицу лидеров группы?')) go();
+};
 function say(text, cls) {
   const m = $('msg');
   m.className = ''; void m.offsetWidth;                          // restart the pop animation
@@ -224,7 +323,12 @@ function say(text, cls) {
 }
 
 function onMsg(m) {
-  if (m.type === 'hello') { me = m.me; retry = 0; say(''); }
+  if (m.type === 'hello') {
+    me = m.me; retry = 0; say('');
+    $('group').textContent = m.title ? '👥 ' + m.title : '';
+    if (m.admin) { $('admin').hidden = false; $('admin').classList.remove('closed'); $('adminArrow').textContent = '▲'; }
+  }
+  else if (m.type === 'admin') drawAdmin(m);
   else if (m.type === 'state') onState(m);
   else if (m.type === 'mine') { mine = m.words || []; $('place').textContent = m.place || '–'; drawMine(); drawList(); }
   else if (m.type === 'guess') {
@@ -246,12 +350,12 @@ function connect() {
   const url = location.href.replace(/^http/, 'ws').replace(/[?#].*$/, '').replace(/\/?$/, '/') + 'ws';
   ws = new WebSocket(url);
   ws.onopen = () => {
-    const dev = new URLSearchParams(location.search).get('dev');
-    ws.send(JSON.stringify(tg && tg.initData ? { auth: tg.initData } : { dev: dev || '' }));
+    const q = new URLSearchParams(location.search);              // local testing: ?dev=Name&start=g<code>
+    ws.send(JSON.stringify(tg && tg.initData ? { auth: tg.initData } : { dev: q.get('dev') || '', start: q.get('start') || '' }));
   };
   ws.onmessage = e => { try { onMsg(JSON.parse(e.data)); } catch (_) {} };
   ws.onclose = e => {
-    if (e.code === 4401) { authFailed = true; say(REASONS.auth, 'err'); return; }
+    if (FATAL[e.code]) { authFailed = true; say(REASONS[FATAL[e.code]], 'err'); return; }
     say('НЕТ СВЯЗИ, ПЕРЕПОДКЛЮЧАЕМСЯ…', 'err');
     setTimeout(connect, Math.min(10000, 500 * 2 ** retry++));
   };

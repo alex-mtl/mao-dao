@@ -344,10 +344,30 @@ did not reach 06.10 in 3 min). Measured 31.10: 90 s of the digest in 280 s, 767 
 `http://localhost:8791/DevDigest/`. Recordings without a known room id are found by their start time
 (extension 0.2.0: `replay` with an empty room id and a start, nearest within 3 min; matches `localhost:*`).
 
-## Telegram Mini App (prototype, 2026-11-03)
+## Telegram Mini App (prototype, 2026-11-03; group rooms 2026-11-04)
 
-One engine room is played from phones inside Telegram instead of a TikTok chat. Code: `stream-engine/app/tg_app.py`
-(protocol in its docstring), page `stream-engine/app/web/tg/index.html`, tests `stream-engine/tests/test_tg_app.py`.
+The game is played from phones inside Telegram instead of a TikTok chat; bot @md_ugadai_slovo_bot. Code:
+`stream-engine/app/tg_app.py` (a room's players, protocol in its docstring), `stream-engine/app/tg_bot.py` (the bot,
+one room per group, the gate, unloading), page `stream-engine/app/web/tg/index.html` (the overlay's own
+`common/neon.css` + `guess/guess.css`, served under `/tg/`), tests `stream-engine/tests/test_tg_app.py`, `test_tg_bot.py`.
+
+- **A room per Telegram group**: players of a group compete only with each other. The bot added to a group (or
+  `/play` there) posts the button `t.me/<bot>?startapp=g<code>`; `<code>` is random (not the chat id), the room is
+  `tgg_<code>` (`rooms.json`: `tg_code`, `tg_chat`, `tg_title`, `tg_left` when the bot was removed - data kept).
+  Telegram signs the parameter into `initData` (`start_param`), the gate (`TgBot.gate`) picks the room by it; no
+  parameter (private chat, menu button) = the common room `TG_APP_ROOM`. A group that becomes a supergroup keeps
+  its room (`migrate_to_chat_id`). Needs the **Main Mini App** turned on in BotFather (Bot Settings → Configure
+  Mini App → the page URL), else `t.me/<bot>?startapp=` links don't open the app.
+- **Group admin panel**: `/settings` in the group → for admins (`getChatMember`) a button with `startapp=a<code>`;
+  the gate asks Telegram again when the page opens (anyone can press the button). The panel (same page): round
+  length, break, dictionary level, pause / resume, +5 min, skip the round, reset the group's leaderboard. Tab
+  "ЛИДЕРЫ" = `stats.leaderboard` of the room (wins since the last reset).
+- **Rooms live only while played**: nobody for `TG_APP_IDLE_SEC` -> the game pauses; nobody for
+  `TG_APP_UNLOAD_SEC` (300) -> a group room is stopped and dropped from memory (round paused on disk); the first
+  player back loads it (a few seconds when the round's table must come from the ranker again). Telegram rooms are
+  skipped by the bonus sync with Laravel (they are not the platform's).
+- **Bot updates**: webhook `POST /tg/hook` (secret header derived from the token), set by the engine at start
+  when `TG_APP_PUBLIC_URL` is set, with the commands (`/play`, `/settings` in groups, `/start` in private).
 
 - **Words never go through Laravel.** The page is a static file served by the engine at `/tg/` (behind nginx:
   `/guessword/engine/tg/`); it opens the websocket `/tg/ws`, sends Telegram's `initData` first, then words.
@@ -361,10 +381,9 @@ One engine room is played from phones inside Telegram instead of a TikTok chat. 
 - **Env** (`/etc/guessword-engine.env`): `TG_APP_ROOM` (room id; empty = off; the engine creates the room, ru,
   `pause` 10 s, `round_min` 10, everyone plays, and keeps it running), `TG_APP_BOT_TOKEN` (the Mini App bot from
   BotFather), `TG_APP_DEV=1` only locally (`/tg/?dev=Name` plays without Telegram), `TG_APP_WORD_SEC` (1.2),
-  `TG_APP_PUSH_SEC` (0.5), `TG_APP_TOP` (40), `TG_APP_IDLE_SEC` (120: nobody has the page open this long -> the game pauses, the host's pause marked `idle`; the first player back lifts it, a pause set on the room page stays). The room still needs the ranker (`RANKER_URLS` + `RANKER_KEY`).
-- **Not done yet**: the bot itself (BotFather: `/newbot`, then `/newapp` or the menu button → the page URL),
-  bonuses/hints for Telegram players, the link Telegram ↔ TikTok account, sending only diffs of the table,
-  nginx `worker_connections` for hundreds of sockets.
+  `TG_APP_PUSH_SEC` (0.5), `TG_APP_TOP` (40), `TG_APP_IDLE_SEC` (120: nobody has the page open this long -> the game pauses, the host's pause marked `idle`; the first player back lifts it, a pause set on the room page stays), `TG_APP_UNLOAD_SEC` (300), `TG_APP_PUBLIC_URL` (`https://mao-dao.com/guessword/engine`: webhook + private-chat button). The rooms still need the ranker (`RANKER_URLS` + `RANKER_KEY`; for now `RANKER_KEY` is gw1's game key - a key of its own in the bot table is the proper fix). Locally `/tg/?dev=Name&start=g<code>` (or `a<code>`: the panel) plays a group room without Telegram.
+- **Not done yet**: bonuses/hints for Telegram players, the link Telegram ↔ TikTok account, sending only diffs of
+  the table, nginx `worker_connections` for hundreds of sockets, languages other than Russian.
 
 ## Load and scaling (measured 2026-10-28)
 

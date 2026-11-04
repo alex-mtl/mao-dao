@@ -418,11 +418,8 @@ def create_app(manager):
 
     # ------------------------------------------------------------------ Telegram Mini App (app/tg_app.py)
     def tg_room():
-        room = manager.rooms.get(config.TG_APP_ROOM) if config.TG_APP_ROOM else None
-        if not room or not room.tg_app:
+        if not getattr(manager, "tg_bot", None):
             raise HTTPException(404, "not found")
-        current_room.set(room.id)
-        return room
 
     @app.get("/tg")
     def tg_root():
@@ -448,13 +445,33 @@ def create_app(manager):
 
     @app.websocket("/tg/ws")
     async def tg_ws(websocket: WebSocket):
-        room = manager.rooms.get(config.TG_APP_ROOM) if config.TG_APP_ROOM else None
+        """every Mini App page: the gate picks the room (the group's, or the common one) by the signed start_param"""
         await websocket.accept()
-        if not room or not room.tg_app:
+        if not getattr(manager, "tg_bot", None):
             await websocket.close(code=4404)
             return
-        current_room.set(room.id)
-        await room.tg_app.session(websocket)
+        await manager.tg_bot.gate(websocket)
+
+    @app.post("/tg/hook")
+    async def tg_hook(req: Request):
+        """the Mini App bot's updates from Telegram (setWebhook with our secret header)"""
+        from .tg_bot import hook_secret
+        bot = getattr(manager, "tg_bot", None)
+        if not bot or not secrets.compare_digest(req.headers.get("x-telegram-bot-api-secret-token", ""), hook_secret()):
+            raise HTTPException(403, "forbidden")
+        try:
+            update = await req.json()
+        except Exception:
+            return {"ok": True}
+        import asyncio as _asyncio
+
+        async def handle():
+            try:
+                await bot.on_update(update)
+            except Exception as e:
+                print(f"[tg-bot] update error: {type(e).__name__}: {e}")
+        _asyncio.get_running_loop().create_task(handle())     # Telegram gets its 200 at once
+        return {"ok": True}
 
     # ------------------------------------------------------------------ a room's pages and files
     @app.get("/r/{token}")
