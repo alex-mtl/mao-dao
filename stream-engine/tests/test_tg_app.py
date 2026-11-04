@@ -24,9 +24,9 @@ WORDS = ["море", "океан", "волна", "пляж", "берег", "пе
 
 
 def signed(user, auth_date=None, token=TOKEN):
-    """initData as Telegram makes it"""
+    """initData as Telegram makes it (newer clients add "signature", and the hash covers it too)"""
     pairs = {"query_id": "AAE", "user": json.dumps(user, ensure_ascii=False),
-             "auth_date": str(int(auth_date or time.time()))}
+             "auth_date": str(int(auth_date or time.time())), "signature": "c2lnbmF0dXJl"}
     check = "\n".join(f"{k}={v}" for k, v in sorted(pairs.items()))
     secret = hmac.new(b"WebAppData", token.encode(), hashlib.sha256).digest()
     pairs["hash"] = hmac.new(secret, check.encode(), hashlib.sha256).hexdigest()

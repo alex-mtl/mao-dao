@@ -44,11 +44,16 @@ def check_init_data(init_data, bot_token, now=None, max_age=AUTH_MAX_AGE):
     except ValueError:
         return None
     got = pairs.pop("hash", "")
-    pairs.pop("signature", None)  # the third-party (Ed25519) signature is not part of the bot-token check
-    check = "\n".join(f"{k}={v}" for k, v in sorted(pairs.items()))
     secret = hmac.new(b"WebAppData", bot_token.encode(), hashlib.sha256).digest()
-    want = hmac.new(secret, check.encode(), hashlib.sha256).hexdigest()
-    if not got or not hmac.compare_digest(want, got):
+
+    def signed_by_bot(fields):
+        check = "\n".join(f"{k}={v}" for k, v in sorted(fields.items()))
+        return hmac.compare_digest(hmac.new(secret, check.encode(), hashlib.sha256).hexdigest(), got)
+
+    # every field but "hash" is signed, newer clients' "signature" included; a client that leaves it out
+    # of the hash is accepted too (either way it is the bot token's HMAC: nobody else can make it)
+    if not got or not (signed_by_bot(pairs) or ("signature" in pairs and signed_by_bot(
+            {k: v for k, v in pairs.items() if k != "signature"}))):
         return None
     try:
         if (now or time.time()) - int(pairs.get("auth_date", "0")) > max_age:
@@ -129,6 +134,8 @@ class TgApp:
                 name = str(first["dev"])[:20]
                 user = {"id": int(hashlib.sha1(name.encode()).hexdigest()[:8], 16), "first_name": name}
         if not user:
+            keys = sorted(dict(parse_qsl(first.get("auth") or "")).keys()) if isinstance(first, dict) else []
+            print(f"[tg-app] auth refused (initData fields: {keys or 'none'})")
             await ws.send_text(json.dumps({"type": "reject", "reason": "auth"}))
             await ws.close(code=4401)
             return
