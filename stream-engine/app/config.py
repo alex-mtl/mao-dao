@@ -101,4 +101,5 @@ TG_APP_DEV = _b("TG_APP_DEV")                            # local testing: player
 TG_APP_WORD_SEC = _f("TG_APP_WORD_SEC", 1.2)              # a player's words at most this often (no brute force)
 TG_APP_PUSH_SEC = _f("TG_APP_PUSH_SEC", 0.5)              # the table goes to the phones at most this often
 TG_APP_TOP = _i("TG_APP_TOP", 40)                        # this many closest words on the screen
+TG_APP_IDLE_SEC = _f("TG_APP_IDLE_SEC", 120)              # nobody has the page open this long -> the game pauses
 GOAL_TARGET = _i("GOAL_TARGET", 0)                       # follows this stream; 0 hides the goal bar

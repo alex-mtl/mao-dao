@@ -361,7 +361,7 @@ One engine room is played from phones inside Telegram instead of a TikTok chat. 
 - **Env** (`/etc/guessword-engine.env`): `TG_APP_ROOM` (room id; empty = off; the engine creates the room, ru,
   `pause` 10 s, `round_min` 10, everyone plays, and keeps it running), `TG_APP_BOT_TOKEN` (the Mini App bot from
   BotFather), `TG_APP_DEV=1` only locally (`/tg/?dev=Name` plays without Telegram), `TG_APP_WORD_SEC` (1.2),
-  `TG_APP_PUSH_SEC` (0.5), `TG_APP_TOP` (40). The room still needs the ranker (`RANKER_URLS` + `RANKER_KEY`).
+  `TG_APP_PUSH_SEC` (0.5), `TG_APP_TOP` (40), `TG_APP_IDLE_SEC` (120: nobody has the page open this long -> the game pauses, the host's pause marked `idle`; the first player back lifts it, a pause set on the room page stays). The room still needs the ranker (`RANKER_URLS` + `RANKER_KEY`).
 - **Not done yet**: the bot itself (BotFather: `/newbot`, then `/newapp` or the menu button → the page URL),
   bonuses/hints for Telegram players, the link Telegram ↔ TikTok account, sending only diffs of the table,
   nginx `worker_connections` for hundreds of sockets.

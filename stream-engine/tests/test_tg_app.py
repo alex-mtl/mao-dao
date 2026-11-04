@@ -119,5 +119,31 @@ class GuessFromPhoneTest(unittest.TestCase):
         self.assertEqual(app.guess(p, WORDS[0], time.time() + 5)["reason"], "wait")
 
 
+class IdleTest(GuessFromPhoneTest):
+    """nobody has the page open -> the game pauses; the first player back lifts only that pause"""
+    test_word_counts_and_answers_the_player = test_rate_limit_and_bad_words = test_secret_wins = None
+
+    def test_idle_pause_and_wake(self):
+        hub, g, app = self.make()
+        now = time.time()
+        app.empty_since = now
+        app.idle_check(now + config.TG_APP_IDLE_SEC - 1)
+        self.assertIsNone(g.frozen)                                   # not yet
+        app.idle_check(now + config.TG_APP_IDLE_SEC + 1)
+        self.assertTrue(g.frozen and g.frozen["idle"])
+        self.assertEqual(app.guess(Player(None, viewer_of({"id": 9})), WORDS[0], now + 300)["reason"], "wait")
+        app.players["ws"] = object()
+        app.wake(now + 400)
+        self.assertIsNone(g.frozen)
+        app.idle_check(now + 401)
+        self.assertIsNone(app.empty_since)
+
+    def test_host_pause_stays(self):
+        hub, g, app = self.make()
+        g.host_pause(time.time())                                     # the host paused it on the room page
+        app.wake()
+        self.assertIsNotNone(g.frozen)
+
+
 if __name__ == "__main__":
     unittest.main()

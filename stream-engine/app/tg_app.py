@@ -85,6 +85,30 @@ class TgApp:
         self.hub = hub
         self.players = {}             # websocket -> Player (one person may have two: phone + desktop)
         self.sent = ""                # the last state sent, as JSON (nothing changed -> nothing sent)
+        self.empty_since = time.time()  # nobody has the page open since then (None = someone has)
+
+    # ------------------------------------------------------------------ nobody plays -> the game stands still
+    # The host's pause of the game (timers frozen, no words, no new rounds, no ranker calls), marked "idle" so that
+    # the first player back lifts it and a pause the host set on the room page stays. The mark is saved with the
+    # pause, so it survives a restart of the engine.
+    def idle_check(self, now=None):
+        now = now or time.time()
+        g = self.game
+        if self.players:
+            self.empty_since = None
+            return
+        if self.empty_since is None:
+            self.empty_since = now
+        if now - self.empty_since >= config.TG_APP_IDLE_SEC and g.frozen is None and g.host_pause(now):
+            g.frozen["idle"] = True
+            g.save()
+            print(f"[tg-app] nobody for {now - self.empty_since:.0f}s: the game is paused")
+
+    def wake(self, now=None):
+        g = self.game
+        if g.frozen is not None and g.frozen.get("idle") and g.host_resume(now or time.time()):
+            g.save()
+            print("[tg-app] a player came: the game goes on")
 
     @property
     def game(self):
@@ -141,6 +165,8 @@ class TgApp:
             return
         p = Player(ws, viewer_of(user))
         self.players[ws] = p
+        self.empty_since = None
+        self.wake()
         print(f"[tg-app] {p.viewer.name} ({p.viewer.id}) in, {len(self.players)} online")
         try:
             await self.send(ws, {"type": "hello", "me": {"id": p.viewer.id, "name": p.viewer.name}})
@@ -191,6 +217,10 @@ class TgApp:
         """the state to every player, at most every TG_APP_PUSH_SEC, only when it changed"""
         while True:
             await asyncio.sleep(config.TG_APP_PUSH_SEC)
+            try:
+                self.idle_check()
+            except Exception as e:
+                print("[tg-app] idle check error:", type(e).__name__, e)
             if not self.players:
                 continue
             try:
