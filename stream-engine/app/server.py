@@ -433,6 +433,19 @@ def create_app(manager):
         tg_room()
         return FileResponse(os.path.join(WEB, "tg", "index.html"))
 
+    @app.get("/tg/{path:path}")
+    def tg_file(path: str):
+        """the overlay's own styles and fonts (common/, guess/): the Mini App looks exactly like the game on stream"""
+        tg_room()
+        clean = path.strip("/")
+        if clean.split("/")[0] not in ("common", "guess") or clean.endswith(".html"):
+            raise HTTPException(404, "not found")
+        web = os.path.realpath(WEB)
+        full = os.path.realpath(os.path.join(web, clean))
+        if not full.startswith(web + os.sep) or not os.path.isfile(full):
+            raise HTTPException(404, "not found")
+        return FileResponse(full)
+
     @app.websocket("/tg/ws")
     async def tg_ws(websocket: WebSocket):
         room = manager.rooms.get(config.TG_APP_ROOM) if config.TG_APP_ROOM else None

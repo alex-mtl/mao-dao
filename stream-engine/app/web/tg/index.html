@@ -5,140 +5,203 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <title>Угадай слово</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
+<!-- the overlay's own look: tokens, fonts, rows, timer, chips, hint card (a change there reaches this page too) -->
+<link rel="stylesheet" href="common/neon.css">
+<link rel="stylesheet" href="guess/guess.css">
 <style>
-:root {
-  --bg: var(--tg-theme-bg-color, #17212b);
-  --bg2: var(--tg-theme-secondary-bg-color, #232e3c);
-  --text: var(--tg-theme-text-color, #f5f5f5);
-  --hint: var(--tg-theme-hint-color, #8b9aa7);
-  --accent: var(--tg-theme-button-color, #5288c1);
-  --accent-text: var(--tg-theme-button-text-color, #fff);
-  --me: color-mix(in srgb, var(--accent) 22%, transparent);
-  --danger: #e26a5a;
-}
-* { box-sizing: border-box; }
-html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
-  font: 15px/1.3 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-body { display: flex; flex-direction: column; height: var(--tg-viewport-stable-height, 100vh); overflow: hidden;
-  width: 100%; max-width: 100vw; }
-body > * { min-width: 0; }
-.bar { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 4px 8px;
-  padding: 10px 12px 6px; font-size: 12px; color: var(--hint); }
-.bar b { color: var(--text); font-weight: 600; }
-#timer { font-variant-numeric: tabular-nums; font-size: 17px; color: var(--text); font-weight: 600; }
-.banner { margin: 0 12px 6px; padding: 10px 12px; border-radius: 10px; background: var(--bg2); font-size: 14px; }
-.banner:empty { display: none; }
-.banner .big { font-size: 22px; font-weight: 700; letter-spacing: .04em; }
-#list { flex: 1; overflow-y: auto; padding: 0 6px; -webkit-overflow-scrolling: touch; }
-.row { display: grid; grid-template-columns: 34px 1fr 74px 26px; gap: 8px; align-items: center;
-  padding: 4px 6px; border-radius: 8px; }
-.row.me { background: var(--me); }
-.row.new { animation: flash .8s ease-out; }
-@keyframes flash { from { background: color-mix(in srgb, var(--accent) 45%, transparent); } }
-.rank { color: var(--hint); font-size: 12px; font-variant-numeric: tabular-nums; text-align: right; }
-.word { font-weight: 500; text-transform: lowercase; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.word small { color: var(--hint); font-weight: 400; }
-.meter { height: 6px; border-radius: 3px; background: color-mix(in srgb, var(--hint) 25%, transparent); overflow: hidden; }
-.meter i { display: block; height: 100%; border-radius: 3px; }
-.av { width: 24px; height: 24px; border-radius: 50%; background: var(--bg2); color: var(--hint); font-size: 11px;
-  display: flex; align-items: center; justify-content: center; overflow: hidden; }
-.av img { width: 100%; height: 100%; object-fit: cover; }
-.empty { color: var(--hint); text-align: center; padding: 32px 16px; font-size: 14px; }
-.mine-h { display: flex; justify-content: space-between; padding: 6px 12px 4px; font-size: 12px; color: var(--hint);
-  border-top: 1px solid color-mix(in srgb, var(--hint) 20%, transparent); }
-#mine { display: flex; gap: 4px; padding: 0 12px 6px; overflow-x: auto; white-space: nowrap; min-height: 26px; }
-.chip { padding: 3px 8px; border-radius: 12px; background: var(--bg2); font-size: 12px; text-transform: lowercase; }
-.chip span { color: var(--hint); margin-left: 3px; }
-form { display: flex; gap: 6px; padding: 6px 10px calc(8px + env(safe-area-inset-bottom)); background: var(--bg); }
-input { flex: 1; min-width: 0; font-size: 16px; padding: 10px 12px; border-radius: 10px; border: 0; outline: 0;
-  background: var(--bg2); color: var(--text); }
-button { border: 0; border-radius: 10px; padding: 0 16px; font-size: 15px; font-weight: 600;
-  background: var(--accent); color: var(--accent-text); }
-#msg { min-height: 18px; padding: 0 12px; font-size: 12px; color: var(--hint); }
-#msg.err { color: var(--danger); }
+/* only what the stream overlay has no need for: typing, own words, the round's end without the big screens */
+#stage { height: var(--tg-viewport-stable-height, 100vh); padding-bottom: 0; gap: calc(var(--u) * 1.6); }
+#recent { display: flex; flex-direction: column; padding: calc(var(--u) * 2) calc(var(--u) * 2.4); }
+#recent > .title { display: flex; justify-content: space-between; align-items: baseline; }
+#recent > .title small { font: 700 calc(var(--u) * 2.6) var(--font-display); color: var(--muted); letter-spacing: .06em; }
+#guessList { flex: 1; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none;
+             padding: calc(var(--u) * .6) calc(var(--u) * .4); }
+#guessList::-webkit-scrollbar { display: none; }
+.grow.me .main { outline: calc(var(--u) * .5) solid var(--lime); outline-offset: calc(var(--u) * .4);
+                 border-radius: calc(var(--u) * 1.4); }
+.grow.me .who .n { color: var(--lime); }
+.empty { color: var(--muted); text-align: center; padding: calc(var(--u) * 8) calc(var(--u) * 4);
+         font: 700 calc(var(--u) * 3.4) var(--font-display); letter-spacing: .06em; }
+
+#roundEnd { text-align: center; padding: calc(var(--u) * 2.4) calc(var(--u) * 3); }
+#roundEnd[hidden], #events[hidden] { display: none; }
+#roundEnd .label { font: 800 calc(var(--u) * 2.8) var(--font-display); color: var(--muted); letter-spacing: .3em; }
+#roundEnd .word { font: 900 calc(var(--u) * 9)/1.15 var(--font-display); letter-spacing: .1em; margin: .1em 0; }
+#roundEnd .who { font: 700 calc(var(--u) * 3.8) var(--font-text); }
+#roundEnd .pod { display: flex; justify-content: center; gap: calc(var(--u) * 3); margin-top: calc(var(--u) * 1.4);
+                 font: 700 calc(var(--u) * 3.4) var(--font-text); }
+#roundEnd .next { margin-top: calc(var(--u) * 1.4); font: 800 calc(var(--u) * 3) var(--font-display); color: var(--cyan); }
+
+#me { padding: calc(var(--u) * 1.6) calc(var(--u) * 2.4); flex: none; }
+#me .head { display: flex; justify-content: space-between; align-items: baseline;
+            font: 800 calc(var(--u) * 2.8) var(--font-display); letter-spacing: .12em; color: var(--muted); }
+#me .head b { font-size: calc(var(--u) * 4.2); }
+#mine { display: flex; gap: calc(var(--u) * 1.2); overflow-x: auto; scrollbar-width: none; margin-top: calc(var(--u) * 1.2);
+        min-height: calc(var(--u) * 5.4); align-items: center; }
+#mine::-webkit-scrollbar { display: none; }
+.mchip { display: inline-flex; align-items: baseline; gap: .35em; flex: none; padding: .25em .55em;
+         border-radius: calc(var(--u) * 1.2); color: #000; font: 800 calc(var(--u) * 3.4)/1 var(--font-display);
+         white-space: nowrap; }
+.mchip small { font-size: .72em; font-weight: 900; }
+#mine .none { color: var(--muted); font: 700 calc(var(--u) * 3.2) var(--font-text); }
+
+#msg { min-height: calc(var(--u) * 5.6); display: flex; align-items: center; justify-content: center; gap: .5em;
+       font: 800 calc(var(--u) * 3.6) var(--font-display); letter-spacing: .04em; text-align: center; flex: none; }
+#msg.err { color: var(--pink); text-shadow: 0 0 .4em var(--pink); }
+#msg.pop { animation: pop .5s; }
+
+#send { display: flex; gap: calc(var(--u) * 1.6); flex: none;
+        padding: 0 calc(var(--u) * 1) calc(var(--u) * 2.4 + env(safe-area-inset-bottom)); }
+#w { flex: 1; min-width: 0; font: 800 max(16px, calc(var(--u) * 4.4)) var(--font-display); letter-spacing: .06em;
+     text-transform: uppercase; color: #fff; padding: .55em .8em; border-radius: calc(var(--u) * 3);
+     border: 1.5px solid var(--line); background: rgba(10, 0, 25, .85); outline: none;
+     -webkit-user-select: text; user-select: text; }
+#w::placeholder { color: var(--muted); text-transform: none; letter-spacing: .02em; font-family: var(--font-text); }
+#w:focus { border-color: var(--cyan); box-shadow: 0 0 .8em rgba(0,240,255,.45); }
+#send button { flex: none; border: 0; border-radius: calc(var(--u) * 3); padding: 0 1.1em; cursor: pointer;
+               font: 900 calc(var(--u) * 3.6) var(--font-display); letter-spacing: .1em; color: #fff;
+               background: linear-gradient(135deg, var(--magenta), var(--violet));
+               box-shadow: 0 0 1em rgba(255,43,214,.55); }
+#send button:active { transform: scale(.96); }
 </style>
 </head>
 <body>
-<div class="bar">
-  <span id="timer">--:--</span>
-  <span>раунд <b id="round">–</b> · игроков <b id="players">0</b> · онлайн <b id="online">0</b></span>
-  <span>слов <b id="guesses">0</b></span>
+<div id="stage">
+  <header id="top">
+    <div class="toprow">
+      <div id="roundChip" class="chip">РАУНД –</div>
+      <div id="timer">–:––</div>
+      <div id="playersChip" class="chip">👥 0</div>
+    </div>
+  </header>
+
+  <section id="roundEnd" class="panel" hidden></section>
+
+  <section id="events" hidden>
+    <div id="hintCard"><span class="hk">💡 ПОДСКАЗКА</span><span id="hintText"></span><b id="hintWord"></b></div>
+  </section>
+
+  <section id="recent" class="panel">
+    <div class="title"><span class="neon-cyan">ЛУЧШИЕ СЛОВА</span><small id="stats"></small></div>
+    <div id="guessList"><div class="empty">ПОДКЛЮЧАЕМСЯ…</div></div>
+  </section>
+
+  <section id="me" class="panel">
+    <div class="head"><span>МОИ СЛОВА</span><span>МЕСТО <b id="place" class="neon-gold">–</b></span></div>
+    <div id="mine"></div>
+  </section>
+
+  <div id="msg"></div>
+  <form id="send" autocomplete="off">
+    <input id="w" placeholder="напишите одно слово" maxlength="30" enterkeyhint="send"
+           autocapitalize="off" autocorrect="off" spellcheck="false">
+    <button type="submit">ОК</button>
+  </form>
 </div>
-<div class="banner" id="banner"></div>
-<div id="list"><div class="empty">Подключаемся…</div></div>
-<div class="mine-h"><span>Мои слова</span><span>моё место <b id="place">–</b></span></div>
-<div id="mine"></div>
-<div id="msg"></div>
-<form id="f" autocomplete="off">
-  <input id="w" placeholder="ваше слово" maxlength="30" enterkeyhint="send" autocapitalize="off" autocorrect="off" spellcheck="false">
-  <button type="submit">➤</button>
-</form>
 <script>
 const tg = window.Telegram && Telegram.WebApp;
-if (tg) { tg.ready(); tg.expand(); }
+if (tg) {
+  tg.ready(); tg.expand();
+  try { tg.setHeaderColor('#07020f'); tg.setBackgroundColor('#07020f'); } catch (_) {}
+}
 const $ = id => document.getElementById(id);
 const BOUNDS = [1, 10, 50, 200, 1000, 5000];                      // the engine's TEMPERATURE_BOUNDS
-const COLORS = ['#ff3b30', '#ff6a3d', '#ff9f1a', '#ffcc00', '#7ec850', '#4fb3d9', '#7a8a9a'];
-const color = r => COLORS[BOUNDS.findIndex(b => r <= b) < 0 ? 6 : BOUNDS.findIndex(b => r <= b)];
-let authFailed = false, me = null, state = null, mine = [], minesRound = null, clock = 0, ws = null, retry = 0, seen = new Set();
+const KEYS = ['perfect', 'burning', 'veryhot', 'hot', 'warm', 'cold', 'freezing'];
+const tKey = r => KEYS[BOUNDS.findIndex(b => r <= b) < 0 ? 6 : BOUNDS.findIndex(b => r <= b)];
+const fmt = n => Number(n).toLocaleString('ru');
+let authFailed = false, me = null, state = null, mine = [], clock = 0, ws = null, retry = 0, seen = new Set();
 
-function esc(s) { return String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
-function initials(n) { return esc((n || '?').split(/\s+/).map(x => x[0]).join('').slice(0, 2).toUpperCase()); }
-function meter(r) {                                              // closeness on a log scale: #1 full, the last word empty
-  const v = state && state.vocab ? state.vocab : 50000;
-  return Math.max(3, Math.round(100 * (1 - Math.log(r) / Math.log(v))));
+function el(tag, cls, text) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text != null) e.textContent = text;
+  return e;
 }
-function say(text, err) { const m = $('msg'); m.textContent = text || ''; m.className = err ? 'err' : ''; }
+function avatar(name, url) {                                     // as on the overlay: a photo or a coloured initial
+  const hue = [...(name || '?')].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7);
+  const fallback = () => {
+    const d = el('span', 'av', ((name || '?').trim()[0] || '?').toUpperCase());
+    d.style.background = `hsl(${hue} 90% 60%)`;
+    return d;
+  };
+  if (!url || !/^https:\/\//.test(url)) return fallback();
+  const img = el('img', 'av');
+  img.referrerPolicy = 'no-referrer'; img.alt = '';
+  img.onerror = () => img.replaceWith(fallback());
+  img.src = url;
+  return img;
+}
+const closeness = r => Math.max(0.03, 1 - Math.log(Math.max(1, r)) / Math.log((state && state.vocab) || 50000));
+
+function guessRow(t, isMe, isNew) {                              // the overlay's row: [plate: rank WORD] [avatar name +N]
+  const k = tKey(t.r);
+  const row = el('div', 'grow' + (isMe ? ' me' : '') + (isNew ? ' new' : ''));
+  const main = el('div', 'main');
+  const bar = el('i', 'bar t-' + k);
+  bar.style.width = Math.round(closeness(t.r) * 100) + '%';
+  main.append(bar, el('span', 'rk t-' + k, fmt(t.r)), el('span', 'wd', t.w));
+  const who = el('div', 'who');
+  who.append(avatar(t.n, t.a), el('span', 'n', t.n));
+  if (t.c > 1) who.append(el('span', 'cnt', '+' + (t.c - 1)));
+  row.append(main, who);
+  return row;
+}
 
 function drawList() {
   const s = state; if (!s) return;
-  const list = $('list');
+  const box = $('guessList');
+  $('stats').textContent = `СЛОВ ${fmt(s.guesses)} · ОНЛАЙН ${s.online}`;
   if (!s.top.length) {
-    list.innerHTML = `<div class="empty">${s.phase === 'playing' ? 'Слов ещё нет — будьте первым' : 'Ждём начала раунда'}</div>`;
+    box.replaceChildren(el('div', 'empty', s.phase === 'playing' ? 'СЛОВ ЕЩЁ НЕТ — БУДЬТЕ ПЕРВЫМ' : 'ЖДЁМ НАЧАЛА РАУНДА'));
     return;
   }
-  list.innerHTML = s.top.map(t => {
-    const isMe = me && mine.some(m => m[0] === t.w);
-    const fresh = !seen.has(s.roundId + t.w); seen.add(s.roundId + t.w);
-    return `<div class="row${isMe ? ' me' : ''}${fresh && seen.size > s.top.length ? ' new' : ''}">
-      <span class="rank">#${t.r}</span>
-      <span class="word">${esc(t.w)}${t.c > 1 ? ` <small>×${t.c}</small>` : ''}</span>
-      <span class="meter"><i style="width:${meter(t.r)}%;background:${color(t.r)}"></i></span>
-      <span class="av" title="${esc(t.n)}">${t.a ? `<img src="${esc(t.a)}" alt="" referrerpolicy="no-referrer">` : initials(t.n)}</span>
-    </div>`;
-  }).join('');
+  const first = !seen.size;
+  box.replaceChildren(...s.top.map(t => {
+    const key = s.roundId + ':' + t.w, isNew = !first && !seen.has(key);
+    seen.add(key);
+    return guessRow(t, mine.some(m => m[0] === t.w), isNew);
+  }));
 }
 
 function drawMine() {
-  $('mine').innerHTML = mine.length
-    ? mine.map(m => `<span class="chip">${esc(m[0])}<span>#${m[1]}</span></span>`).join('')
-    : '<span style="color:var(--hint);font-size:12px">пока нет</span>';
+  const box = $('mine');
+  if (!mine.length) { box.replaceChildren(el('span', 'none', 'пока нет — напишите слово внизу')); return; }
+  box.replaceChildren(...mine.map(m => {
+    const c = el('span', 'mchip');
+    c.style.background = 'var(--t-' + tKey(m[1]) + ')';
+    c.append(el('span', '', m[0]), el('small', '', '#' + fmt(m[1])));
+    return c;
+  }));
 }
 
-function drawBanner() {
-  const s = state, b = $('banner');
-  if (!s) return;
-  if (s.paused) { b.innerHTML = 'Игра на паузе'; return; }
-  if (s.phase === 'countdown') { b.innerHTML = '<span class="big">Раунд начинается…</span>'; return; }
-  if (s.secret) {
-    const w = s.winner ? ` · угадал <b>${esc(s.winner.name)}</b>` : ' · никто не угадал';
-    const pod = (s.podium || []).slice(0, 3).map((p, i) => `${['🥇','🥈','🥉'][i]} ${esc(p.name)}`).join('  ');
-    b.innerHTML = `Слово раунда: <span class="big">${esc(s.secret)}</span>${w}${pod ? `<div style="margin-top:4px">${pod}</div>` : ''}`;
-    return;
-  }
-  const h = (s.hints || []).slice(-1)[0];
-  const HINT = { semantic: 'близкое слово', category: 'тема', letter: 'начинается на', length: 'длина', distance: 'рядом со словом' };
-  b.innerHTML = h ? `Подсказка · ${HINT[h.type] || h.type}: <b>${esc(String(h.word || '').toLowerCase())}</b>` : '';
+function drawRoundEnd() {
+  const s = state, box = $('roundEnd');
+  if (!s || !s.secret) { box.hidden = true; return; }
+  box.hidden = false;
+  const medals = ['🥇', '🥈', '🥉'];
+  const pod = el('div', 'pod');
+  (s.podium || []).slice(0, 3).forEach((p, i) => pod.append(el('span', '', `${medals[i]} ${p.name}`)));
+  box.replaceChildren(
+    el('div', 'label', 'СЛОВО РАУНДА'),
+    el('div', 'word neon-magenta', s.secret),
+    el('div', 'who', s.winner ? `угадал ${s.winner.name}` : 'никто не угадал'),
+    pod, el('div', 'next', 'СЛЕДУЮЩИЙ РАУНД СКОРО'));
+}
+
+const HINT = { semantic: 'близкое слово', category: 'тема', letter: 'начинается на', length: 'длина', distance: 'рядом со словом' };
+function drawHint() {
+  const h = state && state.phase === 'playing' && (state.hints || []).slice(-1)[0];
+  $('events').hidden = !h;
+  if (h) { $('hintText').textContent = HINT[h.type] || h.type; $('hintWord').textContent = String(h.word || ''); }
 }
 
 function tickTimer() {
   const s = state; if (!s) return;
   const now = Date.now() / 1000 + clock;
-  let left = 0, label = '';
-  if (s.phase === 'playing' && s.endsAt) left = s.endsAt - now;
-  else if (s.phaseUntil) { left = s.phaseUntil - now; label = 'пауза '; }
-  left = Math.max(0, Math.round(left));
-  $('timer').textContent = label + String(Math.floor(left / 60)).padStart(2, '0') + ':' + String(left % 60).padStart(2, '0');
+  const left = Math.max(0, Math.round((s.phase === 'playing' && s.endsAt ? s.endsAt : s.phaseUntil || now) - now));
+  const t = $('timer');
+  t.textContent = Math.floor(left / 60) + ':' + String(left % 60).padStart(2, '0');
+  t.classList.toggle('low', s.phase === 'playing' && left <= 30);
 }
 setInterval(tickTimer, 250);
 
@@ -146,13 +209,19 @@ function onState(s) {
   if (state && state.roundId !== s.roundId) { mine = []; seen = new Set(); $('place').textContent = '–'; drawMine(); }
   state = s;
   if (s.now) clock = s.now - Date.now() / 1000;
-  $('round').textContent = s.roundId || '–';
-  $('players').textContent = s.players; $('online').textContent = s.online; $('guesses').textContent = s.guesses;
-  drawBanner(); drawList(); tickTimer();
+  $('roundChip').textContent = s.paused ? 'ПАУЗА' : 'РАУНД ' + (s.roundId || '–');
+  $('playersChip').textContent = '👥 ' + s.players;
+  drawRoundEnd(); drawHint(); drawList(); tickTimer();
 }
 
-const REASONS = { slow: 'Не так быстро', one: 'Одно слово', wait: 'Раунд ещё не идёт',
-                  bad: 'Это не слово', unknown: 'Такого слова нет в словаре', auth: 'Откройте игру из Telegram' };
+const REASONS = { slow: 'НЕ ТАК БЫСТРО', one: 'ТОЛЬКО ОДНО СЛОВО', wait: 'РАУНД ЕЩЁ НЕ ИДЁТ',
+                  bad: 'ЭТО НЕ СЛОВО', unknown: 'НЕТ В СЛОВАРЕ', auth: 'ОТКРОЙТЕ ИГРУ ИЗ TELEGRAM' };
+function say(text, cls) {
+  const m = $('msg');
+  m.className = ''; void m.offsetWidth;                          // restart the pop animation
+  m.className = (cls || '') + ' pop';
+  if (typeof text === 'string') m.textContent = text; else m.replaceChildren(...text);
+}
 
 function onMsg(m) {
   if (m.type === 'hello') { me = m.me; retry = 0; say(''); }
@@ -161,11 +230,14 @@ function onMsg(m) {
   else if (m.type === 'guess') {
     mine = m.words || mine;
     $('place').textContent = m.place || '–';
-    say(m.rank === 1 ? `🎉 ${m.word.toLowerCase()} — это оно!` : `${m.word.toLowerCase()} — #${m.rank}${m.again ? ' (уже есть у вас)' : ''}`);
+    const k = tKey(m.rank);
+    say(m.rank === 1 ? [el('span', 'neon-gold', '🎉 ' + m.word + ' — ЭТО ОНО!')]
+                     : [el('span', '', m.word), el('span', 't-' + k, '#' + fmt(m.rank)),
+                        ...(m.again ? [el('span', '', '· УЖЕ ЕСТЬ')] : [])]);
     if (tg && tg.HapticFeedback) tg.HapticFeedback.impactOccurred(m.rank <= 10 ? 'heavy' : 'light');
     drawMine(); drawList();
   } else if (m.type === 'reject') {
-    say(REASONS[m.reason] || 'Не принято', true);
+    say(REASONS[m.reason] || 'НЕ ПРИНЯТО', 'err');
     if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
   }
 }
@@ -179,23 +251,24 @@ function connect() {
   };
   ws.onmessage = e => { try { onMsg(JSON.parse(e.data)); } catch (_) {} };
   ws.onclose = e => {
-    if (e.code === 4401) { authFailed = true; say(REASONS.auth, true); return; }
-    say('Нет связи, переподключаемся…', true);
+    if (e.code === 4401) { authFailed = true; say(REASONS.auth, 'err'); return; }
+    say('НЕТ СВЯЗИ, ПЕРЕПОДКЛЮЧАЕМСЯ…', 'err');
     setTimeout(connect, Math.min(10000, 500 * 2 ** retry++));
   };
 }
 document.addEventListener('visibilitychange', () => {        // back from the background: the socket may be dead
-  if (!document.hidden && (!ws || ws.readyState > 1)) { retry = 0; connect(); }
+  if (!document.hidden && !authFailed && (!ws || ws.readyState > 1)) { retry = 0; connect(); }
 });
 
-$('f').addEventListener('submit', e => {
+$('send').addEventListener('submit', e => {
   e.preventDefault();
   const w = $('w').value.trim();
   if (!w) return;
-  if (!ws || ws.readyState !== 1) { if (!authFailed) say('Нет связи', true); return; }
+  if (!ws || ws.readyState !== 1) { if (!authFailed) say('НЕТ СВЯЗИ', 'err'); return; }
   ws.send(JSON.stringify({ word: w }));
   $('w').value = '';
 });
+drawMine();
 connect();
 </script>
 </body>
