@@ -205,7 +205,7 @@ class RussianTest(unittest.TestCase):
     def test_difficulty_groups(self):
         g = GuessGame(JsonStore(tempfile.mkdtemp()))
         sem = g.sems["ru"]
-        self.assertEqual({k: len(v) for k, v in sem.groups.items()}, {"simple": 1922, "normal": 1884, "hard": 1978})
+        self.assertEqual({k: len(v) for k, v in sem.groups.items()}, {"simple": 1917, "normal": 1871, "hard": 1958})
         t1, t2 = sem.ticks
         for group, lo, hi in (("simple", 0, t1), ("normal", t1, t2), ("hard", t2, 1)):
             for w in sem.groups[group][:200]:

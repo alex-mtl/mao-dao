@@ -39,7 +39,7 @@ zips) are byte-identical to `built/`.
 | Model | Revision | Dictionaries | License |
 |---|---|---|---|
 | `sentence-transformers/all-MiniLM-L6-v2` | 1110a243fdf4706b3f48f1d95db1a4f5529b4d41 | en, en-easy | Apache-2.0 |
-| `cointegrated/rubert-tiny2` | e8ed3b0c8bbf4fb6984c3de043bf7d2f4e5969ae | ru-easy, ru-hard; ru until 2026-10-27 (kept as `built/ru/embeddings.rubert-tiny2.npy`) | MIT |
+| `cointegrated/rubert-tiny2` | e8ed3b0c8bbf4fb6984c3de043bf7d2f4e5969ae | ru-easy, ru-hard; ru until 2026-10-27 (that matrix: git history before 2026-11-04) | MIT |
 | `ai-forever/sbert_large_mt_nlu_ru` (Sber, ex-SberDevices; 1024-dim) — computed on Kaggle GPU on 2026-10-25, notebook `kaggle/sbert-full.ipynb` (Kaggle kernel kimalexandermontreal/sbert-full): `SentenceTransformer(...).encode(vocab, batch_size=256, normalize_embeddings=True)` over `built/ru/vocab.txt` from GitHub main, saved as float16; weights from the HF Hub (revision not recorded, not in models/) | — | ru (normal) since 2026-10-27: `built/ru/embeddings.npy` | see the model card |
 | `sentence-transformers/LaBSE` | 836121a0533e5664b21c7aacc5d22951f2b8b25b | fr | Apache-2.0 |
 | `hiiamsid/sentence_similarity_spanish_es` | 66ab46adac3910bb6ea6085b962a25e49513b981 | es | Apache-2.0 |
@@ -63,7 +63,7 @@ frequency of each pool word; the game picks normal-level Russian secrets only fr
 | en-easy | d20aff51a53d | 2026-10-14 | election-game 0373694 |
 | en | 214fea340819 | 2026-10-14 | election-game 0373694 |
 | ru-easy | aa9d346e1399 | 2026-10-14 | election-game 0373694 |
-| ru | adea3f1869b5 | 2026-10-14 (vocab); meta.json + secret_nouns.txt replaced on the server 2026-10-26; embeddings: Sber large since 2026-10-27 (the old ones: embeddings.rubert-tiny2.npy) | election-game 0373694 |
+| ru | 792901f602ba | 2026-11-04: `tools/apply_definitions.py` — vocab = the words of the definition run (37 218; 1 142 uncertain words left out, 38 of them were secrets), embeddings: Sber large over "слово — определение" (see `definitions/`). Before: adea3f1869b5 (38 360 words, bare-word Sber matrix since 2026-10-27) | election-game 0373694 + quiz tools/apply_definitions.py |
 | ru-hard | f4b8e7ff8552 | 2026-10-23 | quiz `stream-engine/tools` 11c42ee |
 | fr | 2e7cca203229 | 2026-10-14 | election-game 0373694 |
 | es | c3234eafeadf | 2026-10-14 | election-game 0373694 |
@@ -93,3 +93,14 @@ matrix in vocab order as the run's output; the result goes to `built/<dict>/embe
 `word-ranker-<lang>` Lambda package. The notebooks are in `kaggle/`: `sbert-full` (the production ru matrix),
 `rosberta` (ai-forever/ru-en-RoSBERTa, a candidate, not used), `sbert-rare30` / `sbert-kaggle-test` (quality
 checks on test secrets and their synonyms). Local builds (`tools/build_assets.py` in Docker) are the fallback.
+
+## Definitions (`definitions/`) — the ru matrix since 2026-11-04
+
+Made by Дружок (2026-11-02, notes: `definitions/README-druzhok-2026-11-02.md`): a one-sentence dictionary
+definition for every word of `built/ru/vocab.txt` (38 360), then `ai-forever/sbert_large_mt_nlu_ru` on Kaggle GPU
+over `слово — определение` (`normalize_embeddings=True`, float16). One meaning per word (наполеон = торт).
+- `definitions-run-37218.jsonl` — what was encoded; `def-sbert-words.txt` — the matrix's rows = `built/ru/vocab.txt`.
+- `uncertain-words-1142.jsonl`, `FLAGS-*.md` — words with doubtful definitions, left out of the run and so out of
+  the dictionary (owner's decision 2026-11-04: not guessable until reviewed). 38 of them (pool) are removed for good.
+  To bring words back: fix their definitions, encode the full list again on Kaggle, run `tools/apply_definitions.py`.
+- The matrix itself is `built/ru/embeddings.npy` (76 MB, under GitHub's per-file limit).
