@@ -203,10 +203,12 @@
     return letters('miss') ? t('a.miss', { l: letters('miss') }) : t('a.extra', { l: letters('extra') });
   }
   function nextTry() {
+    let dropped = 0;                              // a busy chat: the old ones land at once, the table is drawn once for all
     while (tries.length > TRY_WAIT + 1) {
       const old = tries.shift();
-      if (old.kind === 'ok' || old.kind === 'rep') land(old, null);
+      if (old.kind === 'ok' || old.kind === 'rep') { land(old, null, true); dropped++; }
     }
+    if (dropped) renderTable();
     const e = tries.shift();
     trying = !!e;
     if (!e) return;
@@ -241,9 +243,13 @@
     if (e.kind === 'ok') held.set(e.word, { kind: 'ok' });
     else if (e.kind === 'rep' && shownN(e.n) !== shownN(e.n - 1)) held.set(e.word, { kind: 'rep', n: e.n - 1 });
   }
-  function land(e, from) {
+  function land(e, from, quiet) {
     held.delete(e.word);
     if (e.kind === 'rep') namers.set(e.word, { name: clean(e.name), avatar: e.avatar, at: Date.now(), until: Date.now() + pace(3000, 1000) });
+    if (quiet) {                                  // dropped from the answer line: no flight, the caller redraws the table
+      if (e.first) queueFx(() => firstAnim(e, null));
+      return;
+    }
     renderTable();
     const chip = $('table').querySelector(`.w[data-w="${CSS.escape(e.word)}"]`);
     if (!chip) return;
@@ -284,7 +290,8 @@
 
   function chip(w) {
     const h = held.get(w.w);
-    const c = tiles(w.w);
+    const c = el('div', 'w');                     // one text element, not a tile per letter: the table stays cheap to lay out
+    c.append(el('span', 'wt', w.w));
     c.dataset.w = w.w;
     const n = shownN(h && h.kind === 'rep' ? h.n : w.n);
     if (n > 1) c.append(el('span', 'x', '×' + n));
@@ -300,35 +307,57 @@
   }
   // a player: the avatar with the points, then the words - a line takes as many as fit its width
   const SQUEEZE = [0.94, 0.88, 0.82];
-  function fill(block, p) {
+  // what a player's row shows: the row is rebuilt only when this changes (a busy chat sends a state on every word,
+  // and rebuilding every row - its avatar, its words, measuring each line - is what made the overlay lag)
+  function rowKey(p, width) {
+    const now = Date.now();
+    return [width, p.score + (adj.get(p.id) || 0), p.name, p.avatar, ...p.words.map(w => {
+      const h = held.get(w.w), m = namers.get(w.w);
+      return w.w + shownN(h && h.kind === 'rep' ? h.n : w.n) + ((h && h.kind === 'ok') || inAir.has(w.w) ? 'h' : '')
+        + (m && now < m.until ? '@' + m.at : '');
+    })].join('|');
+  }
+  function fill(block, p, width) {
+    const key = rowKey(p, width);
+    if (block._key === key) return;
+    block._key = key;
     block.replaceChildren();
     // no nick: the avatar with the points on its top right corner
     const pa = el('span', 'pa');
     pa.append(avatar(p.name, p.avatar), lcd(p.score + (adj.get(p.id) || 0)));
     // as few lines as possible: each word goes to the first line with room for it (squeezed a little if need be),
-    // a new line only when none has
-    const lines = [];
-    const addLine = (...head) => {
-      const L = { line: el('div', 'line'), ws: el('div', 'ws'), n: 0, wf: 1 };
-      L.line.append(...head, L.ws);
-      block.append(L.line);
-      lines.push(L);
-      return L;
-    };
-    const fits = L => L.line.scrollWidth <= L.line.clientWidth + 1;
-    const place = (L, c) => {
-      L.ws.append(c);
-      if (fits(L)) { L.n++; return true; }
-      const k = SQUEEZE.find(x => x < L.wf && (L.ws.style.setProperty('--wf', x), fits(L)));
-      if (k) { L.wf = k; L.n++; return true; }
-      L.ws.style.setProperty('--wf', L.wf);
-      c.remove();
-      return false;
-    };
-    addLine(pa);
-    p.words.forEach(w => {
-      const c = chip(w);
-      if (!lines.some(L => place(L, c))) { const L = addLine(); L.ws.append(c); L.n = 1; }
+    // a new line only when none has. Every word is measured once, in one layout (measuring each word as it was
+    // placed made a busy chat's table cost seconds), and the lines are packed by numbers.
+    const first = el('div', 'line'), probe = el('div', 'ws');
+    first.append(pa, probe);
+    block.append(first);
+    const chips = p.words.map(chip);
+    probe.append(...chips);
+    const widths = chips.map(c => c.getBoundingClientRect().width);
+    const lineW = first.clientWidth, gap = parseFloat(getComputedStyle(probe).columnGap) || 0;
+    const head = pa.getBoundingClientRect().width + (parseFloat(getComputedStyle(pa).marginRight) || 0)
+      + (parseFloat(getComputedStyle(first).columnGap) || 0);
+    const lines = [{ room: lineW - head, sum: 0, n: 0, wf: 1, chips: [] }];
+    const need = (L, w, wf) => ((L.sum + w) + gap * L.n) * wf;
+    chips.forEach((c, i) => {
+      const w = widths[i];
+      let L = lines.find(L => {
+        if (!L.n) return true;
+        if (need(L, w, L.wf) <= L.room + 1) return true;
+        const k = SQUEEZE.find(x => x < L.wf && need(L, w, x) <= L.room + 1);
+        if (k) { L.wf = k; return true; }
+        return false;
+      });
+      if (!L) { L = { room: lineW, sum: 0, n: 0, wf: 1, chips: [] }; lines.push(L); }
+      L.sum += w; L.n++; L.chips.push(c);
+    });
+    probe.remove();
+    lines.forEach((L, i) => {
+      const ws = el('div', 'ws');
+      if (L.wf < 1) ws.style.setProperty('--wf', L.wf);
+      ws.append(...L.chips);
+      if (i) { const line = el('div', 'line'); line.append(ws); block.append(line); }
+      else first.append(ws);
     });
   }
   const blocks = new Map();                       // player id -> its element (kept: rows move, not blink)
@@ -349,7 +378,7 @@
       return;
     }
     box.querySelectorAll('.empty').forEach(n => n.remove());
-    const keep = new Set();
+    const keep = new Set(), width = box.clientWidth;
     list.forEach((p, i) => {
       let b = blocks.get(p.id);
       if (!b) {
@@ -358,8 +387,8 @@
       }
       keep.add(p.id);
       b.classList.toggle('lead', i === 0 && p.score > 0);
-      box.append(b);                              // in the order of the points
-      fill(b, p);
+      if (box.children[i] !== b) box.insertBefore(b, box.children[i] || null);   // in the order of the points
+      fill(b, p, width);
     });
     blocks.forEach((b, id) => { if (!keep.has(id)) { b.remove(); blocks.delete(id); } });
     // only whole players: one who doesn't fit above the chat zone is not shown at all (measured on the layout,

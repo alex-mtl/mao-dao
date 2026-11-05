@@ -68,6 +68,9 @@ html.chroma #stage { gap: calc(var(--u) * 1); }        /* the answer line right 
 /* table words: big letters without frames */
 .w { display: flex; align-items: center; gap: calc(var(--u) * .12); flex: none; border-radius: calc(var(--u) * 1); }
 .w .t { width: auto; height: calc(var(--u) * 6); border: 0; background: none; font-size: calc(var(--u) * 4.6 * var(--wf, 1)); }
+/* the table's words: the same letters as one text element (a tile per letter cost a busy chat's table its speed) */
+.w .wt { display: block; height: calc(var(--u) * 6); font: calc(var(--u) * 4.6 * var(--wf, 1))/calc(var(--u) * 6) 'Russo One', var(--font-display);
+         color: #fff; white-space: nowrap; letter-spacing: calc(var(--u) * .12); margin-right: calc(var(--u) * -.12); }
 .ws { gap: calc(var(--u) * 1.6 * var(--wf, 1)); }        /* --wf: a line squeezed to take one more word (anagram.js) */
 .w.hidden { visibility: hidden; }
 .w.hit { animation: hit 1s; }
