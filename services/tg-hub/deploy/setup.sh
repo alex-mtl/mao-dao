@@ -47,7 +47,7 @@ MSYS_NO_PATHCONV=1 docker run --rm -v "$(pwd -W)":/w -w /w python:3.12-slim pyth
 import zipfile, glob
 with zipfile.ZipFile('build/tghub.zip', 'w', zipfile.ZIP_DEFLATED) as z:
     for f in glob.glob('tghub/*.py'): z.write(f)"
-ENV="Variables={TOKEN_SHA256_DRUZHOK=$(sha "$(cat .secrets/druzhok-token)"),TOKEN_SHA256_CLAUDE=$(sha "$(cat .secrets/claude-token)"),OWNER_IDS=$(cat .secrets/owner-ids 2>/dev/null | tr -d '\r\n')}"
+ENV="Variables={TOKEN_SHA256_DRUZHOK=$(sha "$(cat .secrets/druzhok-token)"),TOKEN_SHA256_CLAUDE=$(sha "$(cat .secrets/claude-token)"),OWNER_IDS=$(cat .secrets/owner-ids 2>/dev/null | tr -d '\r\n' | grep . || echo 0)}"
 ./aws.sh lambda get-function $R --function-name tg-hub --query Configuration.State --output text 2>/dev/null || {
   ./aws.sh lambda create-function $R --function-name tg-hub --runtime python3.12 --handler tghub.handler.handler \
     --role arn:aws:iam::565905128720:role/tg-hub-role --zip-file fileb://build/tghub.zip \
