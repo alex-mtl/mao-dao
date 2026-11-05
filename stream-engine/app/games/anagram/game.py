@@ -156,6 +156,7 @@ class AnagramGame(BaseGame):
         self.history = store.load(self.ROUNDS, []) or []
         self.round_id = 0
         self.paused_at = None
+        self.frozen_at = None                        # the host paused the game (room page): timers stand still
         self.note_t = 0.0                            # last rejected answer shown
         self.follow_note_t = {}                      # viewer id -> last "follow to play"
         self._clear_round()
@@ -320,7 +321,7 @@ class AnagramGame(BaseGame):
         return True
 
     def on_comment(self, viewer: Viewer, text: str, ts=None):
-        if self.phase != PLAYING or not self.word:
+        if self.phase != PLAYING or not self.word or self.frozen_at:
             return
         d = self.dict
         word = normalize(text).strip(" !.?,")
@@ -399,6 +400,8 @@ class AnagramGame(BaseGame):
             self.ends_at += shift
             self.phase_until += shift
             self.finished_at += shift
+            if self.frozen_at:                           # the host's pause stays, the time away doesn't count twice
+                self.frozen_at += shift
             self.paused_at = None
         self.dirty = True
 
@@ -411,7 +414,7 @@ class AnagramGame(BaseGame):
         self.round_id = 0
         self._clear_round()
         self.phase = IDLE
-        self.paused_at = None
+        self.paused_at = self.frozen_at = None
         self.dirty = True
 
     def set_option(self, key, value):
@@ -456,8 +459,45 @@ class AnagramGame(BaseGame):
     def reveal_sec(self):
         return max(0, self.pause_sec - config.WINNER_SEC)
 
+    # ------------------------------------------------------------------ the host's controls (room page)
+    def control(self, cmd, params):
+        """The host's command from the room page -> done or not."""
+        now = time.time()
+        if cmd == "pause":
+            if self.frozen_at:
+                return False
+            self.frozen_at = now
+        elif cmd == "resume":
+            if not self.frozen_at:
+                return False
+            shift, self.frozen_at = now - self.frozen_at, None
+            if self.phase in (COUNTDOWN, PLAYING, BONUS, WINNER, REVEAL):
+                self.started_at += shift
+                self.ends_at += shift
+                self.phase_until += shift
+                self.finished_at += shift
+        elif cmd == "finish":                            # end the round now
+            if self.phase != PLAYING or self.frozen_at:
+                return False
+            self._finish(now)
+        else:
+            return False
+        self.dirty = True
+        return True
+
+    def monitor(self):
+        now = time.time()
+        at = self.frozen_at or now
+        return {"current": {
+            "phase": self.phase, "round": self.round_id, "paused": bool(self.frozen_at),
+            "word": self.word.upper() if self.word else None,
+            "left": max(0, round(self.ends_at - at)) if self.phase == PLAYING else 0,
+            "phaseLeft": max(0, round(self.phase_until - at)),
+            "players": len(self.players), "found": len(self.found), "possible": len(self.possible),
+        }}
+
     def tick(self, now):
-        if self.paused_at or not self.dicts:
+        if self.paused_at or self.frozen_at or not self.dicts:
             return
         if self.phase in (IDLE, FINISHED):
             self._start_countdown(now)
@@ -535,7 +575,8 @@ class AnagramGame(BaseGame):
             "error": self.error,
             "phase": self.phase, "roundId": self.round_id,
             "startedAt": self.started_at, "endsAt": self.ends_at, "phaseUntil": self.phase_until, "now": now,
-            "paused": bool(self.paused_at), "hostPaused": False,
+            "paused": bool(self.paused_at), "hostPaused": bool(self.frozen_at),
+            "pausedLeft": max(0, round(self.ends_at - self.frozen_at)) if self.frozen_at and self.phase == PLAYING else 0,
             "word": self.word.upper() if self.word and shown else None,
             "letters": len(self.word) if self.word else 0,
             "players": [self._player_row(p) for p in self._ranked()[:40]],
@@ -564,7 +605,7 @@ class AnagramGame(BaseGame):
             "started_at": self.started_at, "ends_at": self.ends_at, "phase_until": self.phase_until,
             "finished_at": self.finished_at, "found": self.found, "players": self.players,
             "winner": self.winner, "podium": self.podium, "saved_at": self.paused_at or time.time(),
-            "bonus": self.bonus, "finish_reason": self.finish_reason,
+            "bonus": self.bonus, "finish_reason": self.finish_reason, "frozen_at": self.frozen_at,
         })
 
     def load(self):
@@ -588,6 +629,7 @@ class AnagramGame(BaseGame):
             self.bonus = d.get("bonus")
             self.finish_reason = d.get("finish_reason", "timeout")
             self.paused_at = d.get("saved_at")           # timers resume on activation
+            self.frozen_at = d.get("frozen_at")
             print(f"[anagram] restored round {self.round_id} ({self.phase})")
         except Exception as e:
             print(f"[anagram] can't restore state ({e}), starting fresh")

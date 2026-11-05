@@ -288,13 +288,16 @@ def create_app(manager):
         return {"ok": True}
 
     @app.get("/r/{token}/api/monitor")
-    def monitor(token: str):
-        """the room page's monitor of the guess game: the round now, this stream's rounds, what's planned"""
+    def monitor(token: str, game: str = "guess"):
+        """the room page's monitor of the guess game (the round now, this stream's rounds, what's planned),
+        or ?game=anagram: its round now"""
         _, _, hub = room_of(token, need_control=True)
-        g = hub.games.get("guess")
+        g = hub.games.get("anagram" if game == "anagram" else "guess")
         if not g:
             return {"active": hub.active}
         m = g.monitor()
+        if game == "anagram":
+            return dict(m, active=hub.active)
         links = hub.tg.links if hub.tg else {}
         for p in m["current"]["people"] + m["current"]["top"]:     # a player's Telegram, when they linked it in the bot
             p["tg"] = links.get((p.get("id") or "").lower())
@@ -304,10 +307,11 @@ def create_app(manager):
 
     @app.post("/r/{token}/api/control")
     async def control(token: str, req: Request):
-        """the host's command for the guess game: {cmd, ...} - pause, extend, skip, the word queue..."""
+        """the host's command for the guess game: {cmd, ...} - pause, extend, skip, the word queue...;
+        {game: "anagram", cmd: pause | resume | finish} for the anagram"""
         _, _, hub = room_of(token, need_control=True)
-        g = hub.games.get("guess")
         body = await req.json()
+        g = hub.games.get("anagram" if body.get("game") == "anagram" else "guess")
         r = g.control(str(body.get("cmd") or ""), body) if g else False
         if isinstance(r, dict):
             if not r.get("ok"):

@@ -1055,6 +1055,12 @@
   function clock() {
     if (!S || S.error) return;
     const now = Live.now(), timerEl = $('timer');
+    if (S.hostPaused) {                            // the host paused the game: the timers stand still
+      timerEl.textContent = '⏸ ' + (S.phase === 'playing' ? fmtClock(S.pausedLeft || 0) : '');
+      timerEl.classList.remove('low');
+      bigNum('⏸', 'cd');
+      return;
+    }
     if (S.phase === 'playing') {
       const left = Math.max(0, Math.ceil(S.endsAt - now));
       timerEl.textContent = fmtClock(left);

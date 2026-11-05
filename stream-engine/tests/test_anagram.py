@@ -203,6 +203,27 @@ class AnagramTest(TinyAssets):
         self.assertIsNone(g.winner)
         self.assertEqual([e["type"] for e in g.events][-1], "timeout")
 
+    def test_host_pause(self):
+        g = self.make()
+        left = g.ends_at - time.time()
+        self.assertTrue(g.control("pause", {}))
+        self.assertFalse(g.control("pause", {}))
+        g.on_comment(v("Ann"), "свет")             # no answers while paused
+        self.assertFalse(g.found)
+        g.frozen_at -= 100                           # 100 s on pause: the round's time stands still
+        g.tick(time.time() + 10_000)
+        self.assertEqual(g.phase, ana.PLAYING)
+        s = g.snapshot()
+        self.assertTrue(s["hostPaused"])
+        self.assertTrue(g.monitor()["current"]["paused"])
+        self.assertFalse(g.control("finish", {}))
+        self.assertTrue(g.control("resume", {}))
+        self.assertAlmostEqual(g.ends_at - time.time(), left + 100, delta=2)
+        g.on_comment(v("Ann"), "свет")
+        self.assertIn("свет", g.found)
+        self.assertTrue(g.control("finish", {}))
+        self.assertNotEqual(g.phase, ana.PLAYING)
+
     def test_follow_rule(self):
         g = self.make()
         g.set_option("follow", 1)

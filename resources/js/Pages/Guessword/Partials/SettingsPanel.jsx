@@ -1,5 +1,6 @@
 import { useLaravelReactI18n } from 'laravel-react-i18n';
 import { useState } from 'react';
+import AnagramNow from './AnagramNow';
 import GameMonitor from './GameMonitor';
 import GiftCatalog from './GiftCatalog';
 import ScreenTab, { ScreenQuick } from './ScreenTab';
@@ -199,6 +200,7 @@ export default function SettingsPanel({ s, mode, setMode, footer, bonusesUrl }) 
                 </div>}
             </div>
 
+            {mode === 'anagram' && !s.failed && s.info && <AnagramNow s={s} />}
             {monitor && !s.failed && s.info && <ScreenQuick s={s} />}
             {monitor && <GameMonitor s={s} bonusesUrl={bonusesUrl} />}
 
