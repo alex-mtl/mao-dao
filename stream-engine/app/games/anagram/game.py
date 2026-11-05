@@ -491,6 +491,16 @@ class AnagramGame(BaseGame):
         self.dirty = True
         return True
 
+    def _stream_rounds(self):
+        """This stream's rounds, newest first: since the stream started, or (no start known) back to where
+        the round numbers start over."""
+        out = []
+        for r in reversed(self.history):
+            if r.get("at", 0) < self.session_at or (out and r["round"] >= out[-1]["round"]):
+                break
+            out.append(r)
+        return out
+
     def monitor(self):
         """The room page's "game flow" of the anagram: the round now, this stream's rounds and winners."""
         now = time.time()
@@ -510,7 +520,7 @@ class AnagramGame(BaseGame):
                             "words": len(p["words"])} for p in self._ranked()[:60]],
                 "words": [{"w": f["word"].upper(), "name": f["name"], "n": f["n"], "t": f["t"]} for f in words],
             },
-            "past": [r for r in reversed(self.history) if r.get("at", 0) >= self.session_at][:200],
+            "past": self._stream_rounds()[:200],
             "leaders": self.stats.leaderboard(10),
         }
 
