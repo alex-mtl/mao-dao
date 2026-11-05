@@ -232,3 +232,17 @@ it('tells the streamer the room stopped itself without a LIVE', function () {
     $this->actingAs($streamer)->get('/guessword/room')->assertInertia(fn ($p) => $p
         ->where('room.running', false)->where('room.stopReason', 'no_live'));
 });
+
+it('registers a new room in the engine when its page is opened', function () {
+    Http::fake([
+        'engine.test/internal/rooms' => Http::response(engineRooms()),
+        'engine.test/internal/rooms/*' => Http::response(['ok' => true]),
+    ]);
+    $streamer = withPack(User::factory()->create());
+
+    $this->actingAs($streamer)->get('/guessword/room')->assertOk();
+
+    $room = GuesswordRoom::where('user_id', $streamer->id)->sole();
+    Http::assertSent(fn ($r) => $r->method() === 'PUT' && str_ends_with($r->url(), '/internal/rooms/'.$room->engineId())
+        && $r['control_token'] === $room->control_token);
+});

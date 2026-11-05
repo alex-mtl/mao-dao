@@ -56,6 +56,15 @@ class GuesswordController extends Controller
         $room = $this->roomFor($request, $room);
         $statuses = $this->engine->statuses();
         $status = $statuses[$room->engineId()] ?? null;
+        // a new streamer's room is unknown to the engine until the first save/start, and the page reads
+        // its settings from the engine directly (404 = "the game server does not answer"): register it now
+        if ($statuses !== null && $status === null) {
+            try {
+                $this->engine->sync($room);
+            } catch (Throwable $e) {
+                report($e);
+            }
+        }
 
         return Inertia::render('Guessword/Room', [
             'room' => [
