@@ -157,6 +157,7 @@ class AnagramGame(BaseGame):
         self.round_id = 0
         self.paused_at = None
         self.frozen_at = None                        # the host paused the game (room page): timers stand still
+        self.session_at = 0                          # this stream's start: the room page's past rounds are since then
         self.note_t = 0.0                            # last rejected answer shown
         self.follow_note_t = {}                      # viewer id -> last "follow to play"
         self._clear_round()
@@ -415,6 +416,7 @@ class AnagramGame(BaseGame):
         self._clear_round()
         self.phase = IDLE
         self.paused_at = self.frozen_at = None
+        self.session_at = time.time()
         self.dirty = True
 
     def set_option(self, key, value):
@@ -476,6 +478,10 @@ class AnagramGame(BaseGame):
                 self.ends_at += shift
                 self.phase_until += shift
                 self.finished_at += shift
+        elif cmd == "extend":                            # +N minutes to the round
+            if self.phase != PLAYING:
+                return False
+            self.ends_at += max(1, min(int(params.get("min") or 5), 30)) * 60
         elif cmd == "finish":                            # end the round now
             if self.phase != PLAYING or self.frozen_at:
                 return False
@@ -486,15 +492,27 @@ class AnagramGame(BaseGame):
         return True
 
     def monitor(self):
+        """The room page's "game flow" of the anagram: the round now, this stream's rounds and winners."""
         now = time.time()
         at = self.frozen_at or now
-        return {"current": {
-            "phase": self.phase, "round": self.round_id, "paused": bool(self.frozen_at),
-            "word": self.word.upper() if self.word else None,
-            "left": max(0, round(self.ends_at - at)) if self.phase == PLAYING else 0,
-            "phaseLeft": max(0, round(self.phase_until - at)),
-            "players": len(self.players), "found": len(self.found), "possible": len(self.possible),
-        }}
+        longest = max(self.found.values(), key=lambda f: (len(f["word"]), -f["t"]), default=None)
+        words = sorted(self.found.values(), key=lambda f: -f["t"])[:150]
+        return {
+            "current": {
+                "phase": self.phase, "round": self.round_id, "paused": bool(self.frozen_at),
+                "word": self.word.upper() if self.word else None, "lang": self.round_lang,
+                "left": max(0, round(self.ends_at - at)) if self.phase == PLAYING else 0,
+                "phaseLeft": max(0, round(self.phase_until - at)),
+                "duration": round(self.ends_at - self.started_at) if self.started_at else self.round_sec,
+                "players": len(self.players), "found": len(self.found), "possible": len(self.possible),
+                "longest": {"word": longest["word"].upper(), "name": longest["name"]} if longest else None,
+                "people": [{"id": p["id"], "name": p["name"], "avatar": p["avatar"], "score": p["score"],
+                            "words": len(p["words"])} for p in self._ranked()[:60]],
+                "words": [{"w": f["word"].upper(), "name": f["name"], "n": f["n"], "t": f["t"]} for f in words],
+            },
+            "past": [r for r in reversed(self.history) if r.get("at", 0) >= self.session_at][:200],
+            "leaders": self.stats.leaderboard(10),
+        }
 
     def tick(self, now):
         if self.paused_at or self.frozen_at or not self.dicts:
@@ -606,6 +624,7 @@ class AnagramGame(BaseGame):
             "finished_at": self.finished_at, "found": self.found, "players": self.players,
             "winner": self.winner, "podium": self.podium, "saved_at": self.paused_at or time.time(),
             "bonus": self.bonus, "finish_reason": self.finish_reason, "frozen_at": self.frozen_at,
+            "session_at": self.session_at,
         })
 
     def load(self):
@@ -614,6 +633,7 @@ class AnagramGame(BaseGame):
             return
         try:
             self.round_id = d.get("round_id", 0)
+            self.session_at = d.get("session_at", 0)
             if d.get("lang") in self.dicts:
                 self.round_lang = d["lang"]
             if not d.get("word") or d.get("phase") in (IDLE, None):

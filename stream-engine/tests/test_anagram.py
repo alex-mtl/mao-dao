@@ -221,8 +221,12 @@ class AnagramTest(TinyAssets):
         self.assertAlmostEqual(g.ends_at - time.time(), left + 100, delta=2)
         g.on_comment(v("Ann"), "свет")
         self.assertIn("свет", g.found)
+        self.assertTrue(g.control("extend", {"min": 5}))
         self.assertTrue(g.control("finish", {}))
         self.assertNotEqual(g.phase, ana.PLAYING)
+        m = g.monitor()
+        self.assertEqual(m["past"][0]["round"], g.round_id)
+        self.assertEqual(m["current"]["people"][0]["name"], "Ann")
 
     def test_follow_rule(self):
         g = self.make()

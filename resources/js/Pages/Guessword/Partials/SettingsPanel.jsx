@@ -1,6 +1,6 @@
 import { useLaravelReactI18n } from 'laravel-react-i18n';
 import { useState } from 'react';
-import AnagramNow from './AnagramNow';
+import AnagramMonitor from './AnagramMonitor';
 import GameMonitor from './GameMonitor';
 import GiftCatalog from './GiftCatalog';
 import ScreenTab, { ScreenQuick } from './ScreenTab';
@@ -135,7 +135,7 @@ export default function SettingsPanel({ s, mode, setMode, footer, bonusesUrl }) 
     // the panel turns over: the settings, or the monitor of the guess game (remembered on this device)
     const [view, setViewState] = useState(() => { try { return localStorage.getItem('gw-panel-view') || 'settings'; } catch { return 'settings'; } });
     const setView = (v) => { setViewState(v); try { localStorage.setItem('gw-panel-view', v); } catch { /* private mode */ } };
-    const monitor = view === 'monitor' && mode === 'guess';
+    const monitor = view === 'monitor' && (mode === 'guess' || mode === 'anagram');
     const g = s.draft.guess || {};
     const an = s.draft.anagram || {};
     const fr = s.draft[mode] || {};            // the frame of guess / anagram
@@ -168,7 +168,7 @@ export default function SettingsPanel({ s, mode, setMode, footer, bonusesUrl }) 
                             </button>
                         ))}
                     </div>
-                    {mode === 'guess' && (
+                    {(mode === 'guess' || mode === 'anagram') && (
                         <button type="button" onClick={() => setView(monitor ? 'settings' : 'monitor')}
                                 className="ml-auto flex h-9 items-center gap-1.5 whitespace-nowrap rounded-lg border border-warm-300 bg-surface px-3 text-sm font-semibold text-ink-800 hover:bg-warm-50">
                             <span className={monitor ? 'text-ink-500' : 'text-ink-900'}>⚙ {t('guessword.view_settings')}</span>
@@ -200,9 +200,9 @@ export default function SettingsPanel({ s, mode, setMode, footer, bonusesUrl }) 
                 </div>}
             </div>
 
-            {mode === 'anagram' && !s.failed && s.info && <AnagramNow s={s} />}
-            {monitor && !s.failed && s.info && <ScreenQuick s={s} />}
-            {monitor && <GameMonitor s={s} bonusesUrl={bonusesUrl} />}
+            {monitor && !s.failed && s.info && <ScreenQuick s={s} game={mode} />}
+            {monitor && mode === 'guess' && <GameMonitor s={s} bonusesUrl={bonusesUrl} />}
+            {monitor && mode === 'anagram' && <AnagramMonitor s={s} />}
 
             <div className={'px-5 py-2' + (monitor ? ' hidden' : '')}>
                 {s.failed && <p className="py-4 text-sm text-danger-700">{t('guessword.settings_offline')}</p>}

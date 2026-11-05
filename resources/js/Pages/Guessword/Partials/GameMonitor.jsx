@@ -3,8 +3,8 @@ import { useCallback, useEffect, useState } from 'react';
 import PlayerBonuses from './PlayerBonuses';
 import ViewerPicker, { Avatar } from './ViewerPicker';
 
-const clock = (s) => Math.floor(Math.max(0, s) / 60) + ':' + String(Math.round(Math.max(0, s)) % 60).padStart(2, '0');
-const hhmm = (t) => (t ? new Date(t * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '');
+export const clock = (s) => Math.floor(Math.max(0, s) / 60) + ':' + String(Math.round(Math.max(0, s)) % 60).padStart(2, '0');
+export const hhmm = (t) => (t ? new Date(t * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '');
 const hms = (t) => (t ? new Date(t * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '');
 // the rank's colour, as on the stream: hot -> cold
 const rankCls = (r) => (r <= 1 ? 'bg-success-500' : r < 300 ? 'bg-danger-500' : r < 1000 ? 'bg-warning-500' : r < 5000 ? 'bg-warning-300' : 'bg-ink-400');
@@ -47,7 +47,7 @@ function LogLine({ e, text }) {
     );
 }
 
-function Kpi({ label, children, sub }) {
+export function Kpi({ label, children, sub }) {
     return (
         <div className="min-w-0 flex-1 basis-36 rounded-xl border border-warm-200 bg-surface px-3 py-2.5">
             <div className="text-[11px] font-semibold uppercase tracking-wide text-ink-500">{label}</div>
@@ -57,7 +57,7 @@ function Kpi({ label, children, sub }) {
     );
 }
 
-function Box({ title, children, className = '' }) {
+export function Box({ title, children, className = '' }) {
     return (
         <div className={'min-w-0 rounded-xl border border-warm-200 bg-surface px-3 py-2.5 ' + className}>
             <h4 className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-ink-500">{title}</h4>
@@ -67,7 +67,7 @@ function Box({ title, children, className = '' }) {
 }
 
 /** a secret word: blurred until the host looks (the page may be on the stream's screen) */
-function Secret({ word, big }) {
+export function Secret({ word, big }) {
     const [show, setShow] = useState(false);
     if (!word) return <span className="text-ink-400">—</span>;
     return (
@@ -82,9 +82,9 @@ function Secret({ word, big }) {
     );
 }
 
-const th = 'px-1.5 py-1 text-left text-[11px] font-semibold uppercase tracking-wide text-ink-500';
-const td = 'whitespace-nowrap border-t border-warm-100 px-1.5 py-px text-sm leading-5';
-const btn = 'h-9 rounded-lg border border-warm-300 bg-surface px-3 text-sm font-semibold text-ink-800 hover:bg-warm-50 disabled:opacity-40';
+export const th = 'px-1.5 py-1 text-left text-[11px] font-semibold uppercase tracking-wide text-ink-500';
+export const td = 'whitespace-nowrap border-t border-warm-100 px-1.5 py-px text-sm leading-5';
+export const btn = 'h-9 rounded-lg border border-warm-300 bg-surface px-3 text-sm font-semibold text-ink-800 hover:bg-warm-50 disabled:opacity-40';
 
 /**
  * The room page's monitor of the guess game (instead of the settings): the round now, the stream's rounds,
