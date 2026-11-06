@@ -261,8 +261,12 @@ window.AudioKit = (() => {
         gpu = ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER);
       }
     } catch (e) { gpu = 'error: ' + e.message; }
-    send('gpu: ' + gpu + ' | screen ' + screen.width + 'x' + screen.height + ' @' + (window.devicePixelRatio || 1) +
-         ' | cores ' + (navigator.hardwareConcurrency || '?') + ' | mem ' + (navigator.deviceMemory || '?') + 'GB');
+    // the engine checks it against the requirements (app/hardware.py), logs it, and the panel shows a banner
+    try {
+      fetch('api/hw', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ gpu, cores: navigator.hardwareConcurrency || null, mem: navigator.deviceMemory || null,
+                                               screen: screen.width + 'x' + screen.height + '@' + (window.devicePixelRatio || 1) }) });
+    } catch (e) {}
     let frames = 0, long = 0, worst = 0, last = 0, start = performance.now();
     const tick = (t) => {
       if (last) { const d = t - last; if (d > 50) long++; if (d > worst) worst = d; }

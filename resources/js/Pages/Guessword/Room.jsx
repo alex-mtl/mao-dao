@@ -92,6 +92,18 @@ export default function Room({ room, languages, notice, problem }) {
                     <p className="mb-3 rounded-lg bg-warm-50 px-4 py-2 text-sm text-ink-700">{t('guessword.no_live_stopped', { nick: room.tiktok || '' })}</p>
                 )}
                 {!room.engineOnline && <p className="mb-3 rounded-lg bg-danger-50 px-4 py-2 text-sm text-danger-700">{t('guessword.engine_offline')}</p>}
+                {/* the computer of TikTok LIVE Studio, as its overlay reported it, is below the requirements */}
+                {s.info?.hw?.problems?.length > 0 && (
+                    <div className="mb-4 rounded-2xl border-2 border-danger-300 bg-danger-50 px-5 py-4">
+                        <p className="font-heading text-xl font-extrabold uppercase text-danger-700">{t('guessword.hw_title')}</p>
+                        <ul className="mt-2 space-y-1 text-base font-semibold text-danger-800">
+                            {s.info.hw.problems.map((p) => (
+                                <li key={p.part}>{t('guessword.hw_' + p.part, { value: p.value })}</li>
+                            ))}
+                        </ul>
+                        <p className="mt-2 text-sm text-danger-700">{t('guessword.hw_note')}</p>
+                    </div>
+                )}
 
                 {setup ? (
                     <div className="mx-auto mt-10 max-w-lg rounded-2xl border-2 border-warm-200 bg-surface p-6 text-center shadow-soft">

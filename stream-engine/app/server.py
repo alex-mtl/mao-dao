@@ -30,7 +30,7 @@ import time
 from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse, Response
 
-from . import config, live_log
+from . import config, hardware, live_log
 from .bonuses import KINDS as BONUS_KINDS
 from .context import current_room
 from .games.base import Viewer
@@ -137,7 +137,8 @@ def create_app(manager):
                 "gifts": {"actions": GIFT_ACTIONS, "min": GIFT_MIN_COINS, "values": hub.gift_rules.values(),
                           "catalog": catalog().list()},
                 "emotes": {"actions": EMOTE_ACTIONS, "values": hub.emote_rules.values(), "seen": hub.emotes_seen.list()},
-                "overlay": room_base(room.cfg["overlay_token"]), "running": room.running}
+                "overlay": room_base(room.cfg["overlay_token"]), "running": room.running,
+                "hw": room.cfg.get("hw")}          # the Studio computer as its overlay reported it (/api/hw)
 
     # ------------------------------------------------------------------ process
     @app.get("/health")
@@ -335,6 +336,27 @@ def create_app(manager):
         _, _, hub = room_of(token)
         name = game if game in hub.games else hub.active
         return hub.message(name, since, fsince)
+
+    @app.post("/r/{token}/api/hw")
+    async def client_hw(token: str, req: Request):
+        """The overlay in TikTok LIVE Studio (not the panel's preview) reports the computer it runs on;
+        the panel shows a banner when it is below the requirements (app/hardware.py)."""
+        room, _, _ = room_of(token)
+        try:
+            d = await req.json()
+        except Exception:
+            raise HTTPException(400, "bad json")
+        num = lambda v: v if isinstance(v, (int, float)) and not isinstance(v, bool) and 0 <= v < 10000 else None
+        hw = {"gpu": str(d.get("gpu") or "")[:200], "cores": num(d.get("cores")), "mem": num(d.get("mem")),
+              "screen": str(d.get("screen") or "")[:40]}
+        hw["problems"] = hardware.check(hw)
+        hw["at"] = int(time.time())
+        print(f"[client] hw: {hw['gpu']} | cores {hw['cores']} | mem {hw['mem']}GB | screen {hw['screen']}"
+              f" | below requirements: {', '.join(p['part'] for p in hw['problems']) or 'no'}")
+        if {k: v for k, v in (room.cfg.get("hw") or {}).items() if k != "at"} != {k: v for k, v in hw.items() if k != "at"}:
+            room.cfg["hw"] = hw
+            manager.save()
+        return {"ok": True, "problems": hw["problems"]}
 
     @app.post("/r/{token}/api/client-log")
     async def client_log(token: str, req: Request):
