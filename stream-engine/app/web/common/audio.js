@@ -245,7 +245,7 @@ window.AudioKit = (() => {
   }
   // TT mode: what draws the page (GPU or software) and how smooth it is, so a jerky overlay can be
   // explained from the engine log: once the renderer, then every minute fps and long frames
-  if (qs.get('tt') === '1' && window.requestAnimationFrame) {
+  if (qs.get('tt') === '1' && !PREVIEW && window.requestAnimationFrame) {   // the panel's preview is not the stream
     const send = (msg) => {
       try {
         fetch('api/client-log', { method: 'POST', headers: { 'Content-Type': 'application/json' },

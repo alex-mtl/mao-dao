@@ -34,6 +34,16 @@ export default function Room({ room, languages, notice, problem }) {
     const [menu, setMenu] = useState(false);
     const [account, setAccount] = useState(setup);
     const [flash, setFlash] = useState(null);           // "applied" / "failed" under the buttons
+    // the preview is a second copy of the overlay with all its animation: a weak computer that also
+    // streams can switch it off (kept in this browser / the streamer app)
+    const [preview, setPreview] = useState(() => {
+        try { return localStorage.getItem('gw.preview') !== 'off'; } catch (e) { return true; }
+    });
+    const togglePreview = () => {
+        const on = !preview;
+        setPreview(on);
+        try { localStorage.setItem('gw.preview', on ? 'on' : 'off'); } catch (e) { /* private mode: this visit only */ }
+    };
     const menuRef = useRef(null);
     const active = s.info?.active;
 
@@ -141,8 +151,11 @@ export default function Room({ room, languages, notice, problem }) {
 
                         {/* the stream's own dark (not a theme token: TikTok shows the game on a dark picture in every scheme) */}
                         <div className="relative aspect-[9/20] w-full overflow-hidden rounded-xl" style={{ background: '#0b0614' }}>
-                            {room.engineOnline && (
+                            {room.engineOnline && preview && (
                                 <iframe title={t('guessword.game_heading')} src={room.overlayUrl + '&preview=1'} className="h-full w-full" />
+                            )}
+                            {!preview && (
+                                <p className="absolute inset-x-4 top-1/2 -translate-y-1/2 text-center text-sm text-white/70">{t('guessword.preview_off')}</p>
                             )}
                             {flash && (
                                 <span className={'absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full px-3 py-1 text-xs font-semibold text-white ' +
@@ -151,8 +164,12 @@ export default function Room({ room, languages, notice, problem }) {
                                 </span>
                             )}
                         </div>
-                        <p className="mt-2.5 text-xs text-ink-500">
-                            {t('guessword.preview_note')}{' '}
+                        <button type="button" onClick={togglePreview}
+                                className="mt-2 text-xs font-semibold text-primary-700 hover:underline">
+                            {preview ? t('guessword.preview_hide') : t('guessword.preview_show')}
+                        </button>
+                        <p className="mt-1.5 text-xs text-ink-500">
+                            {preview && t('guessword.preview_note')}{' '}
                             {!room.client && (
                                 <a href={room.controlUrl} target="_blank" rel="noopener noreferrer" className="font-semibold text-primary-700 hover:underline">
                                     {t('guessword.open_full')} ↗
