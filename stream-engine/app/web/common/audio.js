@@ -243,6 +243,39 @@ window.AudioKit = (() => {
                                  body: JSON.stringify({ page: location.pathname, msg }) });
     } catch (e) {}
   }
+  // TT mode: what draws the page (GPU or software) and how smooth it is, so a jerky overlay can be
+  // explained from the engine log: once the renderer, then every minute fps and long frames
+  if (qs.get('tt') === '1' && window.requestAnimationFrame) {
+    const send = (msg) => {
+      try {
+        fetch('api/client-log', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+                                   body: JSON.stringify({ page: location.pathname, msg }) });
+      } catch (e) {}
+    };
+    let gpu = 'unknown';
+    try {
+      const gl = document.createElement('canvas').getContext('webgl');
+      if (!gl) gpu = 'NO WebGL';
+      else {
+        const ext = gl.getExtension('WEBGL_debug_renderer_info');
+        gpu = ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER);
+      }
+    } catch (e) { gpu = 'error: ' + e.message; }
+    send('gpu: ' + gpu + ' | screen ' + screen.width + 'x' + screen.height + ' @' + (window.devicePixelRatio || 1) +
+         ' | cores ' + (navigator.hardwareConcurrency || '?') + ' | mem ' + (navigator.deviceMemory || '?') + 'GB');
+    let frames = 0, long = 0, worst = 0, last = 0, start = performance.now();
+    const tick = (t) => {
+      if (last) { const d = t - last; if (d > 50) long++; if (d > worst) worst = d; }
+      last = t; frames++;
+      if (t - start >= 60000) {
+        send('fps ' + (frames * 1000 / (t - start)).toFixed(1) + ' | frames >50ms: ' + long +
+             ' | worst ' + Math.round(worst) + 'ms' + (document.hidden ? ' | hidden' : ''));
+        frames = 0; long = 0; worst = 0; start = t;
+      }
+      requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  }
   if (synth) synth.addEventListener && synth.addEventListener('voiceschanged', () => setTimeout(() => reportVoices(false), 300));
   setTimeout(() => reportVoices(false), 1500);
   setTimeout(() => reportVoices(true), 5000);
