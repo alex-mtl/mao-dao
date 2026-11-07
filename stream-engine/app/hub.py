@@ -430,6 +430,8 @@ class Hub:
         if self.closed:                               # shutting down: nothing changes any more
             return
         self._seen(v)
+        print(f"[follow] {v.name} (@{v.id})")
+        self.live.write("follow", user=self.live.user(v.id, v.name))   # every follow, for daily stats and digests
         self.game.on_follow(v)
 
     def like(self, v: Viewer, count):

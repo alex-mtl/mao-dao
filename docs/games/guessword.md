@@ -265,6 +265,7 @@ header `X-Internal-Secret` (= `GUESSWORD_ENGINE_SECRET` in Laravel's `.env`), on
 | `plane` | `user`, `likes` + `threshold` (like plane) or `gift` / `manual` + `count` (gift plane), `bomber` |
 | `balloon` | `user`, `likes`, `n` (their balloon number), `per`; or `gift` / `manual` + `count` |
 | `snowball`, `cake` | `user`, `likes`; or `gift` / `manual` + `count`; a cake also `seed` (its show) |
+| `follow` | `user` — every follow event TikTok sends (since 2026-11-07); `guessword:daily-stats` counts distinct viewers |
 | `cake_start`, `cake_last`, `cake_split` | `seed`: the show begins (shows wait for each other), its last cracker takes off, the cake flies apart (since 30.10.2026) |
 | `gift` | `user`, `gift`, `count`, `coins` (one gift's price), `actions` (bound actions), `to` (a guest, not the host) |
 

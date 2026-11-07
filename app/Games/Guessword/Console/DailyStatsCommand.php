@@ -23,9 +23,8 @@ use Throwable;
  *
  * Limits, stated in the output too: the LIVE log keeps only gifts of 100+ coins
  * a batch or bound to an action other than a hint (stream-engine/app/live_log.py),
- * so gift counts and coin sums are lower bounds. The engine does not write
- * follow events to the log yet, so the followers column counts `follow` events
- * and stays 0 until the engine logs them.
+ * so gift counts and coin sums are lower bounds. Followers = distinct viewers
+ * with a `follow` event; the engine writes them since 2026-11-07 (0 before).
  */
 class DailyStatsCommand extends Command
 {
@@ -100,7 +99,7 @@ class DailyStatsCommand extends Command
                 'date' => $date, 'tz' => $tz->getName(),
                 'caveats' => [
                     'gifts' => 'LIVE log only: hint-only gifts under 100 coins a batch are not logged, sums are lower bounds.',
-                    'follows' => 'Counts follow events in the LIVE log; the engine does not write them yet, so 0 until it does.',
+                    'follows' => 'Distinct viewers with a follow event in the LIVE log; the engine writes them since 2026-11-07 (0 before).',
                     'day' => 'A LIVE belongs to the day it started.',
                 ],
                 'streamers' => array_map(fn (array $r) => $r + ['usd' => round($r['coins'] * self::USD_PER_COIN, 2)], $rows),
@@ -132,7 +131,7 @@ class DailyStatsCommand extends Command
         );
         $this->line("День {$date} ({$tz->getName()}); эфир отнесён ко дню старта.");
         $this->line('Подарки и монеты — из лога эфира: подарки-подсказки дешевле 100 монет в лог не пишутся, это нижняя оценка.');
-        $this->line('Подписчики: движок пока не пишет follow-события в лог, поэтому 0. Нужна одна строка в движке.');
+        $this->line('Подписчики: разные зрители с follow-событием в логе эфира (пишутся с 2026-11-07, раньше — 0).');
         $this->line('≈ $: монеты × 0.005 (Universe: 44 999 монет ≈ $225 хосту).');
 
         return self::SUCCESS;
@@ -171,6 +170,7 @@ class DailyStatsCommand extends Command
     {
         $st = ['rounds' => 0, 'wins' => 0, 'seconds' => 0.0, 'follows' => 0, 'gifts' => 0, 'coins' => 0];
         $started = false;
+        $followers = [];
         foreach (preg_split('/\r?\n/', $jsonl) as $line) {
             $e = $line === '' ? null : json_decode($line, true);
             if (! is_array($e)) {
@@ -197,11 +197,12 @@ class DailyStatsCommand extends Command
             match ($e['type'] ?? null) {
                 'round_start' => $st['rounds']++,
                 'winner' => $st['wins']++,
-                'follow' => $st['follows']++,
+                'follow' => $followers[strtolower((string) ($e['user']['uid'] ?? '') ?: (string) ($e['user']['id'] ?? ''))] = true,
                 'gift' => $this->countGift($st, $e),
                 default => null,
             };
         }
+        $st['follows'] = count($followers);   // TikTok may repeat a follow (unfollow + follow): one viewer counts once
 
         return $started ? $st : null;
     }
