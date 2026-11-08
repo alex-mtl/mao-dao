@@ -1,5 +1,6 @@
 # Kaggle GPU job (pushed by kaggle.mjs, which fills in the run id, the models and the drafts below).
-# The question wording is fixed by build-geo.mjs templates (quiz-show style). For each model in turn:
+# The question wording is fixed by the build-*.mjs templates (quiz-show style). Models: transformers ids, or
+# "org/repo-GGUF:q8_0" for llama.cpp (built on the spot). For each model in turn:
 #  1. genitive: the names the templates decline ("Австралия" -> "Австралии"), checked against the original;
 #     a failed check leaves the draft's fallback text that needs no declension
 #  2. verify: the model answers the final question blind (A-D: correct + 3 wrong); a miss is only a mark
@@ -47,7 +48,64 @@ def gen_ok(name, gen):
 LETTERS = "ABCD"
 
 
+class LlamaServer:
+    """GGUF models ("org/repo-GGUF:q8_0"): llama.cpp's llama-server built here for the T4 (sm_75), 8 parallel slots."""
+
+    def __init__(self, name):
+        import urllib.request
+        from huggingface_hub import hf_hub_download
+        repo, quant = name.split(":")
+        self.port = 8090
+        tb = time.time()
+        if not os.path.exists("/tmp/llama.cpp/build/bin/llama-server"):
+            # nvcc is not on PATH in Kaggle's image; find the toolkit, and a recent cmake comes from pip
+            cuda = next((d for d in ["/usr/local/cuda", *sorted(__import__("glob").glob("/usr/local/cuda-*"), reverse=True)]
+                         if os.path.exists(d + "/bin/nvcc")), None)
+            log("cuda toolkit", cuda)
+            if cuda is None:
+                raise RuntimeError("no nvcc: " + subprocess.run("ls -d /usr/local/cuda* /usr/lib/cuda* 2>&1; which nvcc", shell=True,
+                                                                capture_output=True, text=True).stdout)
+            env = {**os.environ, "PATH": f"{cuda}/bin:" + os.environ["PATH"], "CUDACXX": f"{cuda}/bin/nvcc"}
+            subprocess.run([sys.executable, "-m", "pip", "install", "-q", "-U", "cmake", "ninja"], check=False)
+            subprocess.run("git clone --depth 1 https://github.com/ggml-org/llama.cpp.git /tmp/llama.cpp", shell=True, check=True)
+            r = subprocess.run("cd /tmp/llama.cpp && cmake -B build -G Ninja -DGGML_CUDA=ON -DCMAKE_CUDA_ARCHITECTURES=75 -DLLAMA_CURL=OFF "
+                               "-DLLAMA_BUILD_TESTS=OFF -DLLAMA_BUILD_EXAMPLES=OFF -DCMAKE_BUILD_TYPE=Release > /tmp/cmake.log 2>&1 && "
+                               f"cmake --build build --target llama-server -j {os.cpu_count()} >> /tmp/cmake.log 2>&1", shell=True, env=env)
+            if r.returncode:
+                raise RuntimeError("llama.cpp build failed: " + open("/tmp/cmake.log").read()[-2500:])
+        self.build_seconds = round(time.time() - tb, 1)
+        log("llama.cpp built", self.build_seconds, "s")
+        file = next(f for f in __import__("huggingface_hub").list_repo_files(repo) if f.lower().endswith(f"{quant.lower()}.gguf"))
+        path = hf_hub_download(repo, file)
+        self.proc = subprocess.Popen(["/tmp/llama.cpp/build/bin/llama-server", "-m", path, "-ngl", "99", "-c", "16384", "-np", "8",
+                                      "--jinja", "--port", str(self.port), "--host", "127.0.0.1"],
+                                     stdout=open("/tmp/llama-server.log", "w"), stderr=subprocess.STDOUT)
+        for _ in range(600):
+            try:
+                if urllib.request.urlopen(f"http://127.0.0.1:{self.port}/health", timeout=2).status == 200:
+                    break
+            except Exception:
+                pass
+            if self.proc.poll() is not None:
+                raise RuntimeError("llama-server died: " + open("/tmp/llama-server.log").read()[-1500:])
+            time.sleep(1)
+
+    def chat(self, messages, max_new):
+        import urllib.request
+        body = json.dumps({"messages": messages, "max_tokens": max_new, "temperature": 0}).encode()
+        req = urllib.request.Request(f"http://127.0.0.1:{self.port}/v1/chat/completions", body, {"Content-Type": "application/json"})
+        r = json.load(urllib.request.urlopen(req, timeout=300))
+        return r["choices"][0]["message"]["content"] or "", r.get("usage", {}).get("completion_tokens", 0)
+
+    def close(self):
+        self.proc.terminate()
+        self.proc.wait(30)
+
+
 def load(name):
+    if "GGUF" in name:
+        server = LlamaServer(name)
+        return None, server, "gguf-" + name.split(":")[1]
     path = name
     if "GigaChat" in name:
         # its config has routed_scaling_factor: 1 (int); recent transformers insist on a float
@@ -78,6 +136,11 @@ def load(name):
 
 
 def generate(tok, model, chats, max_new, batch=BATCH):
+    if tok is None:  # llama-server: 8 requests at a time, it batches them itself
+        from concurrent.futures import ThreadPoolExecutor
+        with ThreadPoolExecutor(8) as ex:
+            res = list(ex.map(lambda c: model.chat(c, max_new), chats))
+        return [r[0].strip() for r in res], sum(r[1] for r in res)
     out, n_tokens = [], 0
     for i in range(0, len(chats), batch):
         texts = [tok.apply_chat_template(c, tokenize=False, add_generation_prompt=True) for c in chats[i:i + batch]]
@@ -132,10 +195,13 @@ def run(name):
         it["model_answer"] = m.group(0) if m else a
     log("verified", sum(it["model_answer"] == it["key"] for it in items), "/", len(items), f"{t_verify:.1f}s")
 
+    build = getattr(model, "build_seconds", None)
+    if tok is None:
+        model.close()
     del model
     gc.collect()
     torch.cuda.empty_cache()
-    return {"run": RUN_ID, "model": name, "mode": mode, "gpus": gpu_info, "count": len(items),
+    return {"run": RUN_ID, "model": name, "mode": mode, "gpus": gpu_info, "count": len(items), "build_seconds": build,
             "seconds": {"load": round(t_load, 1), "genitive": round(t_polish, 1), "verify": round(t_verify, 1)},
             "genitives": gens,
             "tokens": {"genitive_out": tok_polish, "verify_out": tok_verify}, "items": items}

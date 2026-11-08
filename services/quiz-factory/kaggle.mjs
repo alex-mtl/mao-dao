@@ -57,7 +57,7 @@ if (cmd === 'push') {
       if (names.includes(want)) {
         const all = JSON.parse(readFileSync(join(out, want), 'utf8'));
         for (const r of all.runs ?? []) {
-          const file = `quiz-${a1}-${r.model.split('/').pop()}.json`;
+          const file = `quiz-${a1}-${r.model.split('/').pop().replace(':', '-')}.json`;
           writeFileSync(join(out, file), JSON.stringify(r, null, 1));
           console.log(r.error ? `${r.model}: ERROR ${r.error}` : `${r.model}: ${r.items.filter((i) => i.model_answer === i.key).length}/${r.count} right -> data/kaggle/${file}`);
         }

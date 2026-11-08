@@ -37,10 +37,21 @@ const NOTES = {
   'river_mouth:Висла': 'Балтийское море убрано из вариантов: Гданьский залив — его часть.',
   'river_mouth:Нил': 'Средиземное море — часть бассейна Атлантики, поэтому океаны в варианты для рек, впадающих в моря, не ставятся.',
 };
+// sport
+const UK = 'Wikidata указывает «Великобритания»; в футболе обычно говорят «Англия», но её среди вариантов нет, так что ответ однозначный.';
+Object.assign(NOTES, {
+  'olympics_summer:Летние Олимпийские игры 2020': 'Прошла в 2021 году из-за пандемии, но официально называется «Токио-2020».',
+  'euro_winner:Чемпионат Европы по футболу 2020': 'Прошёл в 2021 году, официальное название «Евро-2020».',
+  'wc_winner:Чемпионат мира по футболу 2026': 'Свежий факт (финал в июле 2026): ни модель, ни Claude подтвердить его не могут. Стоит проверить вручную.',
+  'euro_winner:Чемпионат Европы по футболу 2024': 'Wikidata права (Испания); модель ошиблась.',
+  'olympics_winter:Зимние Олимпийские игры 1976': 'Wikidata права (Инсбрук); модель ошиблась.',
+  'euro_host:Чемпионат Европы по футболу 1996': 'Матчи шли в Англии; Wikidata указывает «Великобритания», «Англии» среди вариантов нет.',
+  ...Object.fromEntries(['Манчестер Юнайтед', 'Ливерпуль', 'Арсенал', 'Манчестер Сити', 'Астон Вилла', 'Эвертон', 'Тоттенхэм Хотспур'].map((c) => [`club_country:${c}`, UK])),
+});
 const MODEL_WRONG = 'Факт верный (Wikidata), ошиблась проверяющая модель.';
 
 const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;');
-const TYPE = { capital: 'Столицы', city_country: 'Города', mountain_country: 'Горы → страна', elevation: 'Высота гор', highest_point: 'Высшие точки', river_mouth: 'Реки → устье' };
+const TYPE = { olympics_summer: 'Летние Олимпиады', olympics_winter: 'Зимние Олимпиады', wc_host: 'ЧМ по футболу: где', wc_winner: 'ЧМ по футболу: чемпион', euro_host: 'Евро: где', euro_winner: 'Евро: чемпион', athlete_sport: 'Звёзды спорта', club_country: 'Футбольные клубы', capital: 'Столицы', city_country: 'Города', mountain_country: 'Горы → страна', elevation: 'Высота гор', highest_point: 'Высшие точки', river_mouth: 'Реки → устье' };
 let rows = '';
 let lastType = '';
 for (const d of drafts) {
@@ -75,7 +86,7 @@ for (const d of drafts) {
 const kept = final.size;
 const s = res.seconds;
 const html = `<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Пилот: география</title><style>
+<title>Вопросы: ${drafts[0]?.category === 'sports' ? 'спорт' : 'география'}</title><style>
 :root{--bg:#fbfaf7;--fg:#1f2430;--muted:#6b7080;--line:#e4e1d8;--ok:#e6f4ea;--okfg:#1e6b35;--drop:#fbeaea;--dropfg:#9b2c2c;--group:#efece4}
 @media (prefers-color-scheme:dark){:root{--bg:#16181d;--fg:#e8e6e1;--muted:#9a9eab;--line:#2c2f37;--ok:#173322;--okfg:#7fd69a;--drop:#3a1d1d;--dropfg:#f0a0a0;--group:#22252c}}
 body{margin:0;padding:24px 16px;background:var(--bg);color:var(--fg);font:14px/1.45 system-ui,-apple-system,Segoe UI,sans-serif}
@@ -87,7 +98,7 @@ td.q a{color:inherit;text-decoration:none}td.q{min-width:240px}td.note{color:var
 tr.ok td.correct{background:var(--ok);color:var(--okfg);font-weight:600}tr.warn td.correct{background:var(--ok);color:var(--okfg);font-weight:600}tr.warn td.q{box-shadow:inset 3px 0 0 var(--dropfg)}
 .pool{display:block;font-size:12px;margin-top:2px}td.note b{color:var(--dropfg)}
 </style></head><body>
-<h1>Пилот генератора вопросов: география</h1>
+<h1>Генератор вопросов: ${drafts[0]?.category === 'sports' ? 'спорт и Олимпиады' : 'география'}</h1>
 <p class="sum">Загружено на mao-dao <b>${kept}</b> вопросов, у каждого в БД полный пул неверных ответов. Проверяющая модель не согласилась с Wikidata в <b>${[...final.values()].filter((q) => q.model_disagrees).length}</b> (помечены красной чертой слева).
 Kaggle ${esc(res.gpus.join(' + '))}, ${esc(res.model)} (${res.mode}): загрузка модели ${s.load} с, склонение названий ${s.genitive} с, проверка ${s.verify} с.</p>
 <p class="sum">Зелёным — верный ответ (в игре варианты перемешиваются). Наведите на вопрос: ссылка на факт в Wikidata.</p>

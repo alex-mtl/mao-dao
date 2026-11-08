@@ -25,7 +25,17 @@ const TITLES = {
   elevation: ['Высота гор', 'Насколько высоки знаменитые вершины'],
   highest_point: ['Высшие точки стран', 'Самые высокие вершины разных стран'],
   river_mouth: ['Реки мира', 'Куда впадают великие реки'],
+  olympics_summer: ['Летние Олимпиады', 'Где проходили летние Олимпийские игры'],
+  olympics_winter: ['Зимние Олимпиады', 'Где проходили зимние Олимпийские игры'],
+  wc_host: ['Чемпионаты мира по футболу', 'Где проходил чемпионат мира'],
+  wc_winner: ['Чемпионы мира по футболу', 'Кто выигрывал чемпионат мира'],
+  euro_host: ['Чемпионаты Европы по футболу', 'Где проходил чемпионат Европы'],
+  euro_winner: ['Чемпионы Европы по футболу', 'Кто выигрывал чемпионат Европы'],
+  athlete_sport: ['Звёзды спорта', 'Какой вид спорта у знаменитого спортсмена'],
+  club_country: ['Футбольные клубы', 'В какой стране играет клуб'],
 };
+// category -> [quiz key prefix, title prefix, tag slug]
+const CATEGORY = { geography: ['geo', 'География', 'geography'], sports: ['sport', 'Спорт', 'sports'] };
 
 function pick3(q) {
   let h = [...q.id].reduce((a, c) => (a * 31 + c.charCodeAt(0)) >>> 0, 11);
@@ -42,11 +52,12 @@ for (const [type, qs] of Object.entries(byType)) {
   for (let part = 0; part * SIZE < qs.length; part++) {
     const chunk = qs.slice(part * SIZE, (part + 1) * SIZE);
     const [title, description] = TITLES[type] ?? [type, ''];
+    const [prefix, section, tag] = CATEGORY[chunk[0].category ?? 'geography'];
     const body = {
-      key: `geo-${type.replace(/_/g, '-')}-${part + 1}`,
-      title: `География: ${title}${part ? ` — ${part + 1}` : ''}`,
+      key: `${prefix}-${type.replace(/_/g, '-')}-${part + 1}`,
+      title: `${section}: ${title}${part ? ` — ${part + 1}` : ''}`,
       description: `${description}. Факты из Wikidata.`,
-      language: 'ru', tags: ['geography'], status: STATUS,
+      language: 'ru', tags: [tag], status: STATUS,
       questions: chunk.map((q) => ({ text: q.text, answers: [{ text: q.correct, is_correct: true }, ...pick3(q).map((t) => ({ text: t, is_correct: false }))], wrong_pool: q.wrong, key: q.id, ...(q.previous_text ? { previous_text: q.previous_text } : {}) })),
     };
     if (DRY) { console.log(body.key, body.title, body.questions.length, JSON.stringify(body.questions[0])); continue; }

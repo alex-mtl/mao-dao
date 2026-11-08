@@ -12,11 +12,18 @@ export async function sparql(query, { fresh = false } = {}) {
   const file = join(CACHE, createHash('sha1').update(query).digest('hex') + '.json');
   if (!fresh && existsSync(file)) return JSON.parse(readFileSync(file, 'utf8'));
   for (let attempt = 1; ; attempt++) {
-    const res = await fetch('https://query.wikidata.org/sparql', {
-      method: 'POST',
-      headers: { 'User-Agent': UA, Accept: 'application/sparql-results+json', 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({ query }),
-    });
+    let res;
+    try {
+      res = await fetch('https://query.wikidata.org/sparql', {
+        method: 'POST',
+        headers: { 'User-Agent': UA, Accept: 'application/sparql-results+json', 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({ query }),
+      });
+    } catch (e) { // the server drops the connection of a query it kills
+      if (attempt >= 3) throw new Error(`SPARQL: connection lost (${e.cause?.code ?? e.message}): ${query.slice(0, 120)}`);
+      await new Promise((r) => setTimeout(r, 5000 * attempt));
+      continue;
+    }
     // a query that hits the 60 s limit comes back as 200 with JSON cut off and the error text inside
     const body = res.ok ? await res.text() : '';
     let parsed = null;

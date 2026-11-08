@@ -30,7 +30,7 @@ for (const it of res.items) {
     stats.fallback_text++;
   }
   const prev = previous.get(d.id);
-  final.push({ id: d.id, type: d.type, category: 'geography', text, correct: d.correct, wrong: d.wrong,
+  final.push({ id: d.id, type: d.type, category: d.category ?? 'geography', text, correct: d.correct, wrong: d.wrong,
     source: `https://www.wikidata.org/wiki/${d.subject_qid}`,
     ...(it.genitive_ok === false ? { genitive_failed: `${d.gen_of} → ${it.genitive}` } : {}),
     ...(disagrees ? { model_disagrees: modelSaid } : {}),
