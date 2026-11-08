@@ -1,0 +1,5 @@
+{
+ "run": "20261108151001",
+ "model": "ai-sage/GigaChat3.1-10B-A1.8B-bf16",
+ "error": "OutOfMemoryError('CUDA out of memory. Tried to allocate 3.08 GiB. GPU 0 has a total capacity of 14.56 GiB of which 322.81 MiB is free. Including non-PyTorch memory, this process has 14.24 GiB memory in use. Of the allocated memory 13.36 GiB is allocated by PyTorch, and 776.16 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https:/"
+}

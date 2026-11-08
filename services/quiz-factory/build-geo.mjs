@@ -1,196 +1,143 @@
-// Geography drafts from Wikidata: node build-geo.mjs [--per-type=N] [--skip=N] [--out=data/geo-drafts.json]
-// Wording is fixed here, in quiz-show style («Столица Финляндии?», «Самая высокая вершина Австралии?», «Высота Монблана?»,
-// «В какой стране находится Рио-де-Жанейро?», «Куда впадает Сена?»). Where a name must be declined the draft has
-// pattern + gen_of and the model on Kaggle only gives the genitive; "template" is the fallback that needs none.
-// Only facts we can stand behind: the subject and the answer both have a Russian Wikipedia article and a Russian
-// label, the property has exactly ONE best-rank value (disputed borders, two capitals, unsure heights drop out),
-// countries are current sovereign states. Each draft = template question + correct answer + a pool of wrong
-// answers of the same kind (another capital, another country of the same continent...), so any 3 of the pool
-// make a valid question and a round can pick different ones each time.
-import { writeFileSync, mkdirSync } from 'node:fs';
-import { sparql, goodLabel } from './lib/wikidata.mjs';
+// Geography questions from Wikidata (no model): export build() -> [{id, type, category, text, correct, wrong[14], popularity}]
+// Quiz-show wording: «Столица Финляндии?», «Самая высокая вершина Австралии?», «Высота Монблана?»,
+// «В какой стране находится Рио-де-Жанейро?», «Куда впадает Сена?», «Валюта Японии?», «Официальный язык Бразилии?».
+// Only facts we can stand behind: Russian label + Russian Wikipedia article, exactly ONE best-rank value (disputed
+// borders, two capitals, unsure heights drop out), current sovereign states. Wrong answers are of the same kind and
+// surely wrong (rules below), the most plausible first.
+import { countryGenitive, knownGenitive } from './lib/genitive.mjs';
+import { sparql, goodLabel, ru, lbl, norm, cap, single, inParts, pool, numberPool, loadStates, sameContinent, countryCandidates, collector } from './lib/common.mjs';
 
-const arg = (n, d) => (process.argv.find((a) => a.startsWith(`--${n}=`)) ?? `=${d}`).split('=')[1];
-const PER_TYPE = Number(arg('per-type', 20));
-const SKIP = Number(arg('skip', 0)); // the next batch: skip the N most famous of each type (already made)
-const OUT = arg('out', 'data/geo-drafts.json');
-const RU = '?art schema:about ?X; schema:isPartOf <https://ru.wikipedia.org/>.';
-const ru = (v) => RU.replaceAll('?X', v).replace('?art', `?art_${v.slice(1)}`);
-// rdfs:label instead of the label service: the service times out on big result sets
-const lbl = (...vs) => vs.map((v) => `${v} rdfs:label ${v}Label. FILTER(LANG(${v}Label) = 'ru')`).join(' ');
-const POOL = 10;
-
-/** subject -> Set of values; keeps subjects whose property has exactly one distinct value */
-function single(rows, key, val) {
-  const m = new Map();
-  for (const r of rows) {
-    if (!r[val]) continue;
-    if (!m.has(r[key])) m.set(r[key], { row: r, vals: new Set() });
-    m.get(r[key]).vals.add(r[val]);
-  }
-  return [...m.values()].filter((x) => x.vals.size === 1).map((x) => x.row);
-}
-const byPop = (a, b) => b.sl - a.sl;
-const norm = (s) => s.toLowerCase().replace(/ё/g, 'е');
-
-// --- sovereign states: label, popularity, continents
-const stateRows = await sparql(`SELECT ?c ?cLabel ?sl ?cont WHERE {
-  ?c wdt:P31 wd:Q3624078; wikibase:sitelinks ?sl. FILTER NOT EXISTS { ?c wdt:P576 [] }
-  OPTIONAL { ?c wdt:P30 ?cont } ${ru('?c')} ${lbl('?c')} }`);
-const states = new Map();
-for (const r of stateRows) {
-  if (!goodLabel(r.cLabel)) continue;
-  const s = states.get(r.c) ?? { id: r.c, label: r.cLabel, sl: +r.sl, conts: new Set(), neighbours: new Set() };
-  if (r.cont) s.conts.add(r.cont);
-  states.set(r.c, s);
-}
-// neighbours: a mountain on a border may be "in" both countries, so a neighbour is never a wrong answer for it
-for (const r of await sparql(`SELECT ?c ?n WHERE { ?c wdt:P31 wd:Q3624078; wdt:P47 ?n. ?n wdt:P31 wd:Q3624078. }`)) states.get(r.c)?.neighbours.add(r.n);
-// "Кения" the mountain vs Кения the country: such names keep the word "гора"
-const stateLabelSet = () => new Set([...states.values()].map((s) => norm(s.label)));
-const sameContinent = (a, b) => [...a.conts].some((c) => b.conts.has(c));
-console.log('states', states.size);
-
-/** wrong answers: other items of the same kind, same continent first, most famous first */
-function poolFor(correctLabel, candidates, near) {
-  const seen = new Set([norm(correctLabel)]);
-  const out = [];
-  const sorted = [...candidates].sort((a, b) => (near(b) - near(a)) || byPop(a, b));
-  for (const c of sorted) {
-    if (out.length >= POOL) break;
-    if (!goodLabel(c.label) || seen.has(norm(c.label))) continue;
-    seen.add(norm(c.label));
-    out.push(c.label);
-  }
-  return out;
-}
-
-const drafts = [];
-function add(type, subject, text, correct, pool, extra = {}) {
-  if (!goodLabel(correct) || pool.length < 3) return;
-  if (norm(text).includes(norm(correct))) return; // the question must not give the answer away
-  drafts.push({ id: `${type}:${subject.id}`, type, subject: subject.label, subject_qid: subject.id, popularity: subject.sl,
-    template: text, correct, wrong: pool, ...extra });
-}
-
-// --- 1. capitals
-{
-  const rows = single(await sparql(`SELECT ?c ?cap ?capLabel ?capSl WHERE {
-    ?c wdt:P31 wd:Q3624078; wdt:P36 ?cap. FILTER NOT EXISTS { ?c wdt:P576 [] }
-    ?cap wikibase:sitelinks ?capSl. ${ru('?cap')} ${lbl('?cap')} }`), 'c', 'cap');
-  const caps = rows.filter((r) => states.has(r.c)).map((r) => ({ state: states.get(r.c), label: r.capLabel, sl: +r.capSl }));
-  for (const c of caps) {
-    const pool = poolFor(c.label, caps.filter((o) => o !== c).map((o) => ({ ...o, conts: o.state.conts })), (o) => sameContinent(o, c.state));
-    add('capital', c.state, `Столица страны «${c.state.label}»?`, c.label, pool, { pattern: 'Столица {gen}?', gen_of: c.state.label });
-  }
-}
-
-// --- 2. highest point of a country
-{
-  const rows = single(await sparql(`SELECT ?c ?hp ?hpLabel ?hpSl WHERE {
-    ?c wdt:P31 wd:Q3624078; wdt:P610 ?hp. FILTER NOT EXISTS { ?c wdt:P576 [] }
-    ?hp wikibase:sitelinks ?hpSl. ${ru('?hp')} ${lbl('?hp')} }`), 'c', 'hp');
+export async function build() {
+  const states = await loadStates();
   const stateLabels = new Set([...states.values()].map((s) => norm(s.label)));
-  const hps = rows.filter((r) => states.has(r.c)).map((r) => ({ state: states.get(r.c), label: r.hpLabel, sl: +r.hpSl, id: r.hp }));
-  for (const h of hps) {
-    if (hps.some((o) => o !== h && o.id === h.id)) continue; // shared by two countries: ambiguous
-    if (stateLabels.has(norm(h.label))) continue;
-    const pool = poolFor(h.label, hps.filter((o) => o !== h).map((o) => ({ ...o, conts: o.state.conts })), (o) => sameContinent(o, h.state)).filter((l) => !stateLabels.has(norm(l)));
-    add('highest_point', h.state, `Самая высокая вершина страны «${h.state.label}»?`, h.label, pool, { pattern: 'Самая высокая вершина {gen}?', gen_of: h.state.label });
+  const { drafts, add } = collector('geography');
+  const gen = (st) => countryGenitive(st.label);
+
+  // --- capitals: big cities of the same country first («Столица Австралии? — Сидней»), then capitals of the continent
+  {
+    const rows = single(await sparql(`SELECT ?c ?cap ?capLabel ?capSl WHERE {
+      ?c wdt:P31 wd:Q3624078; wdt:P36 ?cap. FILTER NOT EXISTS { ?c wdt:P576 [] }
+      ?cap wikibase:sitelinks ?capSl. ${ru('?cap')} ${lbl('?cap')} }`), 'c', 'cap');
+    const caps = rows.filter((r) => states.has(r.c)).map((r) => ({ state: states.get(r.c), label: r.capLabel, sl: +r.capSl }));
+    // a country's other big cities, except any city that is or was its capital or seat (Абиджан, Тель-Авив, Алматы, Гаага...)
+    const cities = await sparql(`SELECT ?c ?city ?cityLabel ?sl WHERE {
+      VALUES ?cls { wd:Q515 wd:Q1637706 wd:Q200250 wd:Q1549591 } ?city wdt:P31 ?cls; wdt:P17 ?c; wikibase:sitelinks ?sl. FILTER(?sl >= 40)
+      FILTER NOT EXISTS { ?c p:P36/ps:P36 ?city } FILTER NOT EXISTS { ?city p:P1376/ps:P1376 ?c }
+      FILTER NOT EXISTS { ?city wdt:P31 wd:Q5119 } ${lbl('?city')} }`);
+    const bigCities = new Map();
+    for (const r of cities) {
+      if (!bigCities.has(r.c)) bigCities.set(r.c, []);
+      if (!bigCities.get(r.c).some((x) => x.label === r.cityLabel)) bigCities.get(r.c).push({ label: r.cityLabel, sl: +r.sl });
+    }
+    for (const c of caps) {
+      const own = (bigCities.get(c.state.id) ?? []).sort((a, b) => b.sl - a.sl).slice(0, 4).map((x) => ({ ...x, score: 2 }));
+      const others = caps.filter((o) => o !== c).map((o) => ({ label: o.label, sl: o.sl, score: sameContinent(o.state, c.state) ? 1 : 0 }));
+      const g = gen(c.state);
+      add('capital', c.state.id, c.state.label, c.state.sl, g ? `Столица ${g}?` : `Столица страны «${c.state.label}»?`, c.label, pool(c.label, [...own, ...others]));
+    }
   }
+
+  // --- highest point of a country
+  {
+    const rows = single(await sparql(`SELECT ?c ?hp ?hpLabel ?hpSl WHERE {
+      ?c wdt:P31 wd:Q3624078; wdt:P610 ?hp. FILTER NOT EXISTS { ?c wdt:P576 [] }
+      ?hp wikibase:sitelinks ?hpSl. ${ru('?hp')} ${lbl('?hp')} }`), 'c', 'hp');
+    const hps = rows.filter((r) => states.has(r.c)).map((r) => ({ state: states.get(r.c), label: r.hpLabel, sl: +r.hpSl, id: r.hp }));
+    for (const h of hps) {
+      if (hps.some((o) => o !== h && o.id === h.id) || stateLabels.has(norm(h.label))) continue; // shared peak / "Кения"
+      const g = gen(h.state);
+      const cands = hps.filter((o) => o !== h && !stateLabels.has(norm(o.label))).map((o) => ({ label: o.label, sl: o.sl, score: sameContinent(o.state, h.state) ? 1 : 0 }));
+      add('highest_point', h.state.id, h.state.label, h.state.sl, g ? `Самая высокая вершина ${g}?` : `Самая высокая вершина страны «${h.state.label}»?`, h.label, pool(h.label, cands));
+    }
+  }
+
+  // --- which country a big city / a mountain is in
+  const capitalLabels = new Set(drafts.filter((d) => d.type === 'capital').map((d) => norm(d.correct)));
+  const countryOf = async (type, classes, minSl, text) => {
+    const rows = single(await sparql(`SELECT ?x ?xLabel ?sl ?country WHERE {
+      VALUES ?cls { ${classes} } ?x wdt:P31 ?cls; wikibase:sitelinks ?sl. FILTER(?sl >= ${minSl})
+      ?x wdt:P17 ?country. ${ru('?x')} ${lbl('?x')} }`), 'x', 'country');
+    for (const r of rows) {
+      const st = states.get(r.country);
+      if (!st || !goodLabel(r.xLabel, 60)) continue;
+      if (type === 'city_country' && capitalLabels.has(norm(r.xLabel))) continue; // capitals have their own questions
+      // a peak may sit on a border: neighbours are never wrong answers for a mountain
+      const cands = countryCandidates(states, st, (o) => type === 'mountain_country' && st.neighbours.has(o.id));
+      add(type, r.x, r.xLabel, +r.sl, text(r.xLabel), st.label, pool(st.label, cands));
+    }
+  };
+  const MOUNTAINS = 'wd:Q8502 wd:Q8072 wd:Q169358 wd:Q207326';
+  await countryOf('city_country', 'wd:Q515 wd:Q1637706 wd:Q200250 wd:Q1549591', 50, (x) => `В какой стране находится ${x}?`);
+  await countryOf('mountain_country', MOUNTAINS, 20, (x) => `В какой стране находится ${stateLabels.has(norm(x)) ? 'гора ' : ''}${x.replace(/^Гора /, 'гора ')}?`);
+
+  // --- elevation (metres, one best-rank value); "Высота Монблана?" only with a known genitive, else "Высота вершины X?"
+  {
+    const ids = [...new Set((await sparql(`SELECT ?m WHERE {
+      VALUES ?cls { ${MOUNTAINS} } ?m wdt:P31 ?cls; wikibase:sitelinks ?sl. FILTER(?sl >= 25) ${ru('?m')} }`)).map((r) => r.m))];
+    const rows = await inParts(ids, 250, (v) => `SELECT ?m ?mLabel ?sl ?e ?u WHERE { VALUES ?m { ${v} } ?m wikibase:sitelinks ?sl.
+      ?m p:P2044 ?st. ?st a wikibase:BestRank; psv:P2044 [ wikibase:quantityAmount ?e; wikibase:quantityUnit ?u ]. ${lbl('?m')} }`);
+    for (const r of single(rows.map((x) => ({ ...x, ev: `${x.e}|${x.u}` })), 'm', 'ev')) {
+      if (r.u !== 'Q11573' || !goodLabel(r.mLabel, 60)) continue; // metres only
+      const e = Math.round(+r.e);
+      if (e < 500) continue;
+      const name = r.mLabel.replace(/^[Гг]ора /, '');
+      const g = knownGenitive(name);
+      const text = stateLabels.has(norm(name)) ? `Высота горы ${name}?` : g ? `Высота ${g}?` : `Высота вершины ${name}?`;
+      add('elevation', r.m, r.mLabel, +r.sl, text, `${e} м`, numberPool(e, r.m, { max: 8849, min: 100 }).map((x) => `${x} м`));
+    }
+  }
+
+  // --- where a river flows into: never the bigger water the mouth is part of, no oceans unless the answer is one
+  {
+    const rows = single(await sparql(`SELECT ?r ?rLabel ?sl ?mouth ?mouthLabel ?mSl ?mIsRiver WHERE {
+      ?r wdt:P31 wd:Q4022; wikibase:sitelinks ?sl; wdt:P403 ?mouth. FILTER(?sl >= 30)
+      ?mouth wikibase:sitelinks ?mSl. FILTER(?mSl >= 25)
+      BIND(EXISTS { ?mouth wdt:P31 wd:Q4022 } AS ?mIsRiver) ${ru('?r')} ${ru('?mouth')} ${lbl('?r', '?mouth')} }`), 'r', 'mouth');
+    const parts = new Map();
+    for (const r of await sparql(`SELECT ?m ?up WHERE { ?r wdt:P31 wd:Q4022; wikibase:sitelinks ?sl; wdt:P403 ?m. FILTER(?sl >= 30) ?m wdt:P361+ ?up. }`)) {
+      if (!parts.has(r.m)) parts.set(r.m, new Set());
+      parts.get(r.m).add(r.up);
+    }
+    const oceans = new Set((await sparql(`SELECT ?o WHERE { ?o wdt:P31 wd:Q9430 }`)).map((r) => r.o));
+    const mouths = new Map();
+    for (const r of rows) mouths.set(r.mouth, { id: r.mouth, label: r.mouthLabel, sl: +r.mSl, river: r.mIsRiver === 'true', ocean: oceans.has(r.mouth) });
+    const related = (a, b) => parts.get(a.id)?.has(b.id) || parts.get(b.id)?.has(a.id);
+    for (const r of rows) {
+      if (!goodLabel(r.rLabel, 60)) continue;
+      const m = mouths.get(r.mouth);
+      const cands = [...mouths.values()].filter((o) => o !== m && !related(o, m) && (m.ocean || !o.ocean) && o.river === m.river);
+      add('river_mouth', r.r, r.rLabel, +r.sl, `Куда впадает ${stateLabels.has(norm(r.rLabel)) ? 'река ' : ''}${r.rLabel}?`, m.label, pool(m.label, cands));
+    }
+  }
+
+  // --- currency and official language: one value only; never a language also used in the country (каталанский в Испании)
+  const byCountry = async (type, prop, minSl, text, extraExclude) => {
+    const rows = single(await sparql(`SELECT ?c ?v ?vLabel ?vSl WHERE { ?c wdt:P31 wd:Q3624078; wdt:${prop} ?v. FILTER NOT EXISTS { ?c wdt:P576 [] }
+      ?v wikibase:sitelinks ?vSl. ${ru('?v')} ${lbl('?v')} }`), 'c', 'v');
+    const items = rows.filter((r) => states.has(r.c)).map((r) => ({ state: states.get(r.c), id: r.v, label: cap(r.vLabel), sl: +r.vSl }));
+    const used = extraExclude ? await extraExclude() : new Map();
+    for (const it of items) {
+      const g = gen(it.state);
+      if (!g) continue;
+      const cands = items.filter((o) => o.id !== it.id && !(used.get(it.state.id)?.has(o.id)))
+        .map((o) => ({ label: o.label, sl: o.sl, score: sameContinent(o.state, it.state) ? 1 : 0 }));
+      add(type, it.state.id, it.state.label, it.state.sl, text(g), it.label, pool(it.label, cands));
+    }
+  };
+  await byCountry('currency', 'P38', 0, (g) => `Валюта ${g}?`);
+  await byCountry('language', 'P37', 0, (g) => `Официальный язык ${g}?`, async () => {
+    const m = new Map();
+    for (const r of await sparql(`SELECT ?c ?l WHERE { ?c wdt:P31 wd:Q3624078; wdt:P2936 ?l. }`)) {
+      if (!m.has(r.c)) m.set(r.c, new Set());
+      m.get(r.c).add(r.l);
+    }
+    return m;
+  });
+
+  return drafts;
 }
 
-// --- 3. which country a big city / a mountain is in
-const countryOf = async (type, classes, minSl, template) => {
-  const rows = single(await sparql(`SELECT ?x ?xLabel ?sl ?country WHERE {
-    VALUES ?cls { ${classes} } ?x wdt:P31 ?cls; wikibase:sitelinks ?sl. FILTER(?sl >= ${minSl})
-    ?x wdt:P17 ?country. ${ru('?x')} ${lbl('?x')} }`), 'x', 'country');
-  const capitals = new Set(drafts.filter((d) => d.type === 'capital').map((d) => norm(d.correct)));
-  const all = [...states.values()];
-  for (const r of rows) {
-    const st = states.get(r.country);
-    if (!st || !goodLabel(r.xLabel, 60)) continue;
-    if (type === 'city_country' && capitals.has(norm(r.xLabel))) continue; // capitals have their own questions
-    const pool = poolFor(st.label, all.filter((o) => o !== st && (type !== 'mountain_country' || !st.neighbours.has(o.id))), (o) => sameContinent(o, st));
-    add(type, { id: r.x, label: r.xLabel, sl: +r.sl }, template(r.xLabel), st.label, pool);
-  }
-};
-const MOUNTAINS = 'wd:Q8502 wd:Q8072 wd:Q169358 wd:Q207326';
-await countryOf('city_country', 'wd:Q515 wd:Q1637706 wd:Q200250 wd:Q1549591', 80, (x) => `В какой стране находится ${x}?`);
-await countryOf('mountain_country', MOUNTAINS, 25, (x) => `В какой стране находится ${stateLabelSet().has(norm(x)) ? 'гора ' : ''}${x.replace(/^Гора /, 'гора ')}?`);
-
-// --- 4. elevation of a mountain (metres, one best-rank value)
-{
-  // in two steps: one query over every mountain with its heights times out
-  const ids = [...new Set((await sparql(`SELECT ?m WHERE {
-    VALUES ?cls { ${MOUNTAINS} } ?m wdt:P31 ?cls; wikibase:sitelinks ?sl. FILTER(?sl >= 30) ${ru('?m')} }`)).map((r) => r.m))];
-  const rows = [];
-  for (let i = 0; i < ids.length; i += 250) {
-    rows.push(...await sparql(`SELECT ?m ?mLabel ?sl ?e ?u WHERE {
-      VALUES ?m { ${ids.slice(i, i + 250).map((x) => 'wd:' + x).join(' ')} } ?m wikibase:sitelinks ?sl.
-      ?m p:P2044 ?st. ?st a wikibase:BestRank; psv:P2044 [ wikibase:quantityAmount ?e; wikibase:quantityUnit ?u ].
-      ${lbl('?m')} }`));
-  }
-  const one = single(rows.map((r) => ({ ...r, ev: `${r.e}|${r.u}` })), 'm', 'ev');
-  for (const r of one) {
-    if (r.u !== 'Q11573' || !goodLabel(r.mLabel, 60)) continue; // metres only
-    const e = Math.round(+r.e);
-    if (e < 500) continue;
-    const pool = numericPool(e, `${r.m}`);
-    const name = r.mLabel.replace(/^Гора /, '');
-    // "Высота Монблана?" needs the genitive (the model's only job); a name that is also a country stays "горы Кения"
-    const asCountry = stateLabelSet().has(norm(name));
-    add('elevation', { id: r.m, label: r.mLabel, sl: +r.sl }, asCountry ? `Высота горы ${name}?` : `Высота вершины ${name}?`, fmtM(e), pool.map(fmtM),
-      asCountry ? {} : { pattern: 'Высота {gen}?', gen_of: name });
-  }
+if (process.argv[1]?.endsWith('build-geo.mjs')) {
+  const d = await build();
+  console.log(Object.entries(Object.groupBy(d, (x) => x.type)).map(([t, xs]) => `${t}: ${xs.length}`).join(', '));
 }
-
-// --- 5. where a river flows into
-{
-  const rows = single(await sparql(`SELECT ?r ?rLabel ?sl ?mouth ?mouthLabel ?mSl ?mIsRiver WHERE {
-    ?r wdt:P31 wd:Q4022; wikibase:sitelinks ?sl; wdt:P403 ?mouth. FILTER(?sl >= 40)
-    ?mouth wikibase:sitelinks ?mSl. FILTER(?mSl >= 30)
-    BIND(EXISTS { ?mouth wdt:P31 wd:Q4022 } AS ?mIsRiver)
-    ${ru('?r')} ${ru('?mouth')} ${lbl('?r', '?mouth')} }`), 'r', 'mouth');
-  const parts = new Map(); // mouth -> every water body it is part of (P361*, P4614 drainage basin excluded)
-  for (const r of await sparql(`SELECT ?m ?up WHERE { ?r wdt:P31 wd:Q4022; wikibase:sitelinks ?sl; wdt:P403 ?m. FILTER(?sl >= 40) ?m wdt:P361+ ?up. }`)) {
-    if (!parts.has(r.m)) parts.set(r.m, new Set()); parts.get(r.m).add(r.up);
-  }
-  const oceans = new Set((await sparql(`SELECT ?o WHERE { ?o wdt:P31 wd:Q9430 }`)).map((r) => r.o));
-  const mouths = new Map();
-  for (const r of rows) mouths.set(r.mouth, { id: r.mouth, label: r.mouthLabel, sl: +r.mSl, river: r.mIsRiver === 'true', ocean: oceans.has(r.mouth) });
-  const related = (a, b) => parts.get(a.id)?.has(b.id) || parts.get(b.id)?.has(a.id);
-  for (const r of rows) {
-    if (!goodLabel(r.rLabel, 60)) continue;
-    const m = mouths.get(r.mouth);
-    const pool = poolFor(m.label, [...mouths.values()].filter((o) => o !== m && !related(o, m) && (m.ocean || !o.ocean) && o.river === m.river), () => 0);
-    add('river_mouth', { id: r.r, label: r.rLabel, sl: +r.sl }, `Куда впадает ${stateLabelSet().has(norm(r.rLabel)) ? 'река ' : ''}${r.rLabel}?`, m.label, pool); // "река Конго": also a country
-  }
-}
-
-function fmtM(n) { return `${n} м`; }
-/** plausible wrong heights: 8-35% away, with "precise" last digits like the real one, at least 6% apart from each other */
-function numericPool(e, seed) {
-  let h = [...seed].reduce((a, c) => (a * 31 + c.charCodeAt(0)) >>> 0, 7);
-  const rnd = () => ((h = (h * 1103515245 + 12345) >>> 0) / 2 ** 32);
-  const out = [];
-  for (let i = 0; out.length < 8 && i < 200; i++) {
-    const f = (rnd() < 0.5 ? -1 : 1) * (0.08 + rnd() * 0.27);
-    const v = Math.round(e * (1 + f)) + Math.round((rnd() - 0.5) * 14);
-    if (v >= 8849 || v < 100) continue;
-    if ([e, ...out].every((x) => Math.abs(x - v) / e >= 0.06)) out.push(v);
-  }
-  return out;
-}
-
-// --- pilot pick: the most famous subjects of each type
-const counts = {};
-const picked = [];
-for (const type of ['capital', 'city_country', 'mountain_country', 'elevation', 'highest_point', 'river_mouth']) {
-  const all = drafts.filter((d) => d.type === type).sort((a, b) => b.popularity - a.popularity);
-  counts[type] = all.length;
-  picked.push(...all.slice(SKIP, SKIP + PER_TYPE));
-}
-mkdirSync('data', { recursive: true });
-writeFileSync(OUT, JSON.stringify(picked, null, 1));
-console.log('available per type', counts, '\npicked', picked.length, '->', OUT);

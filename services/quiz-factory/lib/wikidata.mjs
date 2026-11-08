@@ -25,7 +25,12 @@ export async function sparql(query, { fresh = false } = {}) {
       continue;
     }
     // a query that hits the 60 s limit comes back as 200 with JSON cut off and the error text inside
-    const body = res.ok ? await res.text() : '';
+    let body = '';
+    try { body = res.ok ? await res.text() : ''; } catch (e) { // the connection dropped while reading
+      if (attempt >= 3) throw new Error('SPARQL: connection lost while reading: ' + query.slice(0, 120));
+      await new Promise((r) => setTimeout(r, 5000 * attempt));
+      continue;
+    }
     let parsed = null;
     try { parsed = res.ok ? JSON.parse(body) : null; } catch { if (attempt >= 3) throw new Error('SPARQL: truncated answer (query timeout): ' + query.slice(0, 120)); }
     if (parsed) {

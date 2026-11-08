@@ -1,0 +1,5 @@
+{
+ "run": "20261108161118",
+ "model": "ai-sage/GigaChat3.1-10B-A1.8B-GGUF:q8_0",
+ "error": "RuntimeError('llama.cpp build failed: : /usr/bin/cc - skipped\\n-- Detecting C compile features\\n-- Detecting C compile features - done\\n-- Detecting CXX compiler ABI info\\n-- Detecting CXX compiler ABI info - done\\n-- Check for working CXX compiler: /usr/bin/c++ - skipped\\n-- Detecting CXX compile features\\n-- Detecting CXX compile features - done\\n-- llama.cpp version: 0.9.0-dev\\nCMAKE_BUILD_TYPE=Release\\n-- Found Git: /usr/bin/git (found version \"2.43.0\")\\n-- The ASM compiler identification is"
+}

@@ -1,0 +1,5 @@
+{
+ "run": "20261108160219",
+ "model": "ai-sage/GigaChat3.1-10B-A1.8B-GGUF:q8_0",
+ "error": "CalledProcessError(1, 'cd /tmp/llama.cpp && cmake -B build -DGGML_CUDA=ON -DCMAKE_CUDA_ARCHITECTURES=75 -DLLAMA_CURL=OFF -DLLAMA_BUILD_TESTS=OFF -DLLAMA_BUILD_EXAMPLES=OFF > /tmp/cmake.log 2>&1 && cmake --build build --config Release --target llama-server -j 4 >> /tmp/cmake.log 2>&1')"
+}

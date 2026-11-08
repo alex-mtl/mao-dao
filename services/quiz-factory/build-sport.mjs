@@ -1,160 +1,89 @@
-// Sport drafts from Wikidata: node build-sport.mjs [--batch=N] [--out=data/sport-drafts.json]
-// --batch=2 takes the next most famous questions of each type after batch 1 (each type has its own share).
-// Same rules as build-geo.mjs: one best-rank value only, Russian label and Russian Wikipedia article, wrong answers of
-// the same kind that are surely wrong. Quiz-show wording without declension, so the model only checks:
+// Sport questions from Wikidata (no model): export build(). Wording needs no declension:
 //   «Где прошла летняя Олимпиада-1980?», «Где прошёл чемпионат мира по футболу 2018 года?»,
 //   «Кто выиграл чемпионат мира по футболу 2014 года?», «Майкл Фелпс — какой вид спорта?», «В какой стране играет «Ювентус»?»
-import { writeFileSync, mkdirSync } from 'node:fs';
-import { sparql, goodLabel } from './lib/wikidata.mjs';
+// Same rules as geography: one best-rank value, Russian label + article, wrong answers of the same kind that are surely wrong.
+import { sparql, goodLabel, ru, lbl, cap, single, inParts, pool, loadStates, countryCandidates, collector, noPatronymic, YEAR_NOW } from './lib/common.mjs';
 
-const arg = (n, d) => (process.argv.find((a) => a.startsWith(`--${n}=`)) ?? `=${d}`).split('=')[1];
-const BATCH = Number(arg('batch', 1));
-const OUT = arg('out', 'data/sport-drafts.json');
-const ru = (v) => `?art_${v.slice(1)} schema:about ${v}; schema:isPartOf <https://ru.wikipedia.org/>.`;
-const lbl = (...vs) => vs.map((v) => `${v} rdfs:label ${v}Label. FILTER(LANG(${v}Label) = 'ru')`).join(' ');
-const norm = (s) => s.toLowerCase().replace(/ё/g, 'е');
-const cap = (s) => s[0].toUpperCase() + s.slice(1);
-const YEAR_NOW = new Date().getFullYear();
-const POOL = 10;
+export async function build() {
+  const states = await loadStates();
+  const { drafts, add } = collector('sports');
+  const year = (label) => +(label.match(/\b(18|19|20)\d\d\b/) ?? [0])[0];
 
-function single(rows, key, val) {
-  const m = new Map();
-  for (const r of rows) {
-    if (!r[val]) continue;
-    if (!m.has(r[key])) m.set(r[key], { row: r, vals: new Set() });
-    m.get(r[key]).vals.add(r[val]);
+  // --- Olympic host cities (P3450 = summer / winter Games; P276 only if it is a settlement, not a venue)
+  const hosts = [];
+  for (const [series, kind] of [['Q159821', 'summer'], ['Q82414', 'winter']]) {
+    const rows = single(await sparql(`SELECT ?e ?eLabel ?sl ?city ?cityLabel ?country WHERE { ?e wdt:P3450 wd:${series}; wikibase:sitelinks ?sl; wdt:P276 ?city.
+      FILTER EXISTS { ?city wdt:P31/wdt:P279* wd:Q486972 } OPTIONAL { ?city wdt:P17 ?country } ${lbl('?e', '?city')} }`), 'e', 'city');
+    for (const r of rows) hosts.push({ ...r, kind, cityLabel: r.cityLabel.replace(/^Горнолыжный курорт /, ''), year: year(r.eLabel) });
   }
-  return [...m.values()].filter((x) => x.vals.size === 1).map((x) => x.row);
-}
-/** wrong answers: distinct labels from candidates (best first), never the correct one */
-function pool(correct, candidates) {
-  const seen = new Set([norm(correct)]);
-  const out = [];
-  for (const c of candidates) {
-    if (out.length >= POOL) break;
-    if (!goodLabel(c) || seen.has(norm(c))) continue;
-    seen.add(norm(c));
-    out.push(c);
+  // wrong answers beyond other hosts: big cities of countries that never hosted the Games (no "partly true" city like
+  // Таллин for 1980, where the regatta was)
+  const hostCountries = new Set(hosts.map((h) => h.country).filter(Boolean));
+  const bigCities = (await sparql(`SELECT ?city ?cityLabel ?sl ?c WHERE { VALUES ?cls { wd:Q515 wd:Q1637706 wd:Q200250 }
+    ?city wdt:P31 ?cls; wdt:P17 ?c; wikibase:sitelinks ?sl. FILTER(?sl >= 150) ${lbl('?city')} }`))
+    .filter((r) => !hostCountries.has(r.c)).map((r) => ({ label: r.cityLabel, sl: +r.sl, score: 0 }));
+  for (const h of hosts) {
+    if (!h.year || h.year > YEAR_NOW || hosts.some((o) => o !== h && o.kind === h.kind && o.year === h.year)) continue;
+    const sameKind = hosts.filter((o) => o.kind === h.kind && o.cityLabel !== h.cityLabel).map((o) => ({ label: o.cityLabel, sl: +o.sl, score: 2 }));
+    const otherKind = hosts.filter((o) => o.kind !== h.kind && o.cityLabel !== h.cityLabel).map((o) => ({ label: o.cityLabel, sl: +o.sl, score: 1 }));
+    add(`olympics_${h.kind}`, h.e, h.eLabel, +h.sl, `Где прошла ${h.kind === 'summer' ? 'летняя' : 'зимняя'} Олимпиада-${h.year}?`, h.cityLabel,
+      pool(h.cityLabel, [...sameKind, ...otherKind, ...bigCities]));
   }
-  return out;
-}
-const drafts = [];
-function add(type, id, subject, sl, text, correct, wrong) {
-  if (!goodLabel(correct) || wrong.length < 3 || text.length > 150) return;
-  if (norm(text).includes(norm(correct))) return;
-  drafts.push({ id: `${type}:${id}`, type, category: 'sports', subject, subject_qid: id, popularity: sl, template: text, correct, wrong });
-}
 
-// --- countries (sovereign states + continents) for country answers
-const states = new Map();
-for (const r of await sparql(`SELECT ?c ?cLabel ?sl ?cont WHERE { ?c wdt:P31 wd:Q3624078; wikibase:sitelinks ?sl.
-  FILTER NOT EXISTS { ?c wdt:P576 [] } OPTIONAL { ?c wdt:P30 ?cont } ${ru('?c')} ${lbl('?c')} }`)) {
-  const s = states.get(r.c) ?? { id: r.c, label: r.cLabel, sl: +r.sl, conts: new Set() };
-  if (r.cont) s.conts.add(r.cont);
-  states.set(r.c, s);
-}
-const byPop = (a, b) => b.sl - a.sl;
-const near = (st) => [...states.values()].filter((o) => o !== st).sort((a, b) =>
-  ([...b.conts].some((c) => st.conts.has(c)) - [...a.conts].some((c) => st.conts.has(c))) || byPop(a, b)).map((s) => s.label);
+  // --- football: World Cup (Q19317) and Euro (Q260858) hosts and winners (winner = the national team's country)
+  for (const [series, name, key] of [['Q19317', 'чемпионат мира по футболу', 'wc'], ['Q260858', 'чемпионат Европы по футболу', 'euro']]) {
+    const rows = await sparql(`SELECT ?e ?eLabel ?sl ?host ?win ?winCountry WHERE { ?e wdt:P3450 wd:${series}; wikibase:sitelinks ?sl.
+      OPTIONAL { ?e wdt:P17 ?host } OPTIONAL { ?e wdt:P1346 ?win. OPTIONAL { ?win wdt:P17 ?winCountry } } ${lbl('?e')} }`);
+    const hostRows = single(rows, 'e', 'host').filter((r) => states.has(r.host) && year(r.eLabel) && year(r.eLabel) <= YEAR_NOW);
+    const winRows = single(single(rows, 'e', 'win'), 'e', 'winCountry').filter((r) => states.has(r.winCountry) && year(r.eLabel));
+    const nations = [...new Set([...hostRows.map((r) => r.host), ...winRows.map((r) => r.winCountry)])].map((id) => ({ ...states.get(id), score: 2 }));
+    for (const r of hostRows) {
+      const st = states.get(r.host);
+      add(`${key}_host`, r.e, r.eLabel, +r.sl, `Где прошёл ${name} ${year(r.eLabel)} года?`, st.label, pool(st.label, [...nations, ...countryCandidates(states, st)]));
+    }
+    for (const r of winRows) {
+      const st = states.get(r.winCountry);
+      add(`${key}_winner`, r.e, r.eLabel, +r.sl, `Кто выиграл ${name} ${year(r.eLabel)} года?`, st.label, pool(st.label, [...nations, ...countryCandidates(states, st)]));
+    }
+  }
 
-// --- 1. Olympic host cities (P3450 = summer / winter Games)
-for (const [series, word] of [['Q159821', 'летняя'], ['Q82414', 'зимняя']]) {
-  // P276 is sometimes a venue ("Олимпийский парк Хвэнге"): only places that are human settlements count
-  const rows = single(await sparql(`SELECT ?e ?eLabel ?sl ?city ?cityLabel WHERE { ?e wdt:P3450 wd:${series}; wikibase:sitelinks ?sl; wdt:P276 ?city.
-    FILTER EXISTS { ?city wdt:P31/wdt:P279* wd:Q486972 } ${lbl('?e', '?city')} }`), 'e', 'city');
-  const eds = rows.map((r) => ({ ...r, cityLabel: r.cityLabel.replace(/^Горнолыжный курорт /, ''), year: +(r.eLabel.match(/\b(18|19|20)\d\d\b/) ?? [0])[0] })).filter((r) => r.year && r.year <= YEAR_NOW);
-  const cities = [...new Set(eds.map((r) => r.cityLabel))];
-  for (const r of eds) {
-    if (eds.some((o) => o !== r && o.year === r.year)) continue; // two items for one year: unclear
-    add(`olympics_${word === 'летняя' ? 'summer' : 'winter'}`, r.e, r.eLabel, +r.sl, `Где прошла ${word} Олимпиада-${r.year}?`, r.cityLabel,
-      pool(r.cityLabel, cities.filter((c) => c !== r.cityLabel)));
+  // --- famous sportspeople and their (single) sport: athletes by occupation, not famous for anything else
+  {
+    const ids = (await sparql(`SELECT ?p WHERE { ?p wdt:P641 []; wikibase:sitelinks ?sl. FILTER(?sl >= 60) ?p wdt:P31 wd:Q5. }`)).map((r) => r.p);
+    const rows = await inParts(ids, 300, (v) => `SELECT ?p ?pLabel ?sl ?sport ?sportLabel WHERE { VALUES ?p { ${v} }
+      ?p wikibase:sitelinks ?sl; wdt:P641 ?sport. ${ru('?p')} ${lbl('?p', '?sport')} }`);
+    const athletes = new Set((await inParts(ids, 300, (v) => `SELECT DISTINCT ?p WHERE { VALUES ?p { ${v} } ?p wdt:P106 ?job. ?job wdt:P279* wd:Q2066131. }`)).map((r) => r.p));
+    // Нильс Бор kept goal, Камю too, Буш played rugby, Пий XI climbed: politicians, writers, scientists, artists, clergy... are out
+    const OTHER_FAME = 'wd:Q82955 wd:Q36180 wd:Q901 wd:Q483501 wd:Q33999 wd:Q639669 wd:Q131524 wd:Q81096 wd:Q189290 wd:Q4964182 wd:Q1930187 wd:Q2526255 wd:Q2259532 wd:Q250867';
+    const famousElse = new Set((await inParts(ids, 300, (v) => `SELECT DISTINCT ?p WHERE { VALUES ?p { ${v} } VALUES ?fame { ${OTHER_FAME} }
+      ?p wdt:P106 ?job. ?job wdt:P279* ?fame. }`)).map((r) => r.p));
+    const people = single(rows.filter((r) => athletes.has(r.p) && !famousElse.has(r.p)), 'p', 'sport');
+    const count = new Map();
+    for (const r of people) count.set(cap(r.sportLabel), (count.get(cap(r.sportLabel)) ?? 0) + 1);
+    const sports = [...count.entries()].map(([label, n]) => ({ label, sl: n }));
+    for (const r of people) {
+      const name = noPatronymic(r.pLabel);
+      if (!goodLabel(name, 60) || name.split(' ').length < 2) continue; // nicknames are often ambiguous
+      add('athlete_sport', r.p, name, +r.sl, `${name} — какой вид спорта?`, cap(r.sportLabel), pool(cap(r.sportLabel), sports), { group: cap(r.sportLabel) });
+    }
   }
-}
 
-// --- 2. football: World Cup (Q19317) and Euro (Q260858) hosts and winners (winner = the national team's country)
-for (const [series, name, key] of [['Q19317', 'чемпионат мира по футболу', 'wc'], ['Q260858', 'чемпионат Европы по футболу', 'euro']]) {
-  const rows = await sparql(`SELECT ?e ?eLabel ?sl ?host ?win ?winCountry WHERE { ?e wdt:P3450 wd:${series}; wikibase:sitelinks ?sl.
-    OPTIONAL { ?e wdt:P17 ?host } OPTIONAL { ?e wdt:P1346 ?win. OPTIONAL { ?win wdt:P17 ?winCountry } } ${lbl('?e')} }`);
-  const year = (r) => +(r.eLabel.match(/\b(19|20)\d\d\b/) ?? [0])[0];
-  const hosts = single(rows, 'e', 'host').filter((r) => states.has(r.host) && year(r) && year(r) <= YEAR_NOW);
-  const winners = single(single(rows, 'e', 'win'), 'e', 'winCountry').filter((r) => states.has(r.winCountry) && year(r));
-  const footballNations = [...new Set([...hosts.map((r) => r.host), ...winners.map((r) => r.winCountry)])].map((id) => states.get(id).label);
-  for (const r of hosts) {
-    const st = states.get(r.host);
-    add(`${key}_host`, r.e, r.eLabel, +r.sl, `Где прошёл ${name} ${year(r)} года?`, st.label, pool(st.label, [...footballNations, ...near(st)]));
+  // --- football clubs and their country
+  {
+    const rows = single(await sparql(`SELECT ?c ?cLabel ?sl ?country WHERE { ?c wdt:P31 wd:Q476028; wikibase:sitelinks ?sl. FILTER(?sl >= 30)
+      ?c wdt:P17 ?country. ${ru('?c')} ${lbl('?c')} }`), 'c', 'country');
+    // «Динамо», «Жальгирис»: a name shared by several clubs makes the question ambiguous
+    const named = Object.groupBy(await sparql(`SELECT ?c ?cLabel WHERE { ?c wdt:P31 wd:Q476028. ${lbl('?c')} }`), (r) => r.cLabel);
+    for (const r of rows) {
+      const st = states.get(r.country);
+      if (!st || !goodLabel(r.cLabel, 40) || (named[r.cLabel]?.length ?? 0) > 1) continue;
+      add('club_country', r.c, r.cLabel, +r.sl, `В какой стране играет «${r.cLabel}»?`, st.label, pool(st.label, countryCandidates(states, st)), { group: st.label });
+    }
   }
-  for (const r of winners) {
-    const st = states.get(r.winCountry);
-    add(`${key}_winner`, r.e, r.eLabel, +r.sl, `Кто выиграл ${name} ${year(r)} года?`, st.label, pool(st.label, [...footballNations, ...near(st)]));
-  }
+  return drafts;
 }
 
-// --- 3. famous sportspeople and their (single) sport
-{
-  // in two steps: people with a sport (P641) and many Wikipedias, then their labels (one query times out)
-  const ids = (await sparql(`SELECT ?p ?sl WHERE { ?p wdt:P641 []; wikibase:sitelinks ?sl. FILTER(?sl >= 90) ?p wdt:P31 wd:Q5. }`));
-  const rows = [];
-  for (let i = 0; i < ids.length; i += 300) {
-    const part = ids.slice(i, i + 300);
-    rows.push(...await sparql(`SELECT ?p ?pLabel ?sl ?sport ?sportLabel WHERE { VALUES ?p { ${part.map((r) => 'wd:' + r.p).join(' ')} }
-      ?p wikibase:sitelinks ?sl; wdt:P641 ?sport. ${ru('?p')} ${lbl('?p', '?sport')} }`));
-  }
-  // only sportspeople by occupation (P106 ⊂ athlete): presidents have golf as their "sport" too
-  const athletes = new Set();
-  for (let i = 0; i < ids.length; i += 300) {
-    const part = ids.slice(i, i + 300);
-    for (const r of await sparql(`SELECT DISTINCT ?p WHERE { VALUES ?p { ${part.map((x) => 'wd:' + x.p).join(' ')} }
-      ?p wdt:P106 ?job. ?job wdt:P279* wd:Q2066131. }`)) athletes.add(r.p);
-  }
-  // ... and famous for sport, not for something else: Нильс Бор kept goal, Камю too, Буш played rugby at college
-  const OTHER_FAME = 'wd:Q82955 wd:Q36180 wd:Q901 wd:Q483501 wd:Q33999 wd:Q639669 wd:Q131524 wd:Q81096 wd:Q189290 wd:Q4964182 wd:Q1930187 wd:Q2526255 wd:Q2259532 wd:Q250867';
-  const famousElse = new Set();
-  for (let i = 0; i < ids.length; i += 300) {
-    const part = ids.slice(i, i + 300);
-    for (const r of await sparql(`SELECT DISTINCT ?p WHERE { VALUES ?p { ${part.map((x) => 'wd:' + x.p).join(' ')} }
-      VALUES ?fame { ${OTHER_FAME} } ?p wdt:P106 ?job. ?job wdt:P279* ?fame. }`)) famousElse.add(r.p);
-  }
-  const people = single(rows.filter((r) => athletes.has(r.p) && !famousElse.has(r.p)), 'p', 'sport');
-  const count = new Map();
-  for (const r of people) count.set(r.sportLabel, (count.get(r.sportLabel) ?? 0) + 1);
-  const sports = [...count.entries()].sort((a, b) => b[1] - a[1]).map(([s]) => cap(s));
-  for (const r of people) {
-    if (!goodLabel(r.pLabel, 60) || r.pLabel.split(' ').length < 2) continue; // "Пеле"-style single names are fine, but nicknames are often ambiguous
-    const name = r.pLabel.replace(/^(\S+) \S+(вич|вна|ич|кызы|оглы) (\S+)$/, '$1 $3'); // without the patronymic
-    add('athlete_sport', r.p, name, +r.sl, `${name} — какой вид спорта?`, cap(r.sportLabel), pool(cap(r.sportLabel), sports));
-  }
+if (process.argv[1]?.endsWith('build-sport.mjs')) {
+  const d = await build();
+  console.log(Object.entries(Object.groupBy(d, (x) => x.type)).map(([t, xs]) => `${t}: ${xs.length}`).join(', '));
 }
-
-// --- 4. famous football clubs and their country
-{
-  const rows = single(await sparql(`SELECT ?c ?cLabel ?sl ?country WHERE { ?c wdt:P31 wd:Q476028; wikibase:sitelinks ?sl. FILTER(?sl >= 50)
-    ?c wdt:P17 ?country. ${ru('?c')} ${lbl('?c')} }`), 'c', 'country');
-  for (const r of rows) {
-    const st = states.get(r.country);
-    if (!st || !goodLabel(r.cLabel, 40)) continue;
-    add('club_country', r.c, r.cLabel, +r.sl, `В какой стране играет «${r.cLabel}»?`, st.label, pool(st.label, near(st)));
-  }
-}
-
-// --- pick: the most famous of each type
-const SHARE = { olympics_summer: 10, olympics_winter: 10, wc_host: 12, wc_winner: 12, euro_host: 8, euro_winner: 8, athlete_sport: 22, club_country: 21 };
-const counts = {};
-const picked = [];
-const taken = new Set();
-// batches are made one after another, each from what earlier batches left; a sport at most 5 times per batch
-for (let b = 1; b <= BATCH; b++) {
-  for (const [type, n] of Object.entries(SHARE)) {
-    const all = drafts.filter((d) => d.type === type && !taken.has(d.id)).sort((a, b2) => b2.popularity - a.popularity);
-    counts[type] = all.length;
-    const perAnswer = new Map();
-    const varied = type === 'athlete_sport'
-      ? all.filter((d) => { const k = perAnswer.get(d.correct) ?? 0; perAnswer.set(d.correct, k + 1); return k < 5; })
-      : all;
-    const batch = varied.slice(0, n);
-    batch.forEach((d) => taken.add(d.id));
-    if (b === BATCH) picked.push(...batch);
-  }
-}
-mkdirSync('data', { recursive: true });
-writeFileSync(OUT, JSON.stringify(picked, null, 1));
-console.log('available per type', counts, '\npicked', picked.length, '->', OUT);
