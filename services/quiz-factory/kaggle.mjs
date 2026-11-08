@@ -32,12 +32,13 @@ if (cmd === 'push') {
   const run = new Date().toISOString().replace(/\D/g, '').slice(0, 14);
   const drafts = gzipSync(readFileSync(a1)).toString('base64');
   const text = readFileSync(join(HERE, 'kaggle', 'polish.py'), 'utf8').replace(/\r\n/g, '\n')
-    .replace('__RUN_ID__', run).replace('__DRAFTS__', drafts);
+    .replace('RUN_ID = "__RUN_ID__"', `RUN_ID = "${run}"`).replace('"__DRAFTS__"', `"${drafts}"`);
+  if (text.includes('__RUN_ID__') || text.includes('__DRAFTS__')) throw new Error('placeholders left in polish.py');
   const r = await api('SaveKernel', {
     slug: `${USER}/${SLUG}`, newTitle: SLUG, text, language: 'python', kernelType: 'script', isPrivate: true,
     enableGpu: true, enableInternet: true, datasetDataSources: [],
   });
-  console.log('pushed version', r.versionNumber ?? '', 'run', run);
+  console.log('pushed', JSON.stringify(r), 'run', run);
 } else if (cmd === 'wait') {
   const want = `quiz-${a1}.json`;
   const deadline = Date.now() + (Number(a2) || 90) * 60000;

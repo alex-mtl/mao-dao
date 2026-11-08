@@ -12,8 +12,11 @@ const norm = (s) => s.toLowerCase().replace(/ё/g, 'е');
 /** every word of the subject (4+ letters) must still be there, its first 4 letters at least (declension changes endings) */
 function keepsSubject(text, subject) {
   const t = norm(text);
-  return norm(subject).split(/[\s-]+/).filter((w) => w.length >= 4 && w !== 'гора').every((w) => t.includes(w.slice(0, 4)));
+  return norm(subject).split(/[\s-]+/).filter((w) => w.length >= 4 && w !== 'гора').every((w) => t.includes(w.slice(0, Math.min(4, w.length - 1))));
 }
+
+// the word that carries the question's meaning must survive the rewording ("впадет" / "В какой стране — город" fall back)
+const KEY_WORD = { capital: 'столиц', city_country: 'находится', mountain_country: 'находится', elevation: 'высот', highest_point: 'высш', river_mouth: 'впадает' };
 
 const final = [];
 const dropped = [];
@@ -26,9 +29,12 @@ for (const it of res.items) {
     continue;
   }
   const p = (it.polished || '').trim();
-  const ok = p.endsWith('?') && p.length >= 10 && p.length <= 150 && !norm(p).includes(norm(d.correct)) && keepsSubject(p, d.subject);
+  const ok = p.endsWith('?') && p.length >= 10 && p.length <= 150 && !norm(p).includes(norm(d.correct)) && keepsSubject(p, d.subject)
+    && norm(p).includes(KEY_WORD[d.type]) && !/[a-z]/i.test(p.replace(/[A-Z]{2,}/g, '')) && !/ — (город|вершина)/.test(p);
   ok ? stats.polish_used++ : stats.polish_rejected++;
-  final.push({ id: d.id, type: d.type, category: 'geography', text: ok ? p : d.template, correct: d.correct, wrong: d.wrong,
+  // "вершина Гора Рашмор" -> "гора Рашмор" (the label itself starts with "Гора")
+  const text = (ok ? p : d.template).replace(/вершин[аы] Гора /, (m) => (m.endsWith('ы Гора ') ? 'горы ' : 'гора ')).replace(/ Гора /, ' гора ');
+  final.push({ id: d.id, type: d.type, category: 'geography', text, correct: d.correct, wrong: d.wrong,
     source: `https://www.wikidata.org/wiki/${d.subject_qid}`, ...(ok ? {} : { polish_rejected: p }) });
   stats.kept++;
 }

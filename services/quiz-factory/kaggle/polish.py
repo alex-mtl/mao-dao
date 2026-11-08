@@ -1,4 +1,4 @@
-# Kaggle GPU job (pushed by kaggle.mjs, which fills in __RUN_ID__ and __DRAFTS__):
+# Kaggle GPU job (pushed by kaggle.mjs, which fills in the run id and the drafts below):
 #  1. polish: the template question -> natural Russian (names declined, nothing added, answer not given away)
 #  2. verify: the model answers the polished question blind (A-D: correct + 3 wrong); a miss = doubtful, dropped later
 # Output: /kaggle/working/quiz-<run>.json with timings, so the pilot measures speed too.
