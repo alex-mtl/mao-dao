@@ -1,7 +1,8 @@
 // Final questions -> mao-dao quiz library (POST /internal/quizzes/import, see app/Http/Controllers/QuizImportController.php).
 //   node import.mjs <final.json> [--dry-run] [--size=20] [--status=published|draft]
 // One quiz per question type, split into parts of --size questions (key geo-<type>-<n>, so a re-run only adds new
-// questions). Each question gets its correct answer + 3 wrong ones from its pool.
+// questions). Each question gets its correct answer + 3 wrong ones from its pool, and the whole pool goes to
+// questions.wrong_pool (a round can pick other wrong answers from it).
 // URL: QUIZ_IMPORT_URL (default https://mao-dao.com); secret: QUIZ_IMPORT_SECRET or ~/.mao-dao/quiz-import-secret.
 import { readFileSync, existsSync } from 'node:fs';
 import { homedir } from 'node:os';
@@ -46,7 +47,7 @@ for (const [type, qs] of Object.entries(byType)) {
       title: `География: ${title}${part ? ` — ${part + 1}` : ''}`,
       description: `${description}. Факты из Wikidata.`,
       language: 'ru', tags: ['geography'], status: STATUS,
-      questions: chunk.map((q) => ({ text: q.text, answers: [{ text: q.correct, is_correct: true }, ...pick3(q).map((t) => ({ text: t, is_correct: false }))] })),
+      questions: chunk.map((q) => ({ text: q.text, answers: [{ text: q.correct, is_correct: true }, ...pick3(q).map((t) => ({ text: t, is_correct: false }))], wrong_pool: q.wrong })),
     };
     if (DRY) { console.log(body.key, body.title, body.questions.length, JSON.stringify(body.questions[0])); continue; }
     if (!SECRET) throw new Error('no QUIZ_IMPORT_SECRET');

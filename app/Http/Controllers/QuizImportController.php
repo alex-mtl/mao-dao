@@ -16,9 +16,11 @@ use Illuminate\Validation\ValidationException;
 /**
  * Generated questions into the quiz library (services/quiz-factory, README there).
  * POST /internal/quizzes/import, header X-Internal-Secret = QUIZ_IMPORT_SECRET:
- * {key, title, description?, language, tags: [slug], status?: published|draft, questions: [{text, answers: [{text, is_correct} x4]}]}
+ * {key, title, description?, language, tags: [slug], status?: published|draft,
+ *  questions: [{text, answers: [{text, is_correct} x4], wrong_pool?: [every generated wrong answer]}]}
  * The quiz is found by its key (quizzes.import_key) or made for the user QUIZ_IMPORT_USER_ID. Questions are
- * only ever added: one whose text the quiz already has is skipped, so a re-run is safe.
+ * only ever added: one whose text the quiz already has keeps its answers (only its wrong_pool is refreshed),
+ * so a re-run is safe.
  */
 class QuizImportController extends Controller
 {
@@ -42,12 +44,19 @@ class QuizImportController extends Controller
             'questions.*.answers' => ['required', 'array', 'size:4'],
             'questions.*.answers.*.text' => ['required', 'string', 'max:32'],
             'questions.*.answers.*.is_correct' => ['required', 'boolean'],
+            'questions.*.wrong_pool' => ['nullable', 'array', 'max:50'],
+            'questions.*.wrong_pool.*' => ['required', 'string', 'max:32'],
         ]);
 
         foreach ($data['questions'] as $i => $question) {
             $texts = array_map(fn ($a) => mb_strtolower(trim($a['text'])), $question['answers']);
-            if (collect($question['answers'])->where('is_correct', true)->count() !== 1 || count(array_unique($texts)) !== 4) {
+            $correct = collect($question['answers'])->where('is_correct', true);
+            if ($correct->count() !== 1 || count(array_unique($texts)) !== 4) {
                 throw ValidationException::withMessages(["questions.$i" => 'exactly one correct answer and four different answers']);
+            }
+            $pool = array_map(fn ($t) => mb_strtolower(trim($t)), $question['wrong_pool'] ?? []);
+            if (in_array(mb_strtolower(trim($correct->first()['text'])), $pool, true)) {
+                throw ValidationException::withMessages(["questions.$i.wrong_pool" => 'the correct answer is in the pool of wrong ones']);
             }
         }
 
@@ -62,16 +71,22 @@ class QuizImportController extends Controller
             $quiz->status ??= 'draft';
             $quiz->save();
 
-            $have = $quiz->questions()->pluck('text')->map(fn ($t) => mb_strtolower(trim($t)))->flip();
+            $have = $quiz->questions()->get()->keyBy(fn ($q) => mb_strtolower(trim($q->text)));
             $order = (int) $quiz->questions()->max('order');
             $added = 0;
             foreach ($data['questions'] as $q) {
                 $norm = mb_strtolower(trim($q['text']));
+                $pool = isset($q['wrong_pool']) ? array_values(array_unique(array_map('trim', $q['wrong_pool']))) : null;
                 if ($have->has($norm)) {
+                    // already there: its answers stay, only a newer pool of wrong answers is taken
+                    if ($pool !== null) {
+                        $have[$norm]->update(['wrong_pool' => $pool]);
+                    }
+
                     continue;
                 }
-                $have[$norm] = true;
-                $question = $quiz->questions()->create(['text' => trim($q['text']), 'order' => ++$order]);
+                $question = $quiz->questions()->create(['text' => trim($q['text']), 'order' => ++$order, 'wrong_pool' => $pool]);
+                $have[$norm] = $question;
                 foreach (array_values($q['answers']) as $j => $a) {
                     $question->answers()->create(['text' => trim($a['text']), 'is_correct' => (bool) $a['is_correct'], 'order' => $j]);
                 }

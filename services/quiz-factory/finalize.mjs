@@ -1,6 +1,7 @@
-// Drafts + the Kaggle result -> final questions and a report of what was dropped and why.
+// Drafts + the Kaggle result -> final questions (ALL of them, nothing is dropped - owner's decision 2026-11-08).
 //   node finalize.mjs <drafts.json> <data/kaggle/quiz-<run>.json> [out.json]
-// Dropped: the model answered differently from Wikidata (a doubtful or badly worded question).
+// When the model answers differently from Wikidata the question stays, marked model_disagrees (with what it said):
+// in the pilot the 7B model was wrong far more often than the data.
 // The model's wording is used only if it passes checks; otherwise the template text (clunky but exact) stays.
 import { readFileSync, writeFileSync } from 'node:fs';
 
@@ -20,13 +21,14 @@ const KEY_WORD = { capital: 'столиц', city_country: 'находится', 
 
 const final = [];
 const dropped = [];
-const stats = { total: res.items.length, kept: 0, dropped_model_disagrees: 0, polish_used: 0, polish_rejected: 0 };
+const stats = { total: res.items.length, kept: 0, model_disagrees: 0, polish_used: 0, polish_rejected: 0 };
 for (const it of res.items) {
   const d = drafts.get(it.id);
-  if (it.model_answer !== it.key) {
-    stats.dropped_model_disagrees++;
-    dropped.push({ id: it.id, question: it.polished || d.template, correct: d.correct, model_said: it.options['ABCD'.indexOf(it.model_answer)] ?? it.model_answer });
-    continue;
+  const disagrees = it.model_answer !== it.key;
+  const modelSaid = it.options['ABCD'.indexOf(it.model_answer)] ?? it.model_answer;
+  if (disagrees) {
+    stats.model_disagrees++;
+    dropped.push({ id: it.id, question: it.polished || d.template, correct: d.correct, model_said: modelSaid });
   }
   const p = (it.polished || '').trim();
   const ok = p.endsWith('?') && p.length >= 10 && p.length <= 150 && !norm(p).includes(norm(d.correct)) && keepsSubject(p, d.subject)
@@ -35,12 +37,12 @@ for (const it of res.items) {
   // "вершина Гора Рашмор" -> "гора Рашмор" (the label itself starts with "Гора")
   const text = (ok ? p : d.template).replace(/вершин[аы] Гора /, (m) => (m.endsWith('ы Гора ') ? 'горы ' : 'гора ')).replace(/ Гора /, ' гора ');
   final.push({ id: d.id, type: d.type, category: 'geography', text, correct: d.correct, wrong: d.wrong,
-    source: `https://www.wikidata.org/wiki/${d.subject_qid}`, ...(ok ? {} : { polish_rejected: p }) });
+    source: `https://www.wikidata.org/wiki/${d.subject_qid}`, ...(ok ? {} : { polish_rejected: p }), ...(disagrees ? { model_disagrees: modelSaid } : {}) });
   stats.kept++;
 }
 writeFileSync(out, JSON.stringify(final, null, 1));
 console.log({ ...stats, model: res.model, mode: res.mode, gpus: res.gpus, seconds: res.seconds, tokens: res.tokens });
-console.log('\ndropped (model disagrees):');
+console.log('\nmodel disagrees (kept anyway):');
 for (const x of dropped) console.log(` - ${x.question}  [Wikidata: ${x.correct}; модель: ${x.model_said}]`);
 console.log('\npolish rejected:');
 for (const x of final.filter((f) => f.polish_rejected)) console.log(` - "${x.polish_rejected}"  -> template`);

@@ -48,6 +48,21 @@ it('creates a published quiz with tags, then only adds new questions on a re-run
         ->and($quiz->questions[1]->correctAnswer()->text)->toBe('Лима');
 });
 
+it('keeps the whole pool of wrong answers and refreshes it on a re-run', function () {
+    $h = ['X-Internal-Secret' => 's3cret'];
+    $q = [...importQuestion('Столица Австралии?'), 'wrong_pool' => ['Сидней', 'Мельбурн', 'Перт', 'Веллингтон']];
+    $this->postJson('/internal/quizzes/import', importBody([$q]), $h)->assertOk()->assertJson(['added' => 1]);
+    expect(Quiz::sole()->questions->sole()->wrong_pool)->toBe(['Сидней', 'Мельбурн', 'Перт', 'Веллингтон']);
+
+    $q['wrong_pool'][] = 'Аделаида';
+    $this->postJson('/internal/quizzes/import', importBody([$q]), $h)->assertOk()->assertJson(['added' => 0, 'skipped' => 1]);
+    $question = Quiz::sole()->questions->sole();
+    expect($question->wrong_pool)->toHaveCount(5)->and($question->answers)->toHaveCount(4);
+
+    $bad = [...importQuestion('Столица Перу?', 'Лима'), 'wrong_pool' => ['Куско', 'лима']];
+    $this->postJson('/internal/quizzes/import', importBody([$bad]), $h)->assertUnprocessable();
+});
+
 it('rejects questions without exactly one correct of four different answers', function () {
     $h = ['X-Internal-Secret' => 's3cret'];
     $bad = importQuestion('Столица Австралии?');

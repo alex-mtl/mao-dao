@@ -1052,6 +1052,60 @@
   "source": "https://www.wikidata.org/wiki/Q513"
  },
  {
+  "id": "elevation:Q39231",
+  "type": "elevation",
+  "category": "geography",
+  "text": "Какова высота Фудзиямы над уровнем моря?",
+  "correct": "3777 м",
+  "wrong": [
+   "2963 м",
+   "3297 м",
+   "4349 м",
+   "2702 м",
+   "5009 м",
+   "4726 м",
+   "4118 м"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q39231",
+  "model_disagrees": "3297 м"
+ },
+ {
+  "id": "elevation:Q524",
+  "type": "elevation",
+  "category": "geography",
+  "text": "Какова высота Везувия над уровнем моря?",
+  "correct": "1281 м",
+  "wrong": [
+   "916 м",
+   "1572 м",
+   "1450 м",
+   "1696 м",
+   "1179 м",
+   "1055 м",
+   "835 м"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q524",
+  "model_disagrees": "1572 м"
+ },
+ {
+  "id": "elevation:Q583",
+  "type": "elevation",
+  "category": "geography",
+  "text": "Какова высота Монблана над уровнем моря?",
+  "correct": "4806 м",
+  "wrong": [
+   "5428 м",
+   "4272 м",
+   "6434 м",
+   "3888 м",
+   "6027 м",
+   "3522 м",
+   "3233 м"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q583",
+  "model_disagrees": "5428 м"
+ },
+ {
   "id": "elevation:Q16990",
   "type": "elevation",
   "category": "geography",
@@ -1068,6 +1122,42 @@
    "2184 м"
   ],
   "source": "https://www.wikidata.org/wiki/Q16990"
+ },
+ {
+  "id": "elevation:Q43105",
+  "type": "elevation",
+  "category": "geography",
+  "text": "Какова высота Эльбруса над уровнем моря?",
+  "correct": "5642 м",
+  "wrong": [
+   "3979 м",
+   "6125 м",
+   "4345 м",
+   "7401 м",
+   "5186 м",
+   "6926 м",
+   "4746 м",
+   "6533 м"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q43105",
+  "model_disagrees": "6125 м"
+ },
+ {
+  "id": "elevation:Q39739",
+  "type": "elevation",
+  "category": "geography",
+  "text": "Какова высота Аконкагуа над уровнем моря?",
+  "correct": "6962 м",
+  "wrong": [
+   "4882 м",
+   "5500 м",
+   "8153 м",
+   "8841 м",
+   "6011 м",
+   "7665 м"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q39739",
+  "model_disagrees": "8153 м"
  },
  {
   "id": "elevation:Q72303",
@@ -1102,6 +1192,76 @@
   "source": "https://www.wikidata.org/wiki/Q43512"
  },
  {
+  "id": "elevation:Q80344",
+  "type": "elevation",
+  "category": "geography",
+  "text": "Какова высота вершины Олимп над уровнем моря?",
+  "correct": "2918 м",
+  "wrong": [
+   "3614 м",
+   "2007 м",
+   "3332 м",
+   "2273 м",
+   "2494 м",
+   "2681 м",
+   "3937 м",
+   "3150 м"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q80344",
+  "model_disagrees": "3614 м"
+ },
+ {
+  "id": "elevation:Q38954",
+  "type": "elevation",
+  "category": "geography",
+  "text": "Какова высота вершины Тейде над уровнем моря?",
+  "correct": "3715 м",
+  "wrong": [
+   "2740 м",
+   "4226 м",
+   "2979 м",
+   "4851 м",
+   "2509 м",
+   "3353 м",
+   "4549 м"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q38954",
+  "model_disagrees": "4226 м"
+ },
+ {
+  "id": "elevation:Q82019",
+  "type": "elevation",
+  "category": "geography",
+  "text": "Какова высота Канченджанги над уровнем моря?",
+  "correct": "8586 м",
+  "wrong": [
+   "6887 м",
+   "7875 м",
+   "5615 м",
+   "6172 м"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q82019",
+  "model_disagrees": "7875 м"
+ },
+ {
+  "id": "elevation:Q130018",
+  "type": "elevation",
+  "category": "geography",
+  "text": "Какова высота Мак-Кинли над уровнем моря?",
+  "correct": "6190 м",
+  "wrong": [
+   "6855 м",
+   "4773 м",
+   "5515 м",
+   "4274 м",
+   "7230 м",
+   "7889 м",
+   "8334 м"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q130018",
+  "model_disagrees": "6855 м"
+ },
+ {
   "id": "elevation:Q83497",
   "type": "elevation",
   "category": "geography",
@@ -1133,6 +1293,40 @@
    "5636 м"
   ],
   "source": "https://www.wikidata.org/wiki/Q1374"
+ },
+ {
+  "id": "elevation:Q229107",
+  "type": "elevation",
+  "category": "geography",
+  "text": "Какова высота Кайласа над уровнем моря?",
+  "correct": "6638 м",
+  "wrong": [
+   "5049 м",
+   "8437 м",
+   "7228 м",
+   "7993 м",
+   "5744 м",
+   "4355 м",
+   "8841 м"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q229107",
+  "model_disagrees": "8437 м"
+ },
+ {
+  "id": "elevation:Q130736",
+  "type": "elevation",
+  "category": "geography",
+  "text": "Какова высота Нангапарбата над уровнем моря?",
+  "correct": "8126 м",
+  "wrong": [
+   "5342 м",
+   "8847 м",
+   "6754 м",
+   "5864 м",
+   "7434 м"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q130736",
+  "model_disagrees": "5342 м"
  },
  {
   "id": "highest_point:Q43",
@@ -1275,6 +1469,48 @@
   "source": "https://www.wikidata.org/wiki/Q33"
  },
  {
+  "id": "highest_point:Q96",
+  "type": "highest_point",
+  "category": "geography",
+  "text": "Какая вершина — высшая точка Мексики?",
+  "correct": "Пик Орисаба",
+  "wrong": [
+   "Мак-Кинли",
+   "Логан",
+   "Суфриер",
+   "Бару",
+   "Тахумулько",
+   "Чиррипо",
+   "Пик Туркино",
+   "Блу-Маунтин-Пик",
+   "Обама",
+   "Льямиуга"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q96",
+  "model_disagrees": "Суфриер"
+ },
+ {
+  "id": "highest_point:Q408",
+  "type": "highest_point",
+  "category": "geography",
+  "text": "Какая вершина — высшая точка Австралии?",
+  "correct": "Моусон",
+  "wrong": [
+   "гора Кука",
+   "Банаба",
+   "Вильгельм",
+   "Ниулакита",
+   "Силисили",
+   "Као",
+   "Попоманасеу",
+   "Комманд-Ридж",
+   "Ликиеп",
+   "Джомолунгма"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q408",
+  "model_disagrees": "гора Кука"
+ },
+ {
   "id": "highest_point:Q16",
   "type": "highest_point",
   "category": "geography",
@@ -1373,6 +1609,27 @@
   "source": "https://www.wikidata.org/wiki/Q79"
  },
  {
+  "id": "highest_point:Q36",
+  "type": "highest_point",
+  "category": "geography",
+  "text": "Какая вершина — высшая точка Польши?",
+  "correct": "Рысы",
+  "wrong": [
+   "Монблан",
+   "Эльбрус",
+   "Арарат",
+   "Олимп",
+   "Тейде",
+   "Бен-Невис",
+   "Цугшпитце",
+   "Триглав",
+   "Хан-Тенгри",
+   "Гросглокнер"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q36",
+  "model_disagrees": "Арарат"
+ },
+ {
   "id": "highest_point:Q212",
   "type": "highest_point",
   "category": "geography",
@@ -1391,6 +1648,27 @@
    "Гросглокнер"
   ],
   "source": "https://www.wikidata.org/wiki/Q212"
+ },
+ {
+  "id": "highest_point:Q39",
+  "type": "highest_point",
+  "category": "geography",
+  "text": "Какая вершина — высшая точка Швейцарии?",
+  "correct": "Пик Дюфур",
+  "wrong": [
+   "Монблан",
+   "Эльбрус",
+   "Арарат",
+   "Олимп",
+   "Тейде",
+   "Бен-Невис",
+   "Цугшпитце",
+   "Триглав",
+   "Хан-Тенгри",
+   "Гросглокнер"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q39",
+  "model_disagrees": "Монблан"
  },
  {
   "id": "river_mouth:Q3392",
@@ -1431,6 +1709,48 @@
    "Бенгальский залив"
   ],
   "source": "https://www.wikidata.org/wiki/Q3783"
+ },
+ {
+  "id": "river_mouth:Q1653",
+  "type": "river_mouth",
+  "category": "geography",
+  "text": "Куда впадает Дунай?",
+  "correct": "Чёрное море",
+  "wrong": [
+   "Средиземное море",
+   "Каспийское море",
+   "Балтийское море",
+   "Северное море",
+   "Карибское море",
+   "Байкал",
+   "Мёртвое море",
+   "Виктория",
+   "Персидский залив",
+   "Адриатическое море"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q1653",
+  "model_disagrees": "Средиземное море"
+ },
+ {
+  "id": "river_mouth:Q584",
+  "type": "river_mouth",
+  "category": "geography",
+  "text": "Куда впадает Рейн?",
+  "correct": "Северное море",
+  "wrong": [
+   "Средиземное море",
+   "Чёрное море",
+   "Каспийское море",
+   "Балтийское море",
+   "Карибское море",
+   "Байкал",
+   "Мёртвое море",
+   "Виктория",
+   "Персидский залив",
+   "Адриатическое море"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q584",
+  "model_disagrees": "Средиземное море"
  },
  {
   "id": "river_mouth:Q5089",
@@ -1511,6 +1831,27 @@
    "Бенгальский залив"
   ],
   "source": "https://www.wikidata.org/wiki/Q3503"
+ },
+ {
+  "id": "river_mouth:Q7348",
+  "type": "river_mouth",
+  "category": "geography",
+  "text": "Куда впадает река Инд?",
+  "correct": "Аравийское море",
+  "wrong": [
+   "Средиземное море",
+   "Чёрное море",
+   "Каспийское море",
+   "Балтийское море",
+   "Северное море",
+   "Карибское море",
+   "Байкал",
+   "Мёртвое море",
+   "Виктория",
+   "Персидский залив"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q7348",
+  "model_disagrees": "Чёрное море"
  },
  {
   "id": "river_mouth:Q3542",

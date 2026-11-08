@@ -163,6 +163,7 @@ class QuizController extends Controller
                 $newQuestion = $copy->questions()->create([
                     'text' => $question->text,
                     'order' => $question->order,
+                    'wrong_pool' => $question->wrong_pool,
                 ]);
 
                 foreach ($question->answers as $answer) {

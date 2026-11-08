@@ -9,11 +9,19 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['quiz_id', 'text', 'order'])]
+#[Fillable(['quiz_id', 'text', 'order', 'wrong_pool'])]
 class Question extends Model
 {
     /** @use HasFactory<QuestionFactory> */
     use HasFactory;
+
+    protected function casts(): array
+    {
+        return [
+            // every generated wrong answer (services/quiz-factory); the 3 in answers are a pick from it
+            'wrong_pool' => 'array',
+        ];
+    }
 
     public function quiz(): BelongsTo
     {
