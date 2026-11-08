@@ -37,7 +37,7 @@ const NOTES = {
   'river_mouth:Висла': 'Балтийское море убрано из вариантов: Гданьский залив — его часть.',
   'river_mouth:Нил': 'Средиземное море — часть бассейна Атлантики, поэтому океаны в варианты для рек, впадающих в моря, не ставятся.',
 };
-const MODEL_WRONG = 'Факт верный (Wikidata), ошиблась проверяющая модель 7B.';
+const MODEL_WRONG = 'Факт верный (Wikidata), ошиблась проверяющая модель.';
 
 const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;');
 const TYPE = { capital: 'Столицы', city_country: 'Города', mountain_country: 'Горы → страна', elevation: 'Высота гор', highest_point: 'Высшие точки', river_mouth: 'Реки → устье' };
@@ -58,7 +58,7 @@ for (const d of drafts) {
     notes.push(`<b>Проверяющая модель ответила «${esc(q.model_disagrees)}».</b>`);
     if (!NOTES[key]) notes.push(MODEL_WRONG);
   }
-  if (q.polish_rejected) notes.push(`Модель переписала неудачно («${esc(q.polish_rejected)}»), оставлен шаблон.`);
+  if (q.previous_text) notes.push(`Было: «${esc(q.previous_text)}».`);
   const rest = q.wrong.filter((w) => !wrong.includes(w));
   notes.push(`<span class="pool">Ещё в пуле неверных (${rest.length}): ${esc(rest.join(', '))}</span>`);
   if (NOTES[key]) notes.push(NOTES[key]);
@@ -89,7 +89,7 @@ tr.ok td.correct{background:var(--ok);color:var(--okfg);font-weight:600}tr.warn 
 </style></head><body>
 <h1>Пилот генератора вопросов: география</h1>
 <p class="sum">Загружено на mao-dao <b>${kept}</b> вопросов, у каждого в БД полный пул неверных ответов. Проверяющая модель не согласилась с Wikidata в <b>${[...final.values()].filter((q) => q.model_disagrees).length}</b> (помечены красной чертой слева).
-Kaggle ${esc(res.gpus.join(' + '))}, ${esc(res.model)} (${res.mode}): загрузка модели ${s.load} с, переписывание ${s.polish} с, проверка ${s.verify} с.</p>
+Kaggle ${esc(res.gpus.join(' + '))}, ${esc(res.model)} (${res.mode}): загрузка модели ${s.load} с, склонение названий ${s.genitive} с, проверка ${s.verify} с.</p>
 <p class="sum">Зелёным — верный ответ (в игре варианты перемешиваются). Наведите на вопрос: ссылка на факт в Wikidata.</p>
 <p class="sum links">${links.map(([k, u]) => `<a href="${u}" target="_blank">${k}</a>`).join('')}</p>
 <div class="wrap"><table><thead><tr><th>Вопрос</th><th>Верный</th><th>Неверный 1</th><th>Неверный 2</th><th>Неверный 3</th><th>Комментарий</th></tr></thead>

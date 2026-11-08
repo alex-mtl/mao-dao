@@ -47,7 +47,7 @@ for (const [type, qs] of Object.entries(byType)) {
       title: `География: ${title}${part ? ` — ${part + 1}` : ''}`,
       description: `${description}. Факты из Wikidata.`,
       language: 'ru', tags: ['geography'], status: STATUS,
-      questions: chunk.map((q) => ({ text: q.text, answers: [{ text: q.correct, is_correct: true }, ...pick3(q).map((t) => ({ text: t, is_correct: false }))], wrong_pool: q.wrong })),
+      questions: chunk.map((q) => ({ text: q.text, answers: [{ text: q.correct, is_correct: true }, ...pick3(q).map((t) => ({ text: t, is_correct: false }))], wrong_pool: q.wrong, key: q.id, ...(q.previous_text ? { previous_text: q.previous_text } : {}) })),
     };
     if (DRY) { console.log(body.key, body.title, body.questions.length, JSON.stringify(body.questions[0])); continue; }
     if (!SECRET) throw new Error('no QUIZ_IMPORT_SECRET');
@@ -58,7 +58,7 @@ for (const [type, qs] of Object.entries(byType)) {
     if (!res.ok) throw new Error(`${body.key}: ${res.status} ${text.slice(0, 400)}`);
     const r = JSON.parse(text);
     added += r.added;
-    console.log(`${body.key}: +${r.added} (skipped ${r.skipped}, total ${r.total}) ${r.url}`);
+    console.log(`${body.key}: +${r.added}, reworded/updated ${r.updated}, unchanged ${r.skipped}, total ${r.total} ${r.url}`);
   }
 }
 if (!DRY) console.log('added', added);

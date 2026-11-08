@@ -1,4 +1,7 @@
-// Geography drafts from Wikidata: node build-geo.mjs [--per-type=N] [--out=data/geo-drafts.json]
+// Geography drafts from Wikidata: node build-geo.mjs [--per-type=N] [--skip=N] [--out=data/geo-drafts.json]
+// Wording is fixed here, in quiz-show style («Столица Финляндии?», «Самая высокая вершина Австралии?», «Высота Монблана?»,
+// «В какой стране находится Рио-де-Жанейро?», «Куда впадает Сена?»). Where a name must be declined the draft has
+// pattern + gen_of and the model on Kaggle only gives the genitive; "template" is the fallback that needs none.
 // Only facts we can stand behind: the subject and the answer both have a Russian Wikipedia article and a Russian
 // label, the property has exactly ONE best-rank value (disputed borders, two capitals, unsure heights drop out),
 // countries are current sovereign states. Each draft = template question + correct answer + a pool of wrong
@@ -9,6 +12,7 @@ import { sparql, goodLabel } from './lib/wikidata.mjs';
 
 const arg = (n, d) => (process.argv.find((a) => a.startsWith(`--${n}=`)) ?? `=${d}`).split('=')[1];
 const PER_TYPE = Number(arg('per-type', 20));
+const SKIP = Number(arg('skip', 0)); // the next batch: skip the N most famous of each type (already made)
 const OUT = arg('out', 'data/geo-drafts.json');
 const RU = '?art schema:about ?X; schema:isPartOf <https://ru.wikipedia.org/>.';
 const ru = (v) => RU.replaceAll('?X', v).replace('?art', `?art_${v.slice(1)}`);
@@ -42,6 +46,8 @@ for (const r of stateRows) {
 }
 // neighbours: a mountain on a border may be "in" both countries, so a neighbour is never a wrong answer for it
 for (const r of await sparql(`SELECT ?c ?n WHERE { ?c wdt:P31 wd:Q3624078; wdt:P47 ?n. ?n wdt:P31 wd:Q3624078. }`)) states.get(r.c)?.neighbours.add(r.n);
+// "Кения" the mountain vs Кения the country: such names keep the word "гора"
+const stateLabelSet = () => new Set([...states.values()].map((s) => norm(s.label)));
 const sameContinent = (a, b) => [...a.conts].some((c) => b.conts.has(c));
 console.log('states', states.size);
 
@@ -75,7 +81,7 @@ function add(type, subject, text, correct, pool, extra = {}) {
   const caps = rows.filter((r) => states.has(r.c)).map((r) => ({ state: states.get(r.c), label: r.capLabel, sl: +r.capSl }));
   for (const c of caps) {
     const pool = poolFor(c.label, caps.filter((o) => o !== c).map((o) => ({ ...o, conts: o.state.conts })), (o) => sameContinent(o, c.state));
-    add('capital', c.state, `Какой город является столицей страны «${c.state.label}»?`, c.label, pool, { hint: 'страна → столица' });
+    add('capital', c.state, `Столица страны «${c.state.label}»?`, c.label, pool, { pattern: 'Столица {gen}?', gen_of: c.state.label });
   }
 }
 
@@ -90,7 +96,7 @@ function add(type, subject, text, correct, pool, extra = {}) {
     if (hps.some((o) => o !== h && o.id === h.id)) continue; // shared by two countries: ambiguous
     if (stateLabels.has(norm(h.label))) continue;
     const pool = poolFor(h.label, hps.filter((o) => o !== h).map((o) => ({ ...o, conts: o.state.conts })), (o) => sameContinent(o, h.state)).filter((l) => !stateLabels.has(norm(l)));
-    add('highest_point', h.state, `Какая вершина является высшей точкой страны «${h.state.label}»?`, h.label, pool, { hint: 'страна → высшая точка' });
+    add('highest_point', h.state, `Самая высокая вершина страны «${h.state.label}»?`, h.label, pool, { pattern: 'Самая высокая вершина {gen}?', gen_of: h.state.label });
   }
 }
 
@@ -110,8 +116,8 @@ const countryOf = async (type, classes, minSl, template) => {
   }
 };
 const MOUNTAINS = 'wd:Q8502 wd:Q8072 wd:Q169358 wd:Q207326';
-await countryOf('city_country', 'wd:Q515 wd:Q1637706 wd:Q200250 wd:Q1549591', 80, (x) => `В какой стране находится город ${x}?`);
-await countryOf('mountain_country', MOUNTAINS, 25, (x) => `В какой стране находится вершина ${x}?`);
+await countryOf('city_country', 'wd:Q515 wd:Q1637706 wd:Q200250 wd:Q1549591', 80, (x) => `В какой стране находится ${x}?`);
+await countryOf('mountain_country', MOUNTAINS, 25, (x) => `В какой стране находится ${stateLabelSet().has(norm(x)) ? 'гора ' : ''}${x.replace(/^Гора /, 'гора ')}?`);
 
 // --- 4. elevation of a mountain (metres, one best-rank value)
 {
@@ -131,7 +137,11 @@ await countryOf('mountain_country', MOUNTAINS, 25, (x) => `В какой стр�
     const e = Math.round(+r.e);
     if (e < 500) continue;
     const pool = numericPool(e, `${r.m}`);
-    add('elevation', { id: r.m, label: r.mLabel, sl: +r.sl }, `Какова высота вершины ${r.mLabel} над уровнем моря?`, fmtM(e), pool.map(fmtM), { hint: 'вершина → высота' });
+    const name = r.mLabel.replace(/^Гора /, '');
+    // "Высота Монблана?" needs the genitive (the model's only job); a name that is also a country stays "горы Кения"
+    const asCountry = stateLabelSet().has(norm(name));
+    add('elevation', { id: r.m, label: r.mLabel, sl: +r.sl }, asCountry ? `Высота горы ${name}?` : `Высота вершины ${name}?`, fmtM(e), pool.map(fmtM),
+      asCountry ? {} : { pattern: 'Высота {gen}?', gen_of: name });
   }
 }
 
@@ -154,7 +164,7 @@ await countryOf('mountain_country', MOUNTAINS, 25, (x) => `В какой стр�
     if (!goodLabel(r.rLabel, 60)) continue;
     const m = mouths.get(r.mouth);
     const pool = poolFor(m.label, [...mouths.values()].filter((o) => o !== m && !related(o, m) && (m.ocean || !o.ocean) && o.river === m.river), () => 0);
-    add('river_mouth', { id: r.r, label: r.rLabel, sl: +r.sl }, `Куда впадает река ${r.rLabel}?`, m.label, pool, { hint: 'река → устье' });
+    add('river_mouth', { id: r.r, label: r.rLabel, sl: +r.sl }, `Куда впадает ${stateLabelSet().has(norm(r.rLabel)) ? 'река ' : ''}${r.rLabel}?`, m.label, pool); // "река Конго": also a country
   }
 }
 
@@ -179,7 +189,7 @@ const picked = [];
 for (const type of ['capital', 'city_country', 'mountain_country', 'elevation', 'highest_point', 'river_mouth']) {
   const all = drafts.filter((d) => d.type === type).sort((a, b) => b.popularity - a.popularity);
   counts[type] = all.length;
-  picked.push(...all.slice(0, PER_TYPE));
+  picked.push(...all.slice(SKIP, SKIP + PER_TYPE));
 }
 mkdirSync('data', { recursive: true });
 writeFileSync(OUT, JSON.stringify(picked, null, 1));

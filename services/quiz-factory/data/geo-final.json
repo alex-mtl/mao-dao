@@ -3,7 +3,7 @@
   "id": "capital:Q43",
   "type": "capital",
   "category": "geography",
-  "text": "Какой город — столица Турции?",
+  "text": "Столица Турции?",
   "correct": "Анкара",
   "wrong": [
    "Париж",
@@ -17,13 +17,14 @@
    "Пекин",
    "Мадрид"
   ],
-  "source": "https://www.wikidata.org/wiki/Q43"
+  "source": "https://www.wikidata.org/wiki/Q43",
+  "previous_text": "Какой город — столица Турции?"
  },
  {
   "id": "capital:Q142",
   "type": "capital",
   "category": "geography",
-  "text": "Какой город — столица Франции?",
+  "text": "Столица Франции?",
   "correct": "Париж",
   "wrong": [
    "Лондон",
@@ -37,13 +38,14 @@
    "Хельсинки",
    "Афины"
   ],
-  "source": "https://www.wikidata.org/wiki/Q142"
+  "source": "https://www.wikidata.org/wiki/Q142",
+  "previous_text": "Какой город — столица Франции?"
  },
  {
   "id": "capital:Q30",
   "type": "capital",
   "category": "geography",
-  "text": "Какой город — столица США?",
+  "text": "Столица США?",
   "correct": "Вашингтон",
   "wrong": [
    "Мехико",
@@ -57,13 +59,14 @@
    "Санто-Доминго",
    "Сан-Хосе"
   ],
-  "source": "https://www.wikidata.org/wiki/Q30"
+  "source": "https://www.wikidata.org/wiki/Q30",
+  "previous_text": "Какой город — столица США?"
  },
  {
   "id": "capital:Q159",
   "type": "capital",
   "category": "geography",
-  "text": "Какой город — столица России?",
+  "text": "Столица России?",
   "correct": "Москва",
   "wrong": [
    "Париж",
@@ -77,13 +80,14 @@
    "Мадрид",
    "Токио"
   ],
-  "source": "https://www.wikidata.org/wiki/Q159"
+  "source": "https://www.wikidata.org/wiki/Q159",
+  "previous_text": "Какой город — столица России?"
  },
  {
   "id": "capital:Q17",
   "type": "capital",
   "category": "geography",
-  "text": "Какой город — столица Японии?",
+  "text": "Столица Японии?",
   "correct": "Токио",
   "wrong": [
    "Москва",
@@ -97,13 +101,14 @@
    "Баку",
    "Дамаск"
   ],
-  "source": "https://www.wikidata.org/wiki/Q17"
+  "source": "https://www.wikidata.org/wiki/Q17",
+  "previous_text": "Какой город — столица Японии?"
  },
  {
   "id": "capital:Q38",
   "type": "capital",
   "category": "geography",
-  "text": "Какой город — столица Италии?",
+  "text": "Столица Италии?",
   "correct": "Рим",
   "wrong": [
    "Париж",
@@ -117,13 +122,14 @@
    "Хельсинки",
    "Афины"
   ],
-  "source": "https://www.wikidata.org/wiki/Q38"
+  "source": "https://www.wikidata.org/wiki/Q38",
+  "previous_text": "Какой город — столица Италии?"
  },
  {
   "id": "capital:Q183",
   "type": "capital",
   "category": "geography",
-  "text": "Какой город — столица Германии?",
+  "text": "Столица Германии?",
   "correct": "Берлин",
   "wrong": [
    "Париж",
@@ -137,13 +143,14 @@
    "Хельсинки",
    "Афины"
   ],
-  "source": "https://www.wikidata.org/wiki/Q183"
+  "source": "https://www.wikidata.org/wiki/Q183",
+  "previous_text": "Какой город — столица Германии?"
  },
  {
   "id": "capital:Q668",
   "type": "capital",
   "category": "geography",
-  "text": "Какой город — столица Индии?",
+  "text": "Столица Индии?",
   "correct": "Нью-Дели",
   "wrong": [
    "Москва",
@@ -157,13 +164,14 @@
    "Багдад",
    "Баку"
   ],
-  "source": "https://www.wikidata.org/wiki/Q668"
+  "source": "https://www.wikidata.org/wiki/Q668",
+  "previous_text": "Какой город — столица Индии?"
  },
  {
   "id": "capital:Q33",
   "type": "capital",
   "category": "geography",
-  "text": "Какой город — столица Финляндии?",
+  "text": "Столица Финляндии?",
   "correct": "Хельсинки",
   "wrong": [
    "Париж",
@@ -177,13 +185,14 @@
    "Вена",
    "Афины"
   ],
-  "source": "https://www.wikidata.org/wiki/Q33"
+  "source": "https://www.wikidata.org/wiki/Q33",
+  "previous_text": "Какой город — столица Финляндии?"
  },
  {
   "id": "capital:Q96",
   "type": "capital",
   "category": "geography",
-  "text": "Какой город — столица Мексики?",
+  "text": "Столица Мексики?",
   "correct": "Мехико",
   "wrong": [
    "Вашингтон",
@@ -197,13 +206,14 @@
    "Санто-Доминго",
    "Сан-Хосе"
   ],
-  "source": "https://www.wikidata.org/wiki/Q96"
+  "source": "https://www.wikidata.org/wiki/Q96",
+  "previous_text": "Какой город — столица Мексики?"
  },
  {
   "id": "capital:Q148",
   "type": "capital",
   "category": "geography",
-  "text": "Какой город — столица Китая?",
+  "text": "Столица Китая?",
   "correct": "Пекин",
   "wrong": [
    "Москва",
@@ -217,13 +227,14 @@
    "Баку",
    "Дамаск"
   ],
-  "source": "https://www.wikidata.org/wiki/Q148"
+  "source": "https://www.wikidata.org/wiki/Q148",
+  "previous_text": "Какой город — столица Китая?"
  },
  {
   "id": "capital:Q408",
   "type": "capital",
   "category": "geography",
-  "text": "Какой город — столица Австралии?",
+  "text": "Столица Австралии?",
   "correct": "Канберра",
   "wrong": [
    "Веллингтон",
@@ -237,13 +248,14 @@
    "Ярен",
    "Южная Тарава"
   ],
-  "source": "https://www.wikidata.org/wiki/Q408"
+  "source": "https://www.wikidata.org/wiki/Q408",
+  "previous_text": "Какой город — столица Австралии?"
  },
  {
   "id": "capital:Q16",
   "type": "capital",
   "category": "geography",
-  "text": "Какой город — столица Канады?",
+  "text": "Столица Канады?",
   "correct": "Оттава",
   "wrong": [
    "Вашингтон",
@@ -257,13 +269,14 @@
    "Санто-Доминго",
    "Сан-Хосе"
   ],
-  "source": "https://www.wikidata.org/wiki/Q16"
+  "source": "https://www.wikidata.org/wiki/Q16",
+  "previous_text": "Какой город — столица Канады?"
  },
  {
   "id": "capital:Q29",
   "type": "capital",
   "category": "geography",
-  "text": "Какой город — столица Испании?",
+  "text": "Столица Испании?",
   "correct": "Мадрид",
   "wrong": [
    "Париж",
@@ -277,13 +290,14 @@
    "Хельсинки",
    "Афины"
   ],
-  "source": "https://www.wikidata.org/wiki/Q29"
+  "source": "https://www.wikidata.org/wiki/Q29",
+  "previous_text": "Какой город — столица Испании?"
  },
  {
   "id": "capital:Q145",
   "type": "capital",
   "category": "geography",
-  "text": "Какой город — столица Великобритании?",
+  "text": "Столица Великобритании?",
   "correct": "Лондон",
   "wrong": [
    "Париж",
@@ -297,13 +311,14 @@
    "Хельсинки",
    "Афины"
   ],
-  "source": "https://www.wikidata.org/wiki/Q145"
+  "source": "https://www.wikidata.org/wiki/Q145",
+  "previous_text": "Какой город — столица Великобритании?"
  },
  {
   "id": "capital:Q20",
   "type": "capital",
   "category": "geography",
-  "text": "Какой город — столица Норвегии?",
+  "text": "Столица Норвегии?",
   "correct": "Осло",
   "wrong": [
    "Париж",
@@ -317,13 +332,14 @@
    "Вена",
    "Хельсинки"
   ],
-  "source": "https://www.wikidata.org/wiki/Q20"
+  "source": "https://www.wikidata.org/wiki/Q20",
+  "previous_text": "Какой город — столица Норвегии?"
  },
  {
   "id": "capital:Q79",
   "type": "capital",
   "category": "geography",
-  "text": "Какой город — столица Египта?",
+  "text": "Столица Египта?",
   "correct": "Каир",
   "wrong": [
    "Найроби",
@@ -337,13 +353,14 @@
    "Луанда",
    "Хартум"
   ],
-  "source": "https://www.wikidata.org/wiki/Q79"
+  "source": "https://www.wikidata.org/wiki/Q79",
+  "previous_text": "Какой город — столица Египта?"
  },
  {
   "id": "city_country:Q60",
   "type": "city_country",
   "category": "geography",
-  "text": "В какой стране находится город Нью-Йорк?",
+  "text": "В какой стране находится Нью-Йорк?",
   "correct": "США",
   "wrong": [
    "Мексика",
@@ -358,13 +375,13 @@
    "Никарагуа"
   ],
   "source": "https://www.wikidata.org/wiki/Q60",
-  "polish_rejected": "В какой стране город Нью-Йорк?"
+  "previous_text": "В какой стране находится город Нью-Йорк?"
  },
  {
   "id": "city_country:Q8646",
   "type": "city_country",
   "category": "geography",
-  "text": "В какой стране находится город Гонконг?",
+  "text": "В какой стране находится Гонконг?",
   "correct": "Китай",
   "wrong": [
    "Турция",
@@ -379,13 +396,13 @@
    "Афганистан"
   ],
   "source": "https://www.wikidata.org/wiki/Q8646",
-  "polish_rejected": "В какой стране город Гонконг?"
+  "previous_text": "В какой стране находится город Гонконг?"
  },
  {
   "id": "city_country:Q8678",
   "type": "city_country",
   "category": "geography",
-  "text": "В какой стране находится город Рио-де-Жанейро?",
+  "text": "В какой стране находится Рио-де-Жанейро?",
   "correct": "Бразилия",
   "wrong": [
    "Чили",
@@ -400,13 +417,13 @@
    "Суринам"
   ],
   "source": "https://www.wikidata.org/wiki/Q8678",
-  "polish_rejected": "В какой стране город Рио-де-Жанейро?"
+  "previous_text": "В какой стране находится город Рио-де-Жанейро?"
  },
  {
   "id": "city_country:Q406",
   "type": "city_country",
   "category": "geography",
-  "text": "В какой стране находится город Стамбул?",
+  "text": "В какой стране находится Стамбул?",
   "correct": "Турция",
   "wrong": [
    "Франция",
@@ -421,13 +438,13 @@
    "Великобритания"
   ],
   "source": "https://www.wikidata.org/wiki/Q406",
-  "polish_rejected": "В какой стране — город Стамбул?"
+  "previous_text": "В какой стране находится город Стамбул?"
  },
  {
   "id": "city_country:Q43387",
   "type": "city_country",
   "category": "geography",
-  "text": "В какой стране находится город Эдирне?",
+  "text": "В какой стране находится Эдирне?",
   "correct": "Турция",
   "wrong": [
    "Франция",
@@ -442,13 +459,13 @@
    "Великобритания"
   ],
   "source": "https://www.wikidata.org/wiki/Q43387",
-  "polish_rejected": "В какой стране город Эдирне?"
+  "previous_text": "В какой стране находится город Эдирне?"
  },
  {
   "id": "city_country:Q1297",
   "type": "city_country",
   "category": "geography",
-  "text": "В какой стране находится город Чикаго?",
+  "text": "В какой стране находится Чикаго?",
   "correct": "США",
   "wrong": [
    "Мексика",
@@ -463,13 +480,13 @@
    "Никарагуа"
   ],
   "source": "https://www.wikidata.org/wiki/Q1297",
-  "polish_rejected": "В какой стране город Чикаго?"
+  "previous_text": "В какой стране находится город Чикаго?"
  },
  {
   "id": "city_country:Q656",
   "type": "city_country",
   "category": "geography",
-  "text": "В какой стране находится город Санкт-Петербург?",
+  "text": "В какой стране находится Санкт-Петербург?",
   "correct": "Россия",
   "wrong": [
    "Турция",
@@ -484,13 +501,13 @@
    "Великобритания"
   ],
   "source": "https://www.wikidata.org/wiki/Q656",
-  "polish_rejected": "В какой стране — Санкт-Петербург?"
+  "previous_text": "В какой стране находится город Санкт-Петербург?"
  },
  {
   "id": "city_country:Q3130",
   "type": "city_country",
   "category": "geography",
-  "text": "В какой стране находится город Сидней?",
+  "text": "В какой стране находится Сидней?",
   "correct": "Австралия",
   "wrong": [
    "Новая Зеландия",
@@ -505,13 +522,13 @@
    "Маршалловы Острова"
   ],
   "source": "https://www.wikidata.org/wiki/Q3130",
-  "polish_rejected": "В какой стране Сидней?"
+  "previous_text": "В какой стране находится город Сидней?"
  },
  {
   "id": "city_country:Q34600",
   "type": "city_country",
   "category": "geography",
-  "text": "В какой стране находится город Киото?",
+  "text": "В какой стране находится Киото?",
   "correct": "Япония",
   "wrong": [
    "Турция",
@@ -526,13 +543,13 @@
    "Афганистан"
   ],
   "source": "https://www.wikidata.org/wiki/Q34600",
-  "polish_rejected": "В какой стране город Киото?"
+  "previous_text": "В какой стране находится город Киото?"
  },
  {
   "id": "city_country:Q4361",
   "type": "city_country",
   "category": "geography",
-  "text": "В какой стране находится город Куритиба?",
+  "text": "В какой стране находится Куритиба?",
   "correct": "Бразилия",
   "wrong": [
    "Чили",
@@ -547,13 +564,13 @@
    "Суринам"
   ],
   "source": "https://www.wikidata.org/wiki/Q4361",
-  "polish_rejected": "В какой стране город Куритиба?"
+  "previous_text": "В какой стране находится город Куритиба?"
  },
  {
   "id": "city_country:Q1854",
   "type": "city_country",
   "category": "geography",
-  "text": "В какой стране находится город Хошимин?",
+  "text": "В какой стране находится Хошимин?",
   "correct": "Вьетнам",
   "wrong": [
    "Турция",
@@ -568,13 +585,13 @@
    "Афганистан"
   ],
   "source": "https://www.wikidata.org/wiki/Q1854",
-  "polish_rejected": "В какой стране город Хошимин?"
+  "previous_text": "В какой стране находится город Хошимин?"
  },
  {
   "id": "city_country:Q174",
   "type": "city_country",
   "category": "geography",
-  "text": "В какой стране находится город Сан-Паулу?",
+  "text": "В какой стране находится Сан-Паулу?",
   "correct": "Бразилия",
   "wrong": [
    "Чили",
@@ -589,13 +606,13 @@
    "Суринам"
   ],
   "source": "https://www.wikidata.org/wiki/Q174",
-  "polish_rejected": "В какой стране город Сан-Паулу?"
+  "previous_text": "В какой стране находится город Сан-Паулу?"
  },
  {
   "id": "city_country:Q8686",
   "type": "city_country",
   "category": "geography",
-  "text": "В какой стране находится город Шанхай?",
+  "text": "В какой стране находится Шанхай?",
   "correct": "Китай",
   "wrong": [
    "Турция",
@@ -610,13 +627,13 @@
    "Афганистан"
   ],
   "source": "https://www.wikidata.org/wiki/Q8686",
-  "polish_rejected": "В какой стране город Шанхай?"
+  "previous_text": "В какой стране находится город Шанхай?"
  },
  {
   "id": "city_country:Q1492",
   "type": "city_country",
   "category": "geography",
-  "text": "В какой стране находится город Барселона?",
+  "text": "В какой стране находится Барселона?",
   "correct": "Испания",
   "wrong": [
    "Турция",
@@ -631,13 +648,13 @@
    "Украина"
   ],
   "source": "https://www.wikidata.org/wiki/Q1492",
-  "polish_rejected": "В какой стране город Барселона?"
+  "previous_text": "В какой стране находится город Барселона?"
  },
  {
   "id": "city_country:Q1726",
   "type": "city_country",
   "category": "geography",
-  "text": "В какой стране находится город Мюнхен?",
+  "text": "В какой стране находится Мюнхен?",
   "correct": "Германия",
   "wrong": [
    "Турция",
@@ -652,13 +669,13 @@
    "Украина"
   ],
   "source": "https://www.wikidata.org/wiki/Q1726",
-  "polish_rejected": "В какой стране город Мюнхен?"
+  "previous_text": "В какой стране находится город Мюнхен?"
  },
  {
   "id": "city_country:Q33986",
   "type": "city_country",
   "category": "geography",
-  "text": "В какой стране находится город Вальпараисо?",
+  "text": "В какой стране находится Вальпараисо?",
   "correct": "Чили",
   "wrong": [
    "Бразилия",
@@ -673,13 +690,13 @@
    "Суринам"
   ],
   "source": "https://www.wikidata.org/wiki/Q33986",
-  "polish_rejected": "В какой стране город Вальпараисо?"
+  "previous_text": "В какой стране находится город Вальпараисо?"
  },
  {
   "id": "city_country:Q62",
   "type": "city_country",
   "category": "geography",
-  "text": "В какой стране находится город Сан-Франциско?",
+  "text": "В какой стране находится Сан-Франциско?",
   "correct": "США",
   "wrong": [
    "Мексика",
@@ -694,7 +711,7 @@
    "Никарагуа"
   ],
   "source": "https://www.wikidata.org/wiki/Q62",
-  "polish_rejected": "В какой стране город Сан-Франциско?"
+  "previous_text": "В какой стране находится город Сан-Франциско?"
  },
  {
   "id": "mountain_country:Q39231",
@@ -800,7 +817,7 @@
   "id": "mountain_country:Q72303",
   "type": "mountain_country",
   "category": "geography",
-  "text": "В какой стране находится вершина Арарат?",
+  "text": "В какой стране находится Арарат?",
   "correct": "Турция",
   "wrong": [
    "Франция",
@@ -814,13 +831,14 @@
    "Испания",
    "Великобритания"
   ],
-  "source": "https://www.wikidata.org/wiki/Q72303"
+  "source": "https://www.wikidata.org/wiki/Q72303",
+  "previous_text": "В какой стране находится вершина Арарат?"
  },
  {
   "id": "mountain_country:Q43512",
   "type": "mountain_country",
   "category": "geography",
-  "text": "В какой стране находится вершина Чогори?",
+  "text": "В какой стране находится Чогори?",
   "correct": "Пакистан",
   "wrong": [
    "Турция",
@@ -834,13 +852,14 @@
    "Республика Корея",
    "Армения"
   ],
-  "source": "https://www.wikidata.org/wiki/Q43512"
+  "source": "https://www.wikidata.org/wiki/Q43512",
+  "previous_text": "В какой стране находится вершина Чогори?"
  },
  {
   "id": "mountain_country:Q80344",
   "type": "mountain_country",
   "category": "geography",
-  "text": "В какой стране находится вершина Олимп?",
+  "text": "В какой стране находится Олимп?",
   "correct": "Греция",
   "wrong": [
    "Франция",
@@ -854,7 +873,8 @@
    "Польша",
    "Украина"
   ],
-  "source": "https://www.wikidata.org/wiki/Q80344"
+  "source": "https://www.wikidata.org/wiki/Q80344",
+  "previous_text": "В какой стране находится вершина Олимп?"
  },
  {
   "id": "mountain_country:Q38954",
@@ -880,7 +900,7 @@
   "id": "mountain_country:Q130018",
   "type": "mountain_country",
   "category": "geography",
-  "text": "В какой стране находится вершина Мак-Кинли?",
+  "text": "В какой стране находится Мак-Кинли?",
   "correct": "США",
   "wrong": [
    "Куба",
@@ -894,7 +914,8 @@
    "Гватемала",
    "Белиз"
   ],
-  "source": "https://www.wikidata.org/wiki/Q130018"
+  "source": "https://www.wikidata.org/wiki/Q130018",
+  "previous_text": "В какой стране находится вершина Мак-Кинли?"
  },
  {
   "id": "mountain_country:Q83497",
@@ -920,7 +941,7 @@
   "id": "mountain_country:Q229107",
   "type": "mountain_country",
   "category": "geography",
-  "text": "В какой стране находится вершина Кайлас?",
+  "text": "В какой стране находится Кайлас?",
   "correct": "Китай",
   "wrong": [
    "Турция",
@@ -934,7 +955,8 @@
    "Саудовская Аравия",
    "Бангладеш"
   ],
-  "source": "https://www.wikidata.org/wiki/Q229107"
+  "source": "https://www.wikidata.org/wiki/Q229107",
+  "previous_text": "В какой стране находится вершина Кайлас?"
  },
  {
   "id": "mountain_country:Q130736",
@@ -980,7 +1002,7 @@
   "id": "mountain_country:Q377485",
   "type": "mountain_country",
   "category": "geography",
-  "text": "В какой стране находится вершина Синай?",
+  "text": "В какой стране находится Синай?",
   "correct": "Египет",
   "wrong": [
    "Алжир",
@@ -994,7 +1016,8 @@
    "Гана",
    "Сомали"
   ],
-  "source": "https://www.wikidata.org/wiki/Q377485"
+  "source": "https://www.wikidata.org/wiki/Q377485",
+  "previous_text": "В какой стране находится вершина Синай?"
  },
  {
   "id": "mountain_country:Q131230",
@@ -1020,7 +1043,7 @@
   "id": "mountain_country:Q130321",
   "type": "mountain_country",
   "category": "geography",
-  "text": "В какой стране находится вершина Афон?",
+  "text": "В какой стране находится Афон?",
   "correct": "Греция",
   "wrong": [
    "Франция",
@@ -1035,13 +1058,13 @@
    "Украина"
   ],
   "source": "https://www.wikidata.org/wiki/Q130321",
-  "polish_rejected": "В какой стране — вершина Афон?"
+  "previous_text": "В какой стране находится вершина Афон?"
  },
  {
   "id": "elevation:Q513",
   "type": "elevation",
   "category": "geography",
-  "text": "Какова высота Джомолунгмы над уровнем моря?",
+  "text": "Высота Джомолунгмы?",
   "correct": "8849 м",
   "wrong": [
    "7116 м",
@@ -1049,13 +1072,14 @@
    "7648 м",
    "5766 м"
   ],
-  "source": "https://www.wikidata.org/wiki/Q513"
+  "source": "https://www.wikidata.org/wiki/Q513",
+  "previous_text": "Какова высота Джомолунгмы над уровнем моря?"
  },
  {
   "id": "elevation:Q39231",
   "type": "elevation",
   "category": "geography",
-  "text": "Какова высота Фудзиямы над уровнем моря?",
+  "text": "Высота Фудзиямы?",
   "correct": "3777 м",
   "wrong": [
    "2963 м",
@@ -1067,13 +1091,13 @@
    "4118 м"
   ],
   "source": "https://www.wikidata.org/wiki/Q39231",
-  "model_disagrees": "3297 м"
+  "previous_text": "Какова высота Фудзиямы над уровнем моря?"
  },
  {
   "id": "elevation:Q524",
   "type": "elevation",
   "category": "geography",
-  "text": "Какова высота Везувия над уровнем моря?",
+  "text": "Высота Везувия?",
   "correct": "1281 м",
   "wrong": [
    "916 м",
@@ -1085,13 +1109,14 @@
    "835 м"
   ],
   "source": "https://www.wikidata.org/wiki/Q524",
-  "model_disagrees": "1572 м"
+  "model_disagrees": "1572 м",
+  "previous_text": "Какова высота Везувия над уровнем моря?"
  },
  {
   "id": "elevation:Q583",
   "type": "elevation",
   "category": "geography",
-  "text": "Какова высота Монблана над уровнем моря?",
+  "text": "Высота Монблана?",
   "correct": "4806 м",
   "wrong": [
    "5428 м",
@@ -1103,13 +1128,14 @@
    "3233 м"
   ],
   "source": "https://www.wikidata.org/wiki/Q583",
-  "model_disagrees": "5428 м"
+  "model_disagrees": "5428 м",
+  "previous_text": "Какова высота Монблана над уровнем моря?"
  },
  {
   "id": "elevation:Q16990",
   "type": "elevation",
   "category": "geography",
-  "text": "Какова высота Этны над уровнем моря?",
+  "text": "Высота Этны?",
   "correct": "3357 м",
   "wrong": [
    "2387 м",
@@ -1121,13 +1147,15 @@
    "3924 м",
    "2184 м"
   ],
-  "source": "https://www.wikidata.org/wiki/Q16990"
+  "source": "https://www.wikidata.org/wiki/Q16990",
+  "model_disagrees": "3699 м",
+  "previous_text": "Какова высота Этны над уровнем моря?"
  },
  {
   "id": "elevation:Q43105",
   "type": "elevation",
   "category": "geography",
-  "text": "Какова высота Эльбруса над уровнем моря?",
+  "text": "Высота Эльбруса?",
   "correct": "5642 м",
   "wrong": [
    "3979 м",
@@ -1140,13 +1168,14 @@
    "6533 м"
   ],
   "source": "https://www.wikidata.org/wiki/Q43105",
-  "model_disagrees": "6125 м"
+  "model_disagrees": "6125 м",
+  "previous_text": "Какова высота Эльбруса над уровнем моря?"
  },
  {
   "id": "elevation:Q39739",
   "type": "elevation",
   "category": "geography",
-  "text": "Какова высота Аконкагуа над уровнем моря?",
+  "text": "Высота Аконкагуа?",
   "correct": "6962 м",
   "wrong": [
    "4882 м",
@@ -1157,13 +1186,14 @@
    "7665 м"
   ],
   "source": "https://www.wikidata.org/wiki/Q39739",
-  "model_disagrees": "8153 м"
+  "model_disagrees": "8153 м",
+  "previous_text": "Какова высота Аконкагуа над уровнем моря?"
  },
  {
   "id": "elevation:Q72303",
   "type": "elevation",
   "category": "geography",
-  "text": "Какова высота вершины Арарат над уровнем моря?",
+  "text": "Высота Арарата?",
   "correct": "5137 м",
   "wrong": [
    "4562 м",
@@ -1176,26 +1206,27 @@
    "6476 м"
   ],
   "source": "https://www.wikidata.org/wiki/Q72303",
-  "polish_rejected": "Какова высота вершины Арarat над уровнем моря?"
+  "previous_text": "Какова высота вершины Арарат над уровнем моря?"
  },
  {
   "id": "elevation:Q43512",
   "type": "elevation",
   "category": "geography",
-  "text": "Какова высота Чогори над уровнем моря?",
+  "text": "Высота Чогори?",
   "correct": "8611 м",
   "wrong": [
    "6658 м",
    "7553 м",
    "5631 м"
   ],
-  "source": "https://www.wikidata.org/wiki/Q43512"
+  "source": "https://www.wikidata.org/wiki/Q43512",
+  "previous_text": "Какова высота Чогори над уровнем моря?"
  },
  {
   "id": "elevation:Q80344",
   "type": "elevation",
   "category": "geography",
-  "text": "Какова высота вершины Олимп над уровнем моря?",
+  "text": "Высота Олимпа?",
   "correct": "2918 м",
   "wrong": [
    "3614 м",
@@ -1208,13 +1239,14 @@
    "3150 м"
   ],
   "source": "https://www.wikidata.org/wiki/Q80344",
-  "model_disagrees": "3614 м"
+  "model_disagrees": "3332 м",
+  "previous_text": "Какова высота вершины Олимп над уровнем моря?"
  },
  {
   "id": "elevation:Q38954",
   "type": "elevation",
   "category": "geography",
-  "text": "Какова высота вершины Тейде над уровнем моря?",
+  "text": "Высота Тейде?",
   "correct": "3715 м",
   "wrong": [
    "2740 м",
@@ -1226,13 +1258,14 @@
    "4549 м"
   ],
   "source": "https://www.wikidata.org/wiki/Q38954",
-  "model_disagrees": "4226 м"
+  "model_disagrees": "2979 м",
+  "previous_text": "Какова высота вершины Тейде над уровнем моря?"
  },
  {
   "id": "elevation:Q82019",
   "type": "elevation",
   "category": "geography",
-  "text": "Какова высота Канченджанги над уровнем моря?",
+  "text": "Высота Канченджанги?",
   "correct": "8586 м",
   "wrong": [
    "6887 м",
@@ -1241,13 +1274,14 @@
    "6172 м"
   ],
   "source": "https://www.wikidata.org/wiki/Q82019",
-  "model_disagrees": "7875 м"
+  "model_disagrees": "7875 м",
+  "previous_text": "Какова высота Канченджанги над уровнем моря?"
  },
  {
   "id": "elevation:Q130018",
   "type": "elevation",
   "category": "geography",
-  "text": "Какова высота Мак-Кинли над уровнем моря?",
+  "text": "Высота Мак-Кинли?",
   "correct": "6190 м",
   "wrong": [
    "6855 м",
@@ -1259,13 +1293,14 @@
    "8334 м"
   ],
   "source": "https://www.wikidata.org/wiki/Q130018",
-  "model_disagrees": "6855 м"
+  "model_disagrees": "6855 м",
+  "previous_text": "Какова высота Мак-Кинли над уровнем моря?"
  },
  {
   "id": "elevation:Q83497",
   "type": "elevation",
   "category": "geography",
-  "text": "Какова высота вершины Рашмор над уровнем моря?",
+  "text": "Высота Рашмора?",
   "correct": "1745 м",
   "wrong": [
    "1192 м",
@@ -1275,13 +1310,15 @@
    "2253 м",
    "2145 м"
   ],
-  "source": "https://www.wikidata.org/wiki/Q83497"
+  "source": "https://www.wikidata.org/wiki/Q83497",
+  "model_disagrees": "1192 м",
+  "previous_text": "Какова высота вершины Рашмор над уровнем моря?"
  },
  {
   "id": "elevation:Q1374",
   "type": "elevation",
   "category": "geography",
-  "text": "Какова высота Маттерхорна над уровнем моря?",
+  "text": "Высота Маттерхорна?",
   "correct": "4478 м",
   "wrong": [
    "3440 м",
@@ -1292,13 +1329,14 @@
    "2937 м",
    "5636 м"
   ],
-  "source": "https://www.wikidata.org/wiki/Q1374"
+  "source": "https://www.wikidata.org/wiki/Q1374",
+  "previous_text": "Какова высота Маттерхорна над уровнем моря?"
  },
  {
   "id": "elevation:Q229107",
   "type": "elevation",
   "category": "geography",
-  "text": "Какова высота Кайласа над уровнем моря?",
+  "text": "Высота Кайласа?",
   "correct": "6638 м",
   "wrong": [
    "5049 м",
@@ -1310,13 +1348,14 @@
    "8841 м"
   ],
   "source": "https://www.wikidata.org/wiki/Q229107",
-  "model_disagrees": "8437 м"
+  "model_disagrees": "8437 м",
+  "previous_text": "Какова высота Кайласа над уровнем моря?"
  },
  {
   "id": "elevation:Q130736",
   "type": "elevation",
   "category": "geography",
-  "text": "Какова высота Нангапарбата над уровнем моря?",
+  "text": "Высота Нангапарбат?",
   "correct": "8126 м",
   "wrong": [
    "5342 м",
@@ -1326,13 +1365,14 @@
    "7434 м"
   ],
   "source": "https://www.wikidata.org/wiki/Q130736",
-  "model_disagrees": "5342 м"
+  "model_disagrees": "8847 м",
+  "previous_text": "Какова высота Нангапарбата над уровнем моря?"
  },
  {
   "id": "highest_point:Q43",
   "type": "highest_point",
   "category": "geography",
-  "text": "Какая вершина — высшая точка Турции?",
+  "text": "Самая высокая вершина Турции?",
   "correct": "Арарат",
   "wrong": [
    "Джомолунгма",
@@ -1346,13 +1386,14 @@
    "Канченджанга",
    "Демавенд"
   ],
-  "source": "https://www.wikidata.org/wiki/Q43"
+  "source": "https://www.wikidata.org/wiki/Q43",
+  "previous_text": "Какая вершина — высшая точка Турции?"
  },
  {
   "id": "highest_point:Q30",
   "type": "highest_point",
   "category": "geography",
-  "text": "Какая вершина — высшая точка США?",
+  "text": "Самая высокая вершина США?",
   "correct": "Мак-Кинли",
   "wrong": [
    "Логан",
@@ -1366,13 +1407,14 @@
    "Обама",
    "Льямиуга"
   ],
-  "source": "https://www.wikidata.org/wiki/Q30"
+  "source": "https://www.wikidata.org/wiki/Q30",
+  "previous_text": "Какая вершина — высшая точка США?"
  },
  {
   "id": "highest_point:Q159",
   "type": "highest_point",
   "category": "geography",
-  "text": "Какая вершина — высшая точка России?",
+  "text": "Самая высокая вершина России?",
   "correct": "Эльбрус",
   "wrong": [
    "Джомолунгма",
@@ -1386,13 +1428,14 @@
    "Канченджанга",
    "Демавенд"
   ],
-  "source": "https://www.wikidata.org/wiki/Q159"
+  "source": "https://www.wikidata.org/wiki/Q159",
+  "previous_text": "Какая вершина — высшая точка России?"
  },
  {
   "id": "highest_point:Q17",
   "type": "highest_point",
   "category": "geography",
-  "text": "Какая вершина — высшая точка Японии?",
+  "text": "Самая высокая вершина Японии?",
   "correct": "Фудзияма",
   "wrong": [
    "Джомолунгма",
@@ -1406,13 +1449,14 @@
    "Пэктусан",
    "Кинабалу"
   ],
-  "source": "https://www.wikidata.org/wiki/Q17"
+  "source": "https://www.wikidata.org/wiki/Q17",
+  "previous_text": "Какая вершина — высшая точка Японии?"
  },
  {
   "id": "highest_point:Q183",
   "type": "highest_point",
   "category": "geography",
-  "text": "Какая вершина — высшая точка Германии?",
+  "text": "Самая высокая вершина Германии?",
   "correct": "Цугшпитце",
   "wrong": [
    "Монблан",
@@ -1426,13 +1470,14 @@
    "Гросглокнер",
    "Говерла"
   ],
-  "source": "https://www.wikidata.org/wiki/Q183"
+  "source": "https://www.wikidata.org/wiki/Q183",
+  "previous_text": "Какая вершина — высшая точка Германии?"
  },
  {
   "id": "highest_point:Q668",
   "type": "highest_point",
   "category": "geography",
-  "text": "Какая вершина — высшая точка Индии?",
+  "text": "Самая высокая вершина Индии?",
   "correct": "Канченджанга",
   "wrong": [
    "Джомолунгма",
@@ -1446,13 +1491,14 @@
    "Пэктусан",
    "Кинабалу"
   ],
-  "source": "https://www.wikidata.org/wiki/Q668"
+  "source": "https://www.wikidata.org/wiki/Q668",
+  "previous_text": "Какая вершина — высшая точка Индии?"
  },
  {
   "id": "highest_point:Q33",
   "type": "highest_point",
   "category": "geography",
-  "text": "Какая вершина — высшая точка Финляндии?",
+  "text": "Самая высокая вершина Финляндии?",
   "correct": "Халтиа",
   "wrong": [
    "Монблан",
@@ -1466,13 +1512,14 @@
    "Хан-Тенгри",
    "Гросглокнер"
   ],
-  "source": "https://www.wikidata.org/wiki/Q33"
+  "source": "https://www.wikidata.org/wiki/Q33",
+  "previous_text": "Какая вершина — высшая точка Финляндии?"
  },
  {
   "id": "highest_point:Q96",
   "type": "highest_point",
   "category": "geography",
-  "text": "Какая вершина — высшая точка Мексики?",
+  "text": "Самая высокая вершина Мексики?",
   "correct": "Пик Орисаба",
   "wrong": [
    "Мак-Кинли",
@@ -1487,13 +1534,13 @@
    "Льямиуга"
   ],
   "source": "https://www.wikidata.org/wiki/Q96",
-  "model_disagrees": "Суфриер"
+  "previous_text": "Какая вершина — высшая точка Мексики?"
  },
  {
   "id": "highest_point:Q408",
   "type": "highest_point",
   "category": "geography",
-  "text": "Какая вершина — высшая точка Австралии?",
+  "text": "Самая высокая вершина Австралии?",
   "correct": "Моусон",
   "wrong": [
    "гора Кука",
@@ -1508,13 +1555,14 @@
    "Джомолунгма"
   ],
   "source": "https://www.wikidata.org/wiki/Q408",
-  "model_disagrees": "гора Кука"
+  "model_disagrees": "гора Кука",
+  "previous_text": "Какая вершина — высшая точка Австралии?"
  },
  {
   "id": "highest_point:Q16",
   "type": "highest_point",
   "category": "geography",
-  "text": "Какая вершина — высшая точка Канады?",
+  "text": "Самая высокая вершина Канады?",
   "correct": "Логан",
   "wrong": [
    "Мак-Кинли",
@@ -1528,13 +1576,14 @@
    "Обама",
    "Льямиуга"
   ],
-  "source": "https://www.wikidata.org/wiki/Q16"
+  "source": "https://www.wikidata.org/wiki/Q16",
+  "previous_text": "Какая вершина — высшая точка Канады?"
  },
  {
   "id": "highest_point:Q29",
   "type": "highest_point",
   "category": "geography",
-  "text": "Какая вершина — высшая точка Испании?",
+  "text": "Самая высокая вершина Испании?",
   "correct": "Тейде",
   "wrong": [
    "Монблан",
@@ -1548,13 +1597,14 @@
    "Гросглокнер",
    "Говерла"
   ],
-  "source": "https://www.wikidata.org/wiki/Q29"
+  "source": "https://www.wikidata.org/wiki/Q29",
+  "previous_text": "Какая вершина — высшая точка Испании?"
  },
  {
   "id": "highest_point:Q145",
   "type": "highest_point",
   "category": "geography",
-  "text": "Какая вершина — высшая точка Великобритании?",
+  "text": "Самая высокая вершина Великобритании?",
   "correct": "Бен-Невис",
   "wrong": [
    "Монблан",
@@ -1568,13 +1618,14 @@
    "Гросглокнер",
    "Говерла"
   ],
-  "source": "https://www.wikidata.org/wiki/Q145"
+  "source": "https://www.wikidata.org/wiki/Q145",
+  "previous_text": "Какая вершина — высшая точка Великобритании?"
  },
  {
   "id": "highest_point:Q20",
   "type": "highest_point",
   "category": "geography",
-  "text": "Какая вершина — высшая точка Норвегии?",
+  "text": "Самая высокая вершина Норвегии?",
   "correct": "Галлхёпигген",
   "wrong": [
    "Монблан",
@@ -1588,13 +1639,14 @@
    "Хан-Тенгри",
    "Гросглокнер"
   ],
-  "source": "https://www.wikidata.org/wiki/Q20"
+  "source": "https://www.wikidata.org/wiki/Q20",
+  "previous_text": "Какая вершина — высшая точка Норвегии?"
  },
  {
   "id": "highest_point:Q79",
   "type": "highest_point",
   "category": "geography",
-  "text": "Какая вершина — высшая точка Египта?",
+  "text": "Самая высокая вершина Египта?",
   "correct": "Гора Святой Екатерины",
   "wrong": [
    "Джебель-Тубкаль",
@@ -1606,13 +1658,14 @@
    "Тахат",
    "Муландже"
   ],
-  "source": "https://www.wikidata.org/wiki/Q79"
+  "source": "https://www.wikidata.org/wiki/Q79",
+  "previous_text": "Какая вершина — высшая точка Египта?"
  },
  {
   "id": "highest_point:Q36",
   "type": "highest_point",
   "category": "geography",
-  "text": "Какая вершина — высшая точка Польши?",
+  "text": "Самая высокая вершина Польши?",
   "correct": "Рысы",
   "wrong": [
    "Монблан",
@@ -1627,13 +1680,13 @@
    "Гросглокнер"
   ],
   "source": "https://www.wikidata.org/wiki/Q36",
-  "model_disagrees": "Арарат"
+  "previous_text": "Какая вершина — высшая точка Польши?"
  },
  {
   "id": "highest_point:Q212",
   "type": "highest_point",
   "category": "geography",
-  "text": "Какая вершина — высшая точка Украины?",
+  "text": "Самая высокая вершина Украины?",
   "correct": "Говерла",
   "wrong": [
    "Монблан",
@@ -1647,13 +1700,14 @@
    "Хан-Тенгри",
    "Гросглокнер"
   ],
-  "source": "https://www.wikidata.org/wiki/Q212"
+  "source": "https://www.wikidata.org/wiki/Q212",
+  "previous_text": "Какая вершина — высшая точка Украины?"
  },
  {
   "id": "highest_point:Q39",
   "type": "highest_point",
   "category": "geography",
-  "text": "Какая вершина — высшая точка Швейцарии?",
+  "text": "Самая высокая вершина Швейцарии?",
   "correct": "Пик Дюфур",
   "wrong": [
    "Монблан",
@@ -1668,7 +1722,7 @@
    "Гросглокнер"
   ],
   "source": "https://www.wikidata.org/wiki/Q39",
-  "model_disagrees": "Монблан"
+  "previous_text": "Какая вершина — высшая точка Швейцарии?"
  },
  {
   "id": "river_mouth:Q3392",
@@ -1728,8 +1782,7 @@
    "Персидский залив",
    "Адриатическое море"
   ],
-  "source": "https://www.wikidata.org/wiki/Q1653",
-  "model_disagrees": "Средиземное море"
+  "source": "https://www.wikidata.org/wiki/Q1653"
  },
  {
   "id": "river_mouth:Q584",
@@ -1749,8 +1802,7 @@
    "Персидский залив",
    "Адриатическое море"
   ],
-  "source": "https://www.wikidata.org/wiki/Q584",
-  "model_disagrees": "Средиземное море"
+  "source": "https://www.wikidata.org/wiki/Q584"
  },
  {
   "id": "river_mouth:Q5089",
@@ -1816,7 +1868,7 @@
   "id": "river_mouth:Q3503",
   "type": "river_mouth",
   "category": "geography",
-  "text": "Куда впадает река Конго?",
+  "text": "Куда впадает Конго?",
   "correct": "Атлантический океан",
   "wrong": [
    "Тихий океан",
@@ -1830,13 +1882,14 @@
    "Аравийское море",
    "Бенгальский залив"
   ],
-  "source": "https://www.wikidata.org/wiki/Q3503"
+  "source": "https://www.wikidata.org/wiki/Q3503",
+  "previous_text": "Куда впадает река Конго?"
  },
  {
   "id": "river_mouth:Q7348",
   "type": "river_mouth",
   "category": "geography",
-  "text": "Куда впадает река Инд?",
+  "text": "Куда впадает Инд?",
   "correct": "Аравийское море",
   "wrong": [
    "Средиземное море",
@@ -1851,13 +1904,13 @@
    "Персидский залив"
   ],
   "source": "https://www.wikidata.org/wiki/Q7348",
-  "model_disagrees": "Чёрное море"
+  "previous_text": "Куда впадает река Инд?"
  },
  {
   "id": "river_mouth:Q3542",
   "type": "river_mouth",
   "category": "geography",
-  "text": "Куда впадает Нигер?",
+  "text": "Куда впадает река Нигер?",
   "correct": "Гвинейский залив",
   "wrong": [
    "Средиземное море",
@@ -1871,7 +1924,8 @@
    "Виктория",
    "Персидский залив"
   ],
-  "source": "https://www.wikidata.org/wiki/Q3542"
+  "source": "https://www.wikidata.org/wiki/Q3542",
+  "previous_text": "Куда впадает Нигер?"
  },
  {
   "id": "river_mouth:Q7355",
@@ -1917,7 +1971,7 @@
   "id": "river_mouth:Q1471",
   "type": "river_mouth",
   "category": "geography",
-  "text": "Куда впадает река Сена?",
+  "text": "Куда впадает Сена?",
   "correct": "Ла-Манш",
   "wrong": [
    "Средиземное море",
@@ -1931,7 +1985,8 @@
    "Виктория",
    "Персидский залив"
   ],
-  "source": "https://www.wikidata.org/wiki/Q1471"
+  "source": "https://www.wikidata.org/wiki/Q1471",
+  "previous_text": "Куда впадает река Сена?"
  },
  {
   "id": "river_mouth:Q19686",
@@ -1977,7 +2032,7 @@
   "id": "river_mouth:Q40059",
   "type": "river_mouth",
   "category": "geography",
-  "text": "Куда впадает река Иордан?",
+  "text": "Куда впадает Иордан?",
   "correct": "Мёртвое море",
   "wrong": [
    "Средиземное море",
@@ -1992,7 +2047,7 @@
    "Адриатическое море"
   ],
   "source": "https://www.wikidata.org/wiki/Q40059",
-  "polish_rejected": "Куда впадет река Иордан?"
+  "previous_text": "Куда впадает река Иордан?"
  },
  {
   "id": "river_mouth:Q548",
@@ -2013,5 +2068,1998 @@
    "Адриатическое море"
   ],
   "source": "https://www.wikidata.org/wiki/Q548"
+ },
+ {
+  "id": "capital:Q36",
+  "type": "capital",
+  "category": "geography",
+  "text": "Столица Польши?",
+  "correct": "Варшава",
+  "wrong": [
+   "Париж",
+   "Лондон",
+   "Рим",
+   "Ватикан",
+   "Москва",
+   "Берлин",
+   "Монако",
+   "Мадрид",
+   "Вена",
+   "Хельсинки"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q36"
+ },
+ {
+  "id": "capital:Q212",
+  "type": "capital",
+  "category": "geography",
+  "text": "Столица Украины?",
+  "correct": "Киев",
+  "wrong": [
+   "Париж",
+   "Лондон",
+   "Рим",
+   "Ватикан",
+   "Москва",
+   "Берлин",
+   "Монако",
+   "Мадрид",
+   "Вена",
+   "Хельсинки"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q212"
+ },
+ {
+  "id": "capital:Q39",
+  "type": "capital",
+  "category": "geography",
+  "text": "Столица Швейцарии?",
+  "correct": "Берн",
+  "wrong": [
+   "Париж",
+   "Лондон",
+   "Рим",
+   "Ватикан",
+   "Москва",
+   "Берлин",
+   "Монако",
+   "Мадрид",
+   "Вена",
+   "Хельсинки"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q39"
+ },
+ {
+  "id": "capital:Q155",
+  "type": "capital",
+  "category": "geography",
+  "text": "Столица Бразилии?",
+  "correct": "Бразилиа",
+  "wrong": [
+   "Богота",
+   "Буэнос-Айрес",
+   "Сантьяго",
+   "Лима",
+   "Каракас",
+   "Монтевидео",
+   "Кито",
+   "Асунсьон",
+   "Парамарибо",
+   "Джорджтаун"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q155"
+ },
+ {
+  "id": "capital:Q222",
+  "type": "capital",
+  "category": "geography",
+  "text": "Столица Албании?",
+  "correct": "Тирана",
+  "wrong": [
+   "Париж",
+   "Лондон",
+   "Рим",
+   "Ватикан",
+   "Москва",
+   "Берлин",
+   "Монако",
+   "Мадрид",
+   "Вена",
+   "Хельсинки"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q222"
+ },
+ {
+  "id": "capital:Q31",
+  "type": "capital",
+  "category": "geography",
+  "text": "Столица Бельгии?",
+  "correct": "Брюссель",
+  "wrong": [
+   "Париж",
+   "Лондон",
+   "Рим",
+   "Ватикан",
+   "Москва",
+   "Берлин",
+   "Монако",
+   "Мадрид",
+   "Вена",
+   "Хельсинки"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q31"
+ },
+ {
+  "id": "capital:Q298",
+  "type": "capital",
+  "category": "geography",
+  "text": "Столица Чили?",
+  "correct": "Сантьяго",
+  "wrong": [
+   "Богота",
+   "Буэнос-Айрес",
+   "Бразилиа",
+   "Лима",
+   "Каракас",
+   "Монтевидео",
+   "Кито",
+   "Асунсьон",
+   "Парамарибо",
+   "Джорджтаун"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q298"
+ },
+ {
+  "id": "capital:Q801",
+  "type": "capital",
+  "category": "geography",
+  "text": "Столица Израиля?",
+  "correct": "Иерусалим",
+  "wrong": [
+   "Москва",
+   "Сингапур",
+   "Пекин",
+   "Токио",
+   "Бангкок",
+   "Сеул",
+   "Джакарта",
+   "Багдад",
+   "Баку",
+   "Дамаск"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q801"
+ },
+ {
+  "id": "capital:Q41",
+  "type": "capital",
+  "category": "geography",
+  "text": "Столица Греции?",
+  "correct": "Афины",
+  "wrong": [
+   "Париж",
+   "Лондон",
+   "Рим",
+   "Ватикан",
+   "Москва",
+   "Берлин",
+   "Монако",
+   "Мадрид",
+   "Вена",
+   "Хельсинки"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q41"
+ },
+ {
+  "id": "capital:Q794",
+  "type": "capital",
+  "category": "geography",
+  "text": "Столица Ирана?",
+  "correct": "Тегеран",
+  "wrong": [
+   "Москва",
+   "Сингапур",
+   "Пекин",
+   "Токио",
+   "Иерусалим",
+   "Бангкок",
+   "Сеул",
+   "Джакарта",
+   "Багдад",
+   "Баку"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q794"
+ },
+ {
+  "id": "capital:Q414",
+  "type": "capital",
+  "category": "geography",
+  "text": "Столица Аргентины?",
+  "correct": "Буэнос-Айрес",
+  "wrong": [
+   "Богота",
+   "Сантьяго",
+   "Бразилиа",
+   "Лима",
+   "Каракас",
+   "Монтевидео",
+   "Кито",
+   "Асунсьон",
+   "Парамарибо",
+   "Джорджтаун"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q414"
+ },
+ {
+  "id": "capital:Q45",
+  "type": "capital",
+  "category": "geography",
+  "text": "Столица Португалии?",
+  "correct": "Лиссабон",
+  "wrong": [
+   "Париж",
+   "Лондон",
+   "Рим",
+   "Ватикан",
+   "Москва",
+   "Берлин",
+   "Монако",
+   "Мадрид",
+   "Вена",
+   "Хельсинки"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q45"
+ },
+ {
+  "id": "capital:Q40",
+  "type": "capital",
+  "category": "geography",
+  "text": "Столица Австрии?",
+  "correct": "Вена",
+  "wrong": [
+   "Париж",
+   "Лондон",
+   "Рим",
+   "Ватикан",
+   "Москва",
+   "Берлин",
+   "Монако",
+   "Мадрид",
+   "Хельсинки",
+   "Афины"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q40"
+ },
+ {
+  "id": "capital:Q34",
+  "type": "capital",
+  "category": "geography",
+  "text": "Столица Швеции?",
+  "correct": "Стокгольм",
+  "wrong": [
+   "Париж",
+   "Лондон",
+   "Рим",
+   "Ватикан",
+   "Москва",
+   "Берлин",
+   "Монако",
+   "Мадрид",
+   "Вена",
+   "Хельсинки"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q34"
+ },
+ {
+  "id": "capital:Q881",
+  "type": "capital",
+  "category": "geography",
+  "text": "Столица Вьетнама?",
+  "correct": "Ханой",
+  "wrong": [
+   "Москва",
+   "Сингапур",
+   "Пекин",
+   "Токио",
+   "Иерусалим",
+   "Бангкок",
+   "Сеул",
+   "Джакарта",
+   "Багдад",
+   "Баку"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q881"
+ },
+ {
+  "id": "capital:Q739",
+  "type": "capital",
+  "category": "geography",
+  "text": "Столица Колумбии?",
+  "correct": "Богота",
+  "wrong": [
+   "Буэнос-Айрес",
+   "Сантьяго",
+   "Бразилиа",
+   "Лима",
+   "Каракас",
+   "Монтевидео",
+   "Кито",
+   "Асунсьон",
+   "Парамарибо",
+   "Джорджтаун"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q739"
+ },
+ {
+  "id": "capital:Q252",
+  "type": "capital",
+  "category": "geography",
+  "text": "Столица Индонезии?",
+  "correct": "Джакарта",
+  "wrong": [
+   "Москва",
+   "Сингапур",
+   "Пекин",
+   "Токио",
+   "Иерусалим",
+   "Бангкок",
+   "Сеул",
+   "Багдад",
+   "Баку",
+   "Дамаск"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q252"
+ },
+ {
+  "id": "city_country:Q641",
+  "type": "city_country",
+  "category": "geography",
+  "text": "В какой стране находится Венеция?",
+  "correct": "Италия",
+  "wrong": [
+   "Турция",
+   "Франция",
+   "Россия",
+   "Германия",
+   "Финляндия",
+   "Испания",
+   "Великобритания",
+   "Норвегия",
+   "Польша",
+   "Украина"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q641"
+ },
+ {
+  "id": "city_country:Q1156",
+  "type": "city_country",
+  "category": "geography",
+  "text": "В какой стране находится Мумбаи?",
+  "correct": "Индия",
+  "wrong": [
+   "Турция",
+   "Россия",
+   "Япония",
+   "Китай",
+   "Израиль",
+   "Иран",
+   "Вьетнам",
+   "Индонезия",
+   "Азербайджан",
+   "Афганистан"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q1156"
+ },
+ {
+  "id": "city_country:Q1877",
+  "type": "city_country",
+  "category": "geography",
+  "text": "В какой стране находится Донгхой?",
+  "correct": "Вьетнам",
+  "wrong": [
+   "Турция",
+   "Россия",
+   "Япония",
+   "Индия",
+   "Китай",
+   "Израиль",
+   "Иран",
+   "Индонезия",
+   "Азербайджан",
+   "Афганистан"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q1877"
+ },
+ {
+  "id": "city_country:Q1055",
+  "type": "city_country",
+  "category": "geography",
+  "text": "В какой стране находится Гамбург?",
+  "correct": "Германия",
+  "wrong": [
+   "Турция",
+   "Франция",
+   "Россия",
+   "Италия",
+   "Финляндия",
+   "Испания",
+   "Великобритания",
+   "Норвегия",
+   "Польша",
+   "Украина"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q1055"
+ },
+ {
+  "id": "city_country:Q1880",
+  "type": "city_country",
+  "category": "geography",
+  "text": "В какой стране находится Консепсьон?",
+  "correct": "Чили",
+  "wrong": [
+   "Бразилия",
+   "Аргентина",
+   "Колумбия",
+   "Венесуэла",
+   "Перу",
+   "Уругвай",
+   "Эквадор",
+   "Боливия",
+   "Парагвай",
+   "Суринам"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q1880"
+ },
+ {
+  "id": "city_country:Q490",
+  "type": "city_country",
+  "category": "geography",
+  "text": "В какой стране находится Милан?",
+  "correct": "Италия",
+  "wrong": [
+   "Турция",
+   "Франция",
+   "Россия",
+   "Германия",
+   "Финляндия",
+   "Испания",
+   "Великобритания",
+   "Норвегия",
+   "Польша",
+   "Украина"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q490"
+ },
+ {
+  "id": "city_country:Q3646",
+  "type": "city_country",
+  "category": "geography",
+  "text": "В какой стране находится Краснодар?",
+  "correct": "Россия",
+  "wrong": [
+   "Турция",
+   "Франция",
+   "Япония",
+   "Италия",
+   "Германия",
+   "Индия",
+   "Финляндия",
+   "Китай",
+   "Испания",
+   "Великобритания"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q3646"
+ },
+ {
+  "id": "city_country:Q172",
+  "type": "city_country",
+  "category": "geography",
+  "text": "В какой стране находится Торонто?",
+  "correct": "Канада",
+  "wrong": [
+   "США",
+   "Мексика",
+   "Куба",
+   "Панама",
+   "Коста-Рика",
+   "Гондурас",
+   "Гаити",
+   "Сальвадор",
+   "Ямайка",
+   "Никарагуа"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q172"
+ },
+ {
+  "id": "city_country:Q14773",
+  "type": "city_country",
+  "category": "geography",
+  "text": "В какой стране находится Макао?",
+  "correct": "Китай",
+  "wrong": [
+   "Турция",
+   "Россия",
+   "Япония",
+   "Индия",
+   "Израиль",
+   "Иран",
+   "Вьетнам",
+   "Индонезия",
+   "Азербайджан",
+   "Афганистан"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q14773"
+ },
+ {
+  "id": "city_country:Q1410",
+  "type": "city_country",
+  "category": "geography",
+  "text": "В какой стране находится Гибралтар?",
+  "correct": "Великобритания",
+  "wrong": [
+   "Турция",
+   "Франция",
+   "Россия",
+   "Италия",
+   "Германия",
+   "Финляндия",
+   "Испания",
+   "Норвегия",
+   "Польша",
+   "Украина"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q1410"
+ },
+ {
+  "id": "city_country:Q612",
+  "type": "city_country",
+  "category": "geography",
+  "text": "В какой стране находится Дубай?",
+  "correct": "Объединённые Арабские Эмираты",
+  "wrong": [
+   "Турция",
+   "Россия",
+   "Япония",
+   "Индия",
+   "Китай",
+   "Израиль",
+   "Иран",
+   "Вьетнам",
+   "Индонезия",
+   "Азербайджан"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q612"
+ },
+ {
+  "id": "city_country:Q5465",
+  "type": "city_country",
+  "category": "geography",
+  "text": "В какой стране находится Кейптаун?",
+  "correct": "ЮАР",
+  "wrong": [
+   "Египет",
+   "Алжир",
+   "Нигерия",
+   "Эфиопия",
+   "Кения",
+   "Марокко",
+   "Судан",
+   "Демократическая Республика Конго",
+   "Ливия",
+   "Тунис"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q5465"
+ },
+ {
+  "id": "city_country:Q100",
+  "type": "city_country",
+  "category": "geography",
+  "text": "В какой стране находится Бостон?",
+  "correct": "США",
+  "wrong": [
+   "Мексика",
+   "Канада",
+   "Куба",
+   "Панама",
+   "Коста-Рика",
+   "Гондурас",
+   "Гаити",
+   "Сальвадор",
+   "Ямайка",
+   "Никарагуа"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q100"
+ },
+ {
+  "id": "city_country:Q4035",
+  "type": "city_country",
+  "category": "geography",
+  "text": "В какой стране находится Озаску?",
+  "correct": "Бразилия",
+  "wrong": [
+   "Чили",
+   "Аргентина",
+   "Колумбия",
+   "Венесуэла",
+   "Перу",
+   "Уругвай",
+   "Эквадор",
+   "Боливия",
+   "Парагвай",
+   "Суринам"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q4035"
+ },
+ {
+  "id": "city_country:Q2044",
+  "type": "city_country",
+  "category": "geography",
+  "text": "В какой стране находится Флоренция?",
+  "correct": "Италия",
+  "wrong": [
+   "Турция",
+   "Франция",
+   "Россия",
+   "Германия",
+   "Финляндия",
+   "Испания",
+   "Великобритания",
+   "Норвегия",
+   "Польша",
+   "Украина"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q2044"
+ },
+ {
+  "id": "city_country:Q1794",
+  "type": "city_country",
+  "category": "geography",
+  "text": "В какой стране находится Франкфурт-на-Майне?",
+  "correct": "Германия",
+  "wrong": [
+   "Турция",
+   "Франция",
+   "Россия",
+   "Италия",
+   "Финляндия",
+   "Испания",
+   "Великобритания",
+   "Норвегия",
+   "Польша",
+   "Украина"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q1794"
+ },
+ {
+  "id": "city_country:Q3141",
+  "type": "city_country",
+  "category": "geography",
+  "text": "В какой стране находится Мельбурн?",
+  "correct": "Австралия",
+  "wrong": [
+   "Новая Зеландия",
+   "Папуа — Новая Гвинея",
+   "Науру",
+   "Тонга",
+   "Самоа",
+   "Палау",
+   "Тувалу",
+   "Кирибати",
+   "Соломоновы Острова",
+   "Маршалловы Острова"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q3141"
+ },
+ {
+  "id": "mountain_country:Q178167",
+  "type": "mountain_country",
+  "category": "geography",
+  "text": "В какой стране находится Косцюшко?",
+  "correct": "Австралия",
+  "wrong": [
+   "Науру",
+   "Тонга",
+   "Самоа",
+   "Палау",
+   "Тувалу",
+   "Кирибати",
+   "Маршалловы Острова",
+   "Федеративные Штаты Микронезии",
+   "Турция",
+   "Франция"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q178167"
+ },
+ {
+  "id": "mountain_country:Q14081",
+  "type": "mountain_country",
+  "category": "geography",
+  "text": "В какой стране находится Чимборасо?",
+  "correct": "Эквадор",
+  "wrong": [
+   "Бразилия",
+   "Чили",
+   "Аргентина",
+   "Венесуэла",
+   "Уругвай",
+   "Боливия",
+   "Парагвай",
+   "Суринам",
+   "Гайана",
+   "Турция"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q14081"
+ },
+ {
+  "id": "mountain_country:Q4675",
+  "type": "mountain_country",
+  "category": "geography",
+  "text": "В какой стране находится Сент-Хеленс?",
+  "correct": "США",
+  "wrong": [
+   "Куба",
+   "Панама",
+   "Коста-Рика",
+   "Гондурас",
+   "Гаити",
+   "Сальвадор",
+   "Ямайка",
+   "Никарагуа",
+   "Гватемала",
+   "Белиз"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q4675"
+ },
+ {
+  "id": "mountain_country:Q170070",
+  "type": "mountain_country",
+  "category": "geography",
+  "text": "В какой стране находится Манаслу?",
+  "correct": "Непал",
+  "wrong": [
+   "Турция",
+   "Россия",
+   "Япония",
+   "Израиль",
+   "Иран",
+   "Вьетнам",
+   "Индонезия",
+   "Азербайджан",
+   "Афганистан",
+   "Пакистан"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q170070"
+ },
+ {
+  "id": "mountain_country:Q40758",
+  "type": "mountain_country",
+  "category": "geography",
+  "text": "В какой стране находится Демавенд?",
+  "correct": "Иран",
+  "wrong": [
+   "Россия",
+   "Япония",
+   "Индия",
+   "Китай",
+   "Израиль",
+   "Вьетнам",
+   "Индонезия",
+   "Таиланд",
+   "Республика Корея",
+   "Казахстан"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q40758"
+ },
+ {
+  "id": "mountain_country:Q134108",
+  "type": "mountain_country",
+  "category": "geography",
+  "text": "В какой стране находится Мерапи?",
+  "correct": "Индонезия",
+  "wrong": [
+   "Турция",
+   "Россия",
+   "Япония",
+   "Китай",
+   "Израиль",
+   "Иран",
+   "Азербайджан",
+   "Афганистан",
+   "Пакистан",
+   "Республика Корея"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q134108"
+ },
+ {
+  "id": "mountain_country:Q104674",
+  "type": "mountain_country",
+  "category": "geography",
+  "text": "В какой стране находится Бен-Невис?",
+  "correct": "Великобритания",
+  "wrong": [
+   "Турция",
+   "Франция",
+   "Россия",
+   "Италия",
+   "Германия",
+   "Финляндия",
+   "Испания",
+   "Норвегия",
+   "Польша",
+   "Украина"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q104674"
+ },
+ {
+  "id": "mountain_country:Q105124",
+  "type": "mountain_country",
+  "category": "geography",
+  "text": "В какой стране находится Шиша Пангма?",
+  "correct": "Китай",
+  "wrong": [
+   "Турция",
+   "Израиль",
+   "Иран",
+   "Индонезия",
+   "Азербайджан",
+   "Таиланд",
+   "Армения",
+   "Ирак",
+   "Саудовская Аравия",
+   "Бангладеш"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q105124"
+ },
+ {
+  "id": "mountain_country:Q1045888",
+  "type": "mountain_country",
+  "category": "geography",
+  "text": "В какой стране находится Пунчак-Джая?",
+  "correct": "Индонезия",
+  "wrong": [
+   "Турция",
+   "Россия",
+   "Япония",
+   "Китай",
+   "Израиль",
+   "Иран",
+   "Азербайджан",
+   "Афганистан",
+   "Пакистан",
+   "Республика Корея"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q1045888"
+ },
+ {
+  "id": "mountain_country:Q120306",
+  "type": "mountain_country",
+  "category": "geography",
+  "text": "В какой стране находится Логан?",
+  "correct": "Канада",
+  "wrong": [
+   "Мексика",
+   "Куба",
+   "Панама",
+   "Коста-Рика",
+   "Гондурас",
+   "Гаити",
+   "Сальвадор",
+   "Ямайка",
+   "Никарагуа",
+   "Гватемала"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q120306"
+ },
+ {
+  "id": "mountain_country:Q168714",
+  "type": "mountain_country",
+  "category": "geography",
+  "text": "В какой стране находится Тамбора?",
+  "correct": "Индонезия",
+  "wrong": [
+   "Турция",
+   "Россия",
+   "Япония",
+   "Китай",
+   "Израиль",
+   "Иран",
+   "Азербайджан",
+   "Афганистан",
+   "Пакистан",
+   "Республика Корея"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q168714"
+ },
+ {
+  "id": "mountain_country:Q213360",
+  "type": "mountain_country",
+  "category": "geography",
+  "text": "В какой стране находится Столовая гора?",
+  "correct": "ЮАР",
+  "wrong": [
+   "Египет",
+   "Алжир",
+   "Нигерия",
+   "Эфиопия",
+   "Кения",
+   "Марокко",
+   "Судан",
+   "Демократическая Республика Конго",
+   "Ливия",
+   "Тунис"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q213360"
+ },
+ {
+  "id": "mountain_country:Q181157",
+  "type": "mountain_country",
+  "category": "geography",
+  "text": "В какой стране находится Попокатепетль?",
+  "correct": "Мексика",
+  "wrong": [
+   "Канада",
+   "Куба",
+   "Панама",
+   "Коста-Рика",
+   "Гондурас",
+   "Гаити",
+   "Сальвадор",
+   "Ямайка",
+   "Никарагуа",
+   "Багамские Острова"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q181157"
+ },
+ {
+  "id": "mountain_country:Q216059",
+  "type": "mountain_country",
+  "category": "geography",
+  "text": "В какой стране находится Тайшань?",
+  "correct": "Китай",
+  "wrong": [
+   "Турция",
+   "Израиль",
+   "Иран",
+   "Индонезия",
+   "Азербайджан",
+   "Таиланд",
+   "Армения",
+   "Ирак",
+   "Саудовская Аравия",
+   "Бангладеш"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q216059"
+ },
+ {
+  "id": "mountain_country:Q60967",
+  "type": "mountain_country",
+  "category": "geography",
+  "text": "В какой стране находится Кинабалу?",
+  "correct": "Малайзия",
+  "wrong": [
+   "Турция",
+   "Россия",
+   "Япония",
+   "Индия",
+   "Китай",
+   "Израиль",
+   "Иран",
+   "Вьетнам",
+   "Азербайджан",
+   "Афганистан"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q60967"
+ },
+ {
+  "id": "mountain_country:Q1451",
+  "type": "mountain_country",
+  "category": "geography",
+  "text": "В какой стране находится Пинатубо?",
+  "correct": "Филиппины",
+  "wrong": [
+   "Турция",
+   "Россия",
+   "Индия",
+   "Израиль",
+   "Иран",
+   "Вьетнам",
+   "Азербайджан",
+   "Афганистан",
+   "Пакистан",
+   "Таиланд"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q1451"
+ },
+ {
+  "id": "mountain_country:Q1484",
+  "type": "mountain_country",
+  "category": "geography",
+  "text": "В какой стране находится Майон?",
+  "correct": "Филиппины",
+  "wrong": [
+   "Турция",
+   "Россия",
+   "Индия",
+   "Израиль",
+   "Иран",
+   "Вьетнам",
+   "Азербайджан",
+   "Афганистан",
+   "Пакистан",
+   "Таиланд"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q1484"
+ },
+ {
+  "id": "elevation:Q165440",
+  "type": "elevation",
+  "category": "geography",
+  "text": "Высота Дхаулагири?",
+  "correct": "8167 м",
+  "wrong": [
+   "5637 м",
+   "6412 м",
+   "7476 м",
+   "6957 м",
+   "8847 м"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q165440",
+  "model_disagrees": "7476 м"
+ },
+ {
+  "id": "elevation:Q172070",
+  "type": "elevation",
+  "category": "geography",
+  "text": "Высота горы Кения?",
+  "correct": "5199 м",
+  "wrong": [
+   "4667 м",
+   "6618 м",
+   "4350 м",
+   "3472 м",
+   "5954 м",
+   "3951 м",
+   "6266 м",
+   "6935 м"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q172070",
+  "model_disagrees": "6618 м"
+ },
+ {
+  "id": "elevation:Q169986",
+  "type": "elevation",
+  "category": "geography",
+  "text": "Высота Макалу?",
+  "correct": "8485 м",
+  "wrong": [
+   "6659 м",
+   "7200 м",
+   "5736 м",
+   "7743 м"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q169986"
+ },
+ {
+  "id": "elevation:Q377485",
+  "type": "elevation",
+  "category": "geography",
+  "text": "Высота Синая?",
+  "correct": "2287 м",
+  "wrong": [
+   "2480 м",
+   "1637 м",
+   "2776 м",
+   "1786 м",
+   "2039 м",
+   "2939 м",
+   "3078 м",
+   "2621 м"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q377485",
+  "model_disagrees": "2776 м"
+ },
+ {
+  "id": "elevation:Q131230",
+  "type": "elevation",
+  "category": "geography",
+  "text": "Высота Мауна-Кеа?",
+  "correct": "4207 м",
+  "wrong": [
+   "5638 м",
+   "4937 м",
+   "5275 м",
+   "3540 м",
+   "4594 м",
+   "3110 м",
+   "2842 м",
+   "3841 м"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q131230"
+ },
+ {
+  "id": "elevation:Q130321",
+  "type": "elevation",
+  "category": "geography",
+  "text": "Высота Афона?",
+  "correct": "2033 м",
+  "wrong": [
+   "2736 м",
+   "1617 м",
+   "1381 м",
+   "2517 м",
+   "2312 м",
+   "1875 м",
+   "1742 м"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q130321",
+  "model_disagrees": "1617 м"
+ },
+ {
+  "id": "elevation:Q168702",
+  "type": "elevation",
+  "category": "geography",
+  "text": "Высота Лхоцзе?",
+  "correct": "8516 м",
+  "wrong": [
+   "5589 м",
+   "7078 м",
+   "7822 м",
+   "6308 м"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q168702"
+ },
+ {
+  "id": "elevation:Q178167",
+  "type": "elevation",
+  "category": "geography",
+  "text": "Высота Косцюшко?",
+  "correct": "2228 м",
+  "wrong": [
+   "1573 м",
+   "1884 м",
+   "2750 м",
+   "2495 м",
+   "2980 м",
+   "1721 м",
+   "2043 м"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q178167",
+  "model_disagrees": "1884 м"
+ },
+ {
+  "id": "elevation:Q14081",
+  "type": "elevation",
+  "category": "geography",
+  "text": "Высота Чимборасо?",
+  "correct": "6263 м",
+  "wrong": [
+   "7633 м",
+   "4093 м",
+   "8039 м",
+   "6928 м",
+   "5418 м",
+   "4599 м",
+   "5037 м",
+   "8420 м"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q14081",
+  "model_disagrees": "7633 м"
+ },
+ {
+  "id": "elevation:Q170089",
+  "type": "elevation",
+  "category": "geography",
+  "text": "Высота Чо-Ойю?",
+  "correct": "8188 м",
+  "wrong": [
+   "7307 м",
+   "6255 м",
+   "5690 м",
+   "6782 м"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q170089"
+ },
+ {
+  "id": "elevation:Q4675",
+  "type": "elevation",
+  "category": "geography",
+  "text": "Высота Сент-Хеленс?",
+  "correct": "2549 м",
+  "wrong": [
+   "1911 м",
+   "3408 м",
+   "2785 м",
+   "1697 м",
+   "3067 м",
+   "2088 м",
+   "2292 м",
+   "3251 м"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q4675"
+ },
+ {
+  "id": "elevation:Q170070",
+  "type": "elevation",
+  "category": "geography",
+  "text": "Высота Манаслу?",
+  "correct": "8163 м",
+  "wrong": [
+   "5967 м",
+   "7139 м",
+   "5371 м",
+   "6470 м",
+   "8848 м"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q170070",
+  "model_disagrees": "7139 м"
+ },
+ {
+  "id": "elevation:Q134108",
+  "type": "elevation",
+  "category": "geography",
+  "text": "Высота Мерапи?",
+  "correct": "2910 м",
+  "wrong": [
+   "3703 м",
+   "3420 м",
+   "2619 м",
+   "2212 м",
+   "2020 м",
+   "3183 м",
+   "2401 м",
+   "3883 м"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q134108",
+  "model_disagrees": "3703 м"
+ },
+ {
+  "id": "elevation:Q105124",
+  "type": "elevation",
+  "category": "geography",
+  "text": "Высота Шиша Пангмы?",
+  "correct": "8027 м",
+  "wrong": [
+   "6530 м",
+   "5652 м",
+   "8686 м",
+   "7224 м"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q105124",
+  "model_disagrees": "8686 м"
+ },
+ {
+  "id": "elevation:Q104674",
+  "type": "elevation",
+  "category": "geography",
+  "text": "Высота Бен-Невиса?",
+  "correct": "1345 м",
+  "wrong": [
+   "1117 м",
+   "1239 м",
+   "1792 м",
+   "876 м",
+   "1692 м",
+   "1500 м",
+   "1023 м",
+   "1597 м"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q104674",
+  "model_disagrees": "1792 м"
+ },
+ {
+  "id": "elevation:Q1045888",
+  "type": "elevation",
+  "category": "geography",
+  "text": "Высота Пунчак-Джая?",
+  "correct": "4884 м",
+  "wrong": [
+   "3982 м",
+   "3330 м",
+   "4280 м",
+   "6557 м",
+   "5901 м",
+   "6262 м",
+   "3675 м",
+   "5305 м"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q1045888"
+ },
+ {
+  "id": "elevation:Q107635",
+  "type": "elevation",
+  "category": "geography",
+  "text": "Высота Пэктусана?",
+  "correct": "2744 м",
+  "wrong": [
+   "3580 м",
+   "1975 м",
+   "2428 м",
+   "3240 м",
+   "3019 м",
+   "1797 м",
+   "3408 м",
+   "2140 м"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q107635"
+ },
+ {
+  "id": "highest_point:Q155",
+  "type": "highest_point",
+  "category": "geography",
+  "text": "Самая высокая вершина Бразилии?",
+  "correct": "Серро-де-ла-Неблина",
+  "wrong": [
+   "Аконкагуа",
+   "Чимборасо",
+   "Охос-дель-Саладо",
+   "Рорайма",
+   "Сахама",
+   "Уаскаран",
+   "Пик Боливар",
+   "Юлиана",
+   "Серро-Катедраль",
+   "Серро-Перо"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q155"
+ },
+ {
+  "id": "highest_point:Q31",
+  "type": "highest_point",
+  "category": "geography",
+  "text": "Самая высокая вершина Бельгии?",
+  "correct": "Синьяль-де-Ботранж",
+  "wrong": [
+   "Монблан",
+   "Эльбрус",
+   "Арарат",
+   "Олимп",
+   "Тейде",
+   "Бен-Невис",
+   "Цугшпитце",
+   "Триглав",
+   "Хан-Тенгри",
+   "Гросглокнер"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q31"
+ },
+ {
+  "id": "highest_point:Q298",
+  "type": "highest_point",
+  "category": "geography",
+  "text": "Самая высокая вершина Чили?",
+  "correct": "Охос-дель-Саладо",
+  "wrong": [
+   "Аконкагуа",
+   "Чимборасо",
+   "Рорайма",
+   "Сахама",
+   "Уаскаран",
+   "Пик Боливар",
+   "Серро-де-ла-Неблина",
+   "Юлиана",
+   "Серро-Катедраль",
+   "Серро-Перо"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q298"
+ },
+ {
+  "id": "highest_point:Q801",
+  "type": "highest_point",
+  "category": "geography",
+  "text": "Самая высокая вершина Израиля?",
+  "correct": "Мерон",
+  "wrong": [
+   "Джомолунгма",
+   "Фудзияма",
+   "Эльбрус",
+   "Чогори",
+   "Арарат",
+   "Базардюзю",
+   "Канченджанга",
+   "Демавенд",
+   "Пунчак-Джая",
+   "Пэктусан"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q801",
+  "model_disagrees": "Фудзияма"
+ },
+ {
+  "id": "highest_point:Q41",
+  "type": "highest_point",
+  "category": "geography",
+  "text": "Самая высокая вершина Греции?",
+  "correct": "Олимп",
+  "wrong": [
+   "Монблан",
+   "Эльбрус",
+   "Арарат",
+   "Тейде",
+   "Бен-Невис",
+   "Цугшпитце",
+   "Триглав",
+   "Хан-Тенгри",
+   "Гросглокнер",
+   "Говерла"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q41"
+ },
+ {
+  "id": "highest_point:Q794",
+  "type": "highest_point",
+  "category": "geography",
+  "text": "Самая высокая вершина Ирана?",
+  "correct": "Демавенд",
+  "wrong": [
+   "Джомолунгма",
+   "Фудзияма",
+   "Эльбрус",
+   "Чогори",
+   "Арарат",
+   "Базардюзю",
+   "Канченджанга",
+   "Пунчак-Джая",
+   "Пэктусан",
+   "Кинабалу"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q794"
+ },
+ {
+  "id": "highest_point:Q262",
+  "type": "highest_point",
+  "category": "geography",
+  "text": "Самая высокая вершина Алжира?",
+  "correct": "Тахат",
+  "wrong": [
+   "Джебель-Тубкаль",
+   "Рас-Дашэн",
+   "Фогу",
+   "Стэнли",
+   "Эми Кусси",
+   "Карисимби",
+   "Муландже",
+   "Марумукутру"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q262",
+  "model_disagrees": "Джебель-Тубкаль"
+ },
+ {
+  "id": "highest_point:Q414",
+  "type": "highest_point",
+  "category": "geography",
+  "text": "Самая высокая вершина Аргентины?",
+  "correct": "Аконкагуа",
+  "wrong": [
+   "Чимборасо",
+   "Охос-дель-Саладо",
+   "Рорайма",
+   "Сахама",
+   "Уаскаран",
+   "Пик Боливар",
+   "Серро-де-ла-Неблина",
+   "Юлиана",
+   "Серро-Катедраль",
+   "Серро-Перо"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q414"
+ },
+ {
+  "id": "highest_point:Q40",
+  "type": "highest_point",
+  "category": "geography",
+  "text": "Самая высокая вершина Австрии?",
+  "correct": "Гросглокнер",
+  "wrong": [
+   "Монблан",
+   "Эльбрус",
+   "Арарат",
+   "Олимп",
+   "Тейде",
+   "Бен-Невис",
+   "Цугшпитце",
+   "Триглав",
+   "Хан-Тенгри",
+   "Говерла"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q40"
+ },
+ {
+  "id": "highest_point:Q45",
+  "type": "highest_point",
+  "category": "geography",
+  "text": "Самая высокая вершина Португалии?",
+  "correct": "Пику",
+  "wrong": [
+   "Монблан",
+   "Эльбрус",
+   "Арарат",
+   "Олимп",
+   "Тейде",
+   "Бен-Невис",
+   "Цугшпитце",
+   "Триглав",
+   "Хан-Тенгри",
+   "Гросглокнер"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q45"
+ },
+ {
+  "id": "highest_point:Q34",
+  "type": "highest_point",
+  "category": "geography",
+  "text": "Самая высокая вершина Швеции?",
+  "correct": "Кебнекайсе",
+  "wrong": [
+   "Монблан",
+   "Эльбрус",
+   "Арарат",
+   "Олимп",
+   "Тейде",
+   "Бен-Невис",
+   "Цугшпитце",
+   "Триглав",
+   "Хан-Тенгри",
+   "Гросглокнер"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q34"
+ },
+ {
+  "id": "highest_point:Q881",
+  "type": "highest_point",
+  "category": "geography",
+  "text": "Самая высокая вершина Вьетнама?",
+  "correct": "Фаншипан",
+  "wrong": [
+   "Джомолунгма",
+   "Фудзияма",
+   "Эльбрус",
+   "Чогори",
+   "Арарат",
+   "Базардюзю",
+   "Канченджанга",
+   "Демавенд",
+   "Пунчак-Джая",
+   "Пэктусан"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q881"
+ },
+ {
+  "id": "highest_point:Q252",
+  "type": "highest_point",
+  "category": "geography",
+  "text": "Самая высокая вершина Индонезии?",
+  "correct": "Пунчак-Джая",
+  "wrong": [
+   "Джомолунгма",
+   "Фудзияма",
+   "Эльбрус",
+   "Чогори",
+   "Арарат",
+   "Базардюзю",
+   "Канченджанга",
+   "Демавенд",
+   "Пэктусан",
+   "Кинабалу"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q252"
+ },
+ {
+  "id": "highest_point:Q227",
+  "type": "highest_point",
+  "category": "geography",
+  "text": "Самая высокая вершина Азербайджана?",
+  "correct": "Базардюзю",
+  "wrong": [
+   "Джомолунгма",
+   "Фудзияма",
+   "Эльбрус",
+   "Чогори",
+   "Арарат",
+   "Канченджанга",
+   "Демавенд",
+   "Пунчак-Джая",
+   "Пэктусан",
+   "Кинабалу"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q227"
+ },
+ {
+  "id": "highest_point:Q889",
+  "type": "highest_point",
+  "category": "geography",
+  "text": "Самая высокая вершина Афганистана?",
+  "correct": "Ношак",
+  "wrong": [
+   "Джомолунгма",
+   "Фудзияма",
+   "Эльбрус",
+   "Чогори",
+   "Арарат",
+   "Базардюзю",
+   "Канченджанга",
+   "Демавенд",
+   "Пунчак-Джая",
+   "Пэктусан"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q889"
+ },
+ {
+  "id": "highest_point:Q219",
+  "type": "highest_point",
+  "category": "geography",
+  "text": "Самая высокая вершина Болгарии?",
+  "correct": "Мусала",
+  "wrong": [
+   "Монблан",
+   "Эльбрус",
+   "Арарат",
+   "Олимп",
+   "Тейде",
+   "Бен-Невис",
+   "Цугшпитце",
+   "Триглав",
+   "Хан-Тенгри",
+   "Гросглокнер"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q219"
+ },
+ {
+  "id": "highest_point:Q28",
+  "type": "highest_point",
+  "category": "geography",
+  "text": "Самая высокая вершина Венгрии?",
+  "correct": "Кекеш",
+  "wrong": [
+   "Монблан",
+   "Эльбрус",
+   "Арарат",
+   "Олимп",
+   "Тейде",
+   "Бен-Невис",
+   "Цугшпитце",
+   "Триглав",
+   "Хан-Тенгри",
+   "Гросглокнер"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q28"
+ },
+ {
+  "id": "river_mouth:Q41179",
+  "type": "river_mouth",
+  "category": "geography",
+  "text": "Куда впадает Меконг?",
+  "correct": "Южно-Китайское море",
+  "wrong": [
+   "Средиземное море",
+   "Чёрное море",
+   "Каспийское море",
+   "Балтийское море",
+   "Северное море",
+   "Карибское море",
+   "Байкал",
+   "Мёртвое море",
+   "Виктория",
+   "Персидский залив"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q41179"
+ },
+ {
+  "id": "river_mouth:Q6862",
+  "type": "river_mouth",
+  "category": "geography",
+  "text": "Куда впадает Амур?",
+  "correct": "Охотское море",
+  "wrong": [
+   "Средиземное море",
+   "Чёрное море",
+   "Каспийское море",
+   "Балтийское море",
+   "Северное море",
+   "Карибское море",
+   "Байкал",
+   "Мёртвое море",
+   "Виктория",
+   "Персидский залив"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q6862"
+ },
+ {
+  "id": "river_mouth:Q45403",
+  "type": "river_mouth",
+  "category": "geography",
+  "text": "Куда впадает Брахмапутра?",
+  "correct": "Ганг",
+  "wrong": [
+   "Нил",
+   "Амазонка",
+   "Дунай",
+   "Рейн",
+   "Волга",
+   "Миссисипи",
+   "Конго",
+   "Янцзы",
+   "Инд",
+   "Нигер"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q45403"
+ },
+ {
+  "id": "river_mouth:Q973",
+  "type": "river_mouth",
+  "category": "geography",
+  "text": "Куда впадает Обь?",
+  "correct": "Карское море",
+  "wrong": [
+   "Средиземное море",
+   "Чёрное море",
+   "Каспийское море",
+   "Балтийское море",
+   "Северное море",
+   "Карибское море",
+   "Байкал",
+   "Мёртвое море",
+   "Виктория",
+   "Персидский залив"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q973"
+ },
+ {
+  "id": "river_mouth:Q80240",
+  "type": "river_mouth",
+  "category": "geography",
+  "text": "Куда впадает Урал?",
+  "correct": "Каспийское море",
+  "wrong": [
+   "Средиземное море",
+   "Чёрное море",
+   "Балтийское море",
+   "Северное море",
+   "Карибское море",
+   "Байкал",
+   "Мёртвое море",
+   "Виктория",
+   "Персидский залив",
+   "Адриатическое море"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q80240"
+ },
+ {
+  "id": "river_mouth:Q46841",
+  "type": "river_mouth",
+  "category": "geography",
+  "text": "Куда впадает Лена?",
+  "correct": "море Лаптевых",
+  "wrong": [
+   "Средиземное море",
+   "Чёрное море",
+   "Каспийское море",
+   "Балтийское море",
+   "Северное море",
+   "Карибское море",
+   "Байкал",
+   "Мёртвое море",
+   "Виктория",
+   "Персидский залив"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q46841"
+ },
+ {
+  "id": "river_mouth:Q5419",
+  "type": "river_mouth",
+  "category": "geography",
+  "text": "Куда впадает Миссури?",
+  "correct": "Миссисипи",
+  "wrong": [
+   "Нил",
+   "Амазонка",
+   "Дунай",
+   "Рейн",
+   "Волга",
+   "Ганг",
+   "Конго",
+   "Янцзы",
+   "Инд",
+   "Нигер"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q5419"
+ },
+ {
+  "id": "river_mouth:Q1229",
+  "type": "river_mouth",
+  "category": "geography",
+  "text": "Куда впадает Дон?",
+  "correct": "Азовское море",
+  "wrong": [
+   "Средиземное море",
+   "Каспийское море",
+   "Балтийское море",
+   "Северное море",
+   "Карибское море",
+   "Байкал",
+   "Мёртвое море",
+   "Виктория",
+   "Персидский залив",
+   "Адриатическое море"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q1229"
+ },
+ {
+  "id": "river_mouth:Q1469",
+  "type": "river_mouth",
+  "category": "geography",
+  "text": "Куда впадает Луара?",
+  "correct": "Бискайский залив",
+  "wrong": [
+   "Средиземное море",
+   "Чёрное море",
+   "Каспийское море",
+   "Балтийское море",
+   "Северное море",
+   "Карибское море",
+   "Байкал",
+   "Мёртвое море",
+   "Виктория",
+   "Персидский залив"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q1469"
+ },
+ {
+  "id": "river_mouth:Q643",
+  "type": "river_mouth",
+  "category": "geography",
+  "text": "Куда впадает По?",
+  "correct": "Адриатическое море",
+  "wrong": [
+   "Чёрное море",
+   "Каспийское море",
+   "Балтийское море",
+   "Северное море",
+   "Карибское море",
+   "Байкал",
+   "Мёртвое море",
+   "Виктория",
+   "Персидский залив",
+   "Эгейское море"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q643",
+  "model_disagrees": "Каспийское море"
+ },
+ {
+  "id": "river_mouth:Q602",
+  "type": "river_mouth",
+  "category": "geography",
+  "text": "Куда впадает Рона?",
+  "correct": "Средиземное море",
+  "wrong": [
+   "Чёрное море",
+   "Каспийское море",
+   "Балтийское море",
+   "Северное море",
+   "Карибское море",
+   "Байкал",
+   "Мёртвое море",
+   "Виктория",
+   "Персидский залив",
+   "Южно-Китайское море"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q602"
+ },
+ {
+  "id": "river_mouth:Q131210",
+  "type": "river_mouth",
+  "category": "geography",
+  "text": "Куда впадает Днестр?",
+  "correct": "Днестровский лиман",
+  "wrong": [
+   "Средиземное море",
+   "Каспийское море",
+   "Балтийское море",
+   "Северное море",
+   "Карибское море",
+   "Байкал",
+   "Мёртвое море",
+   "Виктория",
+   "Персидский залив",
+   "Адриатическое море"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q131210"
+ },
+ {
+  "id": "river_mouth:Q134750",
+  "type": "river_mouth",
+  "category": "geography",
+  "text": "Куда впадает река Святого Лаврентия?",
+  "correct": "Залив Святого Лаврентия",
+  "wrong": [
+   "Средиземное море",
+   "Чёрное море",
+   "Каспийское море",
+   "Балтийское море",
+   "Северное море",
+   "Карибское море",
+   "Байкал",
+   "Мёртвое море",
+   "Виктория",
+   "Персидский залив"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q134750"
+ },
+ {
+  "id": "river_mouth:Q13712",
+  "type": "river_mouth",
+  "category": "geography",
+  "text": "Куда впадает Тибр?",
+  "correct": "Тирренское море",
+  "wrong": [
+   "Чёрное море",
+   "Каспийское море",
+   "Балтийское море",
+   "Северное море",
+   "Карибское море",
+   "Байкал",
+   "Мёртвое море",
+   "Виктория",
+   "Персидский залив",
+   "Адриатическое море"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q13712"
+ },
+ {
+  "id": "river_mouth:Q14294",
+  "type": "river_mouth",
+  "category": "geography",
+  "text": "Куда впадает Тахо?",
+  "correct": "Атлантический океан",
+  "wrong": [
+   "Тихий океан",
+   "Индийский океан",
+   "Каспийское море",
+   "Байкал",
+   "Мёртвое море",
+   "Виктория",
+   "Персидский залив",
+   "Южно-Китайское море",
+   "Аравийское море",
+   "Бенгальский залив"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q14294"
+ },
+ {
+  "id": "river_mouth:Q131792",
+  "type": "river_mouth",
+  "category": "geography",
+  "text": "Куда впадает Ориноко?",
+  "correct": "Атлантический океан",
+  "wrong": [
+   "Тихий океан",
+   "Индийский океан",
+   "Каспийское море",
+   "Байкал",
+   "Мёртвое море",
+   "Виктория",
+   "Персидский залив",
+   "Южно-Китайское море",
+   "Аравийское море",
+   "Бенгальский залив"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q131792"
+ },
+ {
+  "id": "river_mouth:Q1265",
+  "type": "river_mouth",
+  "category": "geography",
+  "text": "Куда впадает Колорадо?",
+  "correct": "Калифорнийский залив",
+  "wrong": [
+   "Средиземное море",
+   "Чёрное море",
+   "Каспийское море",
+   "Балтийское море",
+   "Северное море",
+   "Карибское море",
+   "Байкал",
+   "Мёртвое море",
+   "Виктория",
+   "Персидский залив"
+  ],
+  "source": "https://www.wikidata.org/wiki/Q1265"
  }
 ]

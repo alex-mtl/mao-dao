@@ -1,49 +1,45 @@
-// Drafts + the Kaggle result -> final questions (ALL of them, nothing is dropped - owner's decision 2026-11-08).
-//   node finalize.mjs <drafts.json> <data/kaggle/quiz-<run>.json> [out.json]
-// When the model answers differently from Wikidata the question stays, marked model_disagrees (with what it said):
-// in the pilot the 7B model was wrong far more often than the data.
-// The model's wording is used only if it passes checks; otherwise the template text (clunky but exact) stays.
-import { readFileSync, writeFileSync } from 'node:fs';
+// Drafts + one model's Kaggle result -> final questions (ALL of them, nothing is dropped - owner's decision 2026-11-08).
+//   node finalize.mjs <drafts.json> <data/kaggle/quiz-<run>-<model>.json> [out.json] [--previous=data/geo-final-v1.json]
+// The wording is the drafts' template with the model's genitive (checked on Kaggle); without a good genitive the
+// fallback text stays. When the model answers differently from Wikidata the question stays, marked model_disagrees.
+// --previous: an earlier final file; its wording goes along as previous_text, so the import rewords questions
+// that are already on the site instead of adding copies.
+import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 
-const [draftsFile, resultFile, out = 'data/geo-final.json'] = process.argv.slice(2);
+const args = process.argv.slice(2);
+const [draftsFile, resultFile, out = 'data/geo-final.json'] = args.filter((a) => !a.startsWith('--'));
+const prevFile = (args.find((a) => a.startsWith('--previous=')) ?? '').slice(11);
 const drafts = new Map(JSON.parse(readFileSync(draftsFile, 'utf8')).map((d) => [d.id, d]));
 const res = JSON.parse(readFileSync(resultFile, 'utf8'));
+const previous = new Map(prevFile && existsSync(prevFile) ? JSON.parse(readFileSync(prevFile, 'utf8')).map((q) => [q.id, q.text]) : []);
 const norm = (s) => s.toLowerCase().replace(/ё/g, 'е');
 
-/** every word of the subject (4+ letters) must still be there, its first 4 letters at least (declension changes endings) */
-function keepsSubject(text, subject) {
-  const t = norm(text);
-  return norm(subject).split(/[\s-]+/).filter((w) => w.length >= 4 && w !== 'гора').every((w) => t.includes(w.slice(0, Math.min(4, w.length - 1))));
-}
-
-// the word that carries the question's meaning must survive the rewording ("впадет" / "В какой стране — город" fall back)
-const KEY_WORD = { capital: 'столиц', city_country: 'находится', mountain_country: 'находится', elevation: 'высот', highest_point: 'высш', river_mouth: 'впадает' };
-
 const final = [];
-const dropped = [];
-const stats = { total: res.items.length, kept: 0, model_disagrees: 0, polish_used: 0, polish_rejected: 0 };
+const stats = { total: res.items.length, model_disagrees: 0, genitive_used: 0, genitive_failed: 0, fallback_text: 0 };
 for (const it of res.items) {
   const d = drafts.get(it.id);
+  if (!d) continue;
   const disagrees = it.model_answer !== it.key;
   const modelSaid = it.options['ABCD'.indexOf(it.model_answer)] ?? it.model_answer;
-  if (disagrees) {
-    stats.model_disagrees++;
-    dropped.push({ id: it.id, question: it.polished || d.template, correct: d.correct, model_said: modelSaid });
+  if (disagrees) stats.model_disagrees++;
+  if (it.genitive_ok === true) stats.genitive_used++;
+  if (it.genitive_ok === false) stats.genitive_failed++;
+  let text = it.text;
+  if (!(text.endsWith('?') && text.length <= 150 && !norm(text).includes(norm(d.correct)))) {
+    text = d.template;
+    stats.fallback_text++;
   }
-  const p = (it.polished || '').trim();
-  const ok = p.endsWith('?') && p.length >= 10 && p.length <= 150 && !norm(p).includes(norm(d.correct)) && keepsSubject(p, d.subject)
-    && norm(p).includes(KEY_WORD[d.type]) && !/[a-z]/i.test(p.replace(/[A-Z]{2,}/g, '')) && !/ — (город|вершина)/.test(p);
-  ok ? stats.polish_used++ : stats.polish_rejected++;
-  // "вершина Гора Рашмор" -> "гора Рашмор" (the label itself starts with "Гора")
-  const text = (ok ? p : d.template).replace(/вершин[аы] Гора /, (m) => (m.endsWith('ы Гора ') ? 'горы ' : 'гора ')).replace(/ Гора /, ' гора ');
+  const prev = previous.get(d.id);
   final.push({ id: d.id, type: d.type, category: 'geography', text, correct: d.correct, wrong: d.wrong,
-    source: `https://www.wikidata.org/wiki/${d.subject_qid}`, ...(ok ? {} : { polish_rejected: p }), ...(disagrees ? { model_disagrees: modelSaid } : {}) });
-  stats.kept++;
+    source: `https://www.wikidata.org/wiki/${d.subject_qid}`,
+    ...(it.genitive_ok === false ? { genitive_failed: `${d.gen_of} → ${it.genitive}` } : {}),
+    ...(disagrees ? { model_disagrees: modelSaid } : {}),
+    ...(prev && prev !== text ? { previous_text: prev } : {}) });
 }
 writeFileSync(out, JSON.stringify(final, null, 1));
-console.log({ ...stats, model: res.model, mode: res.mode, gpus: res.gpus, seconds: res.seconds, tokens: res.tokens });
+console.log({ ...stats, model: res.model, mode: res.mode, seconds: res.seconds });
 console.log('\nmodel disagrees (kept anyway):');
-for (const x of dropped) console.log(` - ${x.question}  [Wikidata: ${x.correct}; модель: ${x.model_said}]`);
-console.log('\npolish rejected:');
-for (const x of final.filter((f) => f.polish_rejected)) console.log(` - "${x.polish_rejected}"  -> template`);
+for (const q of final.filter((f) => f.model_disagrees)) console.log(` - ${q.text}  [Wikidata: ${q.correct}; модель: ${q.model_disagrees}]`);
+console.log('\ngenitive failed (fallback wording):');
+for (const q of final.filter((f) => f.genitive_failed)) console.log(` - ${q.genitive_failed}  -> "${q.text}"`);
 console.log(`\n-> ${out}`);

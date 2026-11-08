@@ -1,5 +1,5 @@
 // Runs kaggle/polish.py on Kaggle's free GPU and fetches the result.
-//   node kaggle.mjs push <drafts.json>         -> prints the run id
+//   node kaggle.mjs push <drafts.json> [--model=<HF id>]  -> prints the run id
 //   node kaggle.mjs wait <run id> [maxMinutes] -> data/kaggle/quiz-<run>.json (+ log)
 // Token: ~/.kaggle/access_token (never printed). Reuses the kernel slug "whisper-transcribe": new slugs' GPU runs
 // stayed queued forever; Дружок uses the same slug, so push refuses while a run is going on.
@@ -32,8 +32,9 @@ if (cmd === 'push') {
   const run = new Date().toISOString().replace(/\D/g, '').slice(0, 14);
   const drafts = gzipSync(readFileSync(a1)).toString('base64');
   const text = readFileSync(join(HERE, 'kaggle', 'polish.py'), 'utf8').replace(/\r\n/g, '\n')
-    .replace('RUN_ID = "__RUN_ID__"', `RUN_ID = "${run}"`).replace('"__DRAFTS__"', `"${drafts}"`);
-  if (text.includes('__RUN_ID__') || text.includes('__DRAFTS__')) throw new Error('placeholders left in polish.py');
+    .replace('RUN_ID = "__RUN_ID__"', `RUN_ID = "${run}"`).replace('"__DRAFTS__"', `"${drafts}"`)
+    .replace('"__MODEL__"', `"${(process.argv.find((a) => a.startsWith('--model=')) ?? '--model=Qwen/Qwen2.5-7B-Instruct').slice(8)}"`);
+  if (/__(RUN_ID|DRAFTS|MODEL)__"/.test(text)) throw new Error('placeholders left in polish.py');
   const r = await api('SaveKernel', {
     slug: `${USER}/${SLUG}`, newTitle: SLUG, text, language: 'python', kernelType: 'script', isPrivate: true,
     enableGpu: true, enableInternet: true, datasetDataSources: [],
@@ -52,6 +53,15 @@ if (cmd === 'push') {
     const failed = /Traceback/.test(o.log ?? '') || ['ERROR', 'CANCEL_ACKNOWLEDGED'].includes(status.status);
     if (names.includes(want) || failed) {
       for (const f of o.files ?? []) if (f.fileName === want) writeFileSync(join(out, want), Buffer.from(await (await fetch(f.url)).arrayBuffer()));
+      // several models in one run: one file per model, quiz-<run>-<model>.json
+      if (names.includes(want)) {
+        const all = JSON.parse(readFileSync(join(out, want), 'utf8'));
+        for (const r of all.runs ?? []) {
+          const file = `quiz-${a1}-${r.model.split('/').pop()}.json`;
+          writeFileSync(join(out, file), JSON.stringify(r, null, 1));
+          console.log(r.error ? `${r.model}: ERROR ${r.error}` : `${r.model}: ${r.items.filter((i) => i.model_answer === i.key).length}/${r.count} right -> data/kaggle/${file}`);
+        }
+      }
       if (o.log) writeFileSync(join(out, `quiz-${a1}.log.json`), o.log);
       console.log(names.includes(want) ? `saved data/kaggle/${want}` : 'FAILED, see the log');
       process.exit(names.includes(want) ? 0 : 1);

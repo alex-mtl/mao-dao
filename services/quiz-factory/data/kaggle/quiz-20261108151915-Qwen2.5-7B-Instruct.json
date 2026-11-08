@@ -1,0 +1,2951 @@
+{
+ "run": "20261108151915",
+ "model": "Qwen/Qwen2.5-7B-Instruct",
+ "mode": "fp16",
+ "gpus": [
+  "Tesla T4 14GB",
+  "Tesla T4 14GB"
+ ],
+ "count": 204,
+ "seconds": {
+  "load": 111,
+  "genitive": 22.1,
+  "verify": 18.2
+ },
+ "genitives": {
+  "Австралия": "Австралии",
+  "Австрия": "Австрии",
+  "Азербайджан": "Азербайджана",
+  "Аконкагуа": "Аконкагуа",
+  "Албания": "Албании",
+  "Алжир": "Алжира",
+  "Арарат": "Арарата",
+  "Аргентина": "Аргентины",
+  "Афганистан": "Афганистана",
+  "Афон": "Афона",
+  "Бельгия": "Бельгии",
+  "Бен-Невис": "Бен-Невиса",
+  "Болгария": "Болгарии",
+  "Бразилия": "Бразилии",
+  "Везувий": "Везувия",
+  "Великобритания": "Великобритании",
+  "Венгрия": "Венгрии",
+  "Вьетнам": "Вьетнама",
+  "Германия": "Германии",
+  "Греция": "Грекии",
+  "Джомолунгма": "Джомолунгмы",
+  "Дхаулагири": "Дхаулагири",
+  "Египет": "Египта",
+  "Израиль": "Израиля",
+  "Индия": "Индии",
+  "Индонезия": "Индонезии",
+  "Иран": "Ирана",
+  "Испания": "Испании",
+  "Италия": "Италии",
+  "Кайлас": "Кайласа",
+  "Канада": "Канады",
+  "Канченджанга": "Канченджанги",
+  "Китай": "Китая",
+  "Колумбия": "Колумбии",
+  "Косцюшко": "Косцюшко",
+  "Лхоцзе": "Лхоцze",
+  "Мак-Кинли": "Мак-Кинли",
+  "Макалу": "Макалу",
+  "Манаслу": "Манаслу",
+  "Маттерхорн": "Маттерхорна",
+  "Мауна-Кеа": "Мауны-Кеа",
+  "Мексика": "Мексики",
+  "Мерапи": "Мерапи",
+  "Монблан": "Монблана",
+  "Нангапарбат": "Нангапарбата",
+  "Норвегия": "Норвегии",
+  "Олимп": "Олимпа",
+  "Польша": "Польши",
+  "Португалия": "Португалии",
+  "Пунчак-Джая": "Пунчак-Джая",
+  "Пэктусан": "Пэктусана",
+  "Рашмор": "Рашмора",
+  "Россия": "России",
+  "США": "США",
+  "Сент-Хеленс": "Сент-Хеленса",
+  "Синай": "Синая",
+  "Тейде": "Тейде",
+  "Турция": "Турции",
+  "Украина": "Украины",
+  "Финляндия": "Финляндии",
+  "Франция": "Франции",
+  "Фудзияма": "Фудзиямы",
+  "Чили": "Чили",
+  "Чимборасо": "Чимборасо",
+  "Чо-Ойю": "Чо-Ойю",
+  "Чогори": "Чогори",
+  "Швейцария": "Швейцарии",
+  "Швеция": "Швеции",
+  "Шиша Пангма": "Шиши Пангма",
+  "Эльбрус": "Эльбруса",
+  "Этна": "Этны",
+  "Япония": "Японии"
+ },
+ "tokens": {
+  "genitive_out": 398,
+  "verify_out": 408
+ },
+ "items": [
+  {
+   "id": "capital:Q43",
+   "text": "Столица Турции?",
+   "genitive": "Турции",
+   "genitive_ok": true,
+   "options": [
+    "Рим",
+    "Лондон",
+    "Париж",
+    "Анкара"
+   ],
+   "key": "D",
+   "model_answer": "D"
+  },
+  {
+   "id": "capital:Q142",
+   "text": "Столица Франции?",
+   "genitive": "Франции",
+   "genitive_ok": true,
+   "options": [
+    "Ватикан",
+    "Лондон",
+    "Рим",
+    "Париж"
+   ],
+   "key": "D",
+   "model_answer": "D"
+  },
+  {
+   "id": "capital:Q30",
+   "text": "Столица США?",
+   "genitive": "США",
+   "genitive_ok": true,
+   "options": [
+    "Вашингтон",
+    "Гавана",
+    "Оттава",
+    "Мехико"
+   ],
+   "key": "A",
+   "model_answer": "A"
+  },
+  {
+   "id": "capital:Q159",
+   "text": "Столица России?",
+   "genitive": "России",
+   "genitive_ok": true,
+   "options": [
+    "Рим",
+    "Париж",
+    "Москва",
+    "Лондон"
+   ],
+   "key": "C",
+   "model_answer": "C"
+  },
+  {
+   "id": "capital:Q17",
+   "text": "Столица Японии?",
+   "genitive": "Японии",
+   "genitive_ok": true,
+   "options": [
+    "Москва",
+    "Пекин",
+    "Сингапур",
+    "Токио"
+   ],
+   "key": "D",
+   "model_answer": "D"
+  },
+  {
+   "id": "capital:Q38",
+   "text": "Столица Италии?",
+   "genitive": "Италии",
+   "genitive_ok": true,
+   "options": [
+    "Ватикан",
+    "Лондон",
+    "Рим",
+    "Париж"
+   ],
+   "key": "C",
+   "model_answer": "C"
+  },
+  {
+   "id": "capital:Q183",
+   "text": "Столица Германии?",
+   "genitive": "Германии",
+   "genitive_ok": true,
+   "options": [
+    "Рим",
+    "Париж",
+    "Лондон",
+    "Берлин"
+   ],
+   "key": "D",
+   "model_answer": "D"
+  },
+  {
+   "id": "capital:Q668",
+   "text": "Столица Индии?",
+   "genitive": "Индии",
+   "genitive_ok": true,
+   "options": [
+    "Сингапур",
+    "Нью-Дели",
+    "Пекин",
+    "Москва"
+   ],
+   "key": "B",
+   "model_answer": "B"
+  },
+  {
+   "id": "capital:Q33",
+   "text": "Столица Финляндии?",
+   "genitive": "Финляндии",
+   "genitive_ok": true,
+   "options": [
+    "Лондон",
+    "Рим",
+    "Хельсинки",
+    "Париж"
+   ],
+   "key": "C",
+   "model_answer": "C"
+  },
+  {
+   "id": "capital:Q96",
+   "text": "Столица Мексики?",
+   "genitive": "Мексики",
+   "genitive_ok": true,
+   "options": [
+    "Мехико",
+    "Вашингтон",
+    "Оттава",
+    "Гавана"
+   ],
+   "key": "A",
+   "model_answer": "A"
+  },
+  {
+   "id": "capital:Q148",
+   "text": "Столица Китая?",
+   "genitive": "Китая",
+   "genitive_ok": true,
+   "options": [
+    "Сингапур",
+    "Пекин",
+    "Москва",
+    "Токио"
+   ],
+   "key": "B",
+   "model_answer": "B"
+  },
+  {
+   "id": "capital:Q408",
+   "text": "Столица Австралии?",
+   "genitive": "Австралии",
+   "genitive_ok": true,
+   "options": [
+    "Апиа",
+    "Порт-Морсби",
+    "Канберра",
+    "Веллингтон"
+   ],
+   "key": "C",
+   "model_answer": "C"
+  },
+  {
+   "id": "capital:Q16",
+   "text": "Столица Канады?",
+   "genitive": "Канады",
+   "genitive_ok": true,
+   "options": [
+    "Вашингтон",
+    "Оттава",
+    "Гавана",
+    "Мехико"
+   ],
+   "key": "B",
+   "model_answer": "B"
+  },
+  {
+   "id": "capital:Q29",
+   "text": "Столица Испании?",
+   "genitive": "Испании",
+   "genitive_ok": true,
+   "options": [
+    "Мадрид",
+    "Париж",
+    "Рим",
+    "Лондон"
+   ],
+   "key": "A",
+   "model_answer": "A"
+  },
+  {
+   "id": "capital:Q145",
+   "text": "Столица Великобритании?",
+   "genitive": "Великобритании",
+   "genitive_ok": true,
+   "options": [
+    "Лондон",
+    "Ватикан",
+    "Париж",
+    "Рим"
+   ],
+   "key": "A",
+   "model_answer": "A"
+  },
+  {
+   "id": "capital:Q20",
+   "text": "Столица Норвегии?",
+   "genitive": "Норвегии",
+   "genitive_ok": true,
+   "options": [
+    "Осло",
+    "Лондон",
+    "Париж",
+    "Рим"
+   ],
+   "key": "A",
+   "model_answer": "A"
+  },
+  {
+   "id": "capital:Q79",
+   "text": "Столица Египта?",
+   "genitive": "Египта",
+   "genitive_ok": true,
+   "options": [
+    "Каир",
+    "Найроби",
+    "Алжир",
+    "Киншаса"
+   ],
+   "key": "A",
+   "model_answer": "A"
+  },
+  {
+   "id": "city_country:Q60",
+   "text": "В какой стране находится Нью-Йорк?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "США",
+    "Куба",
+    "Канада",
+    "Мексика"
+   ],
+   "key": "A",
+   "model_answer": "A"
+  },
+  {
+   "id": "city_country:Q8646",
+   "text": "В какой стране находится Гонконг?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Китай",
+    "Япония",
+    "Россия",
+    "Турция"
+   ],
+   "key": "A",
+   "model_answer": "A"
+  },
+  {
+   "id": "city_country:Q8678",
+   "text": "В какой стране находится Рио-де-Жанейро?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Бразилия",
+    "Чили",
+    "Колумбия",
+    "Аргентина"
+   ],
+   "key": "A",
+   "model_answer": "A"
+  },
+  {
+   "id": "city_country:Q406",
+   "text": "В какой стране находится Стамбул?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Турция",
+    "Франция",
+    "Япония",
+    "Россия"
+   ],
+   "key": "A",
+   "model_answer": "A"
+  },
+  {
+   "id": "city_country:Q43387",
+   "text": "В какой стране находится Эдирне?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Франция",
+    "Япония",
+    "Турция",
+    "Россия"
+   ],
+   "key": "C",
+   "model_answer": "C"
+  },
+  {
+   "id": "city_country:Q1297",
+   "text": "В какой стране находится Чикаго?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Канада",
+    "США",
+    "Мексика",
+    "Куба"
+   ],
+   "key": "B",
+   "model_answer": "B"
+  },
+  {
+   "id": "city_country:Q656",
+   "text": "В какой стране находится Санкт-Петербург?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Япония",
+    "Турция",
+    "Россия",
+    "Франция"
+   ],
+   "key": "C",
+   "model_answer": "C"
+  },
+  {
+   "id": "city_country:Q3130",
+   "text": "В какой стране находится Сидней?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Науру",
+    "Новая Зеландия",
+    "Австралия",
+    "Папуа — Новая Гвинея"
+   ],
+   "key": "C",
+   "model_answer": "C"
+  },
+  {
+   "id": "city_country:Q34600",
+   "text": "В какой стране находится Киото?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Россия",
+    "Япония",
+    "Турция",
+    "Индия"
+   ],
+   "key": "B",
+   "model_answer": "B"
+  },
+  {
+   "id": "city_country:Q4361",
+   "text": "В какой стране находится Куритиба?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Чили",
+    "Аргентина",
+    "Колумбия",
+    "Бразилия"
+   ],
+   "key": "D",
+   "model_answer": "D"
+  },
+  {
+   "id": "city_country:Q1854",
+   "text": "В какой стране находится Хошимин?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Турция",
+    "Россия",
+    "Япония",
+    "Вьетнам"
+   ],
+   "key": "D",
+   "model_answer": "D"
+  },
+  {
+   "id": "city_country:Q174",
+   "text": "В какой стране находится Сан-Паулу?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Аргентина",
+    "Бразилия",
+    "Чили",
+    "Колумбия"
+   ],
+   "key": "B",
+   "model_answer": "B"
+  },
+  {
+   "id": "city_country:Q8686",
+   "text": "В какой стране находится Шанхай?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Китай",
+    "Япония",
+    "Россия",
+    "Турция"
+   ],
+   "key": "A",
+   "model_answer": "A"
+  },
+  {
+   "id": "city_country:Q1492",
+   "text": "В какой стране находится Барселона?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Турция",
+    "Россия",
+    "Франция",
+    "Испания"
+   ],
+   "key": "D",
+   "model_answer": "D"
+  },
+  {
+   "id": "city_country:Q1726",
+   "text": "В какой стране находится Мюнхен?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Турция",
+    "Германия",
+    "Россия",
+    "Франция"
+   ],
+   "key": "B",
+   "model_answer": "B"
+  },
+  {
+   "id": "city_country:Q33986",
+   "text": "В какой стране находится Вальпараисо?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Аргентина",
+    "Бразилия",
+    "Колумбия",
+    "Чили"
+   ],
+   "key": "D",
+   "model_answer": "D"
+  },
+  {
+   "id": "city_country:Q62",
+   "text": "В какой стране находится Сан-Франциско?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Мексика",
+    "Куба",
+    "США",
+    "Канада"
+   ],
+   "key": "C",
+   "model_answer": "C"
+  },
+  {
+   "id": "mountain_country:Q39231",
+   "text": "В какой стране находится Фудзияма?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Индия",
+    "Турция",
+    "Израиль",
+    "Япония"
+   ],
+   "key": "D",
+   "model_answer": "D"
+  },
+  {
+   "id": "mountain_country:Q524",
+   "text": "В какой стране находится Везувий?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Италия",
+    "Турция",
+    "Германия",
+    "Россия"
+   ],
+   "key": "A",
+   "model_answer": "A"
+  },
+  {
+   "id": "mountain_country:Q16990",
+   "text": "В какой стране находится Этна?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Турция",
+    "Италия",
+    "Россия",
+    "Германия"
+   ],
+   "key": "B",
+   "model_answer": "B"
+  },
+  {
+   "id": "mountain_country:Q39739",
+   "text": "В какой стране находится Аконкагуа?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Венесуэла",
+    "Аргентина",
+    "Перу",
+    "Колумбия"
+   ],
+   "key": "B",
+   "model_answer": "B"
+  },
+  {
+   "id": "mountain_country:Q43105",
+   "text": "В какой стране находится Эльбрус?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Турция",
+    "Италия",
+    "Россия",
+    "Франция"
+   ],
+   "key": "C",
+   "model_answer": "C"
+  },
+  {
+   "id": "mountain_country:Q72303",
+   "text": "В какой стране находится Арарат?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Япония",
+    "Турция",
+    "Франция",
+    "Россия"
+   ],
+   "key": "B",
+   "model_answer": "B"
+  },
+  {
+   "id": "mountain_country:Q43512",
+   "text": "В какой стране находится Чогори?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Пакистан",
+    "Россия",
+    "Турция",
+    "Япония"
+   ],
+   "key": "A",
+   "model_answer": "A"
+  },
+  {
+   "id": "mountain_country:Q80344",
+   "text": "В какой стране находится Олимп?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Россия",
+    "Италия",
+    "Франция",
+    "Греция"
+   ],
+   "key": "D",
+   "model_answer": "D"
+  },
+  {
+   "id": "mountain_country:Q38954",
+   "text": "В какой стране находится Тейде?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Италия",
+    "Россия",
+    "Турция",
+    "Испания"
+   ],
+   "key": "D",
+   "model_answer": "D"
+  },
+  {
+   "id": "mountain_country:Q130018",
+   "text": "В какой стране находится Мак-Кинли?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Куба",
+    "Панама",
+    "Коста-Рика",
+    "США"
+   ],
+   "key": "D",
+   "model_answer": "D"
+  },
+  {
+   "id": "mountain_country:Q83497",
+   "text": "В какой стране находится гора Рашмор?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "США",
+    "Коста-Рика",
+    "Куба",
+    "Панама"
+   ],
+   "key": "A",
+   "model_answer": "A"
+  },
+  {
+   "id": "mountain_country:Q229107",
+   "text": "В какой стране находится Кайлас?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Израиль",
+    "Турция",
+    "Иран",
+    "Китай"
+   ],
+   "key": "D",
+   "model_answer": "D"
+  },
+  {
+   "id": "mountain_country:Q130736",
+   "text": "В какой стране находится Нангапарбат?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Япония",
+    "Турция",
+    "Россия",
+    "Пакистан"
+   ],
+   "key": "D",
+   "model_answer": "D"
+  },
+  {
+   "id": "mountain_country:Q165440",
+   "text": "В какой стране находится Дхаулагири?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Япония",
+    "Россия",
+    "Непал",
+    "Турция"
+   ],
+   "key": "C",
+   "model_answer": "C"
+  },
+  {
+   "id": "mountain_country:Q377485",
+   "text": "В какой стране находится Синай?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Алжир",
+    "Египет",
+    "Нигерия",
+    "ЮАР"
+   ],
+   "key": "B",
+   "model_answer": "B"
+  },
+  {
+   "id": "mountain_country:Q131230",
+   "text": "В какой стране находится Мауна-Кеа?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Куба",
+    "США",
+    "Коста-Рика",
+    "Панама"
+   ],
+   "key": "B",
+   "model_answer": "B"
+  },
+  {
+   "id": "mountain_country:Q130321",
+   "text": "В какой стране находится Афон?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Греция",
+    "Россия",
+    "Франция",
+    "Италия"
+   ],
+   "key": "A",
+   "model_answer": "A"
+  },
+  {
+   "id": "elevation:Q513",
+   "text": "Высота Джомолунгмы?",
+   "genitive": "Джомолунгмы",
+   "genitive_ok": true,
+   "options": [
+    "8849 м",
+    "7116 м",
+    "7648 м",
+    "6305 м"
+   ],
+   "key": "A",
+   "model_answer": "A"
+  },
+  {
+   "id": "elevation:Q39231",
+   "text": "Высота Фудзиямы?",
+   "genitive": "Фудзиямы",
+   "genitive_ok": true,
+   "options": [
+    "3297 м",
+    "3777 м",
+    "2963 м",
+    "4349 м"
+   ],
+   "key": "B",
+   "model_answer": "A"
+  },
+  {
+   "id": "elevation:Q524",
+   "text": "Высота Везувия?",
+   "genitive": "Везувия",
+   "genitive_ok": true,
+   "options": [
+    "1572 м",
+    "1281 м",
+    "916 м",
+    "1450 м"
+   ],
+   "key": "B",
+   "model_answer": "A"
+  },
+  {
+   "id": "elevation:Q583",
+   "text": "Высота Монблана?",
+   "genitive": "Монблана",
+   "genitive_ok": true,
+   "options": [
+    "5428 м",
+    "6434 м",
+    "4272 м",
+    "4806 м"
+   ],
+   "key": "D",
+   "model_answer": "A"
+  },
+  {
+   "id": "elevation:Q16990",
+   "text": "Высота Этны?",
+   "genitive": "Этны",
+   "genitive_ok": true,
+   "options": [
+    "3357 м",
+    "3699 м",
+    "2387 м",
+    "4165 м"
+   ],
+   "key": "A",
+   "model_answer": "A"
+  },
+  {
+   "id": "elevation:Q43105",
+   "text": "Высота Эльбруса?",
+   "genitive": "Эльбруса",
+   "genitive_ok": true,
+   "options": [
+    "4345 м",
+    "6125 м",
+    "3979 м",
+    "5642 м"
+   ],
+   "key": "D",
+   "model_answer": "B"
+  },
+  {
+   "id": "elevation:Q39739",
+   "text": "Высота Аконкагуа?",
+   "genitive": "Аконкагуа",
+   "genitive_ok": true,
+   "options": [
+    "8153 м",
+    "5500 м",
+    "4882 м",
+    "6962 м"
+   ],
+   "key": "D",
+   "model_answer": "A"
+  },
+  {
+   "id": "elevation:Q72303",
+   "text": "Высота Арарата?",
+   "genitive": "Арарата",
+   "genitive_ok": true,
+   "options": [
+    "5137 м",
+    "4221 м",
+    "6809 м",
+    "4562 м"
+   ],
+   "key": "A",
+   "model_answer": "A"
+  },
+  {
+   "id": "elevation:Q43512",
+   "text": "Высота Чогори?",
+   "genitive": "Чогори",
+   "genitive_ok": true,
+   "options": [
+    "7553 м",
+    "6658 м",
+    "5631 м",
+    "8611 м"
+   ],
+   "key": "D",
+   "model_answer": "D"
+  },
+  {
+   "id": "elevation:Q80344",
+   "text": "Высота Олимпа?",
+   "genitive": "Олимпа",
+   "genitive_ok": true,
+   "options": [
+    "3614 м",
+    "3332 м",
+    "2918 м",
+    "2007 м"
+   ],
+   "key": "C",
+   "model_answer": "A"
+  },
+  {
+   "id": "elevation:Q38954",
+   "text": "Высота Тейде?",
+   "genitive": "Тейде",
+   "genitive_ok": true,
+   "options": [
+    "2979 м",
+    "3715 м",
+    "2740 м",
+    "4226 м"
+   ],
+   "key": "B",
+   "model_answer": "B"
+  },
+  {
+   "id": "elevation:Q82019",
+   "text": "Высота Канченджанги?",
+   "genitive": "Канченджанги",
+   "genitive_ok": true,
+   "options": [
+    "6887 м",
+    "7875 м",
+    "5615 м",
+    "8586 м"
+   ],
+   "key": "D",
+   "model_answer": "A"
+  },
+  {
+   "id": "elevation:Q130018",
+   "text": "Высота Мак-Кинли?",
+   "genitive": "Мак-Кинли",
+   "genitive_ok": true,
+   "options": [
+    "6190 м",
+    "4773 м",
+    "5515 м",
+    "6855 м"
+   ],
+   "key": "A",
+   "model_answer": "D"
+  },
+  {
+   "id": "elevation:Q83497",
+   "text": "Высота Рашмора?",
+   "genitive": "Рашмора",
+   "genitive_ok": true,
+   "options": [
+    "1545 м",
+    "1745 м",
+    "1192 м",
+    "1348 м"
+   ],
+   "key": "B",
+   "model_answer": "C"
+  },
+  {
+   "id": "elevation:Q1374",
+   "text": "Высота Маттерхорна?",
+   "genitive": "Маттерхорна",
+   "genitive_ok": true,
+   "options": [
+    "3950 м",
+    "4478 м",
+    "3440 м",
+    "5909 м"
+   ],
+   "key": "B",
+   "model_answer": "B"
+  },
+  {
+   "id": "elevation:Q229107",
+   "text": "Высота Кайласа?",
+   "genitive": "Кайласа",
+   "genitive_ok": true,
+   "options": [
+    "8437 м",
+    "6638 м",
+    "7228 м",
+    "5049 м"
+   ],
+   "key": "B",
+   "model_answer": "A"
+  },
+  {
+   "id": "elevation:Q130736",
+   "text": "Высота Нангапарбата?",
+   "genitive": "Нангапарбата",
+   "genitive_ok": true,
+   "options": [
+    "8847 м",
+    "6754 м",
+    "5342 м",
+    "8126 м"
+   ],
+   "key": "D",
+   "model_answer": "C"
+  },
+  {
+   "id": "highest_point:Q43",
+   "text": "Самая высокая вершина Турции?",
+   "genitive": "Турции",
+   "genitive_ok": true,
+   "options": [
+    "Фудзияма",
+    "Арарат",
+    "Джомолунгма",
+    "Монблан"
+   ],
+   "key": "B",
+   "model_answer": "B"
+  },
+  {
+   "id": "highest_point:Q30",
+   "text": "Самая высокая вершина США?",
+   "genitive": "США",
+   "genitive_ok": true,
+   "options": [
+    "Суфриер",
+    "Мак-Кинли",
+    "Логан",
+    "Пик Орисаба"
+   ],
+   "key": "B",
+   "model_answer": "B"
+  },
+  {
+   "id": "highest_point:Q159",
+   "text": "Самая высокая вершина России?",
+   "genitive": "России",
+   "genitive_ok": true,
+   "options": [
+    "Эльбрус",
+    "Монблан",
+    "Фудзияма",
+    "Джомолунгма"
+   ],
+   "key": "A",
+   "model_answer": "A"
+  },
+  {
+   "id": "highest_point:Q17",
+   "text": "Самая высокая вершина Японии?",
+   "genitive": "Японии",
+   "genitive_ok": true,
+   "options": [
+    "Джомолунгма",
+    "Фудзияма",
+    "Эльбрус",
+    "Чогори"
+   ],
+   "key": "B",
+   "model_answer": "B"
+  },
+  {
+   "id": "highest_point:Q183",
+   "text": "Самая высокая вершина Германии?",
+   "genitive": "Германии",
+   "genitive_ok": true,
+   "options": [
+    "Цугшпитце",
+    "Монблан",
+    "Арарат",
+    "Эльбрус"
+   ],
+   "key": "A",
+   "model_answer": "A"
+  },
+  {
+   "id": "highest_point:Q668",
+   "text": "Самая высокая вершина Индии?",
+   "genitive": "Индии",
+   "genitive_ok": true,
+   "options": [
+    "Канченджанга",
+    "Джомолунгма",
+    "Эльбрус",
+    "Фудзияма"
+   ],
+   "key": "A",
+   "model_answer": "A"
+  },
+  {
+   "id": "highest_point:Q33",
+   "text": "Самая высокая вершина Финляндии?",
+   "genitive": "Финляндии",
+   "genitive_ok": true,
+   "options": [
+    "Эльбрус",
+    "Арарат",
+    "Монблан",
+    "Халтиа"
+   ],
+   "key": "D",
+   "model_answer": "D"
+  },
+  {
+   "id": "highest_point:Q96",
+   "text": "Самая высокая вершина Мексики?",
+   "genitive": "Мексики",
+   "genitive_ok": true,
+   "options": [
+    "Суфриер",
+    "Пик Орисаба",
+    "Логан",
+    "Мак-Кинли"
+   ],
+   "key": "B",
+   "model_answer": "B"
+  },
+  {
+   "id": "highest_point:Q408",
+   "text": "Самая высокая вершина Австралии?",
+   "genitive": "Австралии",
+   "genitive_ok": true,
+   "options": [
+    "Моусон",
+    "Банаба",
+    "Вильгельм",
+    "гора Кука"
+   ],
+   "key": "A",
+   "model_answer": "D"
+  },
+  {
+   "id": "highest_point:Q16",
+   "text": "Самая высокая вершина Канады?",
+   "genitive": "Канады",
+   "genitive_ok": true,
+   "options": [
+    "Логан",
+    "Суфриер",
+    "Мак-Кинли",
+    "Пик Орисаба"
+   ],
+   "key": "A",
+   "model_answer": "A"
+  },
+  {
+   "id": "highest_point:Q29",
+   "text": "Самая высокая вершина Испании?",
+   "genitive": "Испании",
+   "genitive_ok": true,
+   "options": [
+    "Монблан",
+    "Тейде",
+    "Эльбрус",
+    "Арарат"
+   ],
+   "key": "B",
+   "model_answer": "B"
+  },
+  {
+   "id": "highest_point:Q145",
+   "text": "Самая высокая вершина Великобритании?",
+   "genitive": "Великобритании",
+   "genitive_ok": true,
+   "options": [
+    "Бен-Невис",
+    "Арарат",
+    "Монблан",
+    "Эльбрус"
+   ],
+   "key": "A",
+   "model_answer": "A"
+  },
+  {
+   "id": "highest_point:Q20",
+   "text": "Самая высокая вершина Норвегии?",
+   "genitive": "Норвегии",
+   "genitive_ok": true,
+   "options": [
+    "Монблан",
+    "Галлхёпигген",
+    "Эльбрус",
+    "Арарат"
+   ],
+   "key": "B",
+   "model_answer": "B"
+  },
+  {
+   "id": "highest_point:Q79",
+   "text": "Самая высокая вершина Египта?",
+   "genitive": "Египта",
+   "genitive_ok": true,
+   "options": [
+    "Рас-Дашэн",
+    "Джебель-Тубкаль",
+    "Гора Святой Екатерины",
+    "Фогу"
+   ],
+   "key": "C",
+   "model_answer": "C"
+  },
+  {
+   "id": "highest_point:Q36",
+   "text": "Самая высокая вершина Польши?",
+   "genitive": "Польши",
+   "genitive_ok": true,
+   "options": [
+    "Арарат",
+    "Эльбрус",
+    "Рысы",
+    "Монблан"
+   ],
+   "key": "C",
+   "model_answer": "A"
+  },
+  {
+   "id": "highest_point:Q212",
+   "text": "Самая высокая вершина Украины?",
+   "genitive": "Украины",
+   "genitive_ok": true,
+   "options": [
+    "Монблан",
+    "Арарат",
+    "Эльбрус",
+    "Говерла"
+   ],
+   "key": "D",
+   "model_answer": "D"
+  },
+  {
+   "id": "highest_point:Q39",
+   "text": "Самая высокая вершина Швейцарии?",
+   "genitive": "Швейцарии",
+   "genitive_ok": true,
+   "options": [
+    "Арарат",
+    "Монблан",
+    "Пик Дюфур",
+    "Эльбрус"
+   ],
+   "key": "C",
+   "model_answer": "B"
+  },
+  {
+   "id": "river_mouth:Q3392",
+   "text": "Куда впадает Нил?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Балтийское море",
+    "Каспийское море",
+    "Средиземное море",
+    "Чёрное море"
+   ],
+   "key": "C",
+   "model_answer": "C"
+  },
+  {
+   "id": "river_mouth:Q3783",
+   "text": "Куда впадает Амазонка?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Атлантический океан",
+    "Тихий океан",
+    "Каспийское море",
+    "Индийский океан"
+   ],
+   "key": "A",
+   "model_answer": "A"
+  },
+  {
+   "id": "river_mouth:Q1653",
+   "text": "Куда впадает Дунай?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Балтийское море",
+    "Каспийское море",
+    "Средиземное море",
+    "Чёрное море"
+   ],
+   "key": "D",
+   "model_answer": "C"
+  },
+  {
+   "id": "river_mouth:Q584",
+   "text": "Куда впадает Рейн?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Каспийское море",
+    "Северное море",
+    "Чёрное море",
+    "Средиземное море"
+   ],
+   "key": "B",
+   "model_answer": "D"
+  },
+  {
+   "id": "river_mouth:Q5089",
+   "text": "Куда впадает Ганг?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Каспийское море",
+    "Чёрное море",
+    "Средиземное море",
+    "Бенгальский залив"
+   ],
+   "key": "D",
+   "model_answer": "D"
+  },
+  {
+   "id": "river_mouth:Q1497",
+   "text": "Куда впадает Миссисипи?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Каспийское море",
+    "Средиземное море",
+    "Мексиканский залив",
+    "Чёрное море"
+   ],
+   "key": "C",
+   "model_answer": "C"
+  },
+  {
+   "id": "river_mouth:Q5413",
+   "text": "Куда впадает Янцзы?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Средиземное море",
+    "Чёрное море",
+    "Восточно-Китайское море",
+    "Каспийское море"
+   ],
+   "key": "C",
+   "model_answer": "C"
+  },
+  {
+   "id": "river_mouth:Q3503",
+   "text": "Куда впадает Конго?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Индийский океан",
+    "Каспийское море",
+    "Тихий океан",
+    "Атлантический океан"
+   ],
+   "key": "D",
+   "model_answer": "D"
+  },
+  {
+   "id": "river_mouth:Q7348",
+   "text": "Куда впадает Инд?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Чёрное море",
+    "Каспийское море",
+    "Средиземное море",
+    "Аравийское море"
+   ],
+   "key": "D",
+   "model_answer": "A"
+  },
+  {
+   "id": "river_mouth:Q3542",
+   "text": "Куда впадает река Нигер?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Каспийское море",
+    "Чёрное море",
+    "Гвинейский залив",
+    "Средиземное море"
+   ],
+   "key": "C",
+   "model_answer": "C"
+  },
+  {
+   "id": "river_mouth:Q7355",
+   "text": "Куда впадает Хуанхэ?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Средиземное море",
+    "Бохайский залив",
+    "Чёрное море",
+    "Каспийское море"
+   ],
+   "key": "B",
+   "model_answer": "B"
+  },
+  {
+   "id": "river_mouth:Q34589",
+   "text": "Куда впадает Евфрат?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Шатт-эль-Араб",
+    "Амазонка",
+    "Нил",
+    "Дунай"
+   ],
+   "key": "A",
+   "model_answer": "A"
+  },
+  {
+   "id": "river_mouth:Q1471",
+   "text": "Куда впадает Сена?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Чёрное море",
+    "Каспийское море",
+    "Ла-Манш",
+    "Средиземное море"
+   ],
+   "key": "C",
+   "model_answer": "D"
+  },
+  {
+   "id": "river_mouth:Q19686",
+   "text": "Куда впадает Темза?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Средиземное море",
+    "Каспийское море",
+    "Северное море",
+    "Чёрное море"
+   ],
+   "key": "C",
+   "model_answer": "C"
+  },
+  {
+   "id": "river_mouth:Q35591",
+   "text": "Куда впадает Тигр?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Дунай",
+    "Амазонка",
+    "Нил",
+    "Шатт-эль-Араб"
+   ],
+   "key": "D",
+   "model_answer": "D"
+  },
+  {
+   "id": "river_mouth:Q40059",
+   "text": "Куда впадает Иордан?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Средиземное море",
+    "Чёрное море",
+    "Мёртвое море",
+    "Каспийское море"
+   ],
+   "key": "C",
+   "model_answer": "C"
+  },
+  {
+   "id": "river_mouth:Q548",
+   "text": "Куда впадает Висла?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Чёрное море",
+    "Средиземное море",
+    "Гданьский залив",
+    "Каспийское море"
+   ],
+   "key": "C",
+   "model_answer": "C"
+  },
+  {
+   "id": "capital:Q36",
+   "text": "Столица Польши?",
+   "genitive": "Польши",
+   "genitive_ok": true,
+   "options": [
+    "Париж",
+    "Лондон",
+    "Варшава",
+    "Рим"
+   ],
+   "key": "C",
+   "model_answer": "C"
+  },
+  {
+   "id": "capital:Q212",
+   "text": "Столица Украины?",
+   "genitive": "Украины",
+   "genitive_ok": true,
+   "options": [
+    "Киев",
+    "Лондон",
+    "Париж",
+    "Рим"
+   ],
+   "key": "A",
+   "model_answer": "A"
+  },
+  {
+   "id": "capital:Q39",
+   "text": "Столица Швейцарии?",
+   "genitive": "Швейцарии",
+   "genitive_ok": true,
+   "options": [
+    "Париж",
+    "Рим",
+    "Лондон",
+    "Берн"
+   ],
+   "key": "D",
+   "model_answer": "D"
+  },
+  {
+   "id": "capital:Q155",
+   "text": "Столица Бразилии?",
+   "genitive": "Бразилии",
+   "genitive_ok": true,
+   "options": [
+    "Бразилиа",
+    "Буэнос-Айрес",
+    "Сантьяго",
+    "Богота"
+   ],
+   "key": "A",
+   "model_answer": "A"
+  },
+  {
+   "id": "capital:Q222",
+   "text": "Столица Албании?",
+   "genitive": "Албании",
+   "genitive_ok": true,
+   "options": [
+    "Лондон",
+    "Рим",
+    "Тирана",
+    "Париж"
+   ],
+   "key": "C",
+   "model_answer": "C"
+  },
+  {
+   "id": "capital:Q31",
+   "text": "Столица Бельгии?",
+   "genitive": "Бельгии",
+   "genitive_ok": true,
+   "options": [
+    "Лондон",
+    "Рим",
+    "Брюссель",
+    "Париж"
+   ],
+   "key": "C",
+   "model_answer": "C"
+  },
+  {
+   "id": "capital:Q298",
+   "text": "Столица Чили?",
+   "genitive": "Чили",
+   "genitive_ok": true,
+   "options": [
+    "Сантьяго",
+    "Богота",
+    "Бразилиа",
+    "Буэнос-Айрес"
+   ],
+   "key": "A",
+   "model_answer": "A"
+  },
+  {
+   "id": "capital:Q801",
+   "text": "Столица Израиля?",
+   "genitive": "Израиля",
+   "genitive_ok": true,
+   "options": [
+    "Пекин",
+    "Иерусалим",
+    "Сингапур",
+    "Москва"
+   ],
+   "key": "B",
+   "model_answer": "B"
+  },
+  {
+   "id": "capital:Q41",
+   "text": "Столица страны «Греция»?",
+   "genitive": "Грекии",
+   "genitive_ok": false,
+   "options": [
+    "Париж",
+    "Афины",
+    "Рим",
+    "Лондон"
+   ],
+   "key": "B",
+   "model_answer": "B"
+  },
+  {
+   "id": "capital:Q794",
+   "text": "Столица Ирана?",
+   "genitive": "Ирана",
+   "genitive_ok": true,
+   "options": [
+    "Сингапур",
+    "Москва",
+    "Тегеран",
+    "Пекин"
+   ],
+   "key": "C",
+   "model_answer": "C"
+  },
+  {
+   "id": "capital:Q414",
+   "text": "Столица Аргентины?",
+   "genitive": "Аргентины",
+   "genitive_ok": true,
+   "options": [
+    "Сантьяго",
+    "Бразилиа",
+    "Буэнос-Айрес",
+    "Богота"
+   ],
+   "key": "C",
+   "model_answer": "C"
+  },
+  {
+   "id": "capital:Q45",
+   "text": "Столица Португалии?",
+   "genitive": "Португалии",
+   "genitive_ok": true,
+   "options": [
+    "Париж",
+    "Рим",
+    "Лондон",
+    "Лиссабон"
+   ],
+   "key": "D",
+   "model_answer": "D"
+  },
+  {
+   "id": "capital:Q40",
+   "text": "Столица Австрии?",
+   "genitive": "Австрии",
+   "genitive_ok": true,
+   "options": [
+    "Лондон",
+    "Рим",
+    "Вена",
+    "Париж"
+   ],
+   "key": "C",
+   "model_answer": "C"
+  },
+  {
+   "id": "capital:Q34",
+   "text": "Столица Швеции?",
+   "genitive": "Швеции",
+   "genitive_ok": true,
+   "options": [
+    "Стокгольм",
+    "Рим",
+    "Лондон",
+    "Париж"
+   ],
+   "key": "A",
+   "model_answer": "A"
+  },
+  {
+   "id": "capital:Q881",
+   "text": "Столица Вьетнама?",
+   "genitive": "Вьетнама",
+   "genitive_ok": true,
+   "options": [
+    "Москва",
+    "Пекин",
+    "Ханой",
+    "Сингапур"
+   ],
+   "key": "C",
+   "model_answer": "C"
+  },
+  {
+   "id": "capital:Q739",
+   "text": "Столица Колумбии?",
+   "genitive": "Колумбии",
+   "genitive_ok": true,
+   "options": [
+    "Богота",
+    "Буэнос-Айрес",
+    "Бразилиа",
+    "Сантьяго"
+   ],
+   "key": "A",
+   "model_answer": "A"
+  },
+  {
+   "id": "capital:Q252",
+   "text": "Столица Индонезии?",
+   "genitive": "Индонезии",
+   "genitive_ok": true,
+   "options": [
+    "Москва",
+    "Сингапур",
+    "Джакарта",
+    "Пекин"
+   ],
+   "key": "C",
+   "model_answer": "C"
+  },
+  {
+   "id": "city_country:Q641",
+   "text": "В какой стране находится Венеция?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Россия",
+    "Франция",
+    "Италия",
+    "Турция"
+   ],
+   "key": "C",
+   "model_answer": "C"
+  },
+  {
+   "id": "city_country:Q1156",
+   "text": "В какой стране находится Мумбаи?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Турция",
+    "Россия",
+    "Индия",
+    "Япония"
+   ],
+   "key": "C",
+   "model_answer": "C"
+  },
+  {
+   "id": "city_country:Q1877",
+   "text": "В какой стране находится Донгхой?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Япония",
+    "Вьетнам",
+    "Турция",
+    "Россия"
+   ],
+   "key": "B",
+   "model_answer": "B"
+  },
+  {
+   "id": "city_country:Q1055",
+   "text": "В какой стране находится Гамбург?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Франция",
+    "Германия",
+    "Турция",
+    "Россия"
+   ],
+   "key": "B",
+   "model_answer": "B"
+  },
+  {
+   "id": "city_country:Q1880",
+   "text": "В какой стране находится Консепсьон?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Колумбия",
+    "Бразилия",
+    "Чили",
+    "Аргентина"
+   ],
+   "key": "C",
+   "model_answer": "C"
+  },
+  {
+   "id": "city_country:Q490",
+   "text": "В какой стране находится Милан?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Франция",
+    "Турция",
+    "Россия",
+    "Италия"
+   ],
+   "key": "D",
+   "model_answer": "D"
+  },
+  {
+   "id": "city_country:Q3646",
+   "text": "В какой стране находится Краснодар?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Турция",
+    "Япония",
+    "Франция",
+    "Россия"
+   ],
+   "key": "D",
+   "model_answer": "D"
+  },
+  {
+   "id": "city_country:Q172",
+   "text": "В какой стране находится Торонто?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Куба",
+    "Канада",
+    "США",
+    "Мексика"
+   ],
+   "key": "B",
+   "model_answer": "B"
+  },
+  {
+   "id": "city_country:Q14773",
+   "text": "В какой стране находится Макао?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Турция",
+    "Россия",
+    "Япония",
+    "Китай"
+   ],
+   "key": "D",
+   "model_answer": "D"
+  },
+  {
+   "id": "city_country:Q1410",
+   "text": "В какой стране находится Гибралтар?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Турция",
+    "Великобритания",
+    "Россия",
+    "Франция"
+   ],
+   "key": "B",
+   "model_answer": "B"
+  },
+  {
+   "id": "city_country:Q612",
+   "text": "В какой стране находится Дубай?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Объединённые Арабские Эмираты",
+    "Япония",
+    "Россия",
+    "Турция"
+   ],
+   "key": "A",
+   "model_answer": "A"
+  },
+  {
+   "id": "city_country:Q5465",
+   "text": "В какой стране находится Кейптаун?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Алжир",
+    "Египет",
+    "Нигерия",
+    "ЮАР"
+   ],
+   "key": "D",
+   "model_answer": "D"
+  },
+  {
+   "id": "city_country:Q100",
+   "text": "В какой стране находится Бостон?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Мексика",
+    "Канада",
+    "США",
+    "Куба"
+   ],
+   "key": "C",
+   "model_answer": "C"
+  },
+  {
+   "id": "city_country:Q4035",
+   "text": "В какой стране находится Озаску?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Чили",
+    "Аргентина",
+    "Бразилия",
+    "Колумбия"
+   ],
+   "key": "C",
+   "model_answer": "A"
+  },
+  {
+   "id": "city_country:Q2044",
+   "text": "В какой стране находится Флоренция?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Россия",
+    "Турция",
+    "Франция",
+    "Италия"
+   ],
+   "key": "D",
+   "model_answer": "D"
+  },
+  {
+   "id": "city_country:Q1794",
+   "text": "В какой стране находится Франкфурт-на-Майне?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Германия",
+    "Франция",
+    "Россия",
+    "Турция"
+   ],
+   "key": "A",
+   "model_answer": "A"
+  },
+  {
+   "id": "city_country:Q3141",
+   "text": "В какой стране находится Мельбурн?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Папуа — Новая Гвинея",
+    "Новая Зеландия",
+    "Науру",
+    "Австралия"
+   ],
+   "key": "D",
+   "model_answer": "D"
+  },
+  {
+   "id": "mountain_country:Q178167",
+   "text": "В какой стране находится Косцюшко?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Австралия",
+    "Тонга",
+    "Науру",
+    "Самоа"
+   ],
+   "key": "A",
+   "model_answer": "C"
+  },
+  {
+   "id": "mountain_country:Q14081",
+   "text": "В какой стране находится Чимборасо?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Бразилия",
+    "Аргентина",
+    "Эквадор",
+    "Чили"
+   ],
+   "key": "C",
+   "model_answer": "C"
+  },
+  {
+   "id": "mountain_country:Q4675",
+   "text": "В какой стране находится Сент-Хеленс?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "США",
+    "Панама",
+    "Коста-Рика",
+    "Куба"
+   ],
+   "key": "A",
+   "model_answer": "A"
+  },
+  {
+   "id": "mountain_country:Q170070",
+   "text": "В какой стране находится Манаслу?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Непал",
+    "Япония",
+    "Россия",
+    "Турция"
+   ],
+   "key": "A",
+   "model_answer": "A"
+  },
+  {
+   "id": "mountain_country:Q40758",
+   "text": "В какой стране находится Демавенд?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Россия",
+    "Индия",
+    "Япония",
+    "Иран"
+   ],
+   "key": "D",
+   "model_answer": "D"
+  },
+  {
+   "id": "mountain_country:Q134108",
+   "text": "В какой стране находится Мерапи?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Япония",
+    "Индонезия",
+    "Россия",
+    "Турция"
+   ],
+   "key": "B",
+   "model_answer": "B"
+  },
+  {
+   "id": "mountain_country:Q104674",
+   "text": "В какой стране находится Бен-Невис?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Турция",
+    "Франция",
+    "Великобритания",
+    "Россия"
+   ],
+   "key": "C",
+   "model_answer": "C"
+  },
+  {
+   "id": "mountain_country:Q105124",
+   "text": "В какой стране находится Шиша Пангма?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Израиль",
+    "Иран",
+    "Китай",
+    "Турция"
+   ],
+   "key": "C",
+   "model_answer": "C"
+  },
+  {
+   "id": "mountain_country:Q1045888",
+   "text": "В какой стране находится Пунчак-Джая?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Россия",
+    "Индонезия",
+    "Турция",
+    "Япония"
+   ],
+   "key": "B",
+   "model_answer": "B"
+  },
+  {
+   "id": "mountain_country:Q120306",
+   "text": "В какой стране находится Логан?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Панама",
+    "Куба",
+    "Мексика",
+    "Канада"
+   ],
+   "key": "D",
+   "model_answer": "D"
+  },
+  {
+   "id": "mountain_country:Q168714",
+   "text": "В какой стране находится Тамбора?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Индонезия",
+    "Россия",
+    "Япония",
+    "Турция"
+   ],
+   "key": "A",
+   "model_answer": "A"
+  },
+  {
+   "id": "mountain_country:Q213360",
+   "text": "В какой стране находится Столовая гора?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Нигерия",
+    "ЮАР",
+    "Египет",
+    "Алжир"
+   ],
+   "key": "B",
+   "model_answer": "B"
+  },
+  {
+   "id": "mountain_country:Q181157",
+   "text": "В какой стране находится Попокатепетль?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Мексика",
+    "Канада",
+    "Панама",
+    "Куба"
+   ],
+   "key": "A",
+   "model_answer": "A"
+  },
+  {
+   "id": "mountain_country:Q216059",
+   "text": "В какой стране находится Тайшань?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Иран",
+    "Турция",
+    "Китай",
+    "Израиль"
+   ],
+   "key": "C",
+   "model_answer": "C"
+  },
+  {
+   "id": "mountain_country:Q60967",
+   "text": "В какой стране находится Кинабалу?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Турция",
+    "Малайзия",
+    "Япония",
+    "Россия"
+   ],
+   "key": "B",
+   "model_answer": "B"
+  },
+  {
+   "id": "mountain_country:Q1451",
+   "text": "В какой стране находится Пинатубо?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Турция",
+    "Индия",
+    "Россия",
+    "Филиппины"
+   ],
+   "key": "D",
+   "model_answer": "D"
+  },
+  {
+   "id": "mountain_country:Q1484",
+   "text": "В какой стране находится Майон?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Россия",
+    "Филиппины",
+    "Турция",
+    "Индия"
+   ],
+   "key": "B",
+   "model_answer": "B"
+  },
+  {
+   "id": "elevation:Q165440",
+   "text": "Высота Дхаулагири?",
+   "genitive": "Дхаулагири",
+   "genitive_ok": true,
+   "options": [
+    "7476 м",
+    "5637 м",
+    "6412 м",
+    "8167 м"
+   ],
+   "key": "D",
+   "model_answer": "D"
+  },
+  {
+   "id": "elevation:Q172070",
+   "text": "Высота горы Кения?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "6618 м",
+    "4667 м",
+    "5199 м",
+    "4350 м"
+   ],
+   "key": "C",
+   "model_answer": "A"
+  },
+  {
+   "id": "elevation:Q169986",
+   "text": "Высота Макалу?",
+   "genitive": "Макалу",
+   "genitive_ok": true,
+   "options": [
+    "8485 м",
+    "5736 м",
+    "6659 м",
+    "7200 м"
+   ],
+   "key": "A",
+   "model_answer": "A"
+  },
+  {
+   "id": "elevation:Q377485",
+   "text": "Высота Синая?",
+   "genitive": "Синая",
+   "genitive_ok": true,
+   "options": [
+    "2287 м",
+    "2776 м",
+    "2480 м",
+    "1637 м"
+   ],
+   "key": "A",
+   "model_answer": "B"
+  },
+  {
+   "id": "elevation:Q131230",
+   "text": "Высота Мауны-Кеа?",
+   "genitive": "Мауны-Кеа",
+   "genitive_ok": true,
+   "options": [
+    "4937 м",
+    "4207 м",
+    "5275 м",
+    "5638 м"
+   ],
+   "key": "B",
+   "model_answer": "D"
+  },
+  {
+   "id": "elevation:Q130321",
+   "text": "Высота Афона?",
+   "genitive": "Афона",
+   "genitive_ok": true,
+   "options": [
+    "1381 м",
+    "1617 м",
+    "2033 м",
+    "2736 м"
+   ],
+   "key": "C",
+   "model_answer": "B"
+  },
+  {
+   "id": "elevation:Q168702",
+   "text": "Высота Лхоцze?",
+   "genitive": "Лхоцze",
+   "genitive_ok": true,
+   "options": [
+    "8516 м",
+    "7822 м",
+    "5589 м",
+    "7078 м"
+   ],
+   "key": "A",
+   "model_answer": "A"
+  },
+  {
+   "id": "elevation:Q178167",
+   "text": "Высота Косцюшко?",
+   "genitive": "Косцюшко",
+   "genitive_ok": true,
+   "options": [
+    "1573 м",
+    "2750 м",
+    "1884 м",
+    "2228 м"
+   ],
+   "key": "D",
+   "model_answer": "A"
+  },
+  {
+   "id": "elevation:Q14081",
+   "text": "Высота Чимборасо?",
+   "genitive": "Чимборасо",
+   "genitive_ok": true,
+   "options": [
+    "6263 м",
+    "7633 м",
+    "4093 м",
+    "8039 м"
+   ],
+   "key": "A",
+   "model_answer": "B"
+  },
+  {
+   "id": "elevation:Q170089",
+   "text": "Высота Чо-Ойю?",
+   "genitive": "Чо-Ойю",
+   "genitive_ok": true,
+   "options": [
+    "5690 м",
+    "8188 м",
+    "7307 м",
+    "6255 м"
+   ],
+   "key": "B",
+   "model_answer": "B"
+  },
+  {
+   "id": "elevation:Q4675",
+   "text": "Высота Сент-Хеленса?",
+   "genitive": "Сент-Хеленса",
+   "genitive_ok": true,
+   "options": [
+    "3408 м",
+    "2549 м",
+    "2785 м",
+    "1911 м"
+   ],
+   "key": "B",
+   "model_answer": "A"
+  },
+  {
+   "id": "elevation:Q170070",
+   "text": "Высота Манаслу?",
+   "genitive": "Манаслу",
+   "genitive_ok": true,
+   "options": [
+    "7139 м",
+    "5967 м",
+    "8163 м",
+    "5371 м"
+   ],
+   "key": "C",
+   "model_answer": "C"
+  },
+  {
+   "id": "elevation:Q134108",
+   "text": "Высота Мерапи?",
+   "genitive": "Мерапи",
+   "genitive_ok": true,
+   "options": [
+    "2910 м",
+    "3703 м",
+    "2619 м",
+    "3420 м"
+   ],
+   "key": "A",
+   "model_answer": "B"
+  },
+  {
+   "id": "elevation:Q105124",
+   "text": "Высота Шиши Пангма?",
+   "genitive": "Шиши Пангма",
+   "genitive_ok": true,
+   "options": [
+    "6530 м",
+    "8686 м",
+    "5652 м",
+    "8027 м"
+   ],
+   "key": "D",
+   "model_answer": "B"
+  },
+  {
+   "id": "elevation:Q104674",
+   "text": "Высота Бен-Невиса?",
+   "genitive": "Бен-Невиса",
+   "genitive_ok": true,
+   "options": [
+    "1792 м",
+    "1345 м",
+    "1117 м",
+    "1239 м"
+   ],
+   "key": "B",
+   "model_answer": "A"
+  },
+  {
+   "id": "elevation:Q1045888",
+   "text": "Высота Пунчак-Джая?",
+   "genitive": "Пунчак-Джая",
+   "genitive_ok": true,
+   "options": [
+    "3330 м",
+    "4884 м",
+    "4280 м",
+    "3982 м"
+   ],
+   "key": "B",
+   "model_answer": "B"
+  },
+  {
+   "id": "elevation:Q107635",
+   "text": "Высота Пэктусана?",
+   "genitive": "Пэктусана",
+   "genitive_ok": true,
+   "options": [
+    "1975 м",
+    "2744 м",
+    "3580 м",
+    "2428 м"
+   ],
+   "key": "B",
+   "model_answer": "C"
+  },
+  {
+   "id": "highest_point:Q155",
+   "text": "Самая высокая вершина Бразилии?",
+   "genitive": "Бразилии",
+   "genitive_ok": true,
+   "options": [
+    "Аконкагуа",
+    "Серро-де-ла-Неблина",
+    "Охос-дель-Саладо",
+    "Чимборасо"
+   ],
+   "key": "B",
+   "model_answer": "B"
+  },
+  {
+   "id": "highest_point:Q31",
+   "text": "Самая высокая вершина Бельгии?",
+   "genitive": "Бельгии",
+   "genitive_ok": true,
+   "options": [
+    "Арарат",
+    "Эльбрус",
+    "Синьяль-де-Ботранж",
+    "Монблан"
+   ],
+   "key": "C",
+   "model_answer": "C"
+  },
+  {
+   "id": "highest_point:Q298",
+   "text": "Самая высокая вершина Чили?",
+   "genitive": "Чили",
+   "genitive_ok": true,
+   "options": [
+    "Аконкагуа",
+    "Чимборасо",
+    "Охос-дель-Саладо",
+    "Рорайма"
+   ],
+   "key": "C",
+   "model_answer": "A"
+  },
+  {
+   "id": "highest_point:Q801",
+   "text": "Самая высокая вершина Израиля?",
+   "genitive": "Израиля",
+   "genitive_ok": true,
+   "options": [
+    "Джомолунгма",
+    "Мерон",
+    "Эльбрус",
+    "Фудзияма"
+   ],
+   "key": "B",
+   "model_answer": "B"
+  },
+  {
+   "id": "highest_point:Q41",
+   "text": "Самая высокая вершина страны «Греция»?",
+   "genitive": "Грекии",
+   "genitive_ok": false,
+   "options": [
+    "Монблан",
+    "Эльбрус",
+    "Арарат",
+    "Олимп"
+   ],
+   "key": "D",
+   "model_answer": "D"
+  },
+  {
+   "id": "highest_point:Q794",
+   "text": "Самая высокая вершина Ирана?",
+   "genitive": "Ирана",
+   "genitive_ok": true,
+   "options": [
+    "Эльбрус",
+    "Джомолунгма",
+    "Демавенд",
+    "Фудзияма"
+   ],
+   "key": "C",
+   "model_answer": "C"
+  },
+  {
+   "id": "highest_point:Q262",
+   "text": "Самая высокая вершина Алжира?",
+   "genitive": "Алжира",
+   "genitive_ok": true,
+   "options": [
+    "Тахат",
+    "Фогу",
+    "Рас-Дашэн",
+    "Джебель-Тубкаль"
+   ],
+   "key": "A",
+   "model_answer": "D"
+  },
+  {
+   "id": "highest_point:Q414",
+   "text": "Самая высокая вершина Аргентины?",
+   "genitive": "Аргентины",
+   "genitive_ok": true,
+   "options": [
+    "Чимборасо",
+    "Охос-дель-Саладо",
+    "Рорайма",
+    "Аконкагуа"
+   ],
+   "key": "D",
+   "model_answer": "D"
+  },
+  {
+   "id": "highest_point:Q40",
+   "text": "Самая высокая вершина Австрии?",
+   "genitive": "Австрии",
+   "genitive_ok": true,
+   "options": [
+    "Арарат",
+    "Гросглокнер",
+    "Монблан",
+    "Эльбрус"
+   ],
+   "key": "B",
+   "model_answer": "B"
+  },
+  {
+   "id": "highest_point:Q45",
+   "text": "Самая высокая вершина Португалии?",
+   "genitive": "Португалии",
+   "genitive_ok": true,
+   "options": [
+    "Арарат",
+    "Эльбрус",
+    "Пику",
+    "Монблан"
+   ],
+   "key": "C",
+   "model_answer": "C"
+  },
+  {
+   "id": "highest_point:Q34",
+   "text": "Самая высокая вершина Швеции?",
+   "genitive": "Швеции",
+   "genitive_ok": true,
+   "options": [
+    "Кебнекайсе",
+    "Монблан",
+    "Арарат",
+    "Эльбрус"
+   ],
+   "key": "A",
+   "model_answer": "A"
+  },
+  {
+   "id": "highest_point:Q881",
+   "text": "Самая высокая вершина Вьетнама?",
+   "genitive": "Вьетнама",
+   "genitive_ok": true,
+   "options": [
+    "Эльбрус",
+    "Фудзияма",
+    "Фаншипан",
+    "Джомолунгма"
+   ],
+   "key": "C",
+   "model_answer": "C"
+  },
+  {
+   "id": "highest_point:Q252",
+   "text": "Самая высокая вершина Индонезии?",
+   "genitive": "Индонезии",
+   "genitive_ok": true,
+   "options": [
+    "Джомолунгма",
+    "Пунчак-Джая",
+    "Фудзияма",
+    "Эльбрус"
+   ],
+   "key": "B",
+   "model_answer": "B"
+  },
+  {
+   "id": "highest_point:Q227",
+   "text": "Самая высокая вершина Азербайджана?",
+   "genitive": "Азербайджана",
+   "genitive_ok": true,
+   "options": [
+    "Фудзияма",
+    "Базардюзю",
+    "Эльбрус",
+    "Джомолунгма"
+   ],
+   "key": "B",
+   "model_answer": "B"
+  },
+  {
+   "id": "highest_point:Q889",
+   "text": "Самая высокая вершина Афганистана?",
+   "genitive": "Афганистана",
+   "genitive_ok": true,
+   "options": [
+    "Джомолунгма",
+    "Эльбрус",
+    "Ношак",
+    "Фудзияма"
+   ],
+   "key": "C",
+   "model_answer": "C"
+  },
+  {
+   "id": "highest_point:Q219",
+   "text": "Самая высокая вершина Болгарии?",
+   "genitive": "Болгарии",
+   "genitive_ok": true,
+   "options": [
+    "Монблан",
+    "Мусала",
+    "Арарат",
+    "Эльбрус"
+   ],
+   "key": "B",
+   "model_answer": "B"
+  },
+  {
+   "id": "highest_point:Q28",
+   "text": "Самая высокая вершина Венгрии?",
+   "genitive": "Венгрии",
+   "genitive_ok": true,
+   "options": [
+    "Кекеш",
+    "Арарат",
+    "Монблан",
+    "Эльбрус"
+   ],
+   "key": "A",
+   "model_answer": "A"
+  },
+  {
+   "id": "river_mouth:Q41179",
+   "text": "Куда впадает Меконг?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Каспийское море",
+    "Южно-Китайское море",
+    "Средиземное море",
+    "Чёрное море"
+   ],
+   "key": "B",
+   "model_answer": "B"
+  },
+  {
+   "id": "river_mouth:Q6862",
+   "text": "Куда впадает Амур?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Средиземное море",
+    "Охотское море",
+    "Каспийское море",
+    "Чёрное море"
+   ],
+   "key": "B",
+   "model_answer": "B"
+  },
+  {
+   "id": "river_mouth:Q45403",
+   "text": "Куда впадает Брахмапутра?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Нил",
+    "Ганг",
+    "Амазонка",
+    "Дунай"
+   ],
+   "key": "B",
+   "model_answer": "B"
+  },
+  {
+   "id": "river_mouth:Q973",
+   "text": "Куда впадает Обь?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Карское море",
+    "Чёрное море",
+    "Средиземное море",
+    "Каспийское море"
+   ],
+   "key": "A",
+   "model_answer": "A"
+  },
+  {
+   "id": "river_mouth:Q80240",
+   "text": "Куда впадает Урал?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Балтийское море",
+    "Чёрное море",
+    "Средиземное море",
+    "Каспийское море"
+   ],
+   "key": "D",
+   "model_answer": "D"
+  },
+  {
+   "id": "river_mouth:Q46841",
+   "text": "Куда впадает Лена?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Каспийское море",
+    "Средиземное море",
+    "Чёрное море",
+    "море Лаптевых"
+   ],
+   "key": "D",
+   "model_answer": "A"
+  },
+  {
+   "id": "river_mouth:Q5419",
+   "text": "Куда впадает Миссури?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Миссисипи",
+    "Амазонка",
+    "Нил",
+    "Дунай"
+   ],
+   "key": "A",
+   "model_answer": "A"
+  },
+  {
+   "id": "river_mouth:Q1229",
+   "text": "Куда впадает Дон?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Средиземное море",
+    "Азовское море",
+    "Балтийское море",
+    "Каспийское море"
+   ],
+   "key": "B",
+   "model_answer": "D"
+  },
+  {
+   "id": "river_mouth:Q1469",
+   "text": "Куда впадает Луара?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Каспийское море",
+    "Чёрное море",
+    "Средиземное море",
+    "Бискайский залив"
+   ],
+   "key": "D",
+   "model_answer": "C"
+  },
+  {
+   "id": "river_mouth:Q643",
+   "text": "Куда впадает По?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Каспийское море",
+    "Чёрное море",
+    "Балтийское море",
+    "Адриатическое море"
+   ],
+   "key": "D",
+   "model_answer": "A"
+  },
+  {
+   "id": "river_mouth:Q602",
+   "text": "Куда впадает Рона?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Каспийское море",
+    "Средиземное море",
+    "Балтийское море",
+    "Чёрное море"
+   ],
+   "key": "B",
+   "model_answer": "B"
+  },
+  {
+   "id": "river_mouth:Q131210",
+   "text": "Куда впадает Днестр?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Днестровский лиман",
+    "Балтийское море",
+    "Каспийское море",
+    "Средиземное море"
+   ],
+   "key": "A",
+   "model_answer": "A"
+  },
+  {
+   "id": "river_mouth:Q134750",
+   "text": "Куда впадает река Святого Лаврентия?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Чёрное море",
+    "Каспийское море",
+    "Залив Святого Лаврентия",
+    "Средиземное море"
+   ],
+   "key": "C",
+   "model_answer": "C"
+  },
+  {
+   "id": "river_mouth:Q13712",
+   "text": "Куда впадает Тибр?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Тирренское море",
+    "Балтийское море",
+    "Каспийское море",
+    "Чёрное море"
+   ],
+   "key": "A",
+   "model_answer": "A"
+  },
+  {
+   "id": "river_mouth:Q14294",
+   "text": "Куда впадает Тахо?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Атлантический океан",
+    "Индийский океан",
+    "Каспийское море",
+    "Тихий океан"
+   ],
+   "key": "A",
+   "model_answer": "A"
+  },
+  {
+   "id": "river_mouth:Q131792",
+   "text": "Куда впадает Ориноко?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Тихий океан",
+    "Каспийское море",
+    "Индийский океан",
+    "Атлантический океан"
+   ],
+   "key": "D",
+   "model_answer": "D"
+  },
+  {
+   "id": "river_mouth:Q1265",
+   "text": "Куда впадает Колорадо?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Средиземное море",
+    "Калифорнийский залив",
+    "Каспийское море",
+    "Чёрное море"
+   ],
+   "key": "B",
+   "model_answer": "B"
+  }
+ ]
+}
