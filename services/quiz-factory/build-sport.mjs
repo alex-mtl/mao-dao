@@ -1,4 +1,5 @@
-// Sport drafts from Wikidata: node build-sport.mjs [--total=100] [--skip=N] [--out=data/sport-drafts.json]
+// Sport drafts from Wikidata: node build-sport.mjs [--batch=N] [--out=data/sport-drafts.json]
+// --batch=2 takes the next most famous questions of each type after batch 1 (each type has its own share).
 // Same rules as build-geo.mjs: one best-rank value only, Russian label and Russian Wikipedia article, wrong answers of
 // the same kind that are surely wrong. Quiz-show wording without declension, so the model only checks:
 //   «Где прошла летняя Олимпиада-1980?», «Где прошёл чемпионат мира по футболу 2018 года?»,
@@ -7,7 +8,7 @@ import { writeFileSync, mkdirSync } from 'node:fs';
 import { sparql, goodLabel } from './lib/wikidata.mjs';
 
 const arg = (n, d) => (process.argv.find((a) => a.startsWith(`--${n}=`)) ?? `=${d}`).split('=')[1];
-const SKIP = Number(arg('skip', 0));
+const BATCH = Number(arg('batch', 1));
 const OUT = arg('out', 'data/sport-drafts.json');
 const ru = (v) => `?art_${v.slice(1)} schema:about ${v}; schema:isPartOf <https://ru.wikipedia.org/>.`;
 const lbl = (...vs) => vs.map((v) => `${v} rdfs:label ${v}Label. FILTER(LANG(${v}Label) = 'ru')`).join(' ');
@@ -139,15 +140,20 @@ for (const [series, name, key] of [['Q19317', 'чемпионат мира по 
 const SHARE = { olympics_summer: 10, olympics_winter: 10, wc_host: 12, wc_winner: 12, euro_host: 8, euro_winner: 8, athlete_sport: 22, club_country: 21 };
 const counts = {};
 const picked = [];
-for (const [type, n] of Object.entries(SHARE)) {
-  const all = drafts.filter((d) => d.type === type).sort((a, b) => b.popularity - a.popularity);
-  counts[type] = all.length;
-  // one answer at most 5 times per batch (otherwise half the athletes are footballers)
-  const perAnswer = new Map();
-  const varied = type === 'athlete_sport'
-    ? all.filter((d) => { const k = perAnswer.get(d.correct) ?? 0; perAnswer.set(d.correct, k + 1); return k < 5 * (1 + Math.floor(SKIP / n)); })
-    : all;
-  picked.push(...varied.slice(SKIP, SKIP + n));
+const taken = new Set();
+// batches are made one after another, each from what earlier batches left; a sport at most 5 times per batch
+for (let b = 1; b <= BATCH; b++) {
+  for (const [type, n] of Object.entries(SHARE)) {
+    const all = drafts.filter((d) => d.type === type && !taken.has(d.id)).sort((a, b2) => b2.popularity - a.popularity);
+    counts[type] = all.length;
+    const perAnswer = new Map();
+    const varied = type === 'athlete_sport'
+      ? all.filter((d) => { const k = perAnswer.get(d.correct) ?? 0; perAnswer.set(d.correct, k + 1); return k < 5; })
+      : all;
+    const batch = varied.slice(0, n);
+    batch.forEach((d) => taken.add(d.id));
+    if (b === BATCH) picked.push(...batch);
+  }
 }
 mkdirSync('data', { recursive: true });
 writeFileSync(OUT, JSON.stringify(picked, null, 1));

@@ -1,5 +1,6 @@
 // Final questions -> mao-dao quiz library (POST /internal/quizzes/import, see app/Http/Controllers/QuizImportController.php).
-//   node import.mjs <final.json> [--dry-run] [--size=20] [--status=published|draft]
+//   node import.mjs <final.json> [--dry-run] [--size=20] [--status=published|draft] [--first-part=N]
+// --first-part: a later batch goes into new quizzes (part N, N+1...) instead of growing the first ones.
 // One quiz per question type, split into parts of --size questions (key geo-<type>-<n>, so a re-run only adds new
 // questions). Each question gets its correct answer + 3 wrong ones from its pool, and the whole pool goes to
 // questions.wrong_pool (a round can pick other wrong answers from it).
@@ -14,6 +15,7 @@ const opt = (n, d) => (args.find((a) => a.startsWith(`--${n}=`)) ?? `=${d}`).spl
 const DRY = args.includes('--dry-run');
 const SIZE = Number(opt('size', 20));
 const STATUS = opt('status', 'published');
+const FIRST_PART = Number(opt('first-part', 1));
 const URL_BASE = process.env.QUIZ_IMPORT_URL || 'https://mao-dao.com';
 const secretFile = join(homedir(), '.mao-dao', 'quiz-import-secret');
 const SECRET = process.env.QUIZ_IMPORT_SECRET || (existsSync(secretFile) ? readFileSync(secretFile, 'utf8').trim() : '');
@@ -54,8 +56,8 @@ for (const [type, qs] of Object.entries(byType)) {
     const [title, description] = TITLES[type] ?? [type, ''];
     const [prefix, section, tag] = CATEGORY[chunk[0].category ?? 'geography'];
     const body = {
-      key: `${prefix}-${type.replace(/_/g, '-')}-${part + 1}`,
-      title: `${section}: ${title}${part ? ` — ${part + 1}` : ''}`,
+      key: `${prefix}-${type.replace(/_/g, '-')}-${part + FIRST_PART}`,
+      title: `${section}: ${title}${part + FIRST_PART > 1 ? ` — ${part + FIRST_PART}` : ''}`,
       description: `${description}. Факты из Wikidata.`,
       language: 'ru', tags: [tag], status: STATUS,
       questions: chunk.map((q) => ({ text: q.text, answers: [{ text: q.correct, is_correct: true }, ...pick3(q).map((t) => ({ text: t, is_correct: false }))], wrong_pool: q.wrong, key: q.id, ...(q.previous_text ? { previous_text: q.previous_text } : {}) })),

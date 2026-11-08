@@ -1,0 +1,1019 @@
+{
+ "run": "20261108165501",
+ "model": "ai-sage/GigaChat3.1-10B-A1.8B-GGUF:q8_0",
+ "mode": "gguf-q8_0",
+ "gpus": [
+  "Tesla T4 14GB",
+  "Tesla T4 14GB"
+ ],
+ "count": 71,
+ "build_seconds": 4.9,
+ "binary": "image server-cuda-b12199",
+ "server_start_seconds": 51.1,
+ "seconds": {
+  "load": 117.1,
+  "genitive": 0,
+  "verify": 32.1
+ },
+ "genitives": {},
+ "tokens": {
+  "genitive_out": 0,
+  "verify_out": 142
+ },
+ "items": [
+  {
+   "id": "olympics_summer:Q8098",
+   "text": "Где прошла летняя Олимпиада-1904?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Стокгольм",
+    "Берлин",
+    "Сент-Луис",
+    "Афины"
+   ],
+   "key": "C",
+   "model_answer": "C"
+  },
+  {
+   "id": "olympics_summer:Q8531",
+   "text": "Где прошла летняя Олимпиада-1996?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Берлин",
+    "Афины",
+    "Атланта",
+    "Стокгольм"
+   ],
+   "key": "C",
+   "model_answer": "C"
+  },
+  {
+   "id": "olympics_summer:Q8488",
+   "text": "Где прошла летняя Олимпиада-1992?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Барселона",
+    "Афины",
+    "Стокгольм",
+    "Берлин"
+   ],
+   "key": "A",
+   "model_answer": "A"
+  },
+  {
+   "id": "olympics_summer:Q8111",
+   "text": "Где прошла летняя Олимпиада-1908?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Афины",
+    "Стокгольм",
+    "Берлин",
+    "Лондон"
+   ],
+   "key": "D",
+   "model_answer": "D"
+  },
+  {
+   "id": "olympics_summer:Q8118",
+   "text": "Где прошла летняя Олимпиада-1912?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Афины",
+    "Берлин",
+    "Париж",
+    "Стокгольм"
+   ],
+   "key": "D",
+   "model_answer": "D"
+  },
+  {
+   "id": "olympics_summer:Q8150",
+   "text": "Где прошла летняя Олимпиада-1936?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Стокгольм",
+    "Париж",
+    "Афины",
+    "Берлин"
+   ],
+   "key": "D",
+   "model_answer": "D"
+  },
+  {
+   "id": "olympics_summer:Q8138",
+   "text": "Где прошла летняя Олимпиада-1928?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Берлин",
+    "Амстердам",
+    "Стокгольм",
+    "Афины"
+   ],
+   "key": "B",
+   "model_answer": "B"
+  },
+  {
+   "id": "olympics_summer:Q8420",
+   "text": "Где прошла летняя Олимпиада-1964?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Афины",
+    "Стокгольм",
+    "Берлин",
+    "Токио"
+   ],
+   "key": "D",
+   "model_answer": "D"
+  },
+  {
+   "id": "olympics_summer:Q8470",
+   "text": "Где прошла летняя Олимпиада-1988?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Афины",
+    "Стокгольм",
+    "Сеул",
+    "Берлин"
+   ],
+   "key": "C",
+   "model_answer": "C"
+  },
+  {
+   "id": "olympics_summer:Q8456",
+   "text": "Где прошла летняя Олимпиада-1984?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Стокгольм",
+    "Берлин",
+    "Лос-Анджелес",
+    "Афины"
+   ],
+   "key": "C",
+   "model_answer": "C"
+  },
+  {
+   "id": "olympics_winter:Q9636",
+   "text": "Где прошла зимняя Олимпиада-1964?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Лейк-Плэсид",
+    "Инсбрук",
+    "Гармиш-Партенкирхен",
+    "Шамони-Мон-Блан"
+   ],
+   "key": "B",
+   "model_answer": "B"
+  },
+  {
+   "id": "olympics_winter:Q9652",
+   "text": "Где прошла зимняя Олимпиада-1980?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Санкт-Мориц",
+    "Гармиш-Партенкирхен",
+    "Шамони-Мон-Блан",
+    "Лейк-Плэсид"
+   ],
+   "key": "D",
+   "model_answer": "D"
+  },
+  {
+   "id": "olympics_winter:Q9591",
+   "text": "Где прошла зимняя Олимпиада-1928?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Санкт-Мориц",
+    "Лейк-Плэсид",
+    "Гармиш-Партенкирхен",
+    "Шамони-Мон-Блан"
+   ],
+   "key": "A",
+   "model_answer": "A"
+  },
+  {
+   "id": "olympics_winter:Q9623",
+   "text": "Где прошла зимняя Олимпиада-1952?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Шамони-Мон-Блан",
+    "Гармиш-Партенкирхен",
+    "Лейк-Плэсид",
+    "Осло"
+   ],
+   "key": "D",
+   "model_answer": "D"
+  },
+  {
+   "id": "olympics_winter:Q9600",
+   "text": "Где прошла зимняя Олимпиада-1936?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Гармиш-Партенкирхен",
+    "Санкт-Мориц",
+    "Шамони-Мон-Блан",
+    "Лейк-Плэсид"
+   ],
+   "key": "A",
+   "model_answer": "A"
+  },
+  {
+   "id": "olympics_winter:Q9615",
+   "text": "Где прошла зимняя Олимпиада-1948?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Лейк-Плэсид",
+    "Шамони-Мон-Блан",
+    "Санкт-Мориц",
+    "Гармиш-Партенкирхен"
+   ],
+   "key": "C",
+   "model_answer": "C"
+  },
+  {
+   "id": "olympics_winter:Q9642",
+   "text": "Где прошла зимняя Олимпиада-1968?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Гармиш-Партенкирхен",
+    "Лейк-Плэсид",
+    "Шамони-Мон-Блан",
+    "Гренобль"
+   ],
+   "key": "D",
+   "model_answer": "D"
+  },
+  {
+   "id": "olympics_winter:Q9634",
+   "text": "Где прошла зимняя Олимпиада-1960?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Шамони-Мон-Блан",
+    "Гармиш-Партенкирхен",
+    "Скво-Вэлли",
+    "Лейк-Плэсид"
+   ],
+   "key": "C",
+   "model_answer": "A"
+  },
+  {
+   "id": "wc_host:Q134202",
+   "text": "Где прошёл чемпионат мира по футболу 1966 года?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Франция",
+    "Бразилия",
+    "Великобритания",
+    "США"
+   ],
+   "key": "C",
+   "model_answer": "C"
+  },
+  {
+   "id": "wc_host:Q46943",
+   "text": "Где прошёл чемпионат мира по футболу 1978 года?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "США",
+    "Франция",
+    "Бразилия",
+    "Аргентина"
+   ],
+   "key": "D",
+   "model_answer": "D"
+  },
+  {
+   "id": "wc_host:Q101751",
+   "text": "Где прошёл чемпионат мира по футболу 1994 года?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Бразилия",
+    "Швейцария",
+    "США",
+    "Франция"
+   ],
+   "key": "C",
+   "model_answer": "C"
+  },
+  {
+   "id": "wc_host:Q131075",
+   "text": "Где прошёл чемпионат мира по футболу 1954 года?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Швейцария",
+    "США",
+    "Бразилия",
+    "Франция"
+   ],
+   "key": "A",
+   "model_answer": "A"
+  },
+  {
+   "id": "wc_host:Q160813",
+   "text": "Где прошёл чемпионат мира по футболу 1962 года?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Чили",
+    "Франция",
+    "Бразилия",
+    "США"
+   ],
+   "key": "A",
+   "model_answer": "A"
+  },
+  {
+   "id": "wc_host:Q46934",
+   "text": "Где прошёл чемпионат мира по футболу 1982 года?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Бразилия",
+    "США",
+    "Франция",
+    "Испания"
+   ],
+   "key": "D",
+   "model_answer": "D"
+  },
+  {
+   "id": "wc_host:Q132533",
+   "text": "Где прошёл чемпионат мира по футболу 1958 года?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Франция",
+    "Бразилия",
+    "Швеция",
+    "США"
+   ],
+   "key": "C",
+   "model_answer": "C"
+  },
+  {
+   "id": "wc_host:Q166121",
+   "text": "Где прошёл чемпионат мира по футболу 1974 года?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Франция",
+    "США",
+    "Бразилия",
+    "Германия"
+   ],
+   "key": "D",
+   "model_answer": "D"
+  },
+  {
+   "id": "wc_host:Q132664",
+   "text": "Где прошёл чемпионат мира по футболу 1970 года?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "США",
+    "Мексика",
+    "Бразилия",
+    "Франция"
+   ],
+   "key": "B",
+   "model_answer": "B"
+  },
+  {
+   "id": "wc_winner:Q132529",
+   "text": "Кто выиграл чемпионат мира по футболу 1990 года?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Франция",
+    "Бразилия",
+    "Германия",
+    "США"
+   ],
+   "key": "C",
+   "model_answer": "C"
+  },
+  {
+   "id": "wc_winner:Q131591",
+   "text": "Кто выиграл чемпионат мира по футболу 1938 года?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Италия",
+    "Франция",
+    "Бразилия",
+    "США"
+   ],
+   "key": "A",
+   "model_answer": "A"
+  },
+  {
+   "id": "wc_winner:Q134202",
+   "text": "Кто выиграл чемпионат мира по футболу 1966 года?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Франция",
+    "США",
+    "Великобритания",
+    "Бразилия"
+   ],
+   "key": "C",
+   "model_answer": "C"
+  },
+  {
+   "id": "wc_winner:Q46943",
+   "text": "Кто выиграл чемпионат мира по футболу 1978 года?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Аргентина",
+    "Франция",
+    "США",
+    "Бразилия"
+   ],
+   "key": "A",
+   "model_answer": "A"
+  },
+  {
+   "id": "wc_winner:Q101751",
+   "text": "Кто выиграл чемпионат мира по футболу 1994 года?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Бразилия",
+    "Швейцария",
+    "США",
+    "Франция"
+   ],
+   "key": "A",
+   "model_answer": "A"
+  },
+  {
+   "id": "wc_winner:Q131075",
+   "text": "Кто выиграл чемпионат мира по футболу 1954 года?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Бразилия",
+    "Германия",
+    "Франция",
+    "США"
+   ],
+   "key": "B",
+   "model_answer": "B"
+  },
+  {
+   "id": "wc_winner:Q160813",
+   "text": "Кто выиграл чемпионат мира по футболу 1962 года?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Швейцария",
+    "Бразилия",
+    "США",
+    "Франция"
+   ],
+   "key": "B",
+   "model_answer": "B"
+  },
+  {
+   "id": "wc_winner:Q46934",
+   "text": "Кто выиграл чемпионат мира по футболу 1982 года?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Франция",
+    "США",
+    "Италия",
+    "Бразилия"
+   ],
+   "key": "C",
+   "model_answer": "C"
+  },
+  {
+   "id": "wc_winner:Q132533",
+   "text": "Кто выиграл чемпионат мира по футболу 1958 года?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "США",
+    "Швейцария",
+    "Франция",
+    "Бразилия"
+   ],
+   "key": "D",
+   "model_answer": "D"
+  },
+  {
+   "id": "wc_winner:Q166121",
+   "text": "Кто выиграл чемпионат мира по футболу 1974 года?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Германия",
+    "Франция",
+    "США",
+    "Бразилия"
+   ],
+   "key": "A",
+   "model_answer": "A"
+  },
+  {
+   "id": "wc_winner:Q132664",
+   "text": "Кто выиграл чемпионат мира по футболу 1970 года?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Франция",
+    "Швейцария",
+    "США",
+    "Бразилия"
+   ],
+   "key": "D",
+   "model_answer": "D"
+  },
+  {
+   "id": "euro_host:Q161810",
+   "text": "Где прошёл чемпионат Европы по футболу 1992 года?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Франция",
+    "Португалия",
+    "Великобритания",
+    "Швеция"
+   ],
+   "key": "D",
+   "model_answer": "D"
+  },
+  {
+   "id": "euro_host:Q182196",
+   "text": "Где прошёл чемпионат Европы по футболу 1980 года?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Португалия",
+    "Италия",
+    "Швеция",
+    "Франция"
+   ],
+   "key": "B",
+   "model_answer": "B"
+  },
+  {
+   "id": "euro_host:Q182770",
+   "text": "Где прошёл чемпионат Европы по футболу 1984 года?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Великобритания",
+    "Португалия",
+    "Франция",
+    "Швеция"
+   ],
+   "key": "C",
+   "model_answer": "C"
+  },
+  {
+   "id": "euro_winner:Q182201",
+   "text": "Кто выиграл чемпионат Европы по футболу 1968 года?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Швеция",
+    "Франция",
+    "Италия",
+    "Португалия"
+   ],
+   "key": "C",
+   "model_answer": "C"
+  },
+  {
+   "id": "euro_winner:Q182386",
+   "text": "Кто выиграл чемпионат Европы по футболу 1972 года?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Швеция",
+    "Франция",
+    "Германия",
+    "Португалия"
+   ],
+   "key": "C",
+   "model_answer": "C"
+  },
+  {
+   "id": "euro_winner:Q182196",
+   "text": "Кто выиграл чемпионат Европы по футболу 1980 года?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Швеция",
+    "Португалия",
+    "Франция",
+    "Германия"
+   ],
+   "key": "D",
+   "model_answer": "D"
+  },
+  {
+   "id": "euro_winner:Q182770",
+   "text": "Кто выиграл чемпионат Европы по футболу 1984 года?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Великобритания",
+    "Швеция",
+    "Франция",
+    "Португалия"
+   ],
+   "key": "C",
+   "model_answer": "C"
+  },
+  {
+   "id": "athlete_sport:Q20110",
+   "text": "Франческо Тотти — какой вид спорта?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Автомобильные гонки",
+    "Бокс",
+    "Теннис",
+    "Футбол"
+   ],
+   "key": "D",
+   "model_answer": "D"
+  },
+  {
+   "id": "athlete_sport:Q483837",
+   "text": "Лука Модрич — какой вид спорта?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Автомобильные гонки",
+    "Футбол",
+    "Теннис",
+    "Бокс"
+   ],
+   "key": "B",
+   "model_answer": "B"
+  },
+  {
+   "id": "athlete_sport:Q68060",
+   "text": "Джанлуиджи Буффон — какой вид спорта?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Бокс",
+    "Автомобильные гонки",
+    "Теннис",
+    "Футбол"
+   ],
+   "key": "D",
+   "model_answer": "D"
+  },
+  {
+   "id": "athlete_sport:Q79983",
+   "text": "Жозе Моуриньо — какой вид спорта?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Автомобильные гонки",
+    "Бокс",
+    "Футбол",
+    "Теннис"
+   ],
+   "key": "C",
+   "model_answer": "C"
+  },
+  {
+   "id": "athlete_sport:Q1912",
+   "text": "Карим Бензема — какой вид спорта?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Бокс",
+    "Футбол",
+    "Теннис",
+    "Автомобильные гонки"
+   ],
+   "key": "B",
+   "model_answer": "B"
+  },
+  {
+   "id": "club_country:Q41420",
+   "text": "В какой стране играет «Боруссия»?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Германия",
+    "Турция",
+    "Россия",
+    "Франция"
+   ],
+   "key": "A",
+   "model_answer": "A"
+  },
+  {
+   "id": "club_country:Q18716",
+   "text": "В какой стране играет «Ньюкасл Юнайтед»?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Франция",
+    "Турция",
+    "Великобритания",
+    "Россия"
+   ],
+   "key": "C",
+   "model_answer": "C"
+  },
+  {
+   "id": "club_country:Q2052",
+   "text": "В какой стране играет «Фиорентина»?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Франция",
+    "Россия",
+    "Турция",
+    "Италия"
+   ],
+   "key": "D",
+   "model_answer": "D"
+  },
+  {
+   "id": "club_country:Q19481",
+   "text": "В какой стране играет «Лестер Сити»?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Франция",
+    "Великобритания",
+    "Турция",
+    "Россия"
+   ],
+   "key": "B",
+   "model_answer": "B"
+  },
+  {
+   "id": "club_country:Q38568",
+   "text": "В какой стране играет «Сан-Паулу»?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Колумбия",
+    "Бразилия",
+    "Чили",
+    "Аргентина"
+   ],
+   "key": "B",
+   "model_answer": "B"
+  },
+  {
+   "id": "club_country:Q128446",
+   "text": "В какой стране играет «Порту»?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Турция",
+    "Франция",
+    "Россия",
+    "Португалия"
+   ],
+   "key": "D",
+   "model_answer": "D"
+  },
+  {
+   "id": "club_country:Q10333",
+   "text": "В какой стране играет «Валенсия»?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Россия",
+    "Испания",
+    "Франция",
+    "Турция"
+   ],
+   "key": "B",
+   "model_answer": "B"
+  },
+  {
+   "id": "club_country:Q131499",
+   "text": "В какой стране играет «Бенфика»?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Франция",
+    "Россия",
+    "Португалия",
+    "Турция"
+   ],
+   "key": "C",
+   "model_answer": "C"
+  },
+  {
+   "id": "club_country:Q6601875",
+   "text": "В какой стране играет «Фенербахче»?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Россия",
+    "Турция",
+    "Франция",
+    "Япония"
+   ],
+   "key": "B",
+   "model_answer": "B"
+  },
+  {
+   "id": "club_country:Q495299",
+   "text": "В какой стране играет «Галатасарай»?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Россия",
+    "Япония",
+    "Франция",
+    "Турция"
+   ],
+   "key": "D",
+   "model_answer": "D"
+  },
+  {
+   "id": "club_country:Q207373",
+   "text": "В какой стране играет «Коло-Коло»?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Бразилия",
+    "Колумбия",
+    "Аргентина",
+    "Чили"
+   ],
+   "key": "D",
+   "model_answer": "D"
+  },
+  {
+   "id": "club_country:Q17479",
+   "text": "В какой стране играет «Фламенго»?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Чили",
+    "Колумбия",
+    "Аргентина",
+    "Бразилия"
+   ],
+   "key": "D",
+   "model_answer": "D"
+  },
+  {
+   "id": "club_country:Q1886",
+   "text": "В какой стране играет «Аталанта»?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Италия",
+    "Турция",
+    "Россия",
+    "Франция"
+   ],
+   "key": "A",
+   "model_answer": "A"
+  },
+  {
+   "id": "club_country:Q104761",
+   "text": "В какой стране играет «Байер 04»?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Германия",
+    "Турция",
+    "Россия",
+    "Франция"
+   ],
+   "key": "A",
+   "model_answer": "A"
+  },
+  {
+   "id": "club_country:Q714581",
+   "text": "В какой стране играет «Неа Саламина»?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Кипр",
+    "Турция",
+    "Россия",
+    "Франция"
+   ],
+   "key": "A",
+   "model_answer": "A"
+  },
+  {
+   "id": "club_country:Q1893",
+   "text": "В какой стране играет «Болонья»?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Россия",
+    "Турция",
+    "Италия",
+    "Франция"
+   ],
+   "key": "C",
+   "model_answer": "C"
+  },
+  {
+   "id": "club_country:Q32494",
+   "text": "В какой стране играет «Шальке 04»?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Россия",
+    "Турция",
+    "Германия",
+    "Франция"
+   ],
+   "key": "C",
+   "model_answer": "C"
+  },
+  {
+   "id": "club_country:Q8687",
+   "text": "В какой стране играет «Атлетик Бильбао»?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Россия",
+    "Испания",
+    "Франция",
+    "Турция"
+   ],
+   "key": "B",
+   "model_answer": "B"
+  },
+  {
+   "id": "club_country:Q2074",
+   "text": "В какой стране играет «Дженоа»?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Франция",
+    "Турция",
+    "Италия",
+    "Россия"
+   ],
+   "key": "C",
+   "model_answer": "C"
+  },
+  {
+   "id": "club_country:Q4512",
+   "text": "В какой стране играет «Штутгарт»?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Германия",
+    "Турция",
+    "Россия",
+    "Франция"
+   ],
+   "key": "A",
+   "model_answer": "A"
+  },
+  {
+   "id": "club_country:Q242260",
+   "text": "В какой стране играет «Персеполис»?",
+   "genitive": null,
+   "genitive_ok": null,
+   "options": [
+    "Турция",
+    "Россия",
+    "Япония",
+    "Иран"
+   ],
+   "key": "D",
+   "model_answer": "D"
+  }
+ ]
+}

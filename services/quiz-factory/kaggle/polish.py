@@ -48,8 +48,66 @@ def gen_ok(name, gen):
 LETTERS = "ABCD"
 
 
+LLAMA_IMAGE = ("ggml-org/llama.cpp", "server-cuda-b12199")  # official CUDA 12.8 / Ubuntu 24.04 image = Kaggle's base
+
+
+def llama_from_image(dest="/tmp/llama-bin"):
+    """llama-server + its .so from the official image's two top layers (no Docker, no compiling): ~190 MB.
+    The NVIDIA base layers (CUDA runtime, cuBLAS, ~2 GB) are skipped - Kaggle has the same CUDA 12.8 in /usr/local/cuda."""
+    import io, tarfile, urllib.request
+    repo, tag = LLAMA_IMAGE
+    get = lambda url, hdr: urllib.request.urlopen(urllib.request.Request(url, headers=hdr), timeout=120)
+    token = json.load(get(f"https://ghcr.io/token?scope=repository:{repo}:pull", {}))["token"]
+    auth = {"Authorization": f"Bearer {token}"}
+    accept = {**auth, "Accept": "application/vnd.oci.image.index.v1+json, application/vnd.oci.image.manifest.v1+json, "
+                                "application/vnd.docker.distribution.manifest.list.v2+json, application/vnd.docker.distribution.manifest.v2+json"}
+    man = json.load(get(f"https://ghcr.io/v2/{repo}/manifests/{tag}", accept))
+    if "manifests" in man:  # an index: the linux/amd64 image
+        digest = next(m["digest"] for m in man["manifests"] if m.get("platform", {}).get("architecture") == "amd64")
+        man = json.load(get(f"https://ghcr.io/v2/{repo}/manifests/{digest}", accept))
+    cfg = json.load(get(f"https://ghcr.io/v2/{repo}/blobs/{man['config']['digest']}", auth))
+    history = [h for h in cfg.get("history", []) if not h.get("empty_layer")]
+    os.makedirs(dest, exist_ok=True)
+    for layer, h in zip(man["layers"], history):
+        if "COPY" not in h.get("created_by", "") or "/app" not in h.get("created_by", ""):
+            continue
+        blob = get(f"https://ghcr.io/v2/{repo}/blobs/{layer['digest']}", auth)
+        with tarfile.open(fileobj=blob, mode="r|*") as tar:
+            for m in tar:
+                if m.name.startswith("app/") and (m.isfile() or m.issym()):
+                    m.name = m.name[4:]
+                    tar.extract(m, dest)
+        log("layer", layer["digest"][:19], round(layer["size"] / 1e6, 1), "MB")
+    server = os.path.join(dest, "llama-server")
+    if not os.path.exists(server):
+        raise RuntimeError("llama-server not found in the image layers: " + str(os.listdir(dest))[:500])
+    os.chmod(server, 0o755)
+    return server
+
+
+def llama_from_source():
+    """fallback: build llama.cpp here for the T4 only (~30 min on Kaggle's 4 CPUs)"""
+    import glob
+    cuda = next((d for d in ["/usr/local/cuda", *sorted(glob.glob("/usr/local/cuda-*"), reverse=True)] if os.path.exists(d + "/bin/nvcc")), None)
+    if cuda is None:
+        raise RuntimeError("no nvcc")
+    env = {**os.environ, "PATH": f"{cuda}/bin:" + os.environ["PATH"], "CUDACXX": f"{cuda}/bin/nvcc"}
+    # CMake's CUDA::cuda_driver needs libcuda.so; Kaggle has only the driver's libcuda.so.1 (or the toolkit stub)
+    libcuda = next(iter(glob.glob(f"{cuda}/lib64/stubs/libcuda.so") + glob.glob(f"{cuda}/targets/x86_64-linux/lib/stubs/libcuda.so")
+                        + glob.glob("/usr/lib/x86_64-linux-gnu/libcuda.so*") + glob.glob("/usr/local/nvidia/lib64/libcuda.so*")), None)
+    subprocess.run([sys.executable, "-m", "pip", "install", "-q", "-U", "cmake", "ninja"], check=False)
+    subprocess.run("git clone --depth 1 https://github.com/ggml-org/llama.cpp.git /tmp/llama.cpp", shell=True, check=True)
+    r = subprocess.run("cd /tmp/llama.cpp && cmake -B build -G Ninja -DGGML_CUDA=ON -DCMAKE_CUDA_ARCHITECTURES=75 -DLLAMA_CURL=OFF "
+                       "-DLLAMA_BUILD_TESTS=OFF -DLLAMA_BUILD_EXAMPLES=OFF -DCMAKE_BUILD_TYPE=Release "
+                       + (f"-DCUDA_cuda_driver_LIBRARY={libcuda} " if libcuda else "") + "> /tmp/cmake.log 2>&1 && "
+                       f"cmake --build build --target llama-server -j {os.cpu_count()} >> /tmp/cmake.log 2>&1", shell=True, env=env)
+    if r.returncode:
+        raise RuntimeError("llama.cpp build failed: " + open("/tmp/cmake.log").read()[-2500:])
+    return "/tmp/llama.cpp/build/bin/llama-server"
+
+
 class LlamaServer:
-    """GGUF models ("org/repo-GGUF:q8_0"): llama.cpp's llama-server built here for the T4 (sm_75), 8 parallel slots."""
+    """GGUF models ("org/repo-GGUF:q8_0"): llama.cpp's llama-server (from the official image), 8 parallel slots."""
 
     def __init__(self, name):
         import urllib.request
@@ -57,35 +115,24 @@ class LlamaServer:
         repo, quant = name.split(":")
         self.port = 8090
         tb = time.time()
-        if not os.path.exists("/tmp/llama.cpp/build/bin/llama-server"):
-            # nvcc is not on PATH in Kaggle's image; find the toolkit, and a recent cmake comes from pip
-            cuda = next((d for d in ["/usr/local/cuda", *sorted(__import__("glob").glob("/usr/local/cuda-*"), reverse=True)]
-                         if os.path.exists(d + "/bin/nvcc")), None)
-            log("cuda toolkit", cuda)
-            if cuda is None:
-                raise RuntimeError("no nvcc: " + subprocess.run("ls -d /usr/local/cuda* /usr/lib/cuda* 2>&1; which nvcc", shell=True,
-                                                                capture_output=True, text=True).stdout)
-            env = {**os.environ, "PATH": f"{cuda}/bin:" + os.environ["PATH"], "CUDACXX": f"{cuda}/bin/nvcc"}
-            # CMake's CUDA::cuda_driver needs libcuda.so; Kaggle has only the driver's libcuda.so.1 (or the toolkit stub)
-            import glob
-            libcuda = next(iter(glob.glob(f"{cuda}/lib64/stubs/libcuda.so") + glob.glob(f"{cuda}/targets/x86_64-linux/lib/stubs/libcuda.so")
-                                + glob.glob("/usr/lib/x86_64-linux-gnu/libcuda.so*") + glob.glob("/usr/local/nvidia/lib64/libcuda.so*")), None)
-            log("libcuda", libcuda)
-            subprocess.run([sys.executable, "-m", "pip", "install", "-q", "-U", "cmake", "ninja"], check=False)
-            subprocess.run("git clone --depth 1 https://github.com/ggml-org/llama.cpp.git /tmp/llama.cpp", shell=True, check=True)
-            r = subprocess.run("cd /tmp/llama.cpp && cmake -B build -G Ninja -DGGML_CUDA=ON -DCMAKE_CUDA_ARCHITECTURES=75 -DLLAMA_CURL=OFF "
-                               "-DLLAMA_BUILD_TESTS=OFF -DLLAMA_BUILD_EXAMPLES=OFF -DCMAKE_BUILD_TYPE=Release "
-                               + (f"-DCUDA_cuda_driver_LIBRARY={libcuda} " if libcuda else "") + "> /tmp/cmake.log 2>&1 && "
-                               f"cmake --build build --target llama-server -j {os.cpu_count()} >> /tmp/cmake.log 2>&1", shell=True, env=env)
-            if r.returncode:
-                raise RuntimeError("llama.cpp build failed: " + open("/tmp/cmake.log").read()[-2500:])
+        try:
+            server, self.binary = llama_from_image(), "image " + LLAMA_IMAGE[1]
+        except Exception as e:
+            log("image failed, building from source:", repr(e)[:300])
+            server, self.binary = llama_from_source(), "built from source"
         self.build_seconds = round(time.time() - tb, 1)
-        log("llama.cpp built", self.build_seconds, "s")
+        log("llama-server ready", self.binary, self.build_seconds, "s")
         file = next(f for f in __import__("huggingface_hub").list_repo_files(repo) if f.lower().endswith(f"{quant.lower()}.gguf"))
         path = hf_hub_download(repo, file)
-        self.proc = subprocess.Popen(["/tmp/llama.cpp/build/bin/llama-server", "-m", path, "-ngl", "99", "-c", "16384", "-np", "8",
+        bindir = os.path.dirname(server)
+        # the image's kernels for the T4 are PTX (75-virtual): the driver compiles them on first use, keep that cache big
+        env = {**os.environ, "LD_LIBRARY_PATH": ":".join([bindir, "/usr/local/cuda/lib64", "/usr/local/nvidia/lib64",
+                                                           os.environ.get("LD_LIBRARY_PATH", "")]),
+               "CUDA_CACHE_MAXSIZE": str(4 * 2**30)}
+        ts = time.time()
+        self.proc = subprocess.Popen([server, "-m", path, "-ngl", "99", "-c", "16384", "-np", "8",
                                       "--jinja", "--port", str(self.port), "--host", "127.0.0.1"],
-                                     stdout=open("/tmp/llama-server.log", "w"), stderr=subprocess.STDOUT)
+                                     stdout=open("/tmp/llama-server.log", "w"), stderr=subprocess.STDOUT, env=env, cwd=bindir)
         for _ in range(600):
             try:
                 if urllib.request.urlopen(f"http://127.0.0.1:{self.port}/health", timeout=2).status == 200:
@@ -95,6 +142,8 @@ class LlamaServer:
             if self.proc.poll() is not None:
                 raise RuntimeError("llama-server died: " + open("/tmp/llama-server.log").read()[-1500:])
             time.sleep(1)
+        self.start_seconds = round(time.time() - ts, 1)
+        log("llama-server up", self.start_seconds, "s")
 
     def chat(self, messages, max_new):
         import urllib.request
@@ -202,12 +251,14 @@ def run(name):
     log("verified", sum(it["model_answer"] == it["key"] for it in items), "/", len(items), f"{t_verify:.1f}s")
 
     build = getattr(model, "build_seconds", None)
+    binary = getattr(model, "binary", None)
+    start = getattr(model, "start_seconds", None)
     if tok is None:
         model.close()
     del model
     gc.collect()
     torch.cuda.empty_cache()
-    return {"run": RUN_ID, "model": name, "mode": mode, "gpus": gpu_info, "count": len(items), "build_seconds": build,
+    return {"run": RUN_ID, "model": name, "mode": mode, "gpus": gpu_info, "count": len(items), "build_seconds": build, "binary": binary, "server_start_seconds": start,
             "seconds": {"load": round(t_load, 1), "genitive": round(t_polish, 1), "verify": round(t_verify, 1)},
             "genitives": gens,
             "tokens": {"genitive_out": tok_polish, "verify_out": tok_verify}, "items": items}
