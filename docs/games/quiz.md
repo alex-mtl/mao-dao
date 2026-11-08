@@ -161,3 +161,18 @@ afterward.
   proxying a WebSocket upgrade to Reverb over loopback only — do this as
   its own explicit, confirmed step, not bundled into an unrelated deploy).
 
+
+## Generated questions (quiz-factory, since 2026-11-08)
+
+Most library quizzes tagged geography / sports / literature / art / movies / music / science / history come from
+[`services/quiz-factory/`](../../services/quiz-factory/README.md): facts from Wikidata, quiz-show templates, no model.
+On 2026-11-08: 5755 questions in 290 quizzes, owned by the owner's account (`QUIZ_IMPORT_USER_ID`).
+
+- **Import API** `POST /internal/quizzes/import` (`QuizImportController`, header `X-Internal-Secret` = `QUIZ_IMPORT_SECRET`;
+  both values in the server `.env`, the secret also in `~/.mao-dao/quiz-import-secret` on the owner's PC). A quiz is found
+  by `quizzes.import_key`, a question by `questions.import_key` (or its text / `previous_text`); an existing question keeps
+  its answers (attempts point at them) and only gets the new text and pool. Same rules as the editor: 4 answers, one
+  correct, 150/32 chars. Tests: `tests/Feature/QuizImportTest.php`.
+- **`questions.wrong_pool`** (JSON, nullable): up to 14 wrong answers, the first 3 equal to the question's wrong answers,
+  the rest spare. Nothing on mao-dao reads it yet: rotating the wrong answers is planned in the TikTok game engine
+  (a Python function), not on the site. Copies of a quiz keep the pool.

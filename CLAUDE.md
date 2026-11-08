@@ -30,6 +30,7 @@ stream-client/        Tauri desktop app for streamers: the room in a window + lo
 services/
   telegram-bot/       AWS Lambda: the Telegram bot (from the tiktok-tg-bot repo, planned)
   word-ranker/        AWS Lambdas: dictionary ranking per language (from election-game/ranker, planned)
+  quiz-factory/       Node scripts on the owner's PC: quiz questions from Wikidata -> /internal/quizzes/import (README there)
 ```
 
 **A modular monolith, not full DDD** — four cheap rules that keep games
