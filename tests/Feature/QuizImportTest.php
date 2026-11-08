@@ -55,12 +55,32 @@ it('keeps the whole pool of wrong answers and refreshes it on a re-run', functio
     expect(Quiz::sole()->questions->sole()->wrong_pool)->toBe(['Сидней', 'Мельбурн', 'Перт', 'Веллингтон']);
 
     $q['wrong_pool'][] = 'Аделаида';
-    $this->postJson('/internal/quizzes/import', importBody([$q]), $h)->assertOk()->assertJson(['added' => 0, 'skipped' => 1]);
+    $this->postJson('/internal/quizzes/import', importBody([$q]), $h)->assertOk()->assertJson(['added' => 0, 'updated' => 1, 'skipped' => 0]);
     $question = Quiz::sole()->questions->sole();
     expect($question->wrong_pool)->toHaveCount(5)->and($question->answers)->toHaveCount(4);
 
     $bad = [...importQuestion('Столица Перу?', 'Лима'), 'wrong_pool' => ['Куско', 'лима']];
     $this->postJson('/internal/quizzes/import', importBody([$bad]), $h)->assertUnprocessable();
+});
+
+it('rewords a question found by its key or its previous text, keeping its answers', function () {
+    $h = ['X-Internal-Secret' => 's3cret'];
+    $this->postJson('/internal/quizzes/import', importBody([importQuestion('Какой город — столица Австралии?')]), $h)->assertOk();
+    $answerIds = Quiz::sole()->questions->sole()->answers->pluck('id')->all();
+
+    // an old question without a key: found by the text it had
+    $q = [...importQuestion('Столица Австралии?'), 'key' => 'capital:Q408', 'previous_text' => 'Какой город — столица Австралии?'];
+    $this->postJson('/internal/quizzes/import', importBody([$q]), $h)->assertOk()->assertJson(['added' => 0, 'updated' => 1]);
+    // from now on by its key
+    $q['text'] = 'Столица Австралии? (2)';
+    unset($q['previous_text']);
+    $this->postJson('/internal/quizzes/import', importBody([$q]), $h)->assertOk()->assertJson(['added' => 0, 'updated' => 1]);
+    $this->postJson('/internal/quizzes/import', importBody([$q]), $h)->assertOk()->assertJson(['added' => 0, 'updated' => 0, 'skipped' => 1]);
+
+    $question = Quiz::sole()->questions->sole();
+    expect($question->text)->toBe('Столица Австралии? (2)')
+        ->and($question->import_key)->toBe('capital:Q408')
+        ->and($question->answers->pluck('id')->all())->toBe($answerIds);
 });
 
 it('rejects questions without exactly one correct of four different answers', function () {
