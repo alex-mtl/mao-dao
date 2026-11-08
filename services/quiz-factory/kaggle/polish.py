@@ -66,10 +66,16 @@ class LlamaServer:
                 raise RuntimeError("no nvcc: " + subprocess.run("ls -d /usr/local/cuda* /usr/lib/cuda* 2>&1; which nvcc", shell=True,
                                                                 capture_output=True, text=True).stdout)
             env = {**os.environ, "PATH": f"{cuda}/bin:" + os.environ["PATH"], "CUDACXX": f"{cuda}/bin/nvcc"}
+            # CMake's CUDA::cuda_driver needs libcuda.so; Kaggle has only the driver's libcuda.so.1 (or the toolkit stub)
+            import glob
+            libcuda = next(iter(glob.glob(f"{cuda}/lib64/stubs/libcuda.so") + glob.glob(f"{cuda}/targets/x86_64-linux/lib/stubs/libcuda.so")
+                                + glob.glob("/usr/lib/x86_64-linux-gnu/libcuda.so*") + glob.glob("/usr/local/nvidia/lib64/libcuda.so*")), None)
+            log("libcuda", libcuda)
             subprocess.run([sys.executable, "-m", "pip", "install", "-q", "-U", "cmake", "ninja"], check=False)
             subprocess.run("git clone --depth 1 https://github.com/ggml-org/llama.cpp.git /tmp/llama.cpp", shell=True, check=True)
             r = subprocess.run("cd /tmp/llama.cpp && cmake -B build -G Ninja -DGGML_CUDA=ON -DCMAKE_CUDA_ARCHITECTURES=75 -DLLAMA_CURL=OFF "
-                               "-DLLAMA_BUILD_TESTS=OFF -DLLAMA_BUILD_EXAMPLES=OFF -DCMAKE_BUILD_TYPE=Release > /tmp/cmake.log 2>&1 && "
+                               "-DLLAMA_BUILD_TESTS=OFF -DLLAMA_BUILD_EXAMPLES=OFF -DCMAKE_BUILD_TYPE=Release "
+                               + (f"-DCUDA_cuda_driver_LIBRARY={libcuda} " if libcuda else "") + "> /tmp/cmake.log 2>&1 && "
                                f"cmake --build build --target llama-server -j {os.cpu_count()} >> /tmp/cmake.log 2>&1", shell=True, env=env)
             if r.returncode:
                 raise RuntimeError("llama.cpp build failed: " + open("/tmp/cmake.log").read()[-2500:])
@@ -214,6 +220,6 @@ for name in MODELS:
     except Exception as e:  # one model failing must not lose the other's result
         import traceback
         traceback.print_exc()
-        results.append({"run": RUN_ID, "model": name, "error": repr(e)[:500]})
+        results.append({"run": RUN_ID, "model": name, "error": repr(e)[-2500:]})
 json.dump({"runs": results}, open(f"/kaggle/working/quiz-{RUN_ID}.json", "w", encoding="utf-8"), ensure_ascii=False, indent=1)
 log("done")
