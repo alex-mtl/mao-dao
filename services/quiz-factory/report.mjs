@@ -30,14 +30,14 @@ const NOTES = {
   'mountain_country:Гора Рашмор': 'Скорее известна как монумент, но это гора; формулировка поправлена на «гора Рашмор».',
   'mountain_country:Синай': 'Гора Синай (Муса) на Синайском полуострове: ответ «Египет» верен.',
   'highest_point:США': 'Мак-Кинли в 2015–2025 официально называлась «Денали», в 2025 имя вернули. Часть игроков знает её как Денали.',
-  'highest_point:Австралия': 'Выброшено ПРАВИЛЬНО: Моусон стоит на острове Херд (внешняя территория), а на материке высшая точка — гора Косцюшко. Спорный факт, фильтр сработал.',
+  'highest_point:Австралия': 'Спорный вопрос: Моусон стоит на острове Херд (внешняя территория), а на материке высшая точка — гора Косцюшко, и многие ответят так. Косцюшко среди вариантов нет, так что ответ однозначный, но формулировку лучше уточнить: «включая внешние территории».',
   'river_mouth:Евфрат': 'Верно, но сложно: многие ответят «Персидский залив» (его нет среди вариантов).',
   'river_mouth:Тигр': 'Верно, но сложно: многие ответят «Персидский залив» (его нет среди вариантов).',
   'river_mouth:Ганг': 'Индийский океан убран из вариантов: залив — его часть, иначе было бы два верных ответа.',
   'river_mouth:Висла': 'Балтийское море убрано из вариантов: Гданьский залив — его часть.',
   'river_mouth:Нил': 'Средиземное море — часть бассейна Атлантики, поэтому океаны в варианты для рек, впадающих в моря, не ставятся.',
 };
-const MODEL_WRONG = 'Факт верный (Wikidata), ошиблась проверяющая модель 7B. Вопрос потерян зря.';
+const MODEL_WRONG = 'Факт верный (Wikidata), ошиблась проверяющая модель 7B.';
 
 const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;');
 const TYPE = { capital: 'Столицы', city_country: 'Города', mountain_country: 'Горы → страна', elevation: 'Высота гор', highest_point: 'Высшие точки', river_mouth: 'Реки → устье' };
@@ -51,19 +51,16 @@ for (const d of drafts) {
   let text;
   let wrong;
   const notes = [];
-  if (q) {
-    status = 'ok';
-    text = q.text;
-    wrong = pick3(q);
-    if (q.polish_rejected) notes.push(`Модель переписала неудачно («${q.polish_rejected}»), оставлен шаблон.`);
-  } else {
-    status = 'drop';
-    text = it.polished || d.template;
-    wrong = it.options.filter((o) => o !== d.correct);
-    const said = it.options['ABCD'.indexOf(it.model_answer)] ?? it.model_answer;
-    notes.push(`<b>Не загружен</b>: модель ответила «${esc(said)}».`);
+  status = q.model_disagrees ? 'warn' : 'ok';
+  text = q.text;
+  wrong = pick3(q);
+  if (q.model_disagrees) {
+    notes.push(`<b>Проверяющая модель ответила «${esc(q.model_disagrees)}».</b>`);
     if (!NOTES[key]) notes.push(MODEL_WRONG);
   }
+  if (q.polish_rejected) notes.push(`Модель переписала неудачно («${esc(q.polish_rejected)}»), оставлен шаблон.`);
+  const rest = q.wrong.filter((w) => !wrong.includes(w));
+  notes.push(`<span class="pool">Ещё в пуле неверных (${rest.length}): ${esc(rest.join(', '))}</span>`);
   if (NOTES[key]) notes.push(NOTES[key]);
   if (d.type === 'elevation' && q) notes.push('Варианты отличаются от верного минимум на 6%: вопрос для знатоков.');
   if (d.type !== lastType) {
@@ -87,13 +84,13 @@ h1{font-size:20px;margin:0 0 8px}.sum{color:var(--muted);margin:0 0 4px}.sum b{c
 table{border-collapse:collapse;width:100%;min-width:900px}th,td{border-bottom:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
 th{position:sticky;top:0;background:var(--bg);font-weight:600}tr.group td{background:var(--group);font-weight:600}
 td.q a{color:inherit;text-decoration:none}td.q{min-width:240px}td.note{color:var(--muted);min-width:260px}
-tr.ok td.correct{background:var(--ok);color:var(--okfg);font-weight:600}tr.drop td{opacity:.8}tr.drop td.q{text-decoration:line-through}
-tr.drop td.correct{background:var(--drop);color:var(--dropfg);font-weight:600}td.note b{color:var(--dropfg)}
+tr.ok td.correct{background:var(--ok);color:var(--okfg);font-weight:600}tr.warn td.correct{background:var(--ok);color:var(--okfg);font-weight:600}tr.warn td.q{box-shadow:inset 3px 0 0 var(--dropfg)}
+.pool{display:block;font-size:12px;margin-top:2px}td.note b{color:var(--dropfg)}
 </style></head><body>
 <h1>Пилот генератора вопросов: география</h1>
-<p class="sum">Черновиков <b>${drafts.length}</b> → загружено на mao-dao <b>${kept}</b>, выброшено <b>${drafts.length - kept}</b>.
+<p class="sum">Загружено на mao-dao <b>${kept}</b> вопросов, у каждого в БД полный пул неверных ответов. Проверяющая модель не согласилась с Wikidata в <b>${[...final.values()].filter((q) => q.model_disagrees).length}</b> (помечены красной чертой слева).
 Kaggle ${esc(res.gpus.join(' + '))}, ${esc(res.model)} (${res.mode}): загрузка модели ${s.load} с, переписывание ${s.polish} с, проверка ${s.verify} с.</p>
-<p class="sum">Зелёным — верный ответ (в игре варианты перемешиваются). Зачёркнутые строки не загружены. Наведите на вопрос: ссылка на факт в Wikidata.</p>
+<p class="sum">Зелёным — верный ответ (в игре варианты перемешиваются). Наведите на вопрос: ссылка на факт в Wikidata.</p>
 <p class="sum links">${links.map(([k, u]) => `<a href="${u}" target="_blank">${k}</a>`).join('')}</p>
 <div class="wrap"><table><thead><tr><th>Вопрос</th><th>Верный</th><th>Неверный 1</th><th>Неверный 2</th><th>Неверный 3</th><th>Комментарий</th></tr></thead>
 <tbody>${rows}</tbody></table></div></body></html>`;
