@@ -11,6 +11,7 @@ use App\Http\Controllers\ProfilePhotoController;
 use App\Http\Controllers\QuizAttemptController;
 use App\Http\Controllers\QuizController;
 use App\Http\Controllers\QuizExplorerController;
+use App\Http\Controllers\QuizImportController;
 use App\Http\Controllers\QuizLibraryController;
 use App\Http\Controllers\QuizLikeController;
 use App\Http\Controllers\RaceController;
@@ -117,6 +118,8 @@ Route::get('/mafia', [MafiaController::class, 'index'])->name('mafia.index');
 // a shared-secret header inside MafiaController::canView() itself, never
 // by the `auth` guard, so it deliberately sits outside every other Mafia
 // route's middleware group.
+// the question factory (services/quiz-factory): generated questions into the quiz library
+Route::post('/internal/quizzes/import', [QuizImportController::class, 'store'])->name('internal.quizzes.import');
 Route::get('/internal/mafia/can-view', [MafiaController::class, 'canView'])->name('internal.mafia.can-view');
 Route::get('/internal/mafia/mic-policy', [MafiaController::class, 'micPolicy'])->name('internal.mafia.mic-policy');
 Route::get('/internal/mafia/visibility', [MafiaController::class, 'visibility'])->name('internal.mafia.visibility');

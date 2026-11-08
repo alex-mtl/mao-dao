@@ -13,7 +13,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable([
     'user_id', 'title', 'description', 'language', 'status',
-    'published_at', 'allow_copying', 'copied_from_quiz_id', 'estimated_minutes',
+    'published_at', 'allow_copying', 'copied_from_quiz_id', 'estimated_minutes', 'import_key',
 ])]
 class Quiz extends Model
 {

@@ -27,7 +27,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         // the streamer app's API: the access key is the credential, there is no browser form
         // ... and the engine's calls (header X-Internal-Secret)
-        $middleware->validateCsrfTokens(except: ['guessword/client/api/*', 'internal/guessword/*']);
+        $middleware->validateCsrfTokens(except: ['guessword/client/api/*', 'internal/guessword/*', 'internal/quizzes/*']);
 
         $middleware->alias([
             'race.player' => \App\Http\Middleware\ResolveRacePlayer::class,
