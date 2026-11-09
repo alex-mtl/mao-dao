@@ -78,7 +78,9 @@ html.chroma:not(.alpha) .row { background: rgb(22, 14, 38); }
 .stk .n { margin-left: calc(var(--u) * 1.2); font: 700 calc(var(--u) * 3.4) var(--font-text); color: #fff; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .stk .more { margin-left: calc(var(--u) * .9); font: 800 calc(var(--u) * 3) var(--font-text); color: #fff; }
 .stk .more.pop { animation: pop .5s; }
-.stk.left { opacity: .45; }                       /* nobody stands for it any more: its author, faded */
+.stk.left { opacity: .45; }
+.stk.seed .sd { font: 700 calc(var(--u) * 3) var(--font-text); color: var(--muted); }   /* the game's variant, nobody chose it yet */
+.row.enter { animation-fill-mode: backwards; }                       /* nobody stands for it any more: its author, faded */
 .answer .row { opacity: .3; }
 .answer .row.ok { opacity: 1; background: linear-gradient(90deg, rgba(57,255,20,.38), rgba(57,255,20,.12)); border-color: var(--lime);
                   box-shadow: 0 0 1.2em rgba(57,255,20,.45); animation: pop .7s; }

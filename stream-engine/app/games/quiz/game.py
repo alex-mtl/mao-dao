@@ -72,6 +72,7 @@ class QuizGame(BaseGame):
                "level": ["all", "easy", "medium", "hard"],
                "topics": Topics(TOPICS),
                "order": ["votes", "time"],                                    # the table: most players first / as named
+               "hints": [0, 4],                                               # the game puts N variants (the right one among them) in the table
                "follow": [2, 1, 0], "fan_min": [1, 5, 10, 15, 20, 25, 30, 40],
                "chroma": [0, 1], "chroma_top": [25, 30, 32, 33, 35, 40, 45, 50],
                "frame": [16, 19.5, 20], "chat_zone": [0, 10, 15, 20, 25, 30, 35]}
@@ -85,7 +86,7 @@ class QuizGame(BaseGame):
         super().__init__(store)
         self.lang = config.LANGUAGE
         self.qtime, self.qcount, self.answer_sec, self.pause_sec = 30, 5, 6, 60
-        self.level, self.topics, self.order = "all", list(TOPICS), "votes"
+        self.level, self.topics, self.order, self.hints = "all", list(TOPICS), "votes", 0
         self.follow_required, self.fans_only, self.fan_min = False, False, 1
         self.chroma, self.chroma_top, self.chat_zone, self.frame = False, 33, 20, 16
         self.screen = {k: d for k, (d, _) in self.SCREEN.items()}
@@ -215,6 +216,14 @@ class QuizGame(BaseGame):
         self.phase = ASK
         self.asked_at = now
         self.ends_at = now + self.qtime
+        if self.hints:
+            # the game's own rows ("as if a player wrote them", author ""): the right answer and the quiz's own wrong
+            # ones (the first of the pool), shuffled; nobody stands for them and they score nothing - the first viewer
+            # to name the right one still gets the most
+            seeds = [q["correct"]] + [w for w in q["wrong"] if norm(w) != norm(q["correct"])][:self.hints - 1]
+            random.shuffle(seeds)
+            for i, w in enumerate(seeds):
+                self.variants[norm(w)] = {"w": w, "author": "", "t": now + i * 0.001}
         self.emit("round_start" if self.qi == 0 else "question", round=self.round_id, n=self.qi + 1, q=q["text"])
 
     def _last(self, pid):
@@ -416,6 +425,8 @@ class QuizGame(BaseGame):
             self.level = value
         elif key == "topics" and value in self.OPTIONS["topics"]:
             self.topics = [t for t in TOPICS if t in value.split(",")]
+        elif key == "hints" and value in self.OPTIONS["hints"]:
+            self.hints = int(value)                      # from the next question
         elif key == "order" and value in self.OPTIONS["order"]:
             self.order = value
         elif key == "follow":
@@ -437,7 +448,7 @@ class QuizGame(BaseGame):
 
     def get_options(self):
         return {"qtime": self.qtime, "qcount": self.qcount, "answer_sec": self.answer_sec, "pause": self.pause_sec,
-                "level": self.level, "topics": ",".join(self.topics), "order": self.order,
+                "level": self.level, "topics": ",".join(self.topics), "order": self.order, "hints": self.hints,
                 "follow": 2 if self.fans_only else int(self.follow_required), "fan_min": self.fan_min,
                 "chroma": int(self.chroma), "chroma_top": self.chroma_top, "frame": self.frame,
                 "chat_zone": self.chat_zone, **self.screen}
@@ -520,7 +531,7 @@ class QuizGame(BaseGame):
         for i, (k, v) in enumerate(self.variants.items()):
             sup = self.supporters(k)
             a = self.who.get(v["author"], {"name": v["author"], "avatar": ""})
-            rows.append({"k": k, "w": v["w"], "n": len(sup), "i": i, "t": v["t"],
+            rows.append({"k": k, "w": v["w"], "n": len(sup), "i": i, "t": v["t"], "seed": not v["author"],
                          "players": [dict(self.who[p], id=p) for p in sup[:limit]],
                          "author": {"id": v["author"], "name": a["name"], "avatar": a["avatar"]}})
         if self.order == "votes":
@@ -541,7 +552,7 @@ class QuizGame(BaseGame):
                 "left": max(0, round(self.ends_at - at)) if self.phase == ASK else 0,
                 "phaseLeft": max(0, round(self.phase_until - at)), "qtime": self.qtime,
                 "answered": len(self.answers),
-                "variants": [{"w": r["w"], "n": r["n"], "author": r["author"]["name"], "t": round(r["t"] - self.asked_at),
+                "variants": [{"w": r["w"], "n": r["n"], "author": r["author"]["name"] or "💡", "t": round(r["t"] - self.asked_at),
                               "right": r["k"] == right} for r in self._variant_rows(0)],
                 "people": [{"id": p["id"], "name": p["name"], "avatar": p["avatar"], "score": p["score"], "right": p["right"],
                             "wins": self.stats.players.get(p["id"], {}).get("wins", 0)} for p in self._ranked()[:60]],
@@ -633,7 +644,7 @@ class QuizGame(BaseGame):
             "topic": self.topic, "quiz": self.quiz["title"] if self.quiz else None, "topics": self.topics,
             "question": q["text"] if q and self.phase in (ASK, ANSWER) else None,
             "answer": q["correct"] if q and self.phase == ANSWER else None,
-            "variants": [{"w": r["w"], "n": r["n"], "players": r["players"], "author": r["author"],
+            "variants": [{"w": r["w"], "n": r["n"], "players": r["players"], "author": r["author"], "seed": r["seed"],
                           "right": self.phase == ANSWER and r["k"] == right} for r in rows],
             "scorers": self.scorers if self.phase == ANSWER else [],
             "players": [{"id": p["id"], "name": p["name"], "avatar": p["avatar"], "score": p["score"]} for p in self._ranked()[:20]],

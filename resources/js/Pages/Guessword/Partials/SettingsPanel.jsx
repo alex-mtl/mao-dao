@@ -169,6 +169,12 @@ function QuizSettings({ s, sec }) {
                     <Field label={t('guessword.qz_opt_order')}>
                         <Seg value={q.order} options={s.choices('quiz', 'order')} label={(v) => t('guessword.qz_order_' + v)} onChange={set('order')} />
                     </Field>
+                    <div>
+                        <Field label={t('guessword.qz_opt_hints')}>
+                            <Seg value={q.hints} options={s.choices('quiz', 'hints')} label={(v) => t('guessword.qz_hints_' + v)} onChange={set('hints')} />
+                        </Field>
+                        <p className="mt-1 text-xs text-ink-500">{t('guessword.qz_hints_help')}</p>
+                    </div>
                     <div className="flex flex-col gap-1.5 text-sm font-medium text-ink-800 sm:col-span-2">
                         {t('guessword.qz_opt_topics')}
                         <span className="flex flex-wrap gap-1.5">

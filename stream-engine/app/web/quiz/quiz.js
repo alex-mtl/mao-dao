@@ -159,6 +159,11 @@
     const box = el('span', 'stk');
     const was = rowsShown.get(r.w);
     const known = was ? was.players : null;
+    if (!r.players.length && r.seed) {             // the game's own variant nobody chose yet
+      box.classList.add('seed');
+      box.append(el('span', 'sd', '💡 ' + t('q.seed')));
+      return box;
+    }
     const list = r.players.length ? r.players : [r.author];
     if (!r.players.length) box.classList.add('left');
     if (list.length === 1) {
@@ -193,9 +198,11 @@
       return;
     }
     const next = new Map();
+    let seedNo = 0;
     const rows = list.map(r => {
       const was = rowsShown.get(r.w);
       const row = el('div', 'row' + (was ? '' : ' enter') + (r.right ? ' ok' : ''));
+      if (!was && r.seed) row.style.animationDelay = (0.3 + 0.35 * seedNo++) + 's';   // the game's variants one by one
       if (was && was.n !== r.n && r.n > was.n) row.classList.add('bump');
       row.append(el('span', 'wd', String(r.w).toUpperCase()), stack(r));
       next.set(r.w, { players: new Set(r.players.map(p => p.name)), more: Math.max(0, r.n - r.players.length), n: r.n });
