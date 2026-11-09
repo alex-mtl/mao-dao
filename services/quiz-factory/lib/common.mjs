@@ -4,6 +4,8 @@ import { sparql, goodLabel } from './wikidata.mjs';
 export { sparql, goodLabel };
 /** an answer button: a real Russian label, no Latin letters («Франк КФА BCEAO» is not an answer) */
 export const goodAnswer = (s, max = 32) => goodLabel(s, max) && !/[A-Za-z]/.test(s);
+/** an answer that may be in Latin letters (The Beatles, Nintendo): a real label, short, no "(...)" */
+export const anyAnswer = (s, max = 32) => typeof s === 'string' && !/^Q\d+$/.test(s) && s.length <= max && !/[()]/.test(s) && /\p{L}/u.test(s);
 export const POOL = 14; // wrong answers per question: the first 3 go into the quiz, 11 more wait in questions.wrong_pool
 export const ru = (v) => `?art_${v.slice(1)} schema:about ${v}; schema:isPartOf <https://ru.wikipedia.org/>.`;
 // rdfs:label instead of the label service: the service times out on big result sets
@@ -30,7 +32,17 @@ export function single(rows, key, val) {
 /** big VALUES queries in parts (one query over everything times out) */
 export async function inParts(ids, size, q) {
   const out = [];
-  for (let i = 0; i < ids.length; i += size) out.push(...await sparql(q(ids.slice(i, i + size).map((x) => 'wd:' + x).join(' '))));
+  for (let i = 0; i < ids.length; i += size) {
+    const part = ids.slice(i, i + size);
+    try {
+      out.push(...await sparql(q(part.map((x) => 'wd:' + x).join(' '))));
+    } catch (e) { // a part that times out is split in two (down to 25 ids)
+      if (part.length <= 25) throw e;
+      const half = Math.ceil(part.length / 2);
+      out.push(...await inParts(part.slice(0, half), half, q), ...await inParts(part.slice(half), half, q));
+    }
+    if (process.env.QF_VERBOSE && (i / size) % 10 === 0) console.error(`  part ${i / size + 1}/${Math.ceil(ids.length / size)}`);
+  }
   return out;
 }
 
@@ -83,6 +95,8 @@ export function yearPool(y, seed) {
   return out;
 }
 
+// «Датское королевство», «Королевство Нидерландов»: the realm next to the country itself (Дания, Нидерланды) - out
+const REALMS = new Set(['Q756617', 'Q29999']);
 /** current sovereign states: id -> {label, sl, conts, neighbours} */
 let statesCache = null;
 export async function loadStates() {
@@ -91,7 +105,7 @@ export async function loadStates() {
   for (const r of await sparql(`SELECT ?c ?cLabel ?sl ?cont WHERE {
     ?c wdt:P31 wd:Q3624078; wikibase:sitelinks ?sl. FILTER NOT EXISTS { ?c wdt:P576 [] }
     OPTIONAL { ?c wdt:P30 ?cont } ${ru('?c')} ${lbl('?c')} }`)) {
-    if (!goodLabel(r.cLabel)) continue;
+    if (!goodLabel(r.cLabel) || REALMS.has(r.c)) continue;
     const s = states.get(r.c) ?? { id: r.c, label: r.cLabel, sl: +r.sl, conts: new Set(), neighbours: new Set() };
     if (r.cont) s.conts.add(r.cont);
     states.set(r.c, s);
@@ -105,16 +119,33 @@ export const sameContinent = (a, b) => [...a.conts].some((c) => b.conts.has(c));
 /** other countries as wrong answers: same continent first */
 export const countryCandidates = (states, st, exclude = () => false) =>
   [...states.values()].filter((o) => o !== st && !exclude(o)).map((o) => ({ label: o.label, sl: o.sl, score: sameContinent(o, st) ? 1 : 0 }));
+/** the same, but the countries that answer this question type most often come first (USA -> Канада, Великобритания, not Белиз) */
+export const countryCandidatesByFreq = (states, st, freq) =>
+  [...states.values()].filter((o) => o !== st).map((o) => ({ label: o.label, sl: (freq.get(o.id) ?? 0) * 1000 + Math.min(o.sl, 999), score: sameContinent(o, st) ? 1 : 0 }));
 
 /** a question collector: checks the answer, the pool and that the text does not give the answer away */
 export function collector(category) {
   const drafts = [];
-  const add = (type, id, subject, sl, text, correct, wrong, extra = {}) => {
-    // numbers (years) are fine as they are; words need a real Russian label
-    if ((typeof correct === 'number' ? false : !goodAnswer(correct)) || wrong.length < 3 || text.length > 150) return false;
+  const add = (type, id, subject, sl, text, correct, wrong, { latinOk, ...extra } = {}) => {
+    // numbers (years) are fine as they are; words need a real Russian label (latinOk: bands, studios, companies)
+    const ok = typeof correct === 'number' || (latinOk ? anyAnswer(correct) : goodAnswer(correct));
+    if (!ok || wrong.length < 3 || text.length > 150) return false;
     if (norm(text).includes(norm(String(correct)))) return false;
     drafts.push({ id: `${type}:${id}`, type, category, subject, subject_qid: id, popularity: sl, text, correct: String(correct), wrong: wrong.map(String), ...extra });
     return true;
   };
   return { drafts, add };
+}
+
+/** ids -> year of a date property: day/month/year precision only (no "1500s"), not BCE, one distinct year per id */
+export async function oneYear(ids, prop, size = 400) {
+  const rows = await inParts(ids, size, (v) => `SELECT ?p ?d ?prec WHERE { VALUES ?p { ${v} } ?p p:${prop} ?st. ?st wikibase:rank ?rank.
+    FILTER(?rank != wikibase:DeprecatedRank) ?st psv:${prop} [ wikibase:timeValue ?d; wikibase:timePrecision ?prec ]. }`);
+  const m = new Map();
+  for (const r of rows) {
+    const s = m.get(r.p) ?? { ys: new Set(), bad: false };
+    if (+r.prec < 9 || r.d.startsWith('-')) s.bad = true; else s.ys.add(+r.d.slice(0, 4));
+    m.set(r.p, s);
+  }
+  return new Map([...m].filter(([, s]) => !s.bad && s.ys.size === 1).map(([p, s]) => [p, [...s.ys][0]]));
 }

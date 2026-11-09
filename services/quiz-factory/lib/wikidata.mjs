@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 const CACHE = join(dirname(fileURLToPath(import.meta.url)), '..', 'data', 'cache');
 const UA = 'mao-dao-quiz-factory/0.1 (https://mao-dao.com)';
 
-export async function sparql(query, { fresh = false } = {}) {
+async function wdqs(query, { fresh = false } = {}) {
   mkdirSync(CACHE, { recursive: true });
   const file = join(CACHE, createHash('sha1').update(query).digest('hex') + '.json');
   if (!fresh && existsSync(file)) return JSON.parse(readFileSync(file, 'utf8'));
@@ -46,3 +46,43 @@ export async function sparql(query, { fresh = false } = {}) {
 
 /** a real Russian label: present (not the Q-id fallback), no Latin-only stub, not too long for an answer button */
 export const goodLabel = (s, max = 32) => typeof s === 'string' && !/^Q\d+$/.test(s) && /[А-Яа-яЁё]/.test(s) && s.length <= max && !/[()]/.test(s);
+
+// QLever (qlever.dev): the same Wikidata, answers in a second where WDQS hits its 60 s limit (all politicians with
+// 30+ articles). QF_QLEVER=1 asks it first; otherwise it is the fallback when WDQS gives up.
+const PREFIXES = `PREFIX wd: <http://www.wikidata.org/entity/> PREFIX wdt: <http://www.wikidata.org/prop/direct/>
+PREFIX wikibase: <http://wikiba.se/ontology#> PREFIX p: <http://www.wikidata.org/prop/> PREFIX ps: <http://www.wikidata.org/prop/statement/>
+PREFIX psv: <http://www.wikidata.org/prop/statement/value/> PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX schema: <http://schema.org/> PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+`;
+async function qlever(query) {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      const res = await fetch('https://qlever.dev/api/wikidata', { method: 'POST', signal: AbortSignal.timeout(300000),
+        headers: { 'User-Agent': UA, Accept: 'application/sparql-results+json', 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({ query: PREFIXES + query }) });
+      const body = await res.text();
+      if (!res.ok) throw new Error(`QLever ${res.status}: ${body.slice(0, 300)}`);
+      return JSON.parse(body).results.bindings.map((b) =>
+        Object.fromEntries(Object.entries(b).map(([k, v]) => [k, v.type === 'uri' ? v.value.replace('http://www.wikidata.org/entity/', '') : v.value])));
+    } catch (e) {
+      if (attempt >= 6) throw e;
+      await new Promise((r) => setTimeout(r, 15000 * attempt));
+    }
+  }
+}
+
+export async function sparql(query, opt = {}) {
+  const file = join(CACHE, createHash('sha1').update(query).digest('hex') + '.json');
+  if (!opt.fresh && existsSync(file)) return JSON.parse(readFileSync(file, 'utf8'));
+  mkdirSync(CACHE, { recursive: true });
+  if (process.env.QF_QLEVER) {
+    try { const rows = await qlever(query); writeFileSync(file, JSON.stringify(rows)); return rows; } catch (e) { console.error('QLever failed, WDQS:', e.message.slice(0, 120)); }
+    return wdqs(query, opt);
+  }
+  try { return await wdqs(query, opt); } catch (e) {
+    console.error('WDQS failed, QLever:', e.message.slice(0, 120));
+    const rows = await qlever(query);
+    writeFileSync(file, JSON.stringify(rows));
+    return rows;
+  }
+}

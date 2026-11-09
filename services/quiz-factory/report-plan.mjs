@@ -5,8 +5,8 @@ import { readFileSync, writeFileSync } from 'node:fs';
 const [file = 'data/plan.json', out = 'data/report-all.html'] = process.argv.slice(2);
 const plan = JSON.parse(readFileSync(file, 'utf8'));
 const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;');
-const CAT = { geography: 'География', sports: 'Спорт', literature: 'Литература', art: 'Искусство', movies: 'Кино', music: 'Музыка', science: 'Наука', history: 'История' };
-const level = (k) => (k.includes('-easy-') ? 'лёгкий' : k.includes('-medium-') ? 'средний' : k.includes('-hard-') ? 'сложный' : 'первые пакеты');
+const CAT = { geography: 'География', sports: 'Спорт', literature: 'Литература', art: 'Искусство', movies: 'Кино', music: 'Музыка', science: 'Наука', history: 'История', 'video-games': 'Видеоигры', technology: 'Техника и компании', nature: 'Природа', 'food-drink': 'Еда и напитки', 'general-knowledge': 'Эрудиция', language: 'Языки' };
+const level = (k) => (k.includes('-easy-') ? 'лёгкий' : k.includes('-medium-') ? 'средний' : k.includes('-hard-') ? 'сложный' : k.includes('-mix-') ? 'смешанный' : 'первые пакеты');
 
 const sum = {};
 for (const q of plan) {
@@ -16,7 +16,7 @@ for (const q of plan) {
   s[l].quizzes++;
   s[l].questions += q.questions.length;
 }
-const levels = ['лёгкий', 'средний', 'сложный', 'первые пакеты'];
+const levels = ['лёгкий', 'средний', 'сложный', 'смешанный', 'первые пакеты'];
 const total = plan.reduce((n, q) => n + q.questions.length, 0);
 const sumRows = Object.entries(sum).map(([tag, s]) => `<tr><td>${CAT[tag] ?? tag}</td>${levels.map((l) => `<td>${s[l] ? `${s[l].questions} <small>(${s[l].quizzes})</small>` : ''}</td>`).join('')}`
   + `<td><b>${Object.values(s).reduce((n, x) => n + x.questions, 0)}</b></td></tr>`).join('');
