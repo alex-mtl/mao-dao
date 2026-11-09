@@ -171,7 +171,7 @@ function QuizSettings({ s, sec }) {
                     </Field>
                     <div>
                         <Field label={t('guessword.qz_opt_hints')}>
-                            <Seg value={q.hints} options={s.choices('quiz', 'hints')} label={(v) => t('guessword.qz_hints_' + v)} onChange={set('hints')} />
+                            <Seg value={q.hints} options={s.choices('quiz', 'hints')} label={(v) => (v ? t('guessword.qz_hints_n', { n: v }) : t('guessword.qz_hints_0'))} onChange={set('hints')} />
                         </Field>
                         <p className="mt-1 text-xs text-ink-500">{t('guessword.qz_hints_help')}</p>
                     </div>

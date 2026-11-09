@@ -142,7 +142,8 @@
     const box = $('try');
     box.className = e.kind === 'ok' ? '' : 'miss';
     const left = el('div', 'side'), who = el('div', 'side who');
-    left.append(el('span', 'tw', String(e.word || '').toUpperCase()), el('span', 'lab ' + e.kind, t(e.kind === 'ok' ? 'q.inTable' : 'q.noSuch')));
+    if (e.tag) left.append(el('span', 'tag', e.tag));
+    left.append(el('span', 'tw', String(e.word || '').toUpperCase()),el('span', 'lab ' + e.kind, t(e.kind === 'ok' ? 'q.inTable' : 'q.noSuch')));
     who.append(avatar(e.name, e.avatar), el('span', '', clean(e.name)));
     const cur = el('div', 'cur'); cur.style.display = 'contents';
     cur.append(left, who);
@@ -204,6 +205,7 @@
       const row = el('div', 'row' + (was ? '' : ' enter') + (r.right ? ' ok' : ''));
       if (!was && r.seed) row.style.animationDelay = (0.3 + 0.35 * seedNo++) + 's';   // the game's variants one by one
       if (was && was.n !== r.n && r.n > was.n) row.classList.add('bump');
+      if (r.tag) row.append(el('span', 'tag', r.tag));   // the option's letter: type "АА" or the word
       row.append(el('span', 'wd', String(r.w).toUpperCase()), stack(r));
       next.set(r.w, { players: new Set(r.players.map(p => p.name)), more: Math.max(0, r.n - r.players.length), n: r.n });
       return row;

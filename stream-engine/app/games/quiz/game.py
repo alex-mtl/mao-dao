@@ -34,6 +34,10 @@ FOLLOW_NOTE_SEC = 30
 MAX_CHAT = 40                 # a longer message is ordinary chat, not an answer
 STACK = 7                     # a row shows this many of its players, then "+N"
 PTS_RIGHT, PTS_CHANGED, PTS_FIRST = 1.0, 0.9, 1.2
+# the answer options' letters (typed doubled: "аа", "ББ"); Russian rooms get Cyrillic ones
+LETTERS = {"ru": "АБВГДЕЖЗ", "en": "ABCDEFGH", "fr": "ABCDEFGH", "es": "ABCDEFGH"}
+# what a viewer may type instead on another keyboard: Latin look-alikes of the Cyrillic letters, "33" for ЗЗ
+LOOKALIKE = {"А": ["A"], "В": ["B"], "Е": ["E"], "З": ["3"]}
 LOG_EVENTS = {"topic", "round_start", "question", "answer", "winner", "timeout", "gift"}
 SIM_NAMES = ["Alex", "Mike", "Sarah", "Нина", "Krestik", "фог", "Tati", "Valeria", "Сергей", "Maksim", "Лена", "Dima"]
 
@@ -72,7 +76,7 @@ class QuizGame(BaseGame):
                "level": ["all", "easy", "medium", "hard"],
                "topics": Topics(TOPICS),
                "order": ["votes", "time"],                                    # the table: most players first / as named
-               "hints": [0, 4],                                               # the game puts N variants (the right one among them) in the table
+               "hints": [0, 4, 6, 8],                                             # the game puts N variants (the right one among them) in the table
                "follow": [2, 1, 0], "fan_min": [1, 5, 10, 15, 20, 25, 30, 40],
                "chroma": [0, 1], "chroma_top": [25, 30, 32, 33, 35, 40, 45, 50],
                "frame": [16, 19.5, 20], "chat_zone": [0, 10, 15, 20, 25, 30, 35]}
@@ -218,12 +222,21 @@ class QuizGame(BaseGame):
         self.ends_at = now + self.qtime
         if self.hints:
             # the game's own rows ("as if a player wrote them", author ""): the right answer and the quiz's own wrong
-            # ones (the first of the pool), shuffled; nobody stands for them and they score nothing - the first viewer
-            # to name the right one still gets the most
+            # ones (the first of the pool), shuffled, each with its letter (АА, ББ, ВВ...). Only these are answers now:
+            # the doubled letter (any case) or the word. Nobody stands for them and they score nothing - the first
+            # viewer to name the right one still gets the most. The rows keep this order (no sorting by players).
             seeds = [q["correct"]] + [w for w in q["wrong"] if norm(w) != norm(q["correct"])][:self.hints - 1]
             random.shuffle(seeds)
+            letters = LETTERS.get(self.lang, LETTERS["en"])
+            self.accept = {}
             for i, w in enumerate(seeds):
-                self.variants[norm(w)] = {"w": w, "author": "", "t": now + i * 0.001}
+                tag = letters[i]
+                self.variants[norm(w)] = {"w": w, "author": "", "t": now + i * 0.001, "tag": tag * 2}
+                self.accept[norm(w)] = w
+            for i, w in enumerate(seeds):                # the letters after the words: a word wins a clash
+                for c in [letters[i]] + LOOKALIKE.get(letters[i], []):
+                    self.accept.setdefault(norm(c * 2), w)
+                    self.accept.setdefault(norm(c * 2 + w), w)   # "АА Волга" as it stands on screen
         self.emit("round_start" if self.qi == 0 else "question", round=self.round_id, n=self.qi + 1, q=q["text"])
 
     def _last(self, pid):
@@ -345,6 +358,7 @@ class QuizGame(BaseGame):
                 self.note_t = now
                 self.emit("try", kind="miss", word=text[:32], **who)
             return
+        k = norm(word)                                   # "бб" (an option's letter) -> its word
         self.who[viewer.id] = {"name": viewer.name, "avatar": viewer.avatar}
         lst = self.answers.setdefault(viewer.id, [])
         if lst and lst[-1][0] == k:                      # the same answer again
@@ -354,7 +368,7 @@ class QuizGame(BaseGame):
         if new:
             self.variants[k] = {"w": word, "author": viewer.id, "t": now}
         self.stats.get(viewer.id, viewer.name, viewer.avatar)["guesses"] += 1
-        self.emit("try", kind="ok", word=word, new=new, changed=len(lst) > 1, **who)
+        self.emit("try", kind="ok", word=word, tag=self.variants[k].get("tag"), new=new, changed=len(lst) > 1, **who)
         self.dirty = True
 
     def on_gift(self, viewer: Viewer, gift: str, count: int, repeat=False, actions=None):
@@ -531,10 +545,10 @@ class QuizGame(BaseGame):
         for i, (k, v) in enumerate(self.variants.items()):
             sup = self.supporters(k)
             a = self.who.get(v["author"], {"name": v["author"], "avatar": ""})
-            rows.append({"k": k, "w": v["w"], "n": len(sup), "i": i, "t": v["t"], "seed": not v["author"],
+            rows.append({"k": k, "w": v["w"], "n": len(sup), "i": i, "t": v["t"], "seed": not v["author"], "tag": v.get("tag"),
                          "players": [dict(self.who[p], id=p) for p in sup[:limit]],
                          "author": {"id": v["author"], "name": a["name"], "avatar": a["avatar"]}})
-        if self.order == "votes":
+        if self.order == "votes" and not any(r["tag"] for r in rows):   # the lettered options keep their places
             rows.sort(key=lambda r: (-r["n"], r["i"]))
         return rows
 
@@ -552,7 +566,7 @@ class QuizGame(BaseGame):
                 "left": max(0, round(self.ends_at - at)) if self.phase == ASK else 0,
                 "phaseLeft": max(0, round(self.phase_until - at)), "qtime": self.qtime,
                 "answered": len(self.answers),
-                "variants": [{"w": r["w"], "n": r["n"], "author": r["author"]["name"] or "💡", "t": round(r["t"] - self.asked_at),
+                "variants": [{"w": (r["tag"] + " · " if r["tag"] else "") + r["w"], "n": r["n"], "author": r["author"]["name"] or "💡", "t": round(r["t"] - self.asked_at),
                               "right": r["k"] == right} for r in self._variant_rows(0)],
                 "people": [{"id": p["id"], "name": p["name"], "avatar": p["avatar"], "score": p["score"], "right": p["right"],
                             "wins": self.stats.players.get(p["id"], {}).get("wins", 0)} for p in self._ranked()[:60]],
@@ -644,7 +658,7 @@ class QuizGame(BaseGame):
             "topic": self.topic, "quiz": self.quiz["title"] if self.quiz else None, "topics": self.topics,
             "question": q["text"] if q and self.phase in (ASK, ANSWER) else None,
             "answer": q["correct"] if q and self.phase == ANSWER else None,
-            "variants": [{"w": r["w"], "n": r["n"], "players": r["players"], "author": r["author"], "seed": r["seed"],
+            "variants": [{"w": r["w"], "n": r["n"], "players": r["players"], "author": r["author"], "seed": r["seed"], "tag": r["tag"],
                           "right": self.phase == ANSWER and r["k"] == right} for r in rows],
             "scorers": self.scorers if self.phase == ANSWER else [],
             "players": [{"id": p["id"], "name": p["name"], "avatar": p["avatar"], "score": p["score"]} for p in self._ranked()[:20]],

@@ -79,6 +79,11 @@ html.chroma:not(.alpha) .row { background: rgb(22, 14, 38); }
 .stk .more { margin-left: calc(var(--u) * .9); font: 800 calc(var(--u) * 3) var(--font-text); color: #fff; }
 .stk .more.pop { animation: pop .5s; }
 .stk.left { opacity: .45; }
+/* an answer option's letter (the "4 / 6 / 8 options" mode): viewers type it doubled */
+.tag { flex: none; min-width: calc(var(--u) * 8); padding: calc(var(--u) * .6) calc(var(--u) * 1); border-radius: calc(var(--u) * 1.2);
+       background: var(--cyan); color: #0b0614; font: calc(var(--u) * 3.4)/1 'Russo One', var(--font-display); text-align: center;
+       letter-spacing: .04em; }
+#try .tag { min-width: calc(var(--u) * 7); font-size: calc(var(--u) * 3); }
 .stk.seed .sd { font: 700 calc(var(--u) * 3) var(--font-text); color: var(--muted); }   /* the game's variant, nobody chose it yet */
 .row.enter { animation-fill-mode: backwards; }                       /* nobody stands for it any more: its author, faded */
 .answer .row { opacity: .3; }

@@ -150,6 +150,34 @@ class QuizTest(unittest.TestCase):
         self.times_up(g)
         self.assertEqual({s["name"]: s["pts"] for s in g.scorers}, {"Ann": 1.2, "Bob": 1.0})
 
+    def test_lettered_options(self):
+        g = QuizGame(JsonStore(tempfile.mkdtemp(dir=self.tmp)))
+        g.set_option("topics", "geography")
+        g.set_option("hints", 6)
+        self.t = time.time()
+        g.tick(self.t)
+        g.tick(g.phase_until + .1)
+        self.ask(g)
+        rows = g.snapshot()["variants"]
+        self.assertEqual([r["tag"] for r in rows], ["АА", "ББ", "ВВ", "ГГ", "ДД", "ЕЕ"][:len(rows)])
+        self.assertGreaterEqual(len(rows), 6)
+        right = next(r for r in rows if r["w"] == g.question["correct"])
+        last = rows[-1]
+        g.on_comment(v("Ann"), right["tag"].lower())                     # "аа": the right one by its letter
+        for name in ("Bob", "Cat", "Dan"):
+            g.on_comment(v(name), last["tag"][0] + last["tag"][1].lower())   # mixed case
+        g.on_comment(v("Fay"), right["w"])                               # the word itself counts too
+        g.on_comment(v("Gus"), right["tag"] + " " + right["w"])          # and "АА Волга"
+        g.on_comment(v("Eve"), "Лиссабон")                                # not one of the options now: only flashes
+        snap = g.snapshot()["variants"]
+        self.assertEqual([r["w"] for r in snap], [r["w"] for r in rows])  # the order stays, however many players
+        self.assertEqual(snap[-1]["n"], 3 if last is not right else 6)
+        self.assertEqual(next(r for r in snap if r["w"] == right["w"])["n"], 3 if last is not right else 6)
+        self.assertEqual(g.events[-1]["kind"], "miss")
+        self.times_up(g)
+        self.assertEqual(g.scorers[0]["name"], "Ann")
+        self.assertEqual(g.scorers[0]["pts"], 1.2)
+
     def test_options(self):
         g = QuizGame(JsonStore(tempfile.mkdtemp(dir=self.tmp)))
         self.assertIn("geography,movies", g.OPTIONS["topics"])
