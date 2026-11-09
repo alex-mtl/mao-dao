@@ -549,6 +549,12 @@ up first (`/home/ubuntu/quiz-<timestamp>-pre-<what>.tgz`); never data
   -f -n0 | grep -m1 -E 'round [0-9]+ \('"`, then `sleep 2`, extract,
   `sudo systemctl restart guessword-engine`. If no room has played a round
   in the last ~15 min (check `journalctl --since '-15 min'`), restart at once.
+- **Overlays reload when page files change**, so one may load during the few
+  seconds of the restart. Since 2026-11-09 nginx answers that with a transparent
+  page that reloads itself every 2.5 s (`error_page 502 503 504 = @gw_engine_down`
+  in the `/guessword/engine/` block). Before that it got nginx's own "502 Bad
+  Gateway" page and stayed on it in TikTok LIVE Studio until it was reloaded by
+  hand. Keep that block when editing the nginx config.
 - Check: `systemctl is-active`, the log shows `[engine] N rooms, listening`
   and `restored round ...`, no traceback. Overlays reload themselves (the
   pages' version changes).
