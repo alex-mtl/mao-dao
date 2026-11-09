@@ -1,0 +1,105 @@
+/* Quiz overlay, on top of Guess the Word's guess.css (frame, chroma / TT modes, tops, toasts, overlays).
+   --u = 1% of the frame width. */
+
+/* the round's questions under the round / timer / players row */
+#dots { display: flex; justify-content: center; gap: calc(var(--u) * 1.4); margin-top: calc(var(--u) * 1.6); }
+#dots:empty { display: none; }
+#dots i { width: calc(var(--u) * 2.4); height: calc(var(--u) * 2.4); border-radius: 50%; border: 1px solid rgba(255,255,255,.55);
+          background: rgb(10, 0, 25); }
+#dots i.done { background: var(--violet); border-color: var(--violet); }
+#dots i.cur { background: var(--cyan); border-color: #fff; box-shadow: 0 0 .6em var(--cyan); animation: pulse 1.2s infinite; }
+
+/* topic + question: right under the host's camera zone */
+#qcard { flex: none; position: relative; text-align: center; padding: calc(var(--u) * 1.8) calc(var(--u) * 2.5);
+         border-radius: calc(var(--u) * 2.5); border: 1px solid var(--line); background: rgba(20, 6, 40, .72); }
+html.chroma:not(.alpha) #qcard { background: rgb(14, 4, 30); }
+#topic { font: 800 calc(var(--u) * 2.8) var(--font-display); color: var(--gold); letter-spacing: .2em; min-height: 1.2em; }
+#qtext { font: 800 calc(var(--u) * 5.4)/1.15 var(--font-text); margin-top: calc(var(--u) * .8); min-height: 1.15em; color: #fff; }
+#qcard.in #qtext { animation: wordIn .7s backwards; }
+#qcard.in #topic { animation: fadeIn .5s backwards; }
+
+/* the chat line: like the anagram's - the word on the left, the player on the right */
+#try { position: relative; flex: none; height: calc(var(--u) * 8); border-radius: calc(var(--u) * 2.5); border: 1px solid var(--line);
+       background: rgba(0,0,0,.30); display: flex; justify-content: space-between; align-items: center;
+       gap: calc(var(--u) * 1.5); padding: 0 calc(var(--u) * 2); overflow: hidden; }
+html.chroma:not(.alpha) #try { background: rgb(10, 0, 25); }
+#try .idle { margin: 0 auto; color: var(--muted); font: 700 calc(var(--u) * 3.3) var(--font-text); }
+#try .side { display: flex; align-items: center; gap: calc(var(--u) * 1.2); min-width: 0; }
+#try .tw { font: calc(var(--u) * 4.2)/1 'Russo One', var(--font-display); color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+#try.miss .tw { color: var(--muted); text-decoration: line-through; text-decoration-thickness: 2px; }
+#try .who { flex: none; max-width: calc(var(--u) * 32); font: 700 calc(var(--u) * 3.2) var(--font-text); color: #e4dcff; }
+#try .who .av { width: calc(var(--u) * 4.6); height: calc(var(--u) * 4.6); font-size: calc(var(--u) * 2.2); }
+#try .who span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#try .lab { font: calc(var(--u) * 2.4) 'Russo One', var(--font-display); padding: .25em .7em; border-radius: 999px; white-space: nowrap; flex: none; }
+.lab.ok { color: #0b0614; background: var(--cyan); }
+.lab.miss { color: #d6d0e4; background: #5b5668; }
+#try .cur > * { animation: tryIn .25s ease-out; }
+#try.fade .cur > * { transition: opacity .5s; opacity: 0; }
+
+/* the answer (instead of the chat line) and who scored */
+#ans { display: none; flex: none; height: calc(var(--u) * 8); border-radius: calc(var(--u) * 2.5); align-items: center; justify-content: center;
+       gap: calc(var(--u) * 2); background: linear-gradient(90deg, rgba(57,255,20,.22), rgba(57,255,20,.08)); border: 2px solid var(--lime);
+       font: calc(var(--u) * 4.6) 'Russo One', var(--font-display); color: #fff; animation: pop .6s; padding: 0 calc(var(--u) * 2); }
+html.chroma:not(.alpha) #ans { background: rgb(44, 6, 40); }
+#ans small { font: calc(var(--u) * 2.6) 'Russo One', var(--font-display); color: var(--lime); letter-spacing: .12em; }
+#ans span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#scorers { display: none; flex: none; flex-wrap: wrap; gap: calc(var(--u) * 1); justify-content: center; }
+.answer #try { display: none; }
+.answer #ans, .answer #scorers { display: flex; }
+.sc { display: flex; align-items: center; gap: calc(var(--u) * .8); padding: calc(var(--u) * .4) calc(var(--u) * 1.3) calc(var(--u) * .4) calc(var(--u) * .4);
+      border-radius: 999px; background: rgb(10, 0, 25); border: 1px solid var(--line); font: 700 calc(var(--u) * 2.9) var(--font-text);
+      color: #fff; animation: toastIn .35s backwards; max-width: calc(var(--u) * 46); }
+.sc span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sc b { font: calc(var(--u) * 2.9) 'Russo One', var(--font-display); color: var(--lime); }
+.sc.first { border-color: var(--gold); box-shadow: 0 0 .8em rgba(255,216,74,.5); }
+.sc.first b { color: var(--gold); }
+.sc .av { width: calc(var(--u) * 4.2); height: calc(var(--u) * 4.2); font-size: calc(var(--u) * 2); border: calc(var(--u) * .25) solid #fff; }
+
+/* the variants' table: the variant left, who stands for it right - one player: avatar + nick; several:
+   overlapping avatars, the first to name it on top of the others, more than 7: "+N". No colours: nobody knows
+   which one is right until the time is up */
+html.chroma #stage { gap: calc(var(--u) * 1); }
+#board { flex: 1; min-height: 0; padding: calc(var(--u) * 1) calc(var(--u) * 1.6) calc(var(--u) * 1.6); overflow: hidden; display: flex; flex-direction: column; }
+#table { flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column; gap: calc(var(--u) * 1.1); }
+#table .empty { color: var(--muted); font-weight: 700; text-align: center; padding: 1em 0; font-size: calc(var(--u) * 3.6); }
+.row { flex: none; display: flex; align-items: center; gap: calc(var(--u) * 2); height: calc(var(--u) * 6.6); padding: 0 calc(var(--u) * 1.6);
+       border-radius: calc(var(--u) * 1.6); background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.14);
+       transition: opacity .5s, background .5s, border-color .5s; }
+html.chroma:not(.alpha) .row { background: rgb(22, 14, 38); }
+.row.enter { animation: slideIn .3s ease-out; }
+.row.bump { animation: rowBump .8s; }       /* a new player for it: a white flash (no colour: no hint which one is right) */
+.row .wd { flex: 1; min-width: 0; font: calc(var(--u) * 4.3)/1 'Russo One', var(--font-display); letter-spacing: .03em; color: #fff;
+           overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.stk { display: flex; align-items: center; flex: none; max-width: 52%; }
+.stk .av { position: relative; width: calc(var(--u) * 5.2); height: calc(var(--u) * 5.2); font-size: calc(var(--u) * 2.4);
+           border: calc(var(--u) * .3) solid #fff; }
+.stk .av + .av { margin-left: calc(var(--u) * -2.3); }
+.stk .av.in { animation: avIn .35s ease-out; }
+.stk .n { margin-left: calc(var(--u) * 1.2); font: 700 calc(var(--u) * 3.4) var(--font-text); color: #fff; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.stk .more { margin-left: calc(var(--u) * .9); font: 800 calc(var(--u) * 3) var(--font-text); color: #fff; }
+.stk .more.pop { animation: pop .5s; }
+.stk.left { opacity: .45; }                       /* nobody stands for it any more: its author, faded */
+.answer .row { opacity: .3; }
+.answer .row.ok { opacity: 1; background: linear-gradient(90deg, rgba(57,255,20,.38), rgba(57,255,20,.12)); border-color: var(--lime);
+                  box-shadow: 0 0 1.2em rgba(57,255,20,.45); animation: pop .7s; }
+/* chroma key: no green (it would be keyed out) - the "lime" there is pink (guess.css) */
+html.chroma:not(.alpha) .answer .row.ok { background: rgb(84, 14, 72); box-shadow: 0 0 1.2em rgba(255,79,216,.45); }
+
+/* the topic roulette / "QUESTION 2 / 5": over the game part, under the toasts */
+#big { position: absolute; left: 0; right: 0; bottom: 0; top: var(--chroma-top, 0); z-index: 18; display: flex; flex-direction: column;
+       align-items: center; justify-content: center; gap: calc(var(--u) * 2.5); background: rgba(7, 2, 15, .95); text-align: center; }
+#big[hidden] { display: none; }
+#big .k { font: 800 calc(var(--u) * 3.2) var(--font-display); color: var(--muted); letter-spacing: .3em; }
+#big .v { font: calc(var(--u) * 8.5)/1.1 'Russo One', var(--font-display); color: #fff; padding: 0 calc(var(--u) * 4);
+          text-shadow: 0 0 .3em var(--magenta), 0 0 .8em rgba(255,43,214,.5); }
+#big .v.spin { animation: spinW .12s linear; }
+#big .v.stop { animation: pop .6s; color: var(--gold); text-shadow: 0 0 .3em var(--gold); }
+#big .s { font: 700 calc(var(--u) * 3.3) var(--font-text); color: #e4dcff; padding: 0 calc(var(--u) * 6); min-height: 1.2em; }
+
+/* winner / results: the round's topic */
+.qtopic { font: 800 calc(var(--u) * 3.4) var(--font-display); color: var(--gold); letter-spacing: .15em; text-align: center; margin: calc(var(--u) * 1) 0; }
+
+@keyframes tryIn { from { opacity: 0; transform: translateY(-35%); } }
+@keyframes rowBump { 0% { background: rgba(255, 255, 255, .3); } }
+@keyframes avIn { from { opacity: 0; transform: scale(.4); } }
+@keyframes spinW { from { transform: translateY(-40%); opacity: .3; } }
