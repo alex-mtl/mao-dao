@@ -1,2 +1,6 @@
 data/cache/
 data/kaggle/*.log.json
+data/batches/*.html
+data/batches/run.log
+data/*-count.log
+data/more-err.log
