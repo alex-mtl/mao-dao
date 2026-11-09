@@ -10,6 +10,7 @@ const TOASTS = {
             'found_pending', 'dq', 'winner', 'steal', 'boost', 'time_up', 'round', 'break', 'custom_word', 'tg_word', 'tg_linked',
             'greet', 'balloon', 'plane'],
     anagram: ['gift', 'thanks', 'follow_needed', 'winner', 'streak', 'time_up', 'round', 'break', 'greet', 'balloon', 'plane'],
+    quiz: ['gift', 'thanks', 'follow_needed', 'winner', 'streak', 'round', 'break', 'greet', 'balloon', 'plane'],
     battle: ['b_score', 'b_lead', 'b_sum', 'b_win', 'b_round', 'greet', 'balloon', 'plane'],
     streamer: ['greet', 'balloon', 'plane'],
 };
@@ -19,6 +20,7 @@ const SHOW_ONLY = ['gift', 'hint_wait', 'custom_word', 'tg_word', 'tg_linked', '
 // gift actions of each mode (the engine's room_prefs.GIFT_ACTIONS)
 const GIFT_ACTIONS = { guess: ['hint', 'multi', 'boost', 'steal', 'balloon', 'plane', 'bomber', 'snowball', 'cake'], battle: ['balloon', 'plane', 'bomber'],
                        anagram: ['balloon', 'plane', 'bomber', 'snowball', 'cake'],
+                       quiz: ['balloon', 'plane', 'bomber', 'snowball', 'cake'],
                        streamer: ['balloon', 'plane', 'bomber', 'snowball', 'cake'] };
 
 /** One row per toast: show on/off, voice on/off and its own speech rate; a master switch for every voice. */

@@ -1,20 +1,23 @@
 import { useLaravelReactI18n } from 'laravel-react-i18n';
 import { useState } from 'react';
 import AnagramMonitor from './AnagramMonitor';
+import QuizMonitor, { QUIZ_TOPICS, topicLabel } from './QuizMonitor';
 import GameMonitor from './GameMonitor';
 import GiftCatalog from './GiftCatalog';
 import ScreenTab, { ScreenQuick } from './ScreenTab';
 import { GiftsTab, ToastsTab } from './ToastsAndGifts';
 
 // the panel's modes (engine game names) and the sections of each mode
-export const MODES = ['battle', 'guess', 'anagram', 'streamer'];
+export const MODES = ['battle', 'guess', 'anagram', 'quiz', 'streamer'];
 const SECTIONS = {
     battle: ['gifts', 'toasts', 'likes', 'catalog'],
     guess: ['game', 'frame', 'screen', 'gifts', 'toasts', 'likes', 'catalog'],
     anagram: ['game', 'frame', 'screen', 'gifts', 'toasts', 'likes', 'catalog'],
+    quiz: ['game', 'frame', 'screen', 'gifts', 'toasts', 'likes', 'catalog'],
     streamer: ['frame', 'gifts', 'toasts', 'likes', 'catalog'],
 };
 const LIVE_SECTIONS = ['screen'];            // applied at once, no Apply button
+const FLOW = ['guess', 'anagram', 'quiz'];   // modes with rounds: their settings turn over to the "game flow" monitor
 const TAB_KEY = { game: 'guessword.tab_game', frame: 'guessword.tab_frame', screen: 'guessword.tab_screen', gifts: 'guessword.tab_gifts',
                   toasts: 'guessword.tab_toasts', likes: 'guessword.tab_likes', catalog: 'guessword.tab_catalog' };
 // like thresholds the streamer picks from (every N likes of one viewer), the same for every show; 0 = off.
@@ -128,14 +131,85 @@ function LikesRow({ title, sub, value, onChange }) {
     );
 }
 
+/** The quiz's game settings: the question's time, questions per round, the answer on screen, the break, topics, level */
+function QuizSettings({ s, sec }) {
+    const { t } = useLaravelReactI18n();
+    const q = s.draft.quiz || {};
+    const set = (k) => (v) => s.set('quiz', k, v);
+    const topics = (q.topics || '').split(',').filter(Boolean);
+    const toggle = (k) => {
+        const next = topics.includes(k) ? topics.filter((x) => x !== k) : [...topics, k];
+        if (next.length) s.set('quiz', 'topics', QUIZ_TOPICS.filter((x) => next.includes(x)).join(','));
+    };
+    const len = (q.qcount || 5) * ((q.qtime || 30) + (q.answer_sec || 6) + 2) + 5;
+    return (
+        <>
+            <div className="border-b border-warm-100 py-3">
+                <h3 className="mb-3 font-heading text-base font-bold text-ink-900">{t('guessword.group_rounds')}</h3>
+                <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="sm:col-span-2">
+                        <Field label={t('guessword.qz_opt_qtime')}>
+                            <Seg value={q.qtime} options={s.choices('quiz', 'qtime')} label={sec} onChange={set('qtime')} />
+                        </Field>
+                        <p className="mt-1 text-xs text-ink-500">{t('guessword.qz_round_len', { t: Math.floor(len / 60) + ':' + String(len % 60).padStart(2, '0') })}</p>
+                    </div>
+                    <Field label={t('guessword.qz_opt_qcount')}>
+                        <Seg value={q.qcount} options={s.choices('quiz', 'qcount')} onChange={set('qcount')} />
+                    </Field>
+                    <Field label={t('guessword.qz_opt_answer')}>
+                        <Seg value={q.answer_sec} options={s.choices('quiz', 'answer_sec')} label={sec} onChange={set('answer_sec')} />
+                    </Field>
+                    <Field label={t('guessword.opt_pause')}>
+                        <Seg value={q.pause} options={s.choices('quiz', 'pause')}
+                             label={(n) => (n >= 60 ? t('guessword.min', { n: n / 60 }) : n ? sec(n) : '0')} onChange={set('pause')} />
+                    </Field>
+                    <Field label={t('guessword.qz_opt_level')}>
+                        <Seg value={q.level} options={s.choices('quiz', 'level')} label={(v) => t('guessword.qz_level_' + v)} onChange={set('level')} />
+                    </Field>
+                    <Field label={t('guessword.qz_opt_order')}>
+                        <Seg value={q.order} options={s.choices('quiz', 'order')} label={(v) => t('guessword.qz_order_' + v)} onChange={set('order')} />
+                    </Field>
+                    <div className="flex flex-col gap-1.5 text-sm font-medium text-ink-800 sm:col-span-2">
+                        {t('guessword.qz_opt_topics')}
+                        <span className="flex flex-wrap gap-1.5">
+                            {QUIZ_TOPICS.map((k) => (
+                                <label key={k} className={'flex cursor-pointer items-center gap-1.5 rounded-lg border px-2.5 py-1 text-sm font-semibold ' +
+                                    (topics.includes(k) ? 'border-primary-400 bg-primary-50 text-ink-900' : 'border-warm-300 bg-surface text-ink-500')}>
+                                    <input type="checkbox" className="rounded border-warm-300 text-primary-500" checked={topics.includes(k)} onChange={() => toggle(k)} />
+                                    {topicLabel(t, k)}
+                                </label>
+                            ))}
+                        </span>
+                        <span className="text-xs font-normal text-ink-500">{t('guessword.qz_topics_help')}</span>
+                    </div>
+                </div>
+                <p className="mt-3 text-xs text-ink-500">{t('guessword.qz_rules')}</p>
+            </div>
+            <div className="py-3">
+                <h3 className="mb-3 font-heading text-base font-bold text-ink-900">{t('guessword.group_players')}</h3>
+                <div className="grid gap-4 sm:grid-cols-2">
+                    <Field label={t('guessword.opt_follow')}>
+                        <Seg value={q.follow} options={s.choices('quiz', 'follow')} label={(n) => t('guessword.opt_follow_' + n)} onChange={set('follow')} />
+                    </Field>
+                    {q.follow === 2 && (
+                        <Field label={t('guessword.opt_fan_min')}>
+                            <Seg value={q.fan_min} options={s.choices('quiz', 'fan_min')} label={(n) => t('guessword.opt_fan_min_v', { n })} onChange={set('fan_min')} />
+                        </Field>
+                    )}
+                </div>
+            </div>
+        </>
+    );
+}
+
 export default function SettingsPanel({ s, mode, setMode, footer, bonusesUrl }) {
     const { t } = useLaravelReactI18n();
-    const [tab, setTab] = useState({ battle: 'gifts', guess: 'game', anagram: 'game', streamer: 'frame' });
+    const [tab, setTab] = useState({ battle: 'gifts', guess: 'game', anagram: 'game', quiz: 'game', streamer: 'frame' });
     const section = tab[mode];
     // the panel turns over: the settings, or the monitor of the guess game (remembered on this device)
     const [view, setViewState] = useState(() => { try { return localStorage.getItem('gw-panel-view') || 'settings'; } catch { return 'settings'; } });
     const setView = (v) => { setViewState(v); try { localStorage.setItem('gw-panel-view', v); } catch { /* private mode */ } };
-    const monitor = view === 'monitor' && (mode === 'guess' || mode === 'anagram');
+    const monitor = view === 'monitor' && FLOW.includes(mode);
     const g = s.draft.guess || {};
     const an = s.draft.anagram || {};
     const fr = s.draft[mode] || {};            // the frame of guess / anagram
@@ -168,7 +242,7 @@ export default function SettingsPanel({ s, mode, setMode, footer, bonusesUrl }) 
                             </button>
                         ))}
                     </div>
-                    {(mode === 'guess' || mode === 'anagram') && (
+                    {FLOW.includes(mode) && (
                         <button type="button" onClick={() => setView(monitor ? 'settings' : 'monitor')}
                                 className="ml-auto flex h-9 items-center gap-1.5 whitespace-nowrap rounded-lg border border-warm-300 bg-surface px-3 text-sm font-semibold text-ink-800 hover:bg-warm-50">
                             <span className={monitor ? 'text-ink-500' : 'text-ink-900'}>⚙ {t('guessword.view_settings')}</span>
@@ -203,6 +277,7 @@ export default function SettingsPanel({ s, mode, setMode, footer, bonusesUrl }) 
             {monitor && !s.failed && s.info && <ScreenQuick s={s} game={mode} />}
             {monitor && mode === 'guess' && <GameMonitor s={s} bonusesUrl={bonusesUrl} />}
             {monitor && mode === 'anagram' && <AnagramMonitor s={s} />}
+            {monitor && mode === 'quiz' && <QuizMonitor s={s} bonusesUrl={bonusesUrl} />}
 
             <div className={'px-5 py-2' + (monitor ? ' hidden' : '')}>
                 {s.failed && <p className="py-4 text-sm text-danger-700">{t('guessword.settings_offline')}</p>}
@@ -296,7 +371,9 @@ export default function SettingsPanel({ s, mode, setMode, footer, bonusesUrl }) 
                     </>
                 )}
 
-                {!s.failed && s.info && (mode === 'guess' || mode === 'anagram') && section === 'frame' && (
+                {!s.failed && s.info && mode === 'quiz' && section === 'game' && <QuizSettings s={s} sec={sec} />}
+
+                {!s.failed && s.info && FLOW.includes(mode) && section === 'frame' && (
                     <div className="grid gap-4 py-3 sm:grid-cols-2">
                         {frameSeg(mode)}
                         <Field label={t('guessword.opt_chat_zone')}>
@@ -322,7 +399,7 @@ export default function SettingsPanel({ s, mode, setMode, footer, bonusesUrl }) 
                     </div>
                 )}
 
-                {!s.failed && s.info && (mode === 'guess' || mode === 'anagram') && section === 'screen' && <ScreenTab s={s} game={mode} />}
+                {!s.failed && s.info && FLOW.includes(mode) && section === 'screen' && <ScreenTab s={s} game={mode} />}
 
                 {!s.failed && s.info && mode === 'streamer' && section === 'frame' &&<div className="py-3">{frameSeg('streamer')}</div>}
 

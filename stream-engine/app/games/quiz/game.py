@@ -34,7 +34,7 @@ FOLLOW_NOTE_SEC = 30
 MAX_CHAT = 40                 # a longer message is ordinary chat, not an answer
 STACK = 7                     # a row shows this many of its players, then "+N"
 PTS_RIGHT, PTS_CHANGED, PTS_FIRST = 1.0, 0.9, 1.2
-LOG_EVENTS = {"round_start", "answer", "winner", "timeout", "gift"}
+LOG_EVENTS = {"topic", "round_start", "question", "answer", "winner", "timeout", "gift"}
 SIM_NAMES = ["Alex", "Mike", "Sarah", "Нина", "Krestik", "фог", "Tati", "Valeria", "Сергей", "Maksim", "Лена", "Dima"]
 
 
@@ -132,7 +132,7 @@ class QuizGame(BaseGame):
     def emit(self, type, **data):
         super().emit(type, **data)
         if type in LOG_EVENTS:
-            self.log = (self.log + [dict({k: data[k] for k in ("name", "uid", "gift", "count", "word", "n", "q")
+            self.log = (self.log + [dict({k: data[k] for k in ("name", "uid", "gift", "count", "word", "n", "q", "topic", "title", "score")
                                                           if data.get(k) is not None}, type=type, t=time.time())])[-80:]
 
     def _pool(self, topic=None):
