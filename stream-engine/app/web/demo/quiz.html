@@ -80,9 +80,14 @@
   .row.new { animation: slideIn .3s ease-out; }
   .row .wd { flex: 1; min-width: 0; font: calc(var(--u) * 4.3)/1 var(--font-d); letter-spacing: .03em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .row .who { flex: none; max-width: 46%; }
-  .row .who.left .av, .row .who.left .n { opacity: .45; }       /* the author changed their mind */
-  .row .cnt { font: calc(var(--u) * 3) var(--font-d); color: var(--lime); min-width: calc(var(--u) * 6); text-align: right; }
-  .row .cnt.pop { animation: pop .5s; }
+  /* who stands for the variant: one player - avatar + nick; several - overlapping avatars (as in the stream tops),
+     the first to name it on top of the others, after 7 avatars "+N" */
+  .stk { display: flex; align-items: center; flex: none; }
+  .stk .av { position: relative; }
+  .stk .av + .av { margin-left: calc(var(--u) * -2.2); }
+  .stk .av.in { animation: avIn .35s ease-out; }
+  .stk .more { margin-left: calc(var(--u) * .9); font: 800 calc(var(--u) * 3) var(--font-t); color: #fff; }
+  .stk .more.pop { animation: pop .5s; }
   .row.bump { animation: flashUp .8s; }
   #frame.reveal .row { opacity: .28; }
   #frame.reveal .row.ok { opacity: 1; background: linear-gradient(90deg, rgba(57,255,20,.35), rgba(57,255,20,.10)); border-color: var(--lime);
@@ -135,6 +140,28 @@
   .rest .av { width: calc(var(--u) * 4); height: calc(var(--u) * 4); font-size: calc(var(--u) * 2); border-width: calc(var(--u) * .2); }
   #end .nx { margin-top: auto; margin-bottom: calc(var(--u) * 4); font: calc(var(--u) * 3) var(--font-d); color: var(--cyan); letter-spacing: .1em; }
 
+  /* ---- stream tops (as in Guess the Word): bottom edge of the camera zone; right - the stream champions
+     (rounds won), left - the top pilots (planes) and the balloon. One line per place, ties = overlapping avatars ---- */
+  #champs, #likers { position: absolute; top: calc(var(--u) * 49.4); transform: translateY(-100%); z-index: 7; display: flex;
+                     flex-direction: column; gap: calc(var(--u) * .5); pointer-events: none; }
+  .row .stk.left { opacity: .45; }       /* nobody stands for it any more: the author, faded */
+  #champs { right: calc(var(--u) * 2.8); align-items: flex-end; }
+  #likers { left: calc(var(--u) * 2.8); align-items: flex-start; }
+  .champ { display: flex; align-items: center; gap: calc(var(--u) * 1.6); border-radius: 999px; background: rgb(10,0,25);
+           padding: calc(var(--u) * .25) calc(var(--u) * 2.2) calc(var(--u) * .25) calc(var(--u) * .25); }
+  .champ .av { width: calc(var(--u) * 7.2); height: calc(var(--u) * 7.2); font-size: calc(var(--u) * 3.2); border-width: calc(var(--u) * .4); }
+  .champ .stk .av + .av { margin-left: calc(var(--u) * -2.5); }
+  .champ .cn { font: 700 calc(var(--u) * 3.4) var(--font-t); color: #fff; max-width: calc(var(--u) * 24); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .champ .cw { font: 800 calc(var(--u) * 3.8) var(--font-t); color: #fff; }
+  .champ .cm { font-size: calc(var(--u) * 5); line-height: 1; }
+  .champ.liker { padding: calc(var(--u) * .25) calc(var(--u) * .25) calc(var(--u) * .25) calc(var(--u) * 2.2); }
+  .champ.liker .cn { padding-right: calc(var(--u) * 1.6); }
+  .champ.liker .cm { font-size: calc(var(--u) * 4.4); }
+  .champ.up { animation: pop .6s; }
+  /* the round's results: the stream champions too */
+  .lead2 { width: 80%; font: calc(var(--u) * 2.6) var(--font-d); color: var(--gold); letter-spacing: .15em; text-align: center; margin-top: calc(var(--u) * 1); }
+
+  @keyframes avIn { from { opacity: 0; transform: scale(.4); } }
   @keyframes tryIn { from { opacity: 0; transform: translateY(-35%); } }
   @keyframes slideIn { from { opacity: 0; transform: translateX(-12%); } }
   @keyframes pop { 40% { transform: scale(1.12); } }
@@ -232,6 +259,8 @@
     <div id="cam">КАМЕРА СТРИМЕРА</div>
     <div id="top"><span class="chip" id="roundChip">РАУНД 1</span><span id="timer">0:30</span><span class="chip" id="playersChip">👥 0</span></div>
     <div id="dots"><i></i><i></i><i></i><i></i><i></i></div>
+    <div id="likers"></div>
+    <div id="champs"></div>
 
     <div id="game">
       <div id="qcard"><div id="topic">🌍 ГЕОГРАФИЯ</div><div id="qtext"></div></div>
@@ -255,6 +284,7 @@
       <input id="nick" placeholder="ник" value="я_зритель" style="flex:.6">
       <input id="msg" placeholder="написать в чат (Enter)">
     </div>
+    <div class="r"><button id="bPlane">✈️ Самолёт от зрителя</button><button id="bBalloon">🎈 Подкачать шарик</button></div>
     <div class="r"><button id="bSkip">⏭ Время вышло (показать ответ)</button><button id="bNewRound">🔄 Новый раунд</button></div>
     <p>Сценарий играет сам: боты пишут правильные, неправильные и «мусорные» ответы, меняют мнение.
       Можно писать от себя — в поле выше. Время на вопрос и паузы берутся из вкладки <b>Настройки → Игра</b> справа.</p>
@@ -291,7 +321,8 @@ const QUIZZES = {
   ]},
 };
 const ALL_TOPICS = [['🌍 География', 81], ['⚽ Спорт', 43], ['📚 Литература', 35], ['🎨 Искусство', 26], ['🎬 Кино', 38], ['🎵 Музыка', 20], ['🔬 Наука', 17], ['🏛 История', 30]];
-const BOTS = ['mira_k','dan4ik','Олег_77','sunny.girl','kotik_lol','vadim_pro','ann.ann','ruslan_tt','zhenya_m','max_power','lera.v','tima_007','настя_ок','grisha','polina_s'];
+const BOTS = ['mira_k','dan4ik','Олег_77','sunny.girl','kotik_lol','vadim_pro','ann.ann','ruslan_tt','zhenya_m','max_power','lera.v','tima_007','настя_ок','grisha','polina_s',
+              'artem.k','yulia_z','bogdan','kira_lux','sema','vika_tt','денис','oksi','lev_x','marat','sonya.b','igor_88','alina_w'];
 const COLORS = ['#ff6b9a','#ffd84a','#5be1ff','#9dff6b','#c79bff','#ff9f43','#6bffd1','#ff7ae0','#7aa2ff','#ffe36b','#b0ff7a','#ff8f8f','#8fe3ff','#e0a6ff','#a6ffe0'];
 const GARBAGE = ['привет','ааа','кто знает?','лол','не знаю','🔥🔥','сложно','я тут','хаха','это легко','ммм','давай'];
 
@@ -314,7 +345,65 @@ const hms = (t) => new Date(t).toLocaleTimeString('ru', { hour: '2-digit', minut
 let speed = 1, playing = true, simT = 0;          // simT = game seconds since the page opened
 const G = { round: 0, phase: 'idle', qi: 0, left: 0, phaseLeft: 0, cat: null, quiz: null, qs: [],
             variants: [], answers: new Map(), roundPts: new Map(), streamPts: new Map(), players: new Set(),
-            log: [], past: [], qlog: [], plan: [], scorers: [] };
+            log: [], past: [], qlog: [], plan: [], scorers: [],
+            wins: new Map([['mira_k', 2], ['Олег_77', 2], ['kotik_lol', 1]]),          // the stream so far (demo start)
+            planes: new Map([['sunny.girl', 4], ['grisha', 3], ['lera.v', 3]]), balloon: new Map([['dan4ik', 12]]) };
+
+/* ---- stream tops, as in Guess the Word: one line per place, ties = overlapping avatars ---- */
+function groups(map, places) {
+  const by = new Map();
+  [...map.entries()].filter(([, v]) => v > 0).forEach(([n, v]) => { if (!by.has(v)) by.set(v, []); by.get(v).push(n); });
+  return [...by.entries()].sort((a, b) => b[0] - a[0]).slice(0, places).map(([v, ps]) => ({ v, ps }));
+}
+let topsKey = {};
+function renderTops() {
+  const champs = groups(G.wins, 3);
+  const planes = groups(G.planes, 3);
+  const balloon = groups(G.balloon, 1);
+  const put = (id, rows) => {
+    const key = JSON.stringify(rows.map((r) => r.key));
+    if (topsKey[id] === key) return;
+    const old = topsKey[id] ? JSON.parse(topsKey[id]) : [];
+    topsKey[id] = key;
+    $(id).replaceChildren(...rows.map((r, i) => { if (old[i] && old[i] !== r.key) r.el.classList.add('up'); return r.el; }));
+  };
+  put('champs', champs.map((g, i) => {
+    const row = document.createElement('div'); row.className = 'champ';
+    const cw = document.createElement('span'); cw.className = 'cw'; cw.textContent = g.v;
+    const cm = document.createElement('span'); cm.className = 'cm'; cm.textContent = ['🥇', '🥈', '🥉'][i];
+    row.append(champWho(g.ps), cw, cm);
+    return { el: row, key: g.v + ':' + g.ps.join(',') };
+  }));
+  put('likers', [...planes.map((g) => ['✈️', g]), ...balloon.map((g) => ['🎈', g])].map(([icon, g]) => {
+    const row = document.createElement('div'); row.className = 'champ liker';
+    const cm = document.createElement('span'); cm.className = 'cm'; cm.textContent = icon;
+    const cw = document.createElement('span'); cw.className = 'cw'; cw.textContent = g.v;
+    row.append(cm, cw, champWho(g.ps));
+    return { el: row, key: icon + g.v + ':' + g.ps.join(',') };
+  }));
+}
+// a top line: avatar + nick when alone, overlapping avatars when tied (here up to 3, then +N - as in the stream tops)
+function champWho(ps) {
+  if (ps.length === 1) {
+    const f = document.createDocumentFragment();
+    const n = document.createElement('span'); n.className = 'cn'; n.textContent = ps[0];
+    f.append(av(ps[0]), n); return f;
+  }
+  const s = document.createElement('span'); s.className = 'stk';
+  ps.slice(0, 3).forEach((p, i) => { const a = av(p); a.style.zIndex = 3 - i; s.append(a); });
+  if (ps.length > 3) { const m = document.createElement('span'); m.className = 'more'; m.textContent = '+' + (ps.length - 3); s.append(m); }
+  return s;
+}
+// likes: now and then a viewer sends a plane (every N likes) or pumps the balloon
+let likeAcc = 0;
+function likes(dt) {
+  likeAcc += dt;
+  if (likeAcc < 2.5) return;
+  likeAcc = 0;
+  const who = BOTS[Math.floor(Math.random() * 8)];
+  if (Math.random() < .6) G.planes.set(who, (G.planes.get(who) || 0) + 1);
+  else G.balloon.set(who, (G.balloon.get(who) || 0) + 1 + Math.floor(Math.random() * 3));
+}
 const wall = () => Date.now();
 
 function logEv(text) { G.log.unshift({ t: wall(), text }); G.log.length = Math.min(G.log.length, 60); }
@@ -396,7 +485,29 @@ function showTry(nick, word, hit) {
 
 /* ---- who stands where now: the players whose LAST answer is this variant ---- */
 const lastOf = (nick) => { const l = G.answers.get(nick); return l && l.length ? norm(l[l.length - 1].w) : null; };
-function supporters(v) { const k = norm(v.word); return [...G.answers.keys()].filter((n) => lastOf(n) === k); }
+// in the order they first named this variant: the first one leads the stack
+function supporters(v) {
+  const k = norm(v.word), named = (n) => G.answers.get(n).find((x) => norm(x.w) === k).t;
+  return [...G.answers.keys()].filter((n) => lastOf(n) === k).sort((a, b) => named(a) - named(b));
+}
+const STACK_MAX = 7;
+// one player: avatar + nick; several: overlapping avatars, the first on top, more than 7 -> "+N"
+function stack(players, known, cls = 'stk') {
+  const box = document.createElement('span'); box.className = cls;
+  if (players.length === 1) {
+    const n = document.createElement('span'); n.className = 'n'; n.textContent = players[0];
+    const a = av(players[0]); if (known && !known.has(players[0])) a.classList.add('in');
+    box.classList.add('who'); box.append(a, n);
+    return box;
+  }
+  players.slice(0, STACK_MAX).forEach((p, i) => {
+    const a = av(p); a.style.zIndex = STACK_MAX - i;
+    if (known && !known.has(p)) a.classList.add('in');
+    box.append(a);
+  });
+  if (players.length > STACK_MAX) { const m = document.createElement('span'); m.className = 'more'; m.textContent = '+' + (players.length - STACK_MAX); box.append(m); }
+  return box;
+}
 
 function sortedVariants() {
   const vs = G.variants.map((v, i) => ({ v, i, n: supporters(v).length }));
@@ -405,23 +516,23 @@ function sortedVariants() {
 }
 function renderTable() {
   const t = $('table');
-  const prev = new Map([...t.children].map((r) => [r.dataset.k, r.querySelector('.cnt')?.textContent]));
+  // who was already in each row: only a newcomer's avatar pops in
+  const prev = new Map([...t.children].map((r) => [r.dataset.k, new Set((r.dataset.p || '').split('\n'))]));
+  const prevMore = new Map([...t.children].map((r) => [r.dataset.k, r.querySelector('.more')?.textContent]));
   t.innerHTML = '';
   if (!G.variants.length) { t.innerHTML = '<div class="empty">Пока никто не ответил</div>'; return; }
   const right = norm(G.qs[G.qi].a);
   for (const { v } of sortedVariants()) {
     const k = norm(v.word), sup = supporters(v);
-    const others = sup.filter((n) => n !== v.author).length;
     const r = document.createElement('div');
     r.className = 'row' + (v.isNew ? ' new' : '') + (v.bump ? ' bump' : '') + (G.phase === 'reveal' && k === right ? ' ok' : '');
-    r.dataset.k = k;
+    r.dataset.k = k; r.dataset.p = sup.join('\n');
     const wd = document.createElement('span'); wd.className = 'wd'; wd.textContent = v.word.toUpperCase();
-    const who = document.createElement('span'); who.className = 'who' + (sup.includes(v.author) ? '' : ' left');
-    const n = document.createElement('span'); n.className = 'n'; n.textContent = v.author;
-    who.append(av(v.author), n);
-    const cnt = document.createElement('span'); cnt.className = 'cnt'; cnt.textContent = others ? '+' + others : '';
-    if (prev.has(k) && prev.get(k) !== cnt.textContent && cnt.textContent) cnt.classList.add('pop');
-    r.append(wd, who, cnt); t.append(r);
+    const st = sup.length ? stack(sup, prev.get(k)) : stack([v.author]);
+    if (!sup.length) st.classList.add('left');
+    const more = st.querySelector('.more');
+    if (more && prevMore.has(k) && prevMore.get(k) !== more.textContent) more.classList.add('pop');
+    r.append(wd, st); t.append(r);
     v.isNew = v.bump = false;
   }
 }
@@ -475,6 +586,8 @@ function endRound() {
                  <div class="pod">${pod || '<div class="muted">никто не набрал очков</div>'}</div><div class="rest">${rest}</div>
                  <div class="nx" id="endNext"></div>`;
   e.classList.add('on');
+  // the stream champions: rounds won (a tie for the first place - each of them wins)
+  if (top[0]) top.filter((x) => x[1] === top[0][1]).forEach(([n]) => G.wins.set(n, (G.wins.get(n) || 0) + 1));
   G.past.unshift({ round: G.round, cat: G.cat, quiz: G.quiz.quiz, t: wall(), qs: G.qlog, top: top.slice(0, 3), players: G.roundPts.size });
   logEv('🏆 Раунд ' + G.round + ' окончен' + (top[0] ? ': победитель ' + top[0][0] + ' (' + fmt(top[0][1]) + ')' : ''));
   renderDots();
@@ -485,7 +598,7 @@ let botQueue = [];
 function planBots() {
   const q = G.qs[G.qi];
   botQueue = [];
-  const n = 8 + Math.floor(Math.random() * 6);
+  const n = 12 + Math.floor(Math.random() * 14);
   const bots = [...BOTS].sort(() => Math.random() - .5).slice(0, n);
   const T = S.qtime;
   // a few popular wrong answers so the table has crowds, not 14 singles
@@ -515,6 +628,7 @@ function frame(now) {
 let spinAcc = 0;
 function step(dt) {
   simT += dt;
+  likes(dt); renderTops();
   if (G.phase === 'roulette') {
     G.phaseLeft -= dt; spinAcc += dt;
     const cats = ALL_TOPICS.map(([t]) => t);
@@ -558,6 +672,9 @@ document.querySelectorAll('[data-speed]').forEach((b) => b.onclick = () => {
 $('msg').onkeydown = (e) => { if (e.key === 'Enter' && e.target.value.trim()) { chat($('nick').value.trim() || 'я_зритель', e.target.value.trim()); e.target.value = ''; } };
 $('bSkip').onclick = () => { if (G.phase === 'ask') reveal(); };
 $('bNewRound').onclick = () => newRound();
+const me = () => $('nick').value.trim() || 'я_зритель';
+$('bPlane').onclick = () => G.planes.set(me(), (G.planes.get(me()) || 0) + 1);
+$('bBalloon').onclick = () => G.balloon.set(me(), (G.balloon.get(me()) || 0) + 5);
 
 /* ========================= the panel ========================= */
 let view = 'settings', setTab = 'game', monTab = 'now';
@@ -570,10 +687,14 @@ function renderPanel() {
   const tabs = view === 'settings' ? SET_TABS.map(([k, l]) => `<span data-t="${k}" class="${k === setTab ? 'on' : ''}">${l}</span>`).join('')
     : [['now','🔴 Текущий раунд'],['past','Прошлые', G.past.length],['plan','Запланированные', G.plan.length + 1],['bonuses','🎁 Бонусы игроков']]
         .map(([k, l, n]) => `<span data-t="${k}" class="${k === monTab ? 'on' : ''}">${l}${n !== undefined ? `<span class="n">${n}</span>` : ''}</span>`).join('');
+  // the settings tab "On screen" is live (no Apply) - as in Guess the Word
   $('tabs').innerHTML = tabs;
   $('pane').innerHTML = view === 'settings' ? settingsPane() : monitorPane();
 }
 function settingsPane() {
+  if (setTab === 'screen') return `<div class="stub" style="text-align:left;padding:4px 0">Как в «Угадай слово» (тот же код вкладки): что показывать поверх игры —
+    <b>топ эфира</b> (здесь — по выигранным раундам, справа над игрой), <b>топ самолётов</b> и <b>шарик</b> (слева), бот, подарки;
+    каждое — всегда / периодически / в карусели.</div>`;
   if (setTab !== 'game') return `<div class="stub">Как в «Угадай слово» — тот же раздел, те же поля (общий код вкладки).</div>`;
   return `<div class="grid2">
     <label class="fld wide">Время на вопрос ${seg('qtime', [10,20,30,40,50,60,70,80,90,100,110,120], (n) => n + ' с')}
@@ -609,8 +730,8 @@ function nowPane() {
     return `<tr class="${ok && showRight ? 'okv' : ''}"><td>${esc(v.word)}${ok && (showRight || window.eyeOpen) ? ` <span class="okmark">✓</span>` : ''}</td><td>${avHtml(v.author)}${esc(v.author)}</td><td class="r">${n}</td><td class="r muted">${clock(v.at - G.askStart)}</td></tr>`;
   }).join('') || `<tr><td colspan="4" class="muted">Пока пусто</td></tr>`;
   const pts = [...G.roundPts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 10)
-    .map(([n, p], i) => `<tr><td>${i + 1}</td><td>${avHtml(n)}${esc(n)}</td><td class="r"><b>${fmt(p)}</b></td><td class="r muted">${fmt(G.streamPts.get(n) || 0)}</td></tr>`).join('')
-    || `<tr><td colspan="4" class="muted">Пока никто не набрал очков</td></tr>`;
+    .map(([n, p], i) => `<tr><td>${i + 1}</td><td>${avHtml(n)}${esc(n)}</td><td class="r"><b>${fmt(p)}</b></td><td class="r muted">${fmt(G.streamPts.get(n) || 0)}</td><td class="r muted">${G.wins.get(n) || ''}</td></tr>`).join('')
+    || `<tr><td colspan="5" class="muted">Пока никто не набрал очков</td></tr>`;
   const answered = G.answers.size;
   return `<div class="rowk">
       <div class="kpi"><small>Раунд ${G.round}</small><b>${G.quiz.icon} ${esc(G.cat)}</b><div class="sub">${esc(G.quiz.quiz)}</div></div>
@@ -623,7 +744,7 @@ function nowPane() {
       <div class="muted" style="margin-top:4px;font-size:12px">Неправильные (принимаются): ${esc(q.w.join(', '))}</div></div>
     <div class="cols">
       <div class="box"><h4>Таблица вопроса — как на экране</h4><table><tr><th>Вариант</th><th>Первым назвал</th><th class="r">Сейчас за него</th><th class="r">Когда</th></tr>${rows}</table></div>
-      <div class="box"><h4>Баллы раунда</h4><table><tr><th>#</th><th>Игрок</th><th class="r">Раунд</th><th class="r">Стрим</th></tr>${pts}</table></div>
+      <div class="box"><h4>Баллы раунда</h4><table><tr><th>#</th><th>Игрок</th><th class="r">Раунд</th><th class="r">Стрим</th><th class="r" title="выигранных раундов за эфир">🏆</th></tr>${pts}</table></div>
     </div>
     <div class="cols">
       <div class="box feed"><h4>Лента раунда</h4>${G.log.slice(0, 10).map((e) => `<div><time>${hms(e.t)}</time>${esc(e.text)}</div>`).join('')}</div>
