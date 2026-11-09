@@ -178,6 +178,23 @@ class QuizTest(unittest.TestCase):
         self.assertEqual(g.scorers[0]["name"], "Ann")
         self.assertEqual(g.scorers[0]["pts"], 1.2)
 
+    def test_digit_marks(self):
+        g = QuizGame(JsonStore(tempfile.mkdtemp(dir=self.tmp)))
+        g.set_option("topics", "geography")
+        g.set_option("hints", 4)
+        g.set_option("tags", "digits")
+        self.t = time.time()
+        g.tick(self.t)
+        g.tick(g.phase_until + .1)
+        self.ask(g)
+        rows = g.snapshot()["variants"]
+        self.assertEqual([r["tag"] for r in rows], ["11", "22", "33", "44"])
+        right = next(r for r in rows if r["w"] == g.question["correct"])
+        g.on_comment(v("Ann"), right["tag"])
+        g.on_comment(v("Bob"), right["w"])                               # the word still counts
+        self.times_up(g)
+        self.assertEqual({s["name"]: s["pts"] for s in g.scorers}, {"Ann": 1.2, "Bob": 1.0})
+
     def test_options(self):
         g = QuizGame(JsonStore(tempfile.mkdtemp(dir=self.tmp)))
         self.assertIn("geography,movies", g.OPTIONS["topics"])

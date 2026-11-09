@@ -175,6 +175,14 @@ function QuizSettings({ s, sec }) {
                         </Field>
                         <p className="mt-1 text-xs text-ink-500">{t('guessword.qz_hints_help')}</p>
                     </div>
+                    {q.hints > 0 && (
+                        <div>
+                            <Field label={t('guessword.qz_opt_tags')}>
+                                <Seg value={q.tags} options={s.choices('quiz', 'tags')} label={(v) => t('guessword.qz_tags_' + v)} onChange={set('tags')} />
+                            </Field>
+                            <p className="mt-1 text-xs text-ink-500">{t('guessword.qz_tags_help')}</p>
+                        </div>
+                    )}
                     <div className="flex flex-col gap-1.5 text-sm font-medium text-ink-800 sm:col-span-2">
                         {t('guessword.qz_opt_topics')}
                         <span className="flex flex-wrap gap-1.5">

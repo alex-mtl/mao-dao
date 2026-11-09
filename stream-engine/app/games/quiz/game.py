@@ -76,7 +76,8 @@ class QuizGame(BaseGame):
                "level": ["all", "easy", "medium", "hard"],
                "topics": Topics(TOPICS),
                "order": ["votes", "time"],                                    # the table: most players first / as named
-               "hints": [0, 4, 6, 8],                                             # the game puts N variants (the right one among them) in the table
+               "hints": [0, 4, 6, 8],
+               "tags": ["letters", "digits"],                                 # the options' marks: АА, ББ... / 11, 22...                                             # the game puts N variants (the right one among them) in the table
                "follow": [2, 1, 0], "fan_min": [1, 5, 10, 15, 20, 25, 30, 40],
                "chroma": [0, 1], "chroma_top": [25, 30, 32, 33, 35, 40, 45, 50],
                "frame": [16, 19.5, 20], "chat_zone": [0, 10, 15, 20, 25, 30, 35]}
@@ -90,7 +91,7 @@ class QuizGame(BaseGame):
         super().__init__(store)
         self.lang = config.LANGUAGE
         self.qtime, self.qcount, self.answer_sec, self.pause_sec = 30, 5, 6, 60
-        self.level, self.topics, self.order, self.hints = "all", list(TOPICS), "votes", 0
+        self.level, self.topics, self.order, self.hints, self.tags = "all", list(TOPICS), "votes", 0, "letters"
         self.follow_required, self.fans_only, self.fan_min = False, False, 1
         self.chroma, self.chroma_top, self.chat_zone, self.frame = False, 33, 20, 16
         self.screen = {k: d for k, (d, _) in self.SCREEN.items()}
@@ -227,7 +228,8 @@ class QuizGame(BaseGame):
             # viewer to name the right one still gets the most. The rows keep this order (no sorting by players).
             seeds = [q["correct"]] + [w for w in q["wrong"] if norm(w) != norm(q["correct"])][:self.hints - 1]
             random.shuffle(seeds)
-            letters = LETTERS.get(self.lang, LETTERS["en"])
+            # digits (11, 22...) for chats where TikTok drops doubled letters as spam
+            letters = "12345678" if self.tags == "digits" else LETTERS.get(self.lang, LETTERS["en"])
             self.accept = {}
             for i, w in enumerate(seeds):
                 tag = letters[i]
@@ -439,6 +441,8 @@ class QuizGame(BaseGame):
             self.level = value
         elif key == "topics" and value in self.OPTIONS["topics"]:
             self.topics = [t for t in TOPICS if t in value.split(",")]
+        elif key == "tags" and value in self.OPTIONS["tags"]:
+            self.tags = value                            # from the next question
         elif key == "hints" and value in self.OPTIONS["hints"]:
             self.hints = int(value)                      # from the next question
         elif key == "order" and value in self.OPTIONS["order"]:
@@ -462,7 +466,7 @@ class QuizGame(BaseGame):
 
     def get_options(self):
         return {"qtime": self.qtime, "qcount": self.qcount, "answer_sec": self.answer_sec, "pause": self.pause_sec,
-                "level": self.level, "topics": ",".join(self.topics), "order": self.order, "hints": self.hints,
+                "level": self.level, "topics": ",".join(self.topics), "order": self.order, "hints": self.hints, "tags": self.tags,
                 "follow": 2 if self.fans_only else int(self.follow_required), "fan_min": self.fan_min,
                 "chroma": int(self.chroma), "chroma_top": self.chroma_top, "frame": self.frame,
                 "chat_zone": self.chat_zone, **self.screen}
