@@ -166,6 +166,36 @@ engine game `anagram`, page `app/web/anagram/`). Mockup with the animations: `st
 - Engine log lines `[anagram] round N (ru), ...`; the live log gets `round_start` / `winner` / `round_end` with
   `game: "anagram"`. Tests: `stream-engine/tests/test_anagram.py` (a tiny dictionary of its own, no built assets).
 
+## Quiz — questions of the platform's quizzes (since 2026-11-09)
+
+Engine game `quiz` (`stream-engine/app/games/quiz/`, page `app/web/quiz/`). Mockup: `stream-engine/app/web/demo/quiz.html`.
+- **Questions**: the generated quizzes of the platform (services/quiz-factory: `import_key` `<topic>-<level>-<n>`, one
+  tag = the topic). Laravel `GET /internal/guessword/quizzes?lang=ru` (`QuizBankController`, header X-Internal-Secret =
+  the engine's secret) gives every published one with each question's right answer and its whole `wrong_pool` (up to 14).
+  The engine (`quiz/bank.py`) fetches it in a thread at the first use and every 6 h, keeps the last copy in
+  `{DATA_DIR}/quiz-bank/<lang>.json`; with no platform and no copy a small built-in sample plays (tests, home copies).
+  No quizzes in the room's language → the Russian ones.
+- **Round**: TOPIC (roulette on the overlay, ~4.5 s: a topic at random of the ticked ones, or the host's queued one; a
+  quiz of it with questions not played this stream, `quiz/used.json`, a topic played through starts over) → for each
+  of `qcount` questions (default 5): INTRO "QUESTION 2 / 5" (2 s) → ASK (`qtime`, 10–120 s, default 30) → ANSWER
+  (`answer_sec`, default 6) → WINNER → REVEAL (break) like the other games.
+- **Answers**: chat text is matched to the variants (right one + its wrong pool) after `norm()` (case, ё, spaces,
+  hyphens, punctuation ignored); a match becomes / joins a row of the table, anything else flashes on the chat line
+  (`try` kind `miss`, at most every 0.6 s). **Only a viewer's last variant counts.** A row shows who stands for it now,
+  the first to name it first (on top of the stack), at most 7 avatars then "+N"; nobody left → its author, faded.
+  The rows have no colours until the answer (order: most players first, or as named — setting).
+- **Points** (per question, at ANSWER): last variant right → 1; their first variant of the question was a wrong one →
+  0.9; the first to name the right answer (of those) → 1.2 (1.1 if they had said a wrong one first — the owner did
+  not decide this case, 2026-11-09). Round winner = most points; a tie → each of them gets the round win. Stream
+  champions = rounds won (`quiz/players.json`), shown with the planes / balloon tops as in the other games.
+- **Room page → Quiz**: settings (time per question, questions per round, the answer on screen, break, level, topics,
+  table order, who plays; frame / On screen / gifts / toasts / likes as in the other games — the Quiz took Guess the
+  Word's picture and On screen values once, session flag `shared` = 2) and the "game flow" (`QuizMonitor.jsx`): the
+  round now with the host's controls (pause, +10 s, show the answer, skip the question — another one of the same quiz,
+  end the round), past rounds with their questions, planned topics (`queue_add` / `queue_del` / `queue_move`), bonuses.
+- Strings: `q.*` in `common/i18n.js`, `guessword.mode_quiz*` / `qz_*` in `lang/*/guessword.php`. Tests:
+  `stream-engine/tests/test_quiz.py`, `tests/Feature/Guessword/QuizBankTest.php`.
+
 ## Environment
 
 | Variable | Meaning |
