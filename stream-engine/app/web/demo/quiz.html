@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Викторина — макет</title>
+<link href="https://fonts.googleapis.com/css2?family=Russo+One&family=Exo+2:wght@600;700;800&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root { --bg:#07020f; --line:rgba(160,120,255,.28); --text:#f4f0ff; --muted:#a99bd0; --cyan:#00f0ff;
+          --magenta:#ff2bd6; --lime:#39ff14; --gold:#ffd84a; --pink:#ff2d75; --violet:#9d4dff;
+          --font-d:'Russo One','Segoe UI',sans-serif; --font-t:'Exo 2','Segoe UI',sans-serif; --u:4.3px; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #05010b; color: var(--text); font-family: var(--font-t); display: flex; gap: 24px;
+         padding: 20px; align-items: flex-start; flex-wrap: wrap; }
+  .left { display: flex; flex-direction: column; gap: 12px; flex: none; width: calc(var(--u) * 100); }
+
+  /* ================= 9:16 game frame ================= */
+  #frame { position: relative; flex: none; width: calc(var(--u) * 100); height: calc(var(--u) * 177.78); overflow: hidden;
+           outline: 1px solid #00ff00; background: radial-gradient(120% 80% at 50% 0%, #1d0640 0%, var(--bg) 55%); }
+  #cam { position: absolute; left: 0; right: 0; top: 0; height: calc(var(--u) * 50); display: grid; place-items: center;
+         background: repeating-linear-gradient(45deg, #1b1e26 0 12px, #171a21 12px 24px); color: #5d6375;
+         font: 700 calc(var(--u) * 3.4) var(--font-t); letter-spacing: .1em; }
+  #top { position: absolute; left: calc(var(--u) * 2); right: calc(var(--u) * 2); top: calc(var(--u) * .8); z-index: 5;
+         display: flex; justify-content: space-between; align-items: center; }
+  .chip { font: calc(var(--u) * 2.8) var(--font-d); padding: .3em .8em; border-radius: 999px; border: 1px solid var(--line);
+          background: rgb(10,0,25); letter-spacing: .06em; }
+  #timer { font: calc(var(--u) * 6.5)/1 var(--font-d); color: var(--cyan); font-variant-numeric: tabular-nums;
+           text-shadow: 0 0 .2em var(--cyan), 0 0 .6em rgba(0,240,255,.6); }
+  #timer.low { color: var(--pink); text-shadow: 0 0 .2em var(--pink), 0 0 .7em var(--pink); animation: pulse 1s infinite; }
+  /* the 5 questions of the round, under the round / timer / players row (where Guess the Word has its scale) */
+  #dots { position: absolute; left: 50%; transform: translateX(-50%); top: calc(var(--u) * 9.2); z-index: 5; display: flex;
+          gap: calc(var(--u) * 1.4); padding: calc(var(--u) * .8) calc(var(--u) * 1.6); border-radius: 999px; background: rgb(10,0,25); }
+  #dots i { width: calc(var(--u) * 2.4); height: calc(var(--u) * 2.4); border-radius: 50%; border: 1px solid rgba(255,255,255,.45); }
+  #dots i.done { background: var(--violet); border-color: var(--violet); }
+  #dots i.cur { background: var(--cyan); border-color: #fff; box-shadow: 0 0 .6em var(--cyan); animation: pulse 1.2s infinite; }
+
+  #game { position: absolute; left: 0; right: 0; top: calc(var(--u) * 50); bottom: 0; display: flex; flex-direction: column;
+          gap: calc(var(--u) * 1.6); padding: calc(var(--u) * 2) calc(var(--u) * 2.4) calc(var(--u) * 2); }
+
+  /* topic + question (no answers on the screen) */
+  #qcard { position: relative; text-align: center; padding: calc(var(--u) * 2) calc(var(--u) * 2.5); border-radius: calc(var(--u) * 2.5);
+           border: 1px solid var(--line); background: rgba(20,6,40,.72); }
+  #topic { font: calc(var(--u) * 2.7) var(--font-d); color: var(--gold); letter-spacing: .2em; }
+  #qtext { font: 800 calc(var(--u) * 5.4)/1.15 var(--font-t); margin-top: calc(var(--u) * 1); min-height: 1.15em; }
+  #qcard.in #qtext { animation: wordIn .7s backwards; }
+  #qcard.in #topic { animation: fadeIn .5s backwards; }
+
+  /* the incoming chat line (like the anagram's attempt line): every message flashes here; a word that is
+     not one of the variants fades away, a variant goes into the table */
+  #try { position: relative; height: calc(var(--u) * 8); border-radius: calc(var(--u) * 2.5); border: 1px solid var(--line);
+         background: rgba(0,0,0,.30); display: flex; justify-content: space-between; align-items: center;
+         gap: calc(var(--u) * 1.5); padding: 0 calc(var(--u) * 2); overflow: hidden; }
+  #try .idle { margin: 0 auto; color: var(--muted); font: 700 calc(var(--u) * 3.2) var(--font-t); }
+  #try .tw { font: calc(var(--u) * 4.2)/1 var(--font-d); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  #try .lab { font: calc(var(--u) * 2.3) var(--font-d); padding: .25em .7em; border-radius: 999px; white-space: nowrap; margin-left: calc(var(--u) * 1); }
+  .lab.no { color: #d6d0e4; background: #5b5668; }
+  .lab.yes { color: #0b0614; background: var(--cyan); }
+  #try .w1 { display: flex; align-items: center; min-width: 0; }
+  #try .cur { display: contents; }
+  #try .cur.in > * { animation: tryIn .25s ease-out; }
+  #try.miss .tw { color: var(--muted); text-decoration: line-through; text-decoration-thickness: 2px; }
+  #try.fade .cur > * { transition: opacity .5s; opacity: 0; }
+  .who { display: flex; align-items: center; gap: calc(var(--u) * 1.2); font: 700 calc(var(--u) * 3.2) var(--font-t); color: #e4dcff; min-width: 0; }
+  .who .n { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #try .who { flex: none; max-width: calc(var(--u) * 34); }
+
+  /* the answer at reveal (replaces the chat line) */
+  #ans { display: none; height: calc(var(--u) * 8); border-radius: calc(var(--u) * 2.5); align-items: center; justify-content: center;
+         gap: calc(var(--u) * 2); background: linear-gradient(90deg, rgba(57,255,20,.18), rgba(57,255,20,.06)); border: 1px solid var(--lime);
+         font: calc(var(--u) * 4.4) var(--font-d); color: #fff; animation: pop .6s; }
+  #ans small { font: calc(var(--u) * 2.6) var(--font-d); color: var(--lime); letter-spacing: .12em; }
+  #frame.reveal #try { display: none; }
+  #frame.reveal #ans { display: flex; }
+
+  /* ---- table of variants: the word left, who said it first right, +N = the others whose answer it is now ---- */
+  #table { flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column; gap: calc(var(--u) * 1.1); }
+  .row { flex: none; display: flex; align-items: center; gap: calc(var(--u) * 2); height: calc(var(--u) * 6.6);
+         padding: 0 calc(var(--u) * 1.6); border-radius: calc(var(--u) * 1.6); background: rgba(255,255,255,.07);
+         border: 1px solid rgba(255,255,255,.12); transition: opacity .5s, background .5s, border-color .5s, transform .4s; }
+  .row.new { animation: slideIn .3s ease-out; }
+  .row .wd { flex: 1; min-width: 0; font: calc(var(--u) * 4.3)/1 var(--font-d); letter-spacing: .03em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .row .who { flex: none; max-width: 46%; }
+  .row .who.left .av, .row .who.left .n { opacity: .45; }       /* the author changed their mind */
+  .row .cnt { font: calc(var(--u) * 3) var(--font-d); color: var(--lime); min-width: calc(var(--u) * 6); text-align: right; }
+  .row .cnt.pop { animation: pop .5s; }
+  .row.bump { animation: flashUp .8s; }
+  #frame.reveal .row { opacity: .28; }
+  #frame.reveal .row.ok { opacity: 1; background: linear-gradient(90deg, rgba(57,255,20,.35), rgba(57,255,20,.10)); border-color: var(--lime);
+                          box-shadow: 0 0 1.2em rgba(57,255,20,.45); animation: pop .7s; }
+  .empty { color: var(--muted); font: 700 calc(var(--u) * 3.2) var(--font-t); text-align: center; padding: calc(var(--u) * 4) 0; }
+
+  /* scorers of the question (reveal): chips with the points */
+  #scorers { display: none; flex-wrap: wrap; gap: calc(var(--u) * 1); justify-content: center; }
+  #frame.reveal #scorers { display: flex; }
+  .sc { display: flex; align-items: center; gap: calc(var(--u) * .8); padding: calc(var(--u) * .5) calc(var(--u) * 1.2) calc(var(--u) * .5) calc(var(--u) * .5);
+        border-radius: 999px; background: rgba(10,0,25,.9); border: 1px solid var(--line); font: 700 calc(var(--u) * 2.8) var(--font-t);
+        animation: toastIn .35s backwards; }
+  .sc b { font: calc(var(--u) * 2.8) var(--font-d); color: var(--lime); }
+  .sc.first { border-color: var(--gold); box-shadow: 0 0 .8em rgba(255,216,74,.5); }
+  .sc.first b { color: var(--gold); }
+  .sc .av { width: calc(var(--u) * 4); height: calc(var(--u) * 4); font-size: calc(var(--u) * 2); border-width: calc(var(--u) * .2); }
+
+  #cta { flex: none; text-align: center; font: calc(var(--u) * 3.6) var(--font-d); color: var(--lime); letter-spacing: .06em; }
+  #cta span { display: inline-block; animation: breathe 2.4s ease-in-out infinite; }
+
+  .av { width: calc(var(--u) * 5); height: calc(var(--u) * 5); border-radius: 50%; flex: none; display: grid; place-items: center;
+        font: calc(var(--u) * 2.4) var(--font-d); color: #0b0614; border: calc(var(--u) * .3) solid #fff; }
+
+  /* ---- big centre card: topic roulette at round start, "QUESTION 2 / 5" ---- */
+  #big { position: absolute; left: 0; right: 0; top: calc(var(--u) * 50); bottom: 0; z-index: 25; display: none;
+         flex-direction: column; align-items: center; justify-content: center; gap: calc(var(--u) * 2.5); background: rgba(7,2,15,.94); }
+  #big.on { display: flex; animation: fadeIn .3s; }
+  #big .k { font: calc(var(--u) * 3.2) var(--font-d); color: var(--muted); letter-spacing: .3em; }
+  #big .v { font: calc(var(--u) * 8.5)/1.1 var(--font-d); text-align: center; color: #fff; text-shadow: 0 0 .3em var(--magenta), 0 0 .8em rgba(255,43,214,.5); }
+  #big .v.spin { animation: spinW .12s linear; }
+  #big .v.stop { animation: pop .6s; color: var(--gold); text-shadow: 0 0 .3em var(--gold); }
+  #big .s { font: 700 calc(var(--u) * 3.2) var(--font-t); color: #e4dcff; text-align: center; padding: 0 calc(var(--u) * 6); }
+
+  /* ---- round results ---- */
+  #end { position: absolute; left: 0; right: 0; top: calc(var(--u) * 50); bottom: 0; z-index: 30; display: none;
+         flex-direction: column; align-items: center; gap: calc(var(--u) * 2.2); padding-top: calc(var(--u) * 4);
+         background: #07020f; }
+  #end.on { display: flex; animation: fadeIn .5s; }
+  #end h2 { margin: 0; font: calc(var(--u) * 7) var(--font-d); color: var(--pink); text-shadow: 0 0 .3em var(--pink); letter-spacing: .1em; }
+  #end .tp { font: calc(var(--u) * 2.8) var(--font-d); color: var(--gold); letter-spacing: .2em; }
+  .pod { display: flex; align-items: flex-end; gap: calc(var(--u) * 4); }
+  .pod > div { display: flex; flex-direction: column; align-items: center; gap: calc(var(--u) * .8); font: 800 calc(var(--u) * 3) var(--font-t); animation: toastIn .5s backwards; }
+  .pod .av { width: calc(var(--u) * 11); height: calc(var(--u) * 11); font-size: calc(var(--u) * 5); }
+  .pod .p1 .av { width: calc(var(--u) * 15); height: calc(var(--u) * 15); border-color: var(--gold); box-shadow: 0 0 1.2em var(--gold); }
+  .pod b { font: calc(var(--u) * 4) var(--font-d); color: var(--gold); }
+  .rest { width: 80%; display: flex; flex-direction: column; gap: calc(var(--u) * .8); }
+  .rest div { display: flex; align-items: center; gap: calc(var(--u) * 1.5); font: 700 calc(var(--u) * 3) var(--font-t); }
+  .rest .pos { width: calc(var(--u) * 5); color: var(--muted); font-family: var(--font-d); }
+  .rest .pt { margin-left: auto; font-family: var(--font-d); color: var(--gold); }
+  .rest .av { width: calc(var(--u) * 4); height: calc(var(--u) * 4); font-size: calc(var(--u) * 2); border-width: calc(var(--u) * .2); }
+  #end .nx { margin-top: auto; margin-bottom: calc(var(--u) * 4); font: calc(var(--u) * 3) var(--font-d); color: var(--cyan); letter-spacing: .1em; }
+
+  @keyframes tryIn { from { opacity: 0; transform: translateY(-35%); } }
+  @keyframes slideIn { from { opacity: 0; transform: translateX(-12%); } }
+  @keyframes pop { 40% { transform: scale(1.12); } }
+  @keyframes flashUp { 0% { background: rgba(0,240,255,.35); } }
+  @keyframes toastIn { from { opacity: 0; transform: scale(.5); } }
+  @keyframes pulse { 50% { opacity: .55; } }
+  @keyframes breathe { 50% { transform: scale(1.04); filter: brightness(1.3); } }
+  @keyframes fadeIn { from { opacity: 0; } }
+  @keyframes wordIn { from { opacity: 0; letter-spacing: .3em; filter: blur(6px); } }
+  @keyframes spinW { from { transform: translateY(-40%); opacity: .3; } }
+
+  /* ================= demo controls ================= */
+  .ctl { display: flex; flex-direction: column; gap: 8px; }
+  .ctl .r { display: flex; gap: 6px; }
+  .ctl .r > * { flex: 1; }
+  .ctl button { padding: 8px 10px; border-radius: 8px; border: 1px solid #444; background: #1c1630; color: #eee; font: 600 13px var(--font-t); cursor: pointer; }
+  .ctl button:hover { border-color: var(--cyan); }
+  .ctl button.on { border-color: var(--magenta); background: #2a0f4f; }
+  .ctl input { padding: 8px 10px; border-radius: 8px; border: 1px solid #444; background: #120c22; color: #fff; font: 600 13px var(--font-t); min-width: 0; }
+  .ctl p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.45; }
+  .ctl p b { color: #fff; }
+
+  /* ================= panel (light, like the room page) ================= */
+  .panel { --pbg:#f3f5f9; --card:#fbfcfe; --pl:#e3e8f0; --ink:#1d2433; --pm:#5b6b86; --primary:#7c5cff; --soft:#eef1f7;
+           --ok:#1fbf75; --bad:#e5484d; flex: 1 1 620px; min-width: 0; max-width: 1000px; background: var(--card); color: var(--ink);
+           border-radius: 18px; overflow: hidden; font: 14px/1.4 Inter, system-ui, sans-serif; }
+  .panel .head { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 12px 14px 8px; border-bottom: 1px solid var(--pl); }
+  .seg { display: inline-flex; flex-wrap: wrap; background: var(--soft); border-radius: 12px; padding: 3px; gap: 2px; }
+  .seg span { padding: 6px 12px; border-radius: 9px; font-weight: 600; color: var(--pm); cursor: pointer; white-space: nowrap; }
+  .seg span.on { background: #fff; color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,.1); }
+  .seg span.new::after { content: 'новое'; margin-left: 6px; font-size: 10px; padding: 1px 5px; border-radius: 6px; background: #ffe7f8; color: #c0168f; }
+  .flip { margin-left: auto; display: flex; align-items: center; gap: 8px; border: 1px solid #cfd8e5; background: #fff; border-radius: 10px;
+          padding: 7px 12px; font-weight: 600; cursor: pointer; }
+  .flip .off { color: var(--pm); }
+  .flip b { color: var(--primary); }
+  .tabs { display: flex; gap: 2px; padding: 0 12px; border-bottom: 1px solid var(--pl); overflow-x: auto; }
+  .tabs span { padding: 11px 10px; font-weight: 600; color: var(--pm); border-bottom: 2px solid transparent; cursor: pointer; white-space: nowrap; }
+  .tabs span.on { color: var(--ink); border-bottom-color: var(--primary); }
+  .tabs .n { display: inline-block; min-width: 18px; padding: 0 5px; margin-left: 4px; border-radius: 999px; background: var(--soft); font-size: 11px; text-align: center; }
+  .pane { padding: 16px; }
+  .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 18px 22px; }
+  .fld { display: flex; flex-direction: column; gap: 6px; font-weight: 600; font-size: 13px; }
+  .fld small { font-weight: 400; color: var(--pm); }
+  .fld .seg span { padding: 5px 10px; font-size: 13px; }
+  .fld.wide { grid-column: 1 / -1; }
+  .topics { display: flex; flex-wrap: wrap; gap: 6px; }
+  .topics label { display: flex; align-items: center; gap: 6px; padding: 5px 10px; border: 1px solid var(--pl); border-radius: 10px; background: #fff; font-weight: 600; cursor: pointer; }
+  .topics label small { color: var(--pm); font-weight: 400; }
+  .note { margin-top: 16px; padding: 10px 12px; border-radius: 10px; background: #fff7e0; color: #7a5600; font-size: 13px; }
+  .stub { color: var(--pm); padding: 30px 0; text-align: center; }
+  .rowk { display: flex; gap: 12px; flex-wrap: wrap; }
+  .kpi { flex: 1 1 120px; background: #fff; border: 1px solid var(--pl); border-radius: 12px; padding: 9px 12px; min-width: 0; }
+  .kpi small { display: block; color: var(--pm); font-size: 11px; text-transform: uppercase; letter-spacing: .04em; font-weight: 600; }
+  .kpi b { font-size: 19px; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .kpi .sub { color: var(--pm); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cols { display: grid; grid-template-columns: 1.25fr 1fr; gap: 12px; margin-top: 12px; }
+  @media (max-width: 760px) { .cols { grid-template-columns: 1fr; } }
+  .box { background: #fff; border: 1px solid var(--pl); border-radius: 12px; padding: 10px 12px; min-width: 0; }
+  .box h4 { margin: 0 0 8px; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--pm); }
+  table { width: 100%; border-collapse: collapse; }
+  th { text-align: left; font: 600 11px Inter, sans-serif; color: var(--pm); text-transform: uppercase; padding: 4px 6px; }
+  td { padding: 4px 6px; border-top: 1px solid #edf1f6; white-space: nowrap; font-size: 13px; }
+  td.r, th.r { text-align: right; }
+  .pav { width: 20px; height: 20px; border-radius: 50%; display: inline-grid; place-items: center; color: #fff; font-weight: 700; font-size: 10px; vertical-align: middle; margin-right: 6px; }
+  .secret { display: inline-flex; align-items: center; gap: 8px; }
+  .secret .w { filter: blur(7px); transition: filter .2s; }
+  .secret.show .w { filter: none; }
+  .eye { border: 0; background: var(--soft); border-radius: 8px; padding: 2px 8px; cursor: pointer; font-size: 12px; }
+  tr.okv td { background: #e3f8ee; }
+  .okmark { color: #138a52; font-weight: 700; }
+  .tag { display: inline-block; padding: 1px 7px; border-radius: 999px; font-size: 11px; font-weight: 600; background: var(--soft); color: var(--pm); }
+  .feed div { padding: 3px 0; border-top: 1px solid #edf1f6; font-size: 13px; }
+  .feed time { color: var(--pm); font-size: 11px; margin-right: 6px; }
+  .acts { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+  .btn { height: 34px; padding: 0 12px; border-radius: 10px; border: 1px solid #cfd8e5; background: #fff; font: 600 13px Inter, sans-serif; cursor: pointer; color: var(--ink); }
+  .btn.p { background: var(--primary); color: #fff; border: 0; }
+  .btn.d { color: var(--bad); }
+  .past tr.main { cursor: pointer; }
+  .past tr.main:hover td { background: var(--soft); }
+  .past tr.more td { background: #f8fafd; white-space: normal; }
+  .q { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid var(--pl); border-radius: 10px; background: #fff; margin-bottom: 8px; }
+  .q .h { cursor: grab; color: #a9b4c6; }
+  .q .num { width: 24px; color: var(--pm); font-weight: 700; }
+  .q .x { margin-left: auto; display: flex; gap: 6px; }
+  .add { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+  .add select, .add input { height: 34px; border: 1px solid #cfd8e5; border-radius: 10px; padding: 0 10px; font: 13px Inter, sans-serif; background: #fff; }
+  .muted { color: var(--pm); }
+</style>
+</head>
+<body>
+
+<!-- ================= LEFT: the game as it looks in TikTok LIVE Studio ================= -->
+<div class="left">
+  <div id="frame">
+    <div id="cam">КАМЕРА СТРИМЕРА</div>
+    <div id="top"><span class="chip" id="roundChip">РАУНД 1</span><span id="timer">0:30</span><span class="chip" id="playersChip">👥 0</span></div>
+    <div id="dots"><i></i><i></i><i></i><i></i><i></i></div>
+
+    <div id="game">
+      <div id="qcard"><div id="topic">🌍 ГЕОГРАФИЯ</div><div id="qtext"></div></div>
+      <div id="try"><span class="idle">Пиши ответ в чат — одно слово</span></div>
+      <div id="ans"><small>ВЕРНО:</small><span id="ansWord"></span></div>
+      <div id="scorers"></div>
+      <div id="table"></div>
+      <div id="cta"><span>ПИШИ ОТВЕТ В ЧАТ</span></div>
+    </div>
+
+    <div id="big"><div class="k" id="bigK"></div><div class="v" id="bigV"></div><div class="s" id="bigS"></div></div>
+    <div id="end"></div>
+  </div>
+
+  <div class="ctl">
+    <div class="r">
+      <button id="bPlay" class="on">⏸ Пауза сценария</button>
+      <button data-speed="1" class="on">×1</button><button data-speed="3">×3</button><button data-speed="8">×8</button>
+    </div>
+    <div class="r">
+      <input id="nick" placeholder="ник" value="я_зритель" style="flex:.6">
+      <input id="msg" placeholder="написать в чат (Enter)">
+    </div>
+    <div class="r"><button id="bSkip">⏭ Время вышло (показать ответ)</button><button id="bNewRound">🔄 Новый раунд</button></div>
+    <p>Сценарий играет сам: боты пишут правильные, неправильные и «мусорные» ответы, меняют мнение.
+      Можно писать от себя — в поле выше. Время на вопрос и паузы берутся из вкладки <b>Настройки → Игра</b> справа.</p>
+  </div>
+</div>
+
+<!-- ================= RIGHT: the room page panel ================= -->
+<div class="panel">
+  <div class="head">
+    <div class="seg" id="modes"><span>Битва</span><span>Угадай слово</span><span>Анаграмма</span><span class="on new">Викторина</span><span>Стример</span></div>
+    <div class="flip" id="flip"><span id="fS">⚙ Настройки</span><b>⇄</b><span id="fM" class="off">📊 Ход игры</span></div>
+  </div>
+  <div class="tabs" id="tabs"></div>
+  <div class="pane" id="pane"></div>
+</div>
+
+<script>
+/* ========================= data ========================= */
+// a quiz of the platform: category + level, 20 questions; each question = 1 right + up to 14 wrong (questions.wrong_pool)
+const QUIZZES = {
+  'География': { icon: '🌍', quiz: 'География · лёгкий уровень · №7', qs: [
+    { q: 'Столица Австралии?', a: 'Канберра', w: ['Сидней','Мельбурн','Брисбен','Перт','Аделаида','Дарвин','Хобарт','Голд-Кост','Ньюкасл','Таунсвилл','Кэрнс','Джелонг','Вуллонгонг','Балларат'] },
+    { q: 'Столица Канады?', a: 'Оттава', w: ['Торонто','Монреаль','Ванкувер','Калгари','Эдмонтон','Виннипег','Галифакс','Гамильтон','Квебек','Виктория','Реджайна','Саскатун','Лондон','Китченер'] },
+    { q: 'Куда впадает Ока?', a: 'Волга', w: ['Дон','Кама','Днепр','Москва','Клязьма','Десна','Сура','Вятка','Белая','Урал','Северная Двина','Нева','Печора','Мокша'] },
+    { q: 'Самая высокая вершина Африки?', a: 'Килиманджаро', w: ['Кения','Рувензори','Меру','Элгон','Камерун','Тубкаль','Рас-Дашен','Карисимби','Эми-Куси','Тахат','Маунт-Стэнли','Тейде','Ниирагонго','Батиан'] },
+    { q: 'Валюта Японии?', a: 'Иена', w: ['Юань','Вона','Бат','Рупия','Ринггит','Донг','Песо','Доллар','Тугрик','Кип','Риель','Вон','Фунт','Рупий'] },
+  ]},
+  'Кино':      { icon: '🎬', quiz: 'Кино · средний уровень · №3', qs: [
+    { q: 'Режиссёр фильма «Титаник»?', a: 'Кэмерон', w: ['Спилберг','Нолан','Скорсезе','Финчер','Земекис','Скотт','Лукас','Тарантино','Бёртон','Джексон','Бэй','Эммерих','Вачовски','Кубрик'] },
+    { q: 'Режиссёр фильма «Сталкер»?', a: 'Тарковский', w: ['Михалков','Бондарчук','Рязанов','Гайдай','Данелия','Балабанов','Звягинцев','Герман','Шахназаров','Кончаловский','Меньшов','Шукшин','Климов','Параджанов'] },
+    { q: 'Режиссёр фильма «Начало»?', a: 'Нолан', w: ['Кэмерон','Финчер','Вильнёв','Скотт','Спилберг','Скорсезе','Тарантино','Аронофски','Иньярриту','Куарон','Абрамс','Снайдер','Бэй','Джексон'] },
+    { q: 'Режиссёр фильма «Бриллиантовая рука»?', a: 'Гайдай', w: ['Рязанов','Данелия','Меньшов','Михалков','Бондарчук','Тарковский','Шукшин','Ростоцкий','Говорухин','Захаров','Быков','Митта','Алов','Наумов'] },
+    { q: 'Режиссёр фильма «Криминальное чтиво»?', a: 'Тарантино', w: ['Скорсезе','Родригес','Финчер','Нолан','Ричи','Коэн','Линч','Кэмерон','Спилберг','Содерберг','Андерсон','Бёртон','Ли','Джармуш'] },
+  ]},
+};
+const ALL_TOPICS = [['🌍 География', 81], ['⚽ Спорт', 43], ['📚 Литература', 35], ['🎨 Искусство', 26], ['🎬 Кино', 38], ['🎵 Музыка', 20], ['🔬 Наука', 17], ['🏛 История', 30]];
+const BOTS = ['mira_k','dan4ik','Олег_77','sunny.girl','kotik_lol','vadim_pro','ann.ann','ruslan_tt','zhenya_m','max_power','lera.v','tima_007','настя_ок','grisha','polina_s'];
+const COLORS = ['#ff6b9a','#ffd84a','#5be1ff','#9dff6b','#c79bff','#ff9f43','#6bffd1','#ff7ae0','#7aa2ff','#ffe36b','#b0ff7a','#ff8f8f','#8fe3ff','#e0a6ff','#a6ffe0'];
+const GARBAGE = ['привет','ааа','кто знает?','лол','не знаю','🔥🔥','сложно','я тут','хаха','это легко','ммм','давай'];
+
+/* ========================= settings (shared by the panel and the demo) ========================= */
+const S = { qtime: 30, qcount: 5, reveal: 6, pause: 60, level: 'all', follow: 0, anim: 'auto',
+            topics: Object.fromEntries(ALL_TOPICS.map(([t]) => [t, true])), order: 'votes' };
+
+/* ========================= helpers ========================= */
+const $ = (id) => document.getElementById(id);
+const norm = (s) => s.toLowerCase().replace(/ё/g, 'е').replace(/[^a-zа-я0-9]+/g, '');
+const color = (nick) => COLORS[[...nick].reduce((a, c) => a + c.charCodeAt(0), 0) % COLORS.length];
+const av = (nick, cls = 'av') => { const e = document.createElement('span'); e.className = cls; e.style.background = color(nick); e.textContent = nick[0].toUpperCase(); return e; };
+const avHtml = (nick, cls = 'pav') => `<span class="${cls}" style="background:${color(nick)}">${esc(nick[0].toUpperCase())}</span>`;
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+const clock = (s) => Math.floor(Math.max(0, s) / 60) + ':' + String(Math.ceil(Math.max(0, s)) % 60).padStart(2, '0');
+const fmt = (n) => (Math.round(n * 10) / 10).toString().replace('.', ',');
+const hms = (t) => new Date(t).toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+/* ========================= game state ========================= */
+let speed = 1, playing = true, simT = 0;          // simT = game seconds since the page opened
+const G = { round: 0, phase: 'idle', qi: 0, left: 0, phaseLeft: 0, cat: null, quiz: null, qs: [],
+            variants: [], answers: new Map(), roundPts: new Map(), streamPts: new Map(), players: new Set(),
+            log: [], past: [], qlog: [], plan: [], scorers: [] };
+const wall = () => Date.now();
+
+function logEv(text) { G.log.unshift({ t: wall(), text }); G.log.length = Math.min(G.log.length, 60); }
+
+/* ---- round start: the topic roulette picks a category, then a quiz of it, then 5 of its questions ---- */
+function newRound() {
+  G.round++;
+  const planned = G.plan.shift();
+  const cats = Object.keys(QUIZZES);
+  G.cat = planned || cats[Math.floor(Math.random() * cats.length)];
+  G.quiz = QUIZZES[G.cat];
+  G.qs = [...G.quiz.qs].sort(() => Math.random() - .5).slice(0, S.qcount);
+  G.qi = -1; G.roundPts = new Map(); G.qlog = [];
+  G.phase = 'roulette'; G.phaseLeft = 3.2; G.spin = 0;
+  $('end').classList.remove('on');
+  $('roundChip').textContent = 'РАУНД ' + G.round;
+  $('bigK').textContent = 'ТЕМА РАУНДА'; $('bigS').textContent = '';
+  $('big').classList.add('on');
+  logEv('▶ Раунд ' + G.round + ' — тема «' + G.cat + '», квиз «' + G.quiz.quiz + '»');
+}
+function nextQuestion() {
+  G.qi++;
+  if (G.qi >= G.qs.length) return endRound();
+  G.phase = 'intro'; G.phaseLeft = 1.6;
+  $('bigK').textContent = G.quiz.icon + ' ' + G.cat.toUpperCase();
+  $('bigV').className = 'v stop'; $('bigV').textContent = 'ВОПРОС ' + (G.qi + 1) + ' / ' + G.qs.length;
+  $('bigS').textContent = '';
+  $('big').classList.add('on');
+}
+function ask() {
+  const q = G.qs[G.qi];
+  G.phase = 'ask'; G.left = S.qtime; G.variants = []; G.answers = new Map(); G.scorers = [];
+  // the accepted answers: the right one + the wrong pool
+  G.accept = new Map([[norm(q.a), q.a], ...q.w.map((w) => [norm(w), w])]);
+  $('big').classList.remove('on');
+  $('frame').classList.remove('reveal');
+  $('topic').textContent = G.quiz.icon + ' ' + G.cat.toUpperCase();
+  $('qtext').textContent = q.q;
+  const qc = $('qcard'); qc.classList.remove('in'); void qc.offsetWidth; qc.classList.add('in');
+  $('try').innerHTML = '<span class="idle">Пиши ответ в чат — одно слово</span>';
+  renderDots(); renderTable(); planBots();
+  logEv('❓ Вопрос ' + (G.qi + 1) + ': ' + q.q);
+}
+
+/* ---- a chat message ---- */
+function chat(nick, text) {
+  if (G.phase !== 'ask') return;
+  G.players.add(nick);
+  const k = norm(text);
+  const word = G.accept.get(k);
+  showTry(nick, word || text, !!word);
+  if (!word) return;
+  const now = simT;
+  const list = G.answers.get(nick) || [];
+  if (list.length && norm(list[list.length - 1].w) === k) return;     // the same answer again: nothing changes
+  list.push({ w: word, t: now }); G.answers.set(nick, list);
+  let v = G.variants.find((x) => norm(x.word) === k);
+  if (!v) { v = { word, author: nick, at: now, isNew: true }; G.variants.push(v); }
+  else v.bump = true;
+  renderTable();
+}
+let tryTimer;
+function showTry(nick, word, hit) {
+  const el = $('try');
+  clearTimeout(tryTimer);
+  el.className = hit ? '' : 'miss';
+  el.innerHTML = '';
+  const cur = document.createElement('span'); cur.className = 'cur in';
+  const w1 = document.createElement('span'); w1.className = 'w1';
+  const tw = document.createElement('span'); tw.className = 'tw'; tw.textContent = word.toUpperCase();
+  const lab = document.createElement('span'); lab.className = 'lab ' + (hit ? 'yes' : 'no'); lab.textContent = hit ? 'В ТАБЛИЦЕ' : 'НЕТ ТАКОГО';
+  w1.append(tw, lab);
+  const who = document.createElement('span'); who.className = 'who';
+  const n = document.createElement('span'); n.className = 'n'; n.textContent = nick;
+  who.append(av(nick), n);
+  cur.append(w1, who); el.append(cur);
+  tryTimer = setTimeout(() => { el.classList.add('fade'); }, hit ? 900 : 1500);
+}
+
+/* ---- who stands where now: the players whose LAST answer is this variant ---- */
+const lastOf = (nick) => { const l = G.answers.get(nick); return l && l.length ? norm(l[l.length - 1].w) : null; };
+function supporters(v) { const k = norm(v.word); return [...G.answers.keys()].filter((n) => lastOf(n) === k); }
+
+function sortedVariants() {
+  const vs = G.variants.map((v, i) => ({ v, i, n: supporters(v).length }));
+  if (S.order === 'votes') vs.sort((a, b) => b.n - a.n || a.i - b.i);
+  return vs;
+}
+function renderTable() {
+  const t = $('table');
+  const prev = new Map([...t.children].map((r) => [r.dataset.k, r.querySelector('.cnt')?.textContent]));
+  t.innerHTML = '';
+  if (!G.variants.length) { t.innerHTML = '<div class="empty">Пока никто не ответил</div>'; return; }
+  const right = norm(G.qs[G.qi].a);
+  for (const { v } of sortedVariants()) {
+    const k = norm(v.word), sup = supporters(v);
+    const others = sup.filter((n) => n !== v.author).length;
+    const r = document.createElement('div');
+    r.className = 'row' + (v.isNew ? ' new' : '') + (v.bump ? ' bump' : '') + (G.phase === 'reveal' && k === right ? ' ok' : '');
+    r.dataset.k = k;
+    const wd = document.createElement('span'); wd.className = 'wd'; wd.textContent = v.word.toUpperCase();
+    const who = document.createElement('span'); who.className = 'who' + (sup.includes(v.author) ? '' : ' left');
+    const n = document.createElement('span'); n.className = 'n'; n.textContent = v.author;
+    who.append(av(v.author), n);
+    const cnt = document.createElement('span'); cnt.className = 'cnt'; cnt.textContent = others ? '+' + others : '';
+    if (prev.has(k) && prev.get(k) !== cnt.textContent && cnt.textContent) cnt.classList.add('pop');
+    r.append(wd, who, cnt); t.append(r);
+    v.isNew = v.bump = false;
+  }
+}
+function renderDots() {
+  const d = $('dots'); d.innerHTML = '';
+  for (let i = 0; i < G.qs.length; i++) { const e = document.createElement('i'); e.className = i < G.qi ? 'done' : i === G.qi ? 'cur' : ''; d.append(e); }
+}
+
+/* ---- time is up: the answer, the points ----
+   right = the player's LAST answer is the right one.
+   1 point; 0.9 if their first answer of this question was a wrong one (they changed their mind);
+   the first player to name the right answer (and keep it): 1.2 (1.1 if they had first said a wrong one - open question) */
+function reveal() {
+  const q = G.qs[G.qi], right = norm(q.a);
+  G.phase = 'reveal'; G.phaseLeft = S.reveal; G.left = 0;
+  $('frame').classList.add('reveal');
+  $('ansWord').textContent = q.a.toUpperCase();
+  const winners = [...G.answers.entries()].filter(([n]) => lastOf(n) === right).map(([nick, list]) => {
+    const firstRight = list.find((x) => norm(x.w) === right).t;
+    // when did they settle on it: the time of their last switch to the right answer
+    const settled = [...list].reverse().find((x) => norm(x.w) === right).t;
+    return { nick, changed: norm(list[0].w) !== right, firstRight, settled };
+  }).sort((a, b) => a.firstRight - b.firstRight);
+  G.scorers = winners.map((w, i) => ({ ...w, pts: i === 0 ? (w.changed ? 1.1 : 1.2) : (w.changed ? 0.9 : 1), first: i === 0 }));
+  for (const s of G.scorers) {
+    G.roundPts.set(s.nick, (G.roundPts.get(s.nick) || 0) + s.pts);
+    G.streamPts.set(s.nick, (G.streamPts.get(s.nick) || 0) + s.pts);
+  }
+  const sc = $('scorers'); sc.innerHTML = '';
+  if (!G.scorers.length) sc.innerHTML = '<span class="sc">никто не угадал</span>';
+  G.scorers.slice(0, 9).forEach((s, i) => {
+    const e = document.createElement('span'); e.className = 'sc' + (s.first ? ' first' : ''); e.style.animationDelay = (0.25 + i * 0.12) + 's';
+    const n = document.createElement('span'); n.textContent = s.nick;
+    const b = document.createElement('b'); b.textContent = '+' + fmt(s.pts);
+    e.append(av(s.nick), n, b); sc.append(e);
+  });
+  if (G.scorers.length > 9) { const e = document.createElement('span'); e.className = 'sc'; e.textContent = '+ ещё ' + (G.scorers.length - 9); sc.append(e); }
+  renderTable();
+  const tot = G.answers.size;
+  G.qlog.push({ q: q.q, a: q.a, variants: G.variants.length, answered: tot, right: G.scorers.length,
+                first: G.scorers[0]?.nick || null });
+  logEv('✅ Ответ «' + q.a + '»: угадали ' + G.scorers.length + ' из ' + tot + (G.scorers[0] ? ', первым — ' + G.scorers[0].nick : ''));
+}
+function endRound() {
+  G.phase = 'end'; G.phaseLeft = Math.min(S.pause, 12);
+  const top = [...G.roundPts.entries()].sort((a, b) => b[1] - a[1]);
+  const e = $('end');
+  const pod = [top[1], top[0], top[2]].map((x, i) => x ? `<div class="${['p2','p1','p3'][i]}" style="animation-delay:${[.5,.2,.8][i]}s">${avHtml(x[0], 'av')}<span>${esc(x[0])}</span><b>${fmt(x[1])}</b></div>` : '<div></div>').join('');
+  const rest = top.slice(3, 8).map((x, i) => `<div><span class="pos">${i + 4}</span>${avHtml(x[0], 'av')}<span>${esc(x[0])}</span><span class="pt">${fmt(x[1])}</span></div>`).join('');
+  e.innerHTML = `<h2>ИТОГИ РАУНДА</h2><div class="tp">${G.quiz.icon} ${esc(G.cat.toUpperCase())} · ${G.qs.length} ВОПРОСОВ</div>
+                 <div class="pod">${pod || '<div class="muted">никто не набрал очков</div>'}</div><div class="rest">${rest}</div>
+                 <div class="nx" id="endNext"></div>`;
+  e.classList.add('on');
+  G.past.unshift({ round: G.round, cat: G.cat, quiz: G.quiz.quiz, t: wall(), qs: G.qlog, top: top.slice(0, 3), players: G.roundPts.size });
+  logEv('🏆 Раунд ' + G.round + ' окончен' + (top[0] ? ': победитель ' + top[0][0] + ' (' + fmt(top[0][1]) + ')' : ''));
+  renderDots();
+}
+
+/* ---- bots: each picks what it "thinks", may change its mind, some write garbage ---- */
+let botQueue = [];
+function planBots() {
+  const q = G.qs[G.qi];
+  botQueue = [];
+  const n = 8 + Math.floor(Math.random() * 6);
+  const bots = [...BOTS].sort(() => Math.random() - .5).slice(0, n);
+  const T = S.qtime;
+  // a few popular wrong answers so the table has crowds, not 14 singles
+  const pop = q.w.slice(0, 5);
+  for (const b of bots) {
+    const knows = Math.random() < .45;
+    const at = (.08 + Math.random() * .55) * T;
+    const first = knows && Math.random() < .75 ? q.a : pop[Math.floor(Math.random() * pop.length)] ?? q.w[0];
+    botQueue.push({ at, nick: b, text: Math.random() < .25 ? first.toLowerCase() : first });
+    if (Math.random() < .35) {             // changes the mind later
+      const second = first === q.a ? pop[Math.floor(Math.random() * 3)] : (Math.random() < .6 ? q.a : q.w[Math.floor(Math.random() * q.w.length)]);
+      botQueue.push({ at: at + (.15 + Math.random() * .3) * T, nick: b, text: second });
+    }
+    if (Math.random() < .3) botQueue.push({ at: Math.random() * T * .9, nick: b, text: GARBAGE[Math.floor(Math.random() * GARBAGE.length)] });
+  }
+  botQueue.sort((a, b) => a.at - b.at);
+  G.askStart = simT;
+}
+
+/* ---- the clock ---- */
+let last = performance.now();
+function frame(now) {
+  const dt = Math.min(.25, (now - last) / 1000) * speed; last = now;
+  if (playing) step(dt);
+  requestAnimationFrame(frame);
+}
+let spinAcc = 0;
+function step(dt) {
+  simT += dt;
+  if (G.phase === 'roulette') {
+    G.phaseLeft -= dt; spinAcc += dt;
+    const cats = ALL_TOPICS.map(([t]) => t);
+    if (G.phaseLeft > .9 && spinAcc > .12 + (3.2 - G.phaseLeft) * .06) {
+      spinAcc = 0;
+      const v = $('bigV'); v.className = 'v'; void v.offsetWidth; v.className = 'v spin';
+      v.textContent = cats[(G.spin++) % cats.length];
+    } else if (G.phaseLeft <= .9 && !G.stopped) {
+      G.stopped = true;
+      const v = $('bigV'); v.className = 'v stop'; v.textContent = G.quiz.icon + ' ' + G.cat;
+      $('bigS').textContent = 'квиз «' + G.quiz.quiz + '» · ' + G.qs.length + ' вопросов';
+    }
+    if (G.phaseLeft <= 0) { G.stopped = false; nextQuestion(); }
+  } else if (G.phase === 'intro') {
+    G.phaseLeft -= dt; if (G.phaseLeft <= 0) ask();
+  } else if (G.phase === 'ask') {
+    if (!G.paused) {
+      G.left -= dt;
+      const el = simT - G.askStart;
+      while (botQueue.length && botQueue[0].at <= el) { const m = botQueue.shift(); chat(m.nick, m.text); }
+      if (G.left <= 0) reveal();
+    }
+  } else if (G.phase === 'reveal') {
+    G.phaseLeft -= dt; if (G.phaseLeft <= 0) nextQuestion();
+  } else if (G.phase === 'end') {
+    G.phaseLeft -= dt;
+    const n = $('endNext'); if (n) n.textContent = 'СЛЕДУЮЩИЙ РАУНД ЧЕРЕЗ ' + clock(G.phaseLeft) + (S.pause > 12 ? '  (в демо короче)' : '');
+    if (G.phaseLeft <= 0) newRound();
+  }
+  const t = $('timer');
+  t.textContent = clock(G.phase === 'ask' ? G.left : G.phase === 'reveal' ? 0 : S.qtime);
+  t.classList.toggle('low', G.phase === 'ask' && G.left <= 5);
+  $('playersChip').textContent = '👥 ' + G.players.size;
+}
+
+/* ========================= demo controls ========================= */
+$('bPlay').onclick = (e) => { playing = !playing; e.target.textContent = playing ? '⏸ Пауза сценария' : '▶ Продолжить'; e.target.classList.toggle('on', playing); };
+document.querySelectorAll('[data-speed]').forEach((b) => b.onclick = () => {
+  speed = +b.dataset.speed; document.querySelectorAll('[data-speed]').forEach((x) => x.classList.toggle('on', x === b));
+});
+$('msg').onkeydown = (e) => { if (e.key === 'Enter' && e.target.value.trim()) { chat($('nick').value.trim() || 'я_зритель', e.target.value.trim()); e.target.value = ''; } };
+$('bSkip').onclick = () => { if (G.phase === 'ask') reveal(); };
+$('bNewRound').onclick = () => newRound();
+
+/* ========================= the panel ========================= */
+let view = 'settings', setTab = 'game', monTab = 'now';
+const SET_TABS = [['game','Игра'],['frame','Кадр'],['screen','На экране'],['gifts','Подарки'],['toasts','Всплывашки и диктор'],['likes','Лайки и шарики'],['catalog','Каталог подарков']];
+const seg = (key, opts, label = String) => `<span class="seg" data-key="${key}">${opts.map((o) => `<span data-v="${o}" class="${String(S[key]) === String(o) ? 'on' : ''}">${label(o)}</span>`).join('')}</span>`;
+
+function renderPanel() {
+  $('fS').className = view === 'settings' ? '' : 'off';
+  $('fM').className = view === 'monitor' ? '' : 'off';
+  const tabs = view === 'settings' ? SET_TABS.map(([k, l]) => `<span data-t="${k}" class="${k === setTab ? 'on' : ''}">${l}</span>`).join('')
+    : [['now','🔴 Текущий раунд'],['past','Прошлые', G.past.length],['plan','Запланированные', G.plan.length + 1],['bonuses','🎁 Бонусы игроков']]
+        .map(([k, l, n]) => `<span data-t="${k}" class="${k === monTab ? 'on' : ''}">${l}${n !== undefined ? `<span class="n">${n}</span>` : ''}</span>`).join('');
+  $('tabs').innerHTML = tabs;
+  $('pane').innerHTML = view === 'settings' ? settingsPane() : monitorPane();
+}
+function settingsPane() {
+  if (setTab !== 'game') return `<div class="stub">Как в «Угадай слово» — тот же раздел, те же поля (общий код вкладки).</div>`;
+  return `<div class="grid2">
+    <label class="fld wide">Время на вопрос ${seg('qtime', [10,20,30,40,50,60,70,80,90,100,110,120], (n) => n + ' с')}
+      <small>Таймер одного вопроса. В раунде ${S.qcount} вопросов → раунд ≈ ${clock(S.qcount * (S.qtime + S.reveal + 1.6) + 3)}.</small></label>
+    <label class="fld">Вопросов в раунде ${seg('qcount', [3,5,7,10])}<small>По заданию — 5.</small></label>
+    <label class="fld">Показ ответа после вопроса ${seg('reveal', [4,6,8,10,15], (n) => n + ' с')}<small>Правильная строка и кто получил баллы.</small></label>
+    <label class="fld">Пауза между раундами ${seg('pause', [30,60,120,180,300], (n) => clock(n))}<small>Итоги раунда, затем выбор новой темы.</small></label>
+    <label class="fld">Сложность квизов ${seg('level', ['easy','medium','hard','all'], (v) => ({ easy: 'Лёгкие', medium: 'Средние', hard: 'Сложные', all: 'Любые' })[v])}</label>
+    <label class="fld">Порядок строк в таблице ${seg('order', ['votes','time'], (v) => v === 'votes' ? 'Больше голосов — выше' : 'В порядке появления')}</label>
+    <label class="fld">Играть могут ${seg('follow', [0,1], (v) => v ? 'Только подписчики' : 'Все')}</label>
+    <label class="fld">Появление новой строки ${seg('anim', ['auto','fast','smooth'], (v) => ({ auto: 'По темпу чата', fast: 'Быстро', smooth: 'Плавно' })[v])}</label>
+    <div class="fld wide">Темы раунда (случайная из отмеченных)
+      <div class="topics">${ALL_TOPICS.map(([t, n]) => `<label><input type="checkbox" data-topic="${t}" ${S.topics[t] ? 'checked' : ''}> ${t} <small>${n} квизов</small></label>`).join('')}</div>
+      <small>Квизы — с платформы mao-dao (5755 вопросов, 290 квизов). У каждого вопроса 1 правильный и до 14 неправильных ответов — все они «варианты» для таблицы.</small></div>
+  </div>
+  <div class="note">В демо слева работают: время на вопрос, число вопросов, показ ответа, порядок строк. Остальное — только вид.</div>`;
+}
+function monitorPane() {
+  if (monTab === 'now') return nowPane();
+  if (monTab === 'past') return pastPane();
+  if (monTab === 'plan') return planPane();
+  return bonusPane();
+}
+function nowPane() {
+  if (!G.qs.length || G.qi < 0) return `<div class="stub">Раунд ${G.round}: выбираем тему…</div>`;
+  const q = G.qs[Math.min(G.qi, G.qs.length - 1)];
+  const phase = { roulette: 'выбор темы', intro: 'вопрос ' + (G.qi + 1), ask: 'Осталось', reveal: 'показ ответа', end: 'итоги раунда' }[G.phase];
+  const right = norm(q.a);
+  const showRight = G.phase === 'reveal' || G.phase === 'end';
+  const vars = G.phase === 'end' ? [] : sortedVariants();
+  const rows = vars.map(({ v, n }) => {
+    const ok = norm(v.word) === right;
+    return `<tr class="${ok && showRight ? 'okv' : ''}"><td>${esc(v.word)}${ok && (showRight || window.eyeOpen) ? ` <span class="okmark">✓</span>` : ''}</td><td>${avHtml(v.author)}${esc(v.author)}</td><td class="r">${n}</td><td class="r muted">${clock(v.at - G.askStart)}</td></tr>`;
+  }).join('') || `<tr><td colspan="4" class="muted">Пока пусто</td></tr>`;
+  const pts = [...G.roundPts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 10)
+    .map(([n, p], i) => `<tr><td>${i + 1}</td><td>${avHtml(n)}${esc(n)}</td><td class="r"><b>${fmt(p)}</b></td><td class="r muted">${fmt(G.streamPts.get(n) || 0)}</td></tr>`).join('')
+    || `<tr><td colspan="4" class="muted">Пока никто не набрал очков</td></tr>`;
+  const answered = G.answers.size;
+  return `<div class="rowk">
+      <div class="kpi"><small>Раунд ${G.round}</small><b>${G.quiz.icon} ${esc(G.cat)}</b><div class="sub">${esc(G.quiz.quiz)}</div></div>
+      <div class="kpi"><small>Вопрос</small><b>${Math.min(G.qi + 1, G.qs.length)} / ${G.qs.length}</b><div class="sub">${phase}</div></div>
+      <div class="kpi"><small>${G.phase === 'ask' ? 'Осталось' : 'Таймер'}</small><b>${G.phase === 'ask' ? clock(G.left) : '—'}</b><div class="sub">из ${S.qtime} с${G.paused ? ' · ПАУЗА' : ''}</div></div>
+      <div class="kpi"><small>Ответили / вариантов</small><b>${answered} / ${G.variants.length}</b><div class="sub">из ${G.accept ? G.accept.size : 15} возможных</div></div>
+    </div>
+    <div class="box" style="margin-top:12px"><h4>Вопрос и ответ</h4>
+      <b>${esc(q.q)}</b> &nbsp;→&nbsp; <span class="secret ${showRight || window.eyeOpen ? 'show' : ''}"><span class="w"><b>${esc(q.a)}</b></span><button class="eye" data-eye>${window.eyeOpen ? '🙈' : '👁'}</button></span>
+      <div class="muted" style="margin-top:4px;font-size:12px">Неправильные (принимаются): ${esc(q.w.join(', '))}</div></div>
+    <div class="cols">
+      <div class="box"><h4>Таблица вопроса — как на экране</h4><table><tr><th>Вариант</th><th>Первым назвал</th><th class="r">Сейчас за него</th><th class="r">Когда</th></tr>${rows}</table></div>
+      <div class="box"><h4>Баллы раунда</h4><table><tr><th>#</th><th>Игрок</th><th class="r">Раунд</th><th class="r">Стрим</th></tr>${pts}</table></div>
+    </div>
+    <div class="cols">
+      <div class="box feed"><h4>Лента раунда</h4>${G.log.slice(0, 10).map((e) => `<div><time>${hms(e.t)}</time>${esc(e.text)}</div>`).join('')}</div>
+      <div class="box"><h4>Управление</h4>
+        <div class="acts" style="margin-top:0">
+          <button class="btn" data-c="pause">${G.paused ? '▶ Продолжить' : '⏸ Пауза'}</button>
+          <button class="btn" data-c="plus">+10 с</button>
+          <button class="btn p" data-c="reveal">Открыть ответ сейчас</button>
+          <button class="btn" data-c="skip">Пропустить вопрос</button>
+          <button class="btn d" data-c="finish">Завершить раунд</button>
+        </div>
+        <div class="muted" style="font-size:12px;margin-top:8px">«Пропустить» — вопрос без баллов, вместо него следующий из того же квиза.</div></div>
+    </div>`;
+}
+let openPast = null;
+function pastPane() {
+  if (!G.past.length) return `<div class="stub">Прошлых раундов пока нет — первый закончится после ${S.qcount} вопросов (ускорьте демо ×8).</div>`;
+  return `<table class="past"><tr><th>Раунд</th><th>Когда</th><th>Тема · квиз</th><th>Победитель</th><th class="r">Игроков</th></tr>
+    ${G.past.map((p, i) => `<tr class="main" data-past="${i}"><td>${p.round}</td><td>${hms(p.t)}</td><td>${esc(p.cat)} · <span class="muted">${esc(p.quiz)}</span></td>
+      <td>${p.top[0] ? avHtml(p.top[0][0]) + esc(p.top[0][0]) + ' · ' + fmt(p.top[0][1]) : '—'}</td><td class="r">${p.players}</td></tr>
+      ${openPast === i ? `<tr class="more"><td colspan="5"><table><tr><th>#</th><th>Вопрос</th><th>Ответ</th><th class="r">Вариантов</th><th class="r">Угадали</th><th>Первым</th></tr>
+        ${p.qs.map((q, j) => `<tr><td>${j + 1}</td><td>${esc(q.q)}</td><td><b>${esc(q.a)}</b></td><td class="r">${q.variants}</td><td class="r">${q.right} / ${q.answered}</td><td>${q.first ? esc(q.first) : '—'}</td></tr>`).join('')}
+        </table><div style="margin-top:6px">Пьедестал: ${p.top.map((x, k) => ['🥇','🥈','🥉'][k] + ' ' + esc(x[0]) + ' ' + fmt(x[1])).join(' &nbsp; ')}</div></td></tr>` : ''}`).join('')}</table>`;
+}
+function planPane() {
+  const items = [`<div class="q"><span class="num">→</span><b>Следующий раунд</b> <span class="tag">${G.plan[0] ? esc(G.plan[0]) : 'случайная тема из отмеченных'}</span><span class="x muted">через ${G.phase === 'end' ? clock(G.phaseLeft) : 'после раунда ' + G.round}</span></div>`,
+    ...G.plan.slice(1).map((c, i) => `<div class="q"><span class="h">⋮⋮</span><span class="num">${i + 2}</span>${QUIZZES[c].icon} ${esc(c)} <span class="tag">${esc(QUIZZES[c].quiz)}</span><span class="x"><button class="btn" data-unplan="${i + 1}">✕</button></span></div>`)];
+  return `${items.join('')}
+    <div class="add"><select id="planCat">${Object.keys(QUIZZES).map((c) => `<option>${c}</option>`).join('')}</select>
+      <select><option>любой квиз темы</option><option>конкретный квиз…</option></select>
+      <button class="btn p" data-addplan>Поставить в очередь</button></div>
+    <div class="muted" style="font-size:12px;margin-top:8px">Как очередь слов в «Угадай слово»: стример задаёт тему (или квиз) следующих раундов; пусто — тема случайная.</div>`;
+}
+function bonusPane() {
+  const rows = [...G.streamPts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8)
+    .map(([n, p]) => `<tr><td>${avHtml(n)}${esc(n)}</td><td class="r">${fmt(p)}</td><td class="r">0</td><td class="r">0</td><td class="r"><button class="btn">+ начислить</button></td></tr>`).join('')
+    || `<tr><td colspan="5" class="muted">Пока пусто</td></tr>`;
+  return `<table><tr><th>Игрок</th><th class="r">Баллы стрима</th><th class="r">Подсказки</th><th class="r">Торты</th><th></th></tr>${rows}</table>
+    <div class="note">Вкладка как в «Угадай слово» (тот же код). Какие бонусы есть в викторине — вопрос ниже в чате (например, подсказка «убрать половину неверных строк»).</div>`;
+}
+
+$('flip').onclick = () => { view = view === 'settings' ? 'monitor' : 'settings'; renderPanel(); };
+$('tabs').onclick = (e) => { const t = e.target.closest('[data-t]'); if (!t) return; if (view === 'settings') setTab = t.dataset.t; else monTab = t.dataset.t; renderPanel(); };
+$('pane').onclick = (e) => {
+  const s = e.target.closest('.seg[data-key] > span');
+  if (s) { const k = s.parentElement.dataset.key; S[k] = isNaN(+s.dataset.v) ? s.dataset.v : +s.dataset.v; renderPanel(); if (k === 'order' && G.phase === 'ask') renderTable(); return; }
+  if (e.target.closest('[data-eye]')) { window.eyeOpen = !window.eyeOpen; renderPanel(); return; }
+  const p = e.target.closest('[data-past]'); if (p) { openPast = openPast === +p.dataset.past ? null : +p.dataset.past; renderPanel(); return; }
+  if (e.target.closest('[data-addplan]')) { G.plan.push($('planCat').value); renderPanel(); return; }
+  const u = e.target.closest('[data-unplan]'); if (u) { G.plan.splice(+u.dataset.unplan, 1); renderPanel(); return; }
+  const c = e.target.closest('[data-c]')?.dataset.c;
+  if (c === 'pause') { G.paused = !G.paused; logEv('🎛 Стример: ' + (G.paused ? 'пауза' : 'продолжить')); }
+  if (c === 'plus' && G.phase === 'ask') { G.left += 10; logEv('🎛 Стример: +10 с'); }
+  if (c === 'reveal' && G.phase === 'ask') { logEv('🎛 Стример: открыть ответ'); reveal(); }
+  if (c === 'skip' && G.phase === 'ask') { logEv('🎛 Стример: пропустить вопрос'); nextQuestion(); }
+  if (c === 'finish' && (G.phase === 'ask' || G.phase === 'reveal')) { logEv('🎛 Стример: завершить раунд'); G.qi = G.qs.length; endRound(); }
+  if (c) renderPanel();
+};
+$('pane').onchange = (e) => { const t = e.target.dataset.topic; if (t) S.topics[t] = e.target.checked; };
+// the monitor refreshes like the real one (every ~1 s); settings only on clicks (keeps the controls steady)
+setInterval(() => { if (view === 'monitor' && !document.querySelector('#pane:hover select:focus')) renderPanel(); }, 1000);
+
+renderPanel();
+newRound();
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
