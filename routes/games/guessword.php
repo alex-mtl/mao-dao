@@ -5,6 +5,7 @@ use App\Games\Guessword\Http\Controllers\BonusesController;
 use App\Games\Guessword\Http\Controllers\ClientAccountsController;
 use App\Games\Guessword\Http\Controllers\ClientController;
 use App\Games\Guessword\Http\Controllers\GuesswordController;
+use App\Games\Guessword\Http\Controllers\QuizBankController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -57,6 +58,8 @@ Route::middleware('throttle:20,1')->group(function () {
 // the engine: viewers' bonuses (stream-engine/app/bonuses.py), header X-Internal-Secret
 Route::get('/internal/guessword/bonuses', [BonusesController::class, 'engineBalances'])->name('internal.guessword.bonuses');
 Route::post('/internal/guessword/bonuses', [BonusesController::class, 'engineOps'])->name('internal.guessword.bonuses.ops');
+// the engine's Quiz game: the generated quizzes with every wrong answer (stream-engine/app/games/quiz/bank.py)
+Route::get('/internal/guessword/quizzes', [QuizBankController::class, 'index'])->name('internal.guessword.quizzes');
 
 // asked on every load of the overlay in OBS / LIVE Studio
 Route::post('/guessword/client/api/overlay', [ClientController::class, 'overlay'])
