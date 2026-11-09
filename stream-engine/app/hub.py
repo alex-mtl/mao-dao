@@ -52,6 +52,15 @@ class Hub:
         if not self.shared and "guess" in self.games and "anagram" in self.games:
             self._share(self.games["guess"], self.games["anagram"])
             self.shared = 1
+        # once: the Quiz (2026-11-09) takes the picture and the "On screen" settings of Guess the Word
+        if self.shared < 2 and "guess" in self.games and "quiz" in self.games:
+            if "quiz" not in saved:
+                g, q = self.games["guess"], self.games["quiz"]
+                self._share(g, q)
+                for k, v in g.get_options().items():
+                    if k in getattr(q, "SCREEN", {}) and v in q.OPTIONS.get(k, []):
+                        q.set_option(k, v)
+            self.shared = 2
         # "what the gifts do" moved from the toasts ("promo" show on/off) to the guess game's screen settings:
         # a room that had it off keeps it off
         g = self.games.get("guess")
