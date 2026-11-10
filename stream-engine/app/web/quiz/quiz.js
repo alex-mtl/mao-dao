@@ -330,6 +330,7 @@
         break;
       case 'follow_needed':
         mini(t('g.t.followToPlay', { name }), 'follow', 'follow_needed');
+        queueTicker(esc(t('g.t.followToPlay', { name })));   // the pill is small and short-lived: also on the answer line
         break;
       case 'timeout':
         fx('timeout');
