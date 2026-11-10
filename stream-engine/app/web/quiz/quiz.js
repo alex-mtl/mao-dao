@@ -9,7 +9,8 @@
   const esc = x => String(x).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const streakP = n => ({ n, wins: I18N.n(n, 'win'), winsUp: I18N.n(n, 'win').toUpperCase() });
   const score = x => (Number.isInteger(x) ? String(x) : x.toFixed(1)).replace('.', I18N.lang === 'en' ? '.' : ',');
-  const TOPIC_ICON = { geography: '🌍', sports: '⚽', literature: '📚', art: '🎨', movies: '🎬', music: '🎵', science: '🔬', history: '🏛' };
+  const TOPIC_ICON = { geography: '🌍', sports: '⚽', literature: '📚', art: '🎨', movies: '🎬', music: '🎵', science: '🔬', history: '🏛',
+    mountains: '⛰', waters: '🏝', athletes: '🏅', clubs: '🏟', writers: '✍️', artists: '🖌', architecture: '🏰', actors: '🎭', series: '📺', cartoons: '🧸', soundtracks: '🎼', musicians: '🎸', albums: '💿', songs: '🎤', scientists: '🧪', space: '🚀', rulers: '👑', games: '🎮', companies: '🏢', nature: '🦁', food: '🍜', universities: '🎓', languages: '🗣' };
   const topicName = k => (TOPIC_ICON[k] || '❓') + ' ' + t('q.t.' + k);
   let S = null;                                   // last state
 

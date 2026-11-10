@@ -4,8 +4,10 @@ import { Box, btn, clock, hhmm, Kpi, Secret, td, th } from './GameMonitor';
 import PlayerBonuses from './PlayerBonuses';
 import { Avatar } from './ViewerPicker';
 
-export const QUIZ_TOPICS = ['geography', 'sports', 'literature', 'art', 'movies', 'music', 'science', 'history'];
-export const TOPIC_ICON = { geography: '🌍', sports: '⚽', literature: '📚', art: '🎨', movies: '🎬', music: '🎵', science: '🔬', history: '🏛' };
+export const QUIZ_TOPICS = ['geography', 'sports', 'literature', 'art', 'movies', 'music', 'science', 'history',
+    'mountains', 'waters', 'athletes', 'clubs', 'writers', 'artists', 'architecture', 'actors', 'series', 'cartoons', 'soundtracks', 'musicians', 'albums', 'songs', 'scientists', 'space', 'rulers', 'games', 'companies', 'nature', 'food', 'universities', 'languages'];
+export const TOPIC_ICON = { geography: '🌍', sports: '⚽', literature: '📚', art: '🎨', movies: '🎬', music: '🎵', science: '🔬', history: '🏛',
+    mountains: '⛰', waters: '🏝', athletes: '🏅', clubs: '🏟', writers: '✍️', artists: '🖌', architecture: '🏰', actors: '🎭', series: '📺', cartoons: '🧸', soundtracks: '🎼', musicians: '🎸', albums: '💿', songs: '🎤', scientists: '🧪', space: '🚀', rulers: '👑', games: '🎮', companies: '🏢', nature: '🦁', food: '🍜', universities: '🎓', languages: '🗣' };
 const pts = (x) => (Number.isInteger(x) ? String(x) : Number(x).toFixed(1));
 
 /**

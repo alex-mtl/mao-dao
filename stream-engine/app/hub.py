@@ -61,6 +61,12 @@ class Hub:
                     if k in getattr(q, "SCREEN", {}) and v in q.OPTIONS.get(k, []):
                         q.set_option(k, v)
             self.shared = 2
+        # once: the Quiz got 23 more topics (2026-11-10); a room that played all eight old ones plays all of them
+        if self.shared < 3 and "quiz" in self.games:
+            from .games.quiz.bank import OLD_TOPICS, TOPICS
+            if self.games["quiz"].topics == OLD_TOPICS:
+                self.games["quiz"].topics = list(TOPICS)
+            self.shared = 3
         # "what the gifts do" moved from the toasts ("promo" show on/off) to the guess game's screen settings:
         # a room that had it off keeps it off
         g = self.games.get("guess")

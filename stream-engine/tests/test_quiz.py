@@ -195,6 +195,20 @@ class QuizTest(unittest.TestCase):
         self.times_up(g)
         self.assertEqual({s["name"]: s["pts"] for s in g.scorers}, {"Ann": 1.2, "Bob": 1.0})
 
+    def test_topics_of_question_types(self):
+        from app.games.quiz.bank import TOPICS, regroup
+        self.assertEqual(len(TOPICS), 31)
+        q = lambda i, t=None: {"id": i, "type": t, "text": "?", "correct": "a", "wrong": ["b"]}
+        raw = [{"id": 1, "key": "geo-easy-1", "title": "x", "topic": "geography", "level": "easy", "questions":
+                [q(i, "capital") for i in range(1, 26)] + [q(i, "elevation") for i in range(26, 31)] + [q(31, "brand_new")]},
+               {"id": 2, "key": "tech-hard-1", "title": "x", "topic": "technology", "level": "hard", "questions": [q(40), q(41, "moon_planet")]},
+               {"id": 3, "key": "x-1", "title": "x", "topic": "mathematics", "level": None, "questions": [q(50)]}]
+        out = {z["key"]: z for z in regroup(raw)}
+        self.assertEqual(sorted(out), ["companies-hard-1", "geography-easy-1", "mountains-easy-1", "space-hard-1"])
+        self.assertEqual(len(out["geography-easy-1"]["questions"]), 26)      # 25 capitals + the unknown type; the tail of 6 joined
+        self.assertEqual(out["mountains-easy-1"]["title"], "Горы: лёгкий уровень — №1")
+        self.assertEqual([x["id"] for x in out["space-hard-1"]["questions"]], [41])
+
     def test_options(self):
         g = QuizGame(JsonStore(tempfile.mkdtemp(dir=self.tmp)))
         self.assertIn("geography,movies", g.OPTIONS["topics"])

@@ -540,6 +540,7 @@ return [
     'qz_inactive' => 'Сейчас на стриме другая игра — викторина на паузе',
     'qz_t_geography' => 'География', 'qz_t_sports' => 'Спорт', 'qz_t_literature' => 'Литература', 'qz_t_art' => 'Искусство',
     'qz_t_movies' => 'Кино', 'qz_t_music' => 'Музыка', 'qz_t_science' => 'Наука', 'qz_t_history' => 'История',
+    'qz_t_mountains' => 'Горы', 'qz_t_waters' => 'Реки, озёра, острова', 'qz_t_athletes' => 'Спортсмены', 'qz_t_clubs' => 'Спортивные клубы', 'qz_t_writers' => 'Писатели', 'qz_t_artists' => 'Художники', 'qz_t_architecture' => 'Архитектура', 'qz_t_actors' => 'Актёры', 'qz_t_series' => 'Сериалы', 'qz_t_cartoons' => 'Мультфильмы', 'qz_t_soundtracks' => 'Музыка кино', 'qz_t_musicians' => 'Музыканты', 'qz_t_albums' => 'Альбомы', 'qz_t_songs' => 'Песни', 'qz_t_scientists' => 'Учёные', 'qz_t_space' => 'Космос', 'qz_t_rulers' => 'Правители и политики', 'qz_t_games' => 'Видеоигры', 'qz_t_companies' => 'Компании', 'qz_t_nature' => 'Животные и растения', 'qz_t_food' => 'Еда и напитки', 'qz_t_universities' => 'Университеты', 'qz_t_languages' => 'Языки',
     'qz_question' => 'Вопрос',
     'qz_phase_idle' => '—', 'qz_phase_topic' => 'выбор темы', 'qz_phase_intro' => 'заставка вопроса', 'qz_phase_ask' => 'идёт вопрос',
     'qz_phase_answer' => 'показ ответа', 'qz_phase_winner' => 'победитель раунда', 'qz_phase_reveal' => 'перерыв', 'qz_phase_finished' => 'перерыв',

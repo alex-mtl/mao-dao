@@ -188,6 +188,12 @@ Engine game `quiz` (`stream-engine/app/games/quiz/`, page `app/web/quiz/`). Mock
   0.9; the first to name the right answer (of those) → 1.2 (1.1 if they had said a wrong one first — the owner did
   not decide this case, 2026-11-09). Round winner = most points; a tie → each of them gets the round win. Stream
   champions = rounds won (`quiz/players.json`), shown with the planes / balloon tops as in the other games.
+- **Topics (31 since 2026-11-10: the 8 categories + 23 finer ones)**: a topic = a set of the factory's question types
+  (`THEMES` in `stream-engine/app/games/quiz/bank.py`; `/internal/guessword/quizzes` gives every question its `type` =
+  the part of `questions.import_key` before `:`). The platform's quizzes mix the types of a category, so the bank deals
+  the questions again into quizzes of one topic + one level (`regroup`); a question of an unknown type plays in the
+  topic of its quiz's category. A new topic = `THEMES` + `QUIZ_TOPICS` / `TOPIC_ICON` (`QuizMonitor.jsx`, `quiz.js`) +
+  `qz_t_*` / `q.t.*` strings in four languages. Rooms that had all eight old topics on got all 31 (flag `shared` = 3).
 - **Room page → Quiz**: settings (time per question, questions per round, the answer on screen, break, level, topics,
   table order, who plays; frame / On screen / gifts / toasts / likes as in the other games — the Quiz took Guess the
   Word's picture and On screen values once, session flag `shared` = 2) and the "game flow" (`QuizMonitor.jsx`): the

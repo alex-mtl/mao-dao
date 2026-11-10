@@ -540,6 +540,7 @@ return [
     'qz_inactive' => 'Un autre jeu est en cours sur le live - le quiz est en pause',
     'qz_t_geography' => 'Géographie', 'qz_t_sports' => 'Sport', 'qz_t_literature' => 'Littérature', 'qz_t_art' => 'Art',
     'qz_t_movies' => 'Cinéma', 'qz_t_music' => 'Musique', 'qz_t_science' => 'Science', 'qz_t_history' => 'Histoire',
+    'qz_t_mountains' => 'Montagnes', 'qz_t_waters' => 'Fleuves, lacs, îles', 'qz_t_athletes' => 'Sportifs', 'qz_t_clubs' => 'Clubs sportifs', 'qz_t_writers' => 'Écrivains', 'qz_t_artists' => 'Artistes', 'qz_t_architecture' => 'Architecture', 'qz_t_actors' => 'Acteurs', 'qz_t_series' => 'Séries', 'qz_t_cartoons' => 'Dessins animés', 'qz_t_soundtracks' => 'Musiques de films', 'qz_t_musicians' => 'Musiciens', 'qz_t_albums' => 'Albums', 'qz_t_songs' => 'Chansons', 'qz_t_scientists' => 'Scientifiques', 'qz_t_space' => 'Espace', 'qz_t_rulers' => 'Dirigeants et politiciens', 'qz_t_games' => 'Jeux vidéo', 'qz_t_companies' => 'Entreprises', 'qz_t_nature' => 'Animaux et plantes', 'qz_t_food' => 'Cuisine et boissons', 'qz_t_universities' => 'Universités', 'qz_t_languages' => 'Langues',
     'qz_question' => 'Question',
     'qz_phase_idle' => '—', 'qz_phase_topic' => 'choix du thème', 'qz_phase_intro' => 'annonce de la question', 'qz_phase_ask' => 'question en cours',
     'qz_phase_answer' => 'réponse affichée', 'qz_phase_winner' => 'gagnant de la manche', 'qz_phase_reveal' => 'pause', 'qz_phase_finished' => 'pause',
