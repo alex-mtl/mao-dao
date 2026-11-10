@@ -1,5 +1,5 @@
 """The questions of the Quiz game: the platform's generated quizzes (Laravel GET /internal/guessword/quizzes?lang=..,
-header X-Internal-Secret), one copy per process for every room. Fetched in a background thread at the first use and
+header X-Internal-Secret, in portions), one copy per process for every room. Fetched in a background thread at the first use and
 every REFRESH_SEC; the last good copy is kept on disk ({DATA_DIR}/quiz-bank/<lang>.json), so a restart without the
 platform still plays. Without PLATFORM_URL and without a saved copy (a home copy, tests) a small built-in set plays.
 
@@ -149,10 +149,14 @@ class QuizBank:
 
     def _fetch(self, lang):
         try:
-            req = urllib.request.Request(f"{config.PLATFORM_URL}/internal/guessword/quizzes?lang={lang}",
-                                         headers={"X-Internal-Secret": config.INTERNAL_SECRET, "Accept": "application/json"})
-            with urllib.request.urlopen(req, timeout=60) as r:
-                quizzes = json.loads(r.read().decode("utf-8"))["quizzes"]
+            quizzes, after = [], 0
+            while after is not None:                  # in portions: the platform gives `next` until the end
+                req = urllib.request.Request(f"{config.PLATFORM_URL}/internal/guessword/quizzes?lang={lang}&after={after}",
+                                             headers={"X-Internal-Secret": config.INTERNAL_SECRET, "Accept": "application/json"})
+                with urllib.request.urlopen(req, timeout=60) as r:
+                    page = json.loads(r.read().decode("utf-8"))
+                quizzes += page["quizzes"]
+                after = page.get("next")
             quizzes = [q for q in quizzes if q.get("topic") and q.get("questions")]
             os.makedirs(os.path.dirname(self._file(lang)), exist_ok=True)
             tmp = self._file(lang) + ".tmp"

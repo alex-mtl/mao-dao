@@ -32,5 +32,10 @@ it('gives the engine the generated quizzes with every wrong answer', function ()
         ->assertJsonPath('quizzes.0.questions.0.type', 'capital')
         ->assertJsonPath('quizzes.0.questions.0.correct', 'Канберра')
         ->assertJsonPath('quizzes.0.questions.0.wrong', ['Сидней', 'Мельбурн', 'Перт']);
+    bankQuiz('geo-medium-3', 'geography');
+    $first = $this->getJson('/internal/guessword/quizzes?lang=ru&limit=1', ['X-Internal-Secret' => 's3cret'])->assertJsonCount(1, 'quizzes')->json();
+    expect($first['next'])->toBe($first['quizzes'][0]['id']);
+    $this->getJson('/internal/guessword/quizzes?lang=ru&limit=5&after='.$first['next'], ['X-Internal-Secret' => 's3cret'])
+        ->assertJsonCount(1, 'quizzes')->assertJsonPath('quizzes.0.key', 'geo-medium-3')->assertJsonPath('next', null);
     $this->getJson('/internal/guessword/quizzes?lang=en', ['X-Internal-Secret' => 's3cret'])->assertOk()->assertJsonCount(0, 'quizzes');
 });
