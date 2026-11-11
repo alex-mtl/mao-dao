@@ -1,0 +1,32 @@
+name: Stream engine
+
+# The Python sidecar (stream-engine/): the whole package must compile and import, and the tests that need no
+# dictionaries (Listen mode, the LIVE log) must pass. Added 2026-11-11, before that the engine was only tested by hand.
+on:
+  push:
+    branches: [main]
+    paths: ["stream-engine/**", ".github/workflows/engine.yml"]
+  pull_request:
+    paths: ["stream-engine/**", ".github/workflows/engine.yml"]
+
+jobs:
+  engine:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: stream-engine
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: stream-engine/requirements.txt
+      - run: pip install -r requirements.txt httpx
+      - name: Compile everything
+        run: python -m compileall -q app
+      - name: Import the server and the TikTok layer
+        run: python -c "import app.server, app.tiktok.client, app.tiktok.battles"
+      - name: Tests
+        run: python -m unittest tests.test_battles tests.test_listen tests.test_live_log -v

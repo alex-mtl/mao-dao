@@ -12,6 +12,8 @@ from . import config
 from .games import GAMES
 from .games.base import Viewer
 from .identities import identities
+from .battles import BattleTracker
+from .listen_stats import ListenStats
 from .live_log import LiveLog
 from .reactions.balloons import LikeBalloons
 from .reactions.cake import CakeShows
@@ -87,6 +89,8 @@ class Hub:
         self.recent = OrderedDict((u["id"], {k: u.get(k, "") for k in ("name", "avatar", "t", "big")})
                                   for u in s.get("viewers") or [] if u.get("id"))   # this stream's viewers, latest last
         self.live = LiveLog(store.path("lives"))   # this LIVE's rounds, winners, planes... for clips
+        self.battles = BattleTracker(store.path("battles.jsonl"), self.live)   # the host's battles and their rounds
+        self.stats = ListenStats(store)            # counters and tops of this LIVE (Listen mode, every mode collects)
         # the cake show's clock (reactions/cake.py): the server fires the crackers, the pages draw
         self.cakes = CakeShows(self._feed, lambda kind, **f: self.live.write(kind, **f))
         for g in self.games.values():
@@ -194,6 +198,8 @@ class Hub:
                 g.new_session()
             self.greeted = set()
             self.recent.clear()
+            self.stats.reset()
+            self.battles.reset()
             self.balloons.new_session()
             self.cakes.reset()
             self.save_session()
@@ -291,6 +297,8 @@ class Hub:
         self._seen(v)
         self._feed(type="chat", name=v.name, avatar=v.avatar, text=text[:200], sent=ts,
                    host=v.id.lower() == self.username)
+        self.stats.comment(v)
+        self.battles.note("comments")
         self.cakes.comment(v.name, text)              # "огонь" fires a cracker of the cake show playing
         if self.tg and self.tg.on_comment(v, text):  # "настроить связь" / a Telegram key: not a guess
             return
@@ -338,12 +346,17 @@ class Hub:
         if self.closed:                               # shutting down: nothing changes any more
             return
         self._seen(v)
-        # welcome each viewer once per stream (pages throttle and merge the greetings)
-        if self.global_settings.get("GREET_JOINS") and v.id not in self.greeted and v.id.lower() != self.username:
+        self.stats.join(v)
+        self.battles.note("joins")
+        # welcome each viewer once per stream (pages throttle and merge the greetings). The overlay's pill and
+        # voice (GREET_JOINS) and the narrator in the streamer's panel (SAY_GREET) are separate switches: the
+        # event says who it is for, so the overlay ignores a join that only the panel wants
+        overlay, panel = self.global_settings.get("GREET_JOINS"), self.global_settings.get("SAY_GREET")
+        if (overlay or panel) and v.id not in self.greeted and v.id.lower() != self.username:
             if len(self.greeted) > 20000:
                 self.greeted.clear()
             self.greeted.add(v.id)
-            self._feed(type="join", name=v.name, avatar=v.avatar)
+            self._feed(type="join", name=v.name, avatar=v.avatar, overlay=bool(overlay), panel=bool(panel))
         self.game.on_join(v)
 
     def gift(self, v: Viewer, gift, count, to="", repeat=False, coins=0, image=""):
@@ -354,6 +367,10 @@ class Hub:
             return
         self._seen(v)
         catalog().record(gift, coins, image)
+        if not to or to.lower() == self.username:     # to the host: the LIVE's statistics and the battle's gifts
+            self.stats.gift(v, gift, count, coins)
+            self.battles.note("gifts", count)
+            self.battles.note("coins", (coins or 0) * count)
         if not repeat:
             self._feed(type="gift", name=v.name, avatar=v.avatar, gift=gift, count=count, to=to)
         self._journal_gift(v, gift, count, to)
@@ -446,13 +463,42 @@ class Hub:
             return
         self._seen(v)
         print(f"[follow] {v.name} (@{v.id})")
+        self.stats.follow(v)
+        self.battles.note("follows")
         self.live.write("follow", user=self.live.user(v.id, v.name))   # every follow, for daily stats and digests
         self.game.on_follow(v)
+
+    def subscribe(self, v: Viewer, months=1):
+        """a paid subscription to the host (TikTok SubNotify): counted, logged, nothing else happens"""
+        if self.closed:
+            return
+        self._seen(v)
+        print(f"[sub] {v.name} (@{v.id}) month {months}")
+        self.stats.sub(v)
+        self.battles.note("subs")
+        self.live.write("sub", user=self.live.user(v.id, v.name), months=months or None)
+
+    def share(self, v: Viewer):
+        if self.closed:
+            return
+        self._seen(v)
+        self.stats.share(v)
+
+    def battle(self, info):
+        """a LinkMicBattleEvent / LinkMicArmiesEvent as a dict (app/tiktok/battles.py): the host's battles"""
+        if self.closed:
+            return
+        (self.battles.on_armies if info.get("kind") == "armies" else self.battles.on_battle)(info)
+
+    def set_host_uid(self, uid):
+        self.battles.set_host(uid)
 
     def like(self, v: Viewer, count):
         if self.closed:                               # shutting down: nothing changes any more
             return
         self._seen(v)
+        self.stats.like(v, count)
+        self.battles.note("likes", count)
         before = self.balloons.total_of(v.id)
         who = self.live.user(v.id, v.name)
         for b in self.balloons.on_like(v, count):  # 100 likes -> lift off, on whatever page is open
@@ -501,6 +547,7 @@ class Hub:
                 self._save_if_needed()
                 self.balloons.tick(time.time())
                 self.cakes.tick(time.time())
+                self.battles.tick()
             except Exception as e:
                 print("[hub] tick error:", type(e).__name__, e)
             await asyncio.sleep(0.25)
@@ -514,6 +561,7 @@ class Hub:
                 except Exception as e:
                     print(f"[hub] save error ({g.name}):", e)
             self.balloons.save()
+            self.stats.save()
             self.save_session()
             catalog().flush()
             identities().flush()

@@ -63,6 +63,8 @@ ROUND_BREAK = _b("ROUND_BREAK", "1")                    # default for the menu s
 RESULTS_SEC = _i("RESULTS_SEC", 25)                     # first part of the break shows the round results
 LANGUAGES = ["en", "ru", "fr", "es"]
 GREET_JOINS = _b("GREET_JOINS", "1")                    # welcome viewers who join the LIVE (once per stream)
+SAY_CHAT = _b("SAY_CHAT", "0")                          # the narrator in the streamer's panel reads every viewer message aloud
+SAY_GREET = _b("SAY_GREET", "0")                        # ...and greets viewers who join (the panel, not the overlay)
 VOICE_RATE = _f("VOICE_RATE", 1.5)                      # speech speed multiplier (1 = normal browser speed)
 VOICE_VOLUME = _i("VOICE_VOLUME", 100)                  # the narrator's volume, % (room page setting)
 FX_VOLUME = _i("FX_VOLUME", 100)                        # sound effects volume, % (room page setting)

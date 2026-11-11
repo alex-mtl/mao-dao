@@ -75,7 +75,7 @@ window.Greeter = (() => {
 
   return {
     push(e) {
-      if (e.type !== 'join') return;
+      if (e.type !== 'join' || e.overlay === false) return;   // overlay === false: only the streamer's panel greets
       pending.push(e);
       if (pending.length > 12) pending.shift();
     },

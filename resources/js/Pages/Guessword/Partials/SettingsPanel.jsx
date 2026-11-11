@@ -4,17 +4,19 @@ import AnagramMonitor from './AnagramMonitor';
 import QuizMonitor, { QUIZ_TOPICS, topicLabel } from './QuizMonitor';
 import GameMonitor from './GameMonitor';
 import GiftCatalog from './GiftCatalog';
+import ListenMonitor from './ListenMonitor';
 import ScreenTab, { ScreenQuick } from './ScreenTab';
 import { GiftsTab, ToastsTab } from './ToastsAndGifts';
 
 // the panel's modes (engine game names) and the sections of each mode
-export const MODES = ['battle', 'guess', 'anagram', 'quiz', 'streamer'];
+export const MODES = ['battle', 'guess', 'anagram', 'quiz', 'streamer', 'listen'];
 const SECTIONS = {
     battle: ['gifts', 'toasts', 'likes', 'catalog'],
     guess: ['game', 'frame', 'screen', 'gifts', 'toasts', 'likes', 'catalog'],
     anagram: ['game', 'frame', 'screen', 'gifts', 'toasts', 'likes', 'catalog'],
     quiz: ['game', 'frame', 'screen', 'gifts', 'toasts', 'likes', 'catalog'],
     streamer: ['frame', 'gifts', 'toasts', 'likes', 'catalog'],
+    listen: [],                              // no settings of its own: the monitor is the whole mode (ListenMonitor)
 };
 const LIVE_SECTIONS = ['screen'];            // applied at once, no Apply button
 const FLOW = ['guess', 'anagram', 'quiz'];   // modes with rounds: their settings turn over to the "game flow" monitor
@@ -218,12 +220,13 @@ function QuizSettings({ s, sec }) {
 
 export default function SettingsPanel({ s, mode, setMode, footer, bonusesUrl }) {
     const { t } = useLaravelReactI18n();
-    const [tab, setTab] = useState({ battle: 'gifts', guess: 'game', anagram: 'game', quiz: 'game', streamer: 'frame' });
+    const [tab, setTab] = useState({ battle: 'gifts', guess: 'game', anagram: 'game', quiz: 'game', streamer: 'frame', listen: '' });
     const section = tab[mode];
     // the panel turns over: the settings, or the monitor of the guess game (remembered on this device)
     const [view, setViewState] = useState(() => { try { return localStorage.getItem('gw-panel-view') || 'settings'; } catch { return 'settings'; } });
     const setView = (v) => { setViewState(v); try { localStorage.setItem('gw-panel-view', v); } catch { /* private mode */ } };
     const monitor = view === 'monitor' && FLOW.includes(mode);
+    const listen = mode === 'listen';           // Listen mode: only the monitor of what the engine heard
     const g = s.draft.guess || {};
     const an = s.draft.anagram || {};
     const fr = s.draft[mode] || {};            // the frame of guess / anagram
@@ -265,7 +268,7 @@ export default function SettingsPanel({ s, mode, setMode, footer, bonusesUrl }) 
                         </button>
                     )}
                 </div>
-                {!monitor && <div className="flex items-center gap-1 overflow-x-auto px-3">
+                {!monitor && !listen && <div className="flex items-center gap-1 overflow-x-auto px-3">
                     {SECTIONS[mode].map((k) => (
                         <button
                             key={k}
@@ -288,12 +291,14 @@ export default function SettingsPanel({ s, mode, setMode, footer, bonusesUrl }) 
                 </div>}
             </div>
 
+            {listen && !s.failed && s.info && <ListenMonitor s={s} />}
+            {listen && s.failed && <p className="px-5 py-4 text-sm text-danger-700">{t('guessword.settings_offline')}</p>}
             {monitor && !s.failed && s.info && <ScreenQuick s={s} game={mode} />}
             {monitor && mode === 'guess' && <GameMonitor s={s} bonusesUrl={bonusesUrl} />}
             {monitor && mode === 'anagram' && <AnagramMonitor s={s} />}
             {monitor && mode === 'quiz' && <QuizMonitor s={s} bonusesUrl={bonusesUrl} />}
 
-            <div className={'px-5 py-2' + (monitor ? ' hidden' : '')}>
+            <div className={'px-5 py-2' + (monitor || listen ? ' hidden' : '')}>
                 {s.failed && <p className="py-4 text-sm text-danger-700">{t('guessword.settings_offline')}</p>}
 
                 {!s.failed && s.info && mode === 'guess' && section === 'game' && (
@@ -448,7 +453,7 @@ export default function SettingsPanel({ s, mode, setMode, footer, bonusesUrl }) 
                 )}
             </div>
 
-            {!monitor && footer}
+            {!monitor && !listen && footer}
         </div>
     );
 }

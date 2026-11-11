@@ -24,6 +24,8 @@ class GlobalSettings:
         "voice_volume": ("VOICE_VOLUME", list(range(0, 101, 10))),
         "fx_volume": ("FX_VOLUME", list(range(0, 101, 10))),
         "greet": ("GREET_JOINS", [1, 0]),
+        "say_chat": ("SAY_CHAT", [0, 1]),
+        "say_greet": ("SAY_GREET", [0, 1]),
     }
     # the shows that fire by themselves on likes: a room set up before one of them existed gets it off (0), not the
     # config default - a new show must not start on someone's stream until the streamer turns it on

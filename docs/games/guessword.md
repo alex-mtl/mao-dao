@@ -202,6 +202,36 @@ Engine game `quiz` (`stream-engine/app/games/quiz/`, page `app/web/quiz/`). Mock
 - Strings: `q.*` in `common/i18n.js`, `guessword.mode_quiz*` / `qz_*` in `lang/*/guessword.php`. Tests:
   `stream-engine/tests/test_quiz.py`, `tests/Feature/Guessword/QuizBankTest.php`.
 
+
+## Listen mode — "прослушка" (since 2026-11-11)
+
+For a LIVE the streamer runs **from the phone**: the library only listens (the same TikTok connection as the games)
+and records; nothing is drawn or played on the stream. Engine game `listen` (`app/games/listen/`, empty overlay page
+`web/listen/`), the sixth mode of the panel (`SettingsPanel.MODES`); its whole view is `ListenMonitor.jsx`
+(engine `GET /api/monitor?game=listen`).
+
+- **Counters and tops of the LIVE** (`app/listen_stats.py`, `listen.json` in the room's folder, reset on a new LIVE):
+  viewers, messages, likes, gifts + coins, follows, paid subscriptions (`SubNotifyEvent`), joins, shares; top gifters /
+  likers / chatters, gifts by kind, a per-minute line. Collected in **every** mode (the hub feeds it), the Listen mode
+  only shows it. Subscriptions and shares are also lines of the LIVE log (`sub`).
+- **Battles** (`app/battles.py`, extraction from TikTok's events in `app/tiktok/battles.py`, journal
+  `battles.jsonl` in the room's folder + a `battle` line in the LIVE log): `LinkMicBattleEvent` gives the start / finish,
+  the sides and the result, `LinkMicArmiesEvent` the score of each side and its top gifters during the battle. A
+  battle has an id; the battles of one **match channel** (`channel_id`) are the rounds ("подраунды") of one match, the
+  n-th battle of a channel = round n (a gap of 30 min starts a new series); extra time is a flag. The host's own side is
+  found by the numeric id from the connect (`set_host_uid`); with an unknown host nothing is declared won or lost.
+  Comments / likes / gifts / follows / subs during a battle are summed into it. A battle nobody reports on for 10 min is
+  closed as "unfinished"; joining midway starts it from the first score update (`mid`).
+  **Assumption to check on a real battle:** that rounds really come as separate battle ids in one channel — the raw
+  numbers of every battle are in the journal, so the rule can be corrected afterwards.
+- **The narrator of the panel** (`Narrator.jsx`, any mode, left column): the browser's own voice on the streamer's
+  computer reads every viewer message aloud (`say_chat`) and greets the joiners (`say_greet`, merged: "Welcome Ann,
+  Bob and 3 more"). Both are engine global settings (live, no Apply). It listens to the room's websocket feed. The
+  overlay's greeting (`greet`, a toast of the games) is a separate switch: the feed's `join` event carries
+  `overlay` / `panel` flags and `Greeter.push` skips `overlay === false`. A browser needs one click before it lets a page
+  speak, hence the "click once" hint after a reload.
+- Tests: `stream-engine/tests/test_battles.py` (stdlib only).
+
 ## Environment
 
 | Variable | Meaning |

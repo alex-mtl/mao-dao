@@ -10,6 +10,7 @@ import { Head, Link, router, useForm } from '@inertiajs/react';
 import { useLaravelReactI18n } from 'laravel-react-i18n';
 import { useEffect, useRef, useState } from 'react';
 import SettingsPanel, { MODES } from './Partials/SettingsPanel';
+import Narrator from './Partials/Narrator';
 import qrcode from 'qrcode-generator';
 import useEngineSettings from './Partials/useEngineSettings';
 
@@ -163,11 +164,11 @@ export default function Room({ room, languages, notice, problem }) {
 
                         {/* the stream's own dark (not a theme token: TikTok shows the game on a dark picture in every scheme) */}
                         <div className="relative aspect-[9/20] w-full overflow-hidden rounded-xl" style={{ background: '#0b0614' }}>
-                            {room.engineOnline && preview && (
+                            {room.engineOnline && preview && mode !== 'listen' && (
                                 <iframe title={t('guessword.game_heading')} src={room.overlayUrl + '&preview=1'} className="h-full w-full" />
                             )}
-                            {!preview && (
-                                <p className="absolute inset-x-4 top-1/2 -translate-y-1/2 text-center text-sm text-white/70">{t('guessword.preview_off')}</p>
+                            {(!preview || mode === 'listen') && (
+                                <p className="absolute inset-x-4 top-1/2 -translate-y-1/2 text-center text-sm text-white/70">{t(mode === 'listen' ? 'guessword.listen_preview' : 'guessword.preview_off')}</p>
                             )}
                             {flash && (
                                 <span className={'absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full px-3 py-1 text-xs font-semibold text-white ' +
@@ -188,6 +189,8 @@ export default function Room({ room, languages, notice, problem }) {
                                 </a>
                             )}
                         </p>
+                        {/* the narrator of the panel: reads viewers' messages and greets joiners, in every mode */}
+                        {s.info && !s.failed && <Narrator s={s} controlUrl={room.controlUrl} enabled={room.engineOnline} />}
                     </div>
 
                     {/* right: settings of the mode */}

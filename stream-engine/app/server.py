@@ -293,6 +293,9 @@ def create_app(manager):
         """the room page's monitor of the guess game (the round now, this stream's rounds, what's planned),
         or ?game=anagram: its round now"""
         _, _, hub = room_of(token, need_control=True)
+        if game == "listen":                           # Listen mode: the LIVE's counters and the battles
+            return {"active": hub.active, "stats": hub.stats.snapshot(), "battles": hub.battles.snapshot(),
+                    "now": time.time()}
         g = hub.games.get(game if game in ("anagram", "quiz") else "guess")
         if not g:
             return {"active": hub.active}

@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Listen</title>
+<style>html, body { margin: 0; width: 100%; height: 100%; background: transparent; overflow: hidden; }</style>
+</head>
+<body>
+<!-- Listen mode draws nothing: the page only stays connected, so that an overlay opened in Studio follows the
+     mode the streamer picks next (Live.start navigates to the active game's page). -->
+<script src="common/i18n.js"></script>
+<script src="common/live.js"></script>
+<script>Live.start({ game: 'listen' });</script>
+</body>
+</html>

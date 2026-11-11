@@ -10,6 +10,7 @@ from .. import config
 from ..games.base import Viewer
 from ..identities import identities
 from ..room_prefs import catalog
+from . import battles as battle_events
 
 
 def viewer_of(user):
@@ -168,6 +169,7 @@ class TikTokConnector:
             try:                                          # the host's numeric id: their chat (no @id) is the host's
                 owner = (getattr(client, "room_info", None) or {}).get("owner") or {}
                 oid = str(owner.get("id_str") or owner.get("id") or "")
+                hub.set_host_uid(oid)                     # which side of a battle is the host's
                 if oid:
                     identities().resolve(Viewer(self.username, self.username, uid=oid))
             except Exception as e:
@@ -257,6 +259,32 @@ class TikTokConnector:
         client.on(GiftEvent)(safe(gift))
         client.on(FollowEvent)(safe(follow))
         client.on(LikeEvent)(safe(like))
+
+        # Listen mode: subscriptions, shares and the battles. The event classes differ between TikTokLive versions,
+        # so each is looked up by name and skipped when this version lacks it.
+        from TikTokLive import events as tl_events
+
+        def subscribe(event):
+            user = getattr(event, "user", None)
+            if user is not None:
+                hub.subscribe(viewer_of(user), int(getattr(event, "sub_month", 0) or 0))
+
+        def share(event):
+            user = getattr(event, "user", None)
+            if user is not None:
+                hub.share(viewer_of(user))
+
+        def battle(event):
+            hub.battle(battle_events.battle_info(event))
+
+        def armies(event):
+            hub.battle(battle_events.armies_info(event))
+
+        for name, fn in (("SubNotifyEvent", subscribe), ("SubscribeEvent", subscribe), ("ShareEvent", share),
+                         ("LinkMicBattleEvent", battle), ("LinkMicArmiesEvent", armies)):
+            cls = getattr(tl_events, name, None)
+            if cls is not None:
+                client.on(cls)(safe(fn))
 
         # TikTok often blocks the profile-HTML lookup the library uses by default
         # ("you might be blocked") and then reports the user offline; the API lookup works.
