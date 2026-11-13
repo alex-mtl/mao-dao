@@ -256,10 +256,113 @@ function DigestBuilder({ room, live }) {
     );
 }
 
+// a round of 10 minutes or more is a "hard" one: the clips pipeline looks there first
+const HARD = 600;
+const ms = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+const roundsUrl = (room, key) => (room.foreign ? route('guessword.rooms.archive.rounds', [room.id, key]) : route('guessword.archive.rounds', key));
+const reasonColor = (r) => (r === 'exact' ? 'bg-success-500' : r === 'timeout' ? 'bg-warning-500' : r === 'skip' ? 'bg-ink-300' : 'bg-primary-300');
+
+/**
+ * Every round of the LIVE as one strip: a bar's width is the round's length, its color how it ended (guessed /
+ * time ran out / skipped), hard rounds (10 min+) are taller; a dot = a clip (filled) or moments found (ring).
+ */
+function RoundStrip({ rounds, label }) {
+    if (!rounds?.length) return null;
+    const total = rounds.reduce((a, [d]) => a + Math.max(d, 20), 0);
+    return (
+        <div className="mt-2 flex h-6 w-full items-end gap-px overflow-hidden rounded" role="img" aria-label={label}>
+            {rounds.map(([d, reason, mark], i) => (
+                <div key={i} className="relative h-full" style={{ width: `${(100 * Math.max(d, 20)) / total}%` }}
+                     title={`${ms(d)}${reason ? ' · ' + reason : ''}`}>
+                    <div className={`absolute bottom-0 left-0 right-0 ${reasonColor(reason)} ${d >= HARD ? 'h-full' : 'h-1/2 opacity-70'}`} />
+                    {mark > 0 && <span className={`absolute left-1/2 top-0 h-2 w-2 -translate-x-1/2 rounded-full ${mark === 1 ? 'bg-primary-700' : 'border-2 border-primary-700'}`} />}
+                </div>
+            ))}
+        </div>
+    );
+}
+
+/** the table of every round of one LIVE (loaded when opened); "hard only" keeps rounds of 10 min and more */
+function RoundsTable({ room, liveKey }) {
+    const { t } = useLaravelReactI18n();
+    const [rows, setRows] = useState(null);
+    const [hardOnly, setHardOnly] = useState(false);
+    useEffect(() => {
+        let gone = false;
+        fetch(roundsUrl(room, liveKey), { headers: { Accept: 'application/json' } })
+            .then((r) => (r.ok ? r.json() : []))
+            .then((d) => { if (!gone) setRows(d); })
+            .catch(() => { if (!gone) setRows([]); });
+        return () => { gone = true; };
+    }, [room, liveKey]);
+    if (rows === null) return <p className="mt-3 text-sm text-ink-500">{t('guessword.rounds_loading')}</p>;
+    if (rows.length === 0) return <p className="mt-3 text-sm text-ink-500">{t('guessword.rounds_none')}</p>;
+    const shown = hardOnly ? rows.filter((r) => (r.duration || 0) >= HARD) : rows;
+    const hard = rows.filter((r) => (r.duration || 0) >= HARD).length;
+    const result = (r) => (r.reason === 'exact' || (!r.reason && r.winner)
+        ? `🏆 ${r.winner || '?'}`
+        : t('guessword.rounds_reason_' + (r.reason || 'unknown')));
+    return (
+        <div className="mt-3 rounded-xl border border-warm-200 bg-warm-50 p-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-sm text-ink-600">{t('guessword.rounds_summary', { n: rows.length, hard })}</p>
+                <label className="flex items-center gap-2 text-sm text-ink-700">
+                    <input type="checkbox" checked={hardOnly} onChange={(e) => setHardOnly(e.target.checked)} className="rounded border-warm-300" />
+                    {t('guessword.rounds_hard_only')}
+                </label>
+            </div>
+            <div className="mt-2 overflow-x-auto">
+                <table className="w-full min-w-[640px] text-left text-sm">
+                    <thead className="text-xs uppercase text-ink-500">
+                        <tr>
+                            {['no', 'at', 'word', 'length', 'result', 'guesses', 'players', 'clip'].map((c) => (
+                                <th key={c} className="px-2 py-1 font-semibold">{t('guessword.rounds_col_' + c)}</th>
+                            ))}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {shown.map((r) => (
+                            <tr key={r.round} className={`border-t border-warm-200 align-top ${(r.duration || 0) >= HARD ? 'bg-warning-50' : ''}`}>
+                                <td className="px-2 py-1 text-ink-500">{r.round}</td>
+                                <td className="whitespace-nowrap px-2 py-1 text-ink-600">
+                                    {r.offset !== null ? hms(r.offset) : '—'}
+                                    {r.started && <span className="block text-xs text-ink-400">{new Date(r.started).toLocaleTimeString([], { timeStyle: 'short' })}</span>}
+                                </td>
+                                <td className="px-2 py-1 font-semibold text-ink-900">
+                                    {r.word || '—'}
+                                    {r.tier && <span className="ml-1 text-xs font-normal text-ink-400">{r.tier}</span>}
+                                    {r.moments?.length > 0 && (
+                                        <ul className="mt-1 space-y-0.5 text-xs font-normal text-ink-600">
+                                            {r.moments.map((m, i) => <li key={i}>💬 {m.at !== undefined && <span className="text-ink-400">{hms(m.at)} </span>}{m.text}</li>)}
+                                        </ul>
+                                    )}
+                                </td>
+                                <td className={`whitespace-nowrap px-2 py-1 ${(r.duration || 0) >= HARD ? 'font-bold text-warning-800' : 'text-ink-700'}`}>
+                                    {r.duration !== null ? ms(r.duration) : '—'}
+                                </td>
+                                <td className="max-w-[12rem] truncate px-2 py-1 text-ink-700" title={r.winnerId ? '@' + r.winnerId : undefined}>{result(r)}</td>
+                                <td className="px-2 py-1 text-ink-600">{r.guesses ?? '—'}</td>
+                                <td className="px-2 py-1 text-ink-600">{r.players ?? '—'}</td>
+                                <td className="px-2 py-1">
+                                    {r.clip
+                                        ? <a href={r.clip} target="_blank" rel="noreferrer" className="font-semibold text-primary-700 hover:underline">{r.clipTitle || t('guessword.rounds_clip_open')}</a>
+                                        : <span className="text-ink-300">—</span>}
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    );
+}
+
 /** The streamer's archive: every TikTok LIVE the game was connected to, newest first, with the digest builder. */
-export default function Archive({ room, lives, engineOnline }) {
+export default function Archive({ room, lives, recorded = [], strips = {}, engineOnline }) {
     const { t } = useLaravelReactI18n();
     const [open, setOpen] = useState(null);
+    const [roundsOpen, setRoundsOpen] = useState(null);
+    const toggleRounds = (key) => setRoundsOpen(roundsOpen === key ? null : key);
     const when = (iso) => (iso ? new Date(iso).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : '—');
 
     return (
@@ -306,11 +409,48 @@ export default function Archive({ room, lives, engineOnline }) {
                                         {open === l.file ? t('guessword.digest_close') : t('guessword.digest_make')}
                                     </SecondaryButton>
                                 </div>
+                                <RoundStrip rounds={strips[l.file]} label={t('guessword.rounds_strip')} />
+                                <button type="button" onClick={() => toggleRounds(l.file)}
+                                        className="mt-1 text-sm font-semibold text-primary-700 hover:underline">
+                                    {roundsOpen === l.file ? t('guessword.rounds_hide') : t('guessword.rounds_show')}
+                                </button>
+                                {roundsOpen === l.file && <RoundsTable room={room} liveKey={l.file} />}
                                 <Tags live={l} />
                                 {open === l.file && <DigestBuilder room={room} live={l} />}
                             </li>
                         ))}
                     </ul>
+                )}
+
+                {recorded.length > 0 && (
+                    <>
+                        <h2 className="mt-10 font-heading text-lg font-bold text-ink-900">{t('guessword.rounds_recorded_title')}</h2>
+                        <p className="mt-1 text-sm text-ink-600">{t('guessword.rounds_recorded_intro')}</p>
+                        <ul className="mt-4 space-y-3">
+                            {recorded.map((l) => (
+                                <li key={l.file} className="rounded-xl border-2 border-warm-200 bg-surface px-4 py-3 shadow-soft">
+                                    <p className="font-heading text-lg font-bold text-ink-900">
+                                        {l.started ? when(l.started) : l.date} <span className="ml-1 text-sm font-semibold text-ink-500">{hm(l.duration)}</span>
+                                    </p>
+                                    <p className="mt-0.5 text-xs text-ink-500">
+                                        {`${l.rounds} ${t('guessword.archive_rounds')} · ${l.wins} ${t('guessword.archive_wins')}`}
+                                        {l.recording && ` · ${l.recording}`}
+                                    </p>
+                                    {l.champion && (
+                                        <p className="mt-1 truncate text-sm font-semibold text-ink-800">
+                                            🏆 {t('guessword.archive_champion', { name: l.champion.name, n: l.champion.wins })}
+                                        </p>
+                                    )}
+                                    <RoundStrip rounds={strips[l.file]} label={t('guessword.rounds_strip')} />
+                                    <button type="button" onClick={() => toggleRounds(l.file)}
+                                            className="mt-1 text-sm font-semibold text-primary-700 hover:underline">
+                                        {roundsOpen === l.file ? t('guessword.rounds_hide') : t('guessword.rounds_show')}
+                                    </button>
+                                    {roundsOpen === l.file && <RoundsTable room={room} liveKey={l.file} />}
+                                </li>
+                            ))}
+                        </ul>
+                    </>
                 )}
             </div>
         </PlatformLayout>

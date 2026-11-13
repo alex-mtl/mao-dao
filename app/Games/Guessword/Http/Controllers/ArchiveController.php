@@ -7,6 +7,7 @@ namespace App\Games\Guessword\Http\Controllers;
 use App\Games\Guessword\Models\GuesswordRoom;
 use App\Games\Guessword\Services\EngineClient;
 use App\Games\Guessword\Services\LiveArchive;
+use App\Games\Guessword\Services\RoundsArchive;
 use App\Http\Controllers\Controller;
 use App\Services\Capabilities;
 use Illuminate\Http\JsonResponse;
@@ -27,6 +28,7 @@ class ArchiveController extends Controller
         private LiveArchive $archive,
         private EngineClient $engine,
         private Capabilities $capabilities,
+        private RoundsArchive $rounds,
     ) {}
 
     public function index(Request $request, ?GuesswordRoom $room = null): Response
@@ -38,6 +40,14 @@ class ArchiveController extends Controller
             report($e);
             $lives = null;
         }
+        // the rounds table follows the logs (only LIVEs whose log grew are read again)
+        try {
+            if ($lives !== null) {
+                $this->rounds->sync($room);
+            }
+        } catch (Throwable $e) {
+            report($e);
+        }
 
         return Inertia::render('Guessword/Archive', [
             'room' => [
@@ -46,6 +56,10 @@ class ArchiveController extends Controller
                 'tiktok' => $room->tiktok_username,
             ],
             'lives' => $lives ?? [],
+            // LIVEs older than the logs, known from their recordings (guessword:rounds-import)
+            'recorded' => $this->rounds->recordedOnly($room, array_column($lives ?? [], 'file')),
+            // per LIVE: [[seconds, reason, 1 = clip / 2 = moments], ...] for the strip of rounds
+            'strips' => (object) $this->rounds->strips($room),
             'engineOnline' => $lives !== null,
         ]);
     }
@@ -59,6 +73,21 @@ class ArchiveController extends Controller
         abort_if($events === null, 404);
 
         return response()->json($events);
+    }
+
+    /** every round of one LIVE (the round table under a LIVE of the archive) */
+    public function rounds(Request $request, string $live, ?GuesswordRoom $room = null): JsonResponse
+    {
+        $room = $this->roomFor($request, $room);
+        abort_unless(preg_match('/^[\w.:-]{1,120}$/', $live) === 1, 404);
+
+        return response()->json($this->rounds->rounds($room, $live));
+    }
+
+    /** super admins: rounds of any room */
+    public function roomRounds(Request $request, GuesswordRoom $room, string $live): JsonResponse
+    {
+        return $this->rounds($request, $live, $room);
     }
 
     /** super admins: the same for any room (/guessword/rooms/{room}/archive/lives/{file}) */

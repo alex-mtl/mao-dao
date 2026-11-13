@@ -49,8 +49,8 @@ class LiveArchive
         return $live ? $this->parsed($room, $live)['events'] : null;
     }
 
-    /** the engine's logs, plus journal ones of LIVEs it has no log of (same TikTok LIVE id = same LIVE) */
-    private function sources(GuesswordRoom $room): array
+    /** the engine's logs, plus journal ones of LIVEs it has no log of (same TikTok LIVE id = same LIVE): [{file, size, journal}] */
+    public function sources(GuesswordRoom $room): array
     {
         $tt = fn (string $file) => preg_replace('/^.*_(\d+)\.jsonl$/', '$1', $file);
         $engine = collect($this->engine->lives($room))->map(fn ($l) => ['file' => $l['file'], 'size' => (int) $l['size'], 'journal' => false]);

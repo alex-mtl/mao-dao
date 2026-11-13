@@ -396,6 +396,27 @@ own recording (MP4 from TikTok LIVE Center): the file is never uploaded.
 - **Frame test**: `node tests/digest/frames.test.mjs` (host Node + Chrome; `--update` writes new references
   after an intended change of the look). Synthetic nicks in `tests/digest/events.json`.
 
+## Rounds table (since 2026-11-13)
+
+Every round of every LIVE of a room, one row each: `guessword_rounds` (`App\Games\Guessword\Services\RoundsArchive`,
+model `GuesswordRound`). Unique per `(room_id, live_key, round)`.
+
+- **From the logs**: opening the archive refreshes the rounds of every LIVE whose log grew (engine logs and
+  journal-rebuilt ones; cached by file size, so a finished LIVE is read once). A round runs from `round_start`
+  to its win / `round_end` (journal LIVEs: to the next round's start). Columns: word, lang, tier, round type,
+  start time, `offset_s` (from the LIVE's start), `duration_s`, `reason` (exact / timeout / skip), winner
+  (uid, @id, nickname), guesses, players, streak.
+- **From outside** (`php artisan guessword:rounds-import <file.json> [--room=1] [--sync]`, a JSON array of
+  `{live_key, round, ...}`): LIVEs older than any log (`live_key` = `rec:<recording id>`, `source` local = the old
+  local game's log of 16–20.10, video = the game's voice in the recording), and what the clips pipeline finds:
+  `recording` + `recording_s` (where the round starts in the LIVE Center recording), `clip_url` / `clip_title`,
+  `moments` (`[{at, kind, text}]`, `at` = recording second). A refresh from the logs never touches these.
+  The rows are made by `tiktok-clips/tools/rounds-export.js` (local / video / live / excerpts).
+- **Archive page**: under every LIVE a strip of its rounds (width = length, color = how it ended, 10 min+ rounds
+  full height, a dot = clip / moments) and a "Rounds" table (`GET /guessword/archive/rounds/{live_key}`,
+  super admins `/guessword/rooms/{room}/archive/rounds/{live_key}`) with a "hard only (10 min+)" filter.
+  LIVEs known only from imported rounds are listed below as "Earlier LIVEs (from recordings)".
+
 ## Development digest (since 2026-10-31)
 
 A 10-minute video of how the game was made, 06.10–30.10, built in the owner's Chrome straight from LIVE

@@ -26,6 +26,7 @@ Route::middleware('auth')->group(function () {
     // the archive of LIVEs and the digest built in the browser (ArchiveController)
     Route::get('/guessword/archive', [ArchiveController::class, 'index'])->name('guessword.archive');
     Route::get('/guessword/archive/lives/{file}', [ArchiveController::class, 'events'])->name('guessword.archive.events');
+    Route::get('/guessword/archive/rounds/{live}', [ArchiveController::class, 'rounds'])->name('guessword.archive.rounds');
     Route::get('/guessword/avatars/{key}', [ArchiveController::class, 'avatar'])->name('guessword.avatar');
 
     // super admins: every streamer's room (the same page and actions, for a room picked from the list)
@@ -39,6 +40,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/guessword/rooms/{room}/bonuses', [BonusesController::class, 'change'])->name('guessword.rooms.bonuses.change');
     Route::get('/guessword/rooms/{room}/archive', [ArchiveController::class, 'index'])->name('guessword.rooms.archive');
     Route::get('/guessword/rooms/{room}/archive/lives/{file}', [ArchiveController::class, 'roomEvents'])->name('guessword.rooms.archive.events');
+    Route::get('/guessword/rooms/{room}/archive/rounds/{live}', [ArchiveController::class, 'roomRounds'])->name('guessword.rooms.archive.rounds');
 
     // super admins: accounts for the streamer app and their access keys
     Route::get('/guessword/clients', [ClientAccountsController::class, 'index'])->name('guessword.clients');
