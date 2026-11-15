@@ -3,7 +3,8 @@ import SecondaryButton from '@/Components/SecondaryButton';
 import PlatformLayout from '@/Layouts/PlatformLayout';
 import { Head, Link } from '@inertiajs/react';
 import { useLaravelReactI18n } from 'laravel-react-i18n';
-import { useEffect, useId, useRef, useState } from 'react';
+import { Fragment, useEffect, useId, useRef, useState } from 'react';
+import ClipForm from './Clip/ClipForm.jsx';
 import { extension } from './Digest/livecenter.js';
 import { digestModel, factsFromLive, temperature, TEMPS } from './Digest/model.js';
 
@@ -258,6 +259,7 @@ function DigestBuilder({ room, live }) {
 
 // a round of 10 minutes or more is a "hard" one: the clips pipeline looks there first
 const HARD = 600;
+const CLIP_MIN = 180;      // shortest round the clip form is offered for (s)
 const ms = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
 const roundsUrl = (room, key) => (room.foreign ? route('guessword.rooms.archive.rounds', [room.id, key]) : route('guessword.archive.rounds', key));
 const reasonColor = (r) => (r === 'exact' ? 'bg-success-500' : r === 'timeout' ? 'bg-warning-500' : r === 'skip' ? 'bg-ink-300' : 'bg-primary-300');
@@ -283,9 +285,10 @@ function RoundStrip({ rounds, label }) {
 }
 
 /** the table of every round of one LIVE (loaded when opened); "hard only" keeps rounds of 10 min and more */
-function RoundsTable({ room, liveKey }) {
+function RoundsTable({ room, liveKey, live = null, canClip = false }) {
     const { t } = useLaravelReactI18n();
     const [rows, setRows] = useState(null);
+    const [clipRound, setClipRound] = useState(null);
     const [hardOnly, setHardOnly] = useState(false);
     useEffect(() => {
         let gone = false;
@@ -322,7 +325,8 @@ function RoundsTable({ room, liveKey }) {
                     </thead>
                     <tbody>
                         {shown.map((r) => (
-                            <tr key={r.round} className={`border-t border-warm-200 align-top ${(r.duration || 0) >= HARD ? 'bg-warning-50' : ''}`}>
+                            <Fragment key={r.round}>
+                            <tr className={`border-t border-warm-200 align-top ${(r.duration || 0) >= HARD ? 'bg-warning-50' : ''}`}>
                                 <td className="px-2 py-1 text-ink-500">{r.round}</td>
                                 <td className="whitespace-nowrap px-2 py-1 text-ink-600">
                                     {r.offset !== null ? hms(r.offset) : '—'}
@@ -347,8 +351,18 @@ function RoundsTable({ room, liveKey }) {
                                     {r.clip
                                         ? <a href={r.clip} target="_blank" rel="noreferrer" className="font-semibold text-primary-700 hover:underline">{r.clipTitle || t('guessword.rounds_clip_open')}</a>
                                         : <span className="text-ink-300">—</span>}
+                                    {canClip && live?.tiktokRoom && r.offset !== null && (r.duration || 0) >= CLIP_MIN && (
+                                        <button type="button" onClick={() => setClipRound(clipRound === r.round ? null : r.round)}
+                                                className="ml-2 rounded-md border border-primary-300 px-2 py-0.5 text-xs font-semibold text-primary-700 hover:bg-primary-50">
+                                            {t('guessword.clip_make')}
+                                        </button>
+                                    )}
                                 </td>
                             </tr>
+                            {clipRound === r.round && (
+                                <tr><td colSpan={8} className="px-2 pb-3"><ClipForm room={room} live={live} round={r} onClose={() => setClipRound(null)} /></td></tr>
+                            )}
+                            </Fragment>
                         ))}
                     </tbody>
                 </table>
@@ -358,7 +372,7 @@ function RoundsTable({ room, liveKey }) {
 }
 
 /** The streamer's archive: every TikTok LIVE the game was connected to, newest first, with the digest builder. */
-export default function Archive({ room, lives, recorded = [], strips = {}, engineOnline }) {
+export default function Archive({ room, lives, recorded = [], strips = {}, speech = [], engineOnline }) {
     const { t } = useLaravelReactI18n();
     const [open, setOpen] = useState(null);
     const [roundsOpen, setRoundsOpen] = useState(null);
@@ -414,7 +428,7 @@ export default function Archive({ room, lives, recorded = [], strips = {}, engin
                                         className="mt-1 text-sm font-semibold text-primary-700 hover:underline">
                                     {roundsOpen === l.file ? t('guessword.rounds_hide') : t('guessword.rounds_show')}
                                 </button>
-                                {roundsOpen === l.file && <RoundsTable room={room} liveKey={l.file} />}
+                                {roundsOpen === l.file && <RoundsTable room={room} liveKey={l.file} live={l} canClip={speech.includes(l.file)} />}
                                 <Tags live={l} />
                                 {open === l.file && <DigestBuilder room={room} live={l} />}
                             </li>

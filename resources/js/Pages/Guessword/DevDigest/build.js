@@ -10,10 +10,10 @@ import { audioFrames } from '../Digest/ts.js';
 import { renderer, W, H } from './draw.js';
 import { FPS, schedule } from './schedule.js';
 
-const RATE = 48000, FADE = 0.25, PREFETCH = 48;
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+export const RATE = 48000, FADE = 0.25, PREFETCH = 48;
+export const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 // a promise, or null after ms (a CDN request or a decoder that hangs must not stop the whole build)
-const timeout = (p, ms) => Promise.race([p.catch(() => null), sleep(ms).then(() => null)]);
+export const timeout = (p, ms) => Promise.race([p.catch(() => null), sleep(ms).then(() => null)]);
 
 /** the LIVE Center recordings the plan needs: {id: hls (playlist()) | null}; onStatus(id, found) per recording */
 export async function recordings(data, ids, onStatus = () => {}) {
@@ -39,7 +39,7 @@ function cover(ctx, img) {
 }
 
 // one key frame at a time: decode, wait for it, copy it to a canvas (a held VideoFrame would stall the decoder)
-function keyDecoder() {
+export function keyDecoder() {
     let dec = null, codec = null, wait = null;
     return async (kf) => {
         if (!dec || dec.state === 'closed' || codec !== kf.codec) {
@@ -66,7 +66,7 @@ function keyDecoder() {
 
 // the sound of a 1x stretch: AAC frames {wall, data} decoded and laid on its own timeline (from wall0, len s),
 // resampled to RATE, stereo, faded in and out. Returns [left, right] Float32Arrays or null.
-async function stretchSound(chunks, config, wall0, len) {
+export async function stretchSound(chunks, config, wall0, len) {
     if (!chunks.length || !config) return null;
     const n = Math.round(len * RATE), L = new Float32Array(n), R = new Float32Array(n);
     const datas = [];

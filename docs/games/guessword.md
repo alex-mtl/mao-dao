@@ -417,6 +417,34 @@ model `GuesswordRound`). Unique per `(room_id, live_key, round)`.
   super admins `/guessword/rooms/{room}/archive/rounds/{live_key}`) with a "hard only (10 min+)" filter.
   LIVEs known only from imported rounds are listed below as "Earlier LIVEs (from recordings)".
 
+## Hard-round clip (since 2026-11-15)
+
+A round of 3 minutes or more gets a "Make a clip" button in the archive's rounds table (only for a LIVE whose host speech is loaded, with
+the LIVE Center extension installed). The form lists the host's remarks as checkboxes, a hook and the cover; "Generate" builds a
+30-45 s clip **in the streamer's browser** from the LIVE Center recording (nothing is downloaded whole, nothing uploaded) and a 1080x1440 cover.
+
+- **Structure** (no AI; `Clip/plan.js`): an 8 s time-lapse from the round's start to where the top of the table stops changing, the
+  chosen remarks at 1x with 1.2 s jumps between them, the last 4 s before the win with a zoom on the host, a 1.2 s freeze on the word
+  (plate: the word, the winner's avatar and nickname as written), 3.5 s after the win, the host's reactions to the win, CTA in the last 2.4 s,
+  subtitles word by word (the word being said is green), hook plate for 3 s, synthesized sounds (rewind ticks, whoosh, "ta-da").
+- **Where the table stops moving** (`Clip/build.js detectStall`): one key frame every 6 s, the top five rows of the table (fractions
+  `TABLE` of the frame, the game's overlay on a 9:16 recording) as a 64x32 thumbnail, the longest run of samples that differ by < 2 (of 255)
+  that starts after the first fifth of the round and ends 40 s before its end. None found: the middle of the round.
+- **Remarks**: phrases cut from the host's words at pauses and sentence ends (2.5-11 s, 6+ words); the form offers the 30 densest (words
+  per second) inside the round and the 30 densest of the 150 s after its end; three dense ones from the second half of the round and one
+  reaction are ticked by default. Many rounds are quiet while they are stuck: the list may be short, the clip then shorter (the form warns under 30 s).
+- **Speech data**: table `guessword_speech` (one row per LIVE: `[[start, end, word], ...]` in the LIVE log's seconds, the game's announcer
+  already cut out), loaded with `php artisan guessword:speech-import <file.json> [--room=1]`; the file is made by
+  `tiktok-clips/tools/speech-export.js` from Whisper's transcript (Kaggle) and the engine's LIVE log: the shift recording -> log is the median
+  over the rounds, the announcer is the words inside the logged moments of "new viewer / round start / winner" that also sound like it.
+  `GET /guessword/archive/rounds/{live}/{round}/speech` gives the round (place, length, winner) and the words from 10 s before to 150 s after it
+  (super admins: `/guessword/rooms/{room}/archive/rounds/{live}/{round}/speech`). Transcribing other streamers' LIVEs is not solved yet.
+- **Code**: `resources/js/Pages/Guessword/Clip/` (`plan.js` pure, `draw.js` the overlay, `build.js` the video and sound on the digests'
+  `hlsDense` / `keyPictures`, `cover.js`, `ClipForm.jsx`). `DevDigest/build.js` exports its `keyDecoder` / `stretchSound`.
+- **Tests**: `node tests/clip/plan.test.mjs` (pure parts); `tests/clip/e2e.mjs` (developer machine with Chrome: the modules build a clip
+  and a cover from a local HLS cut that stands in for LIVE Center, made by `tiktok-clips/tools/hls-cut.js`); PHP `GuesswordSpeechTest`.
+  The ffmpeg version for local work: `tiktok-clips/tools/hard-round.js` (copy in `services/tiktok-clips-tools/`).
+
 ## Development digest (since 2026-10-31)
 
 A 10-minute video of how the game was made, 06.10–30.10, built in the owner's Chrome straight from LIVE

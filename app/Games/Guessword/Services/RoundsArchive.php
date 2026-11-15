@@ -200,7 +200,7 @@ class RoundsArchive
             ->map(fn (GuesswordRound $r) => [
                 'round' => $r->round, 'word' => $r->word, 'lang' => $r->lang, 'tier' => $r->tier, 'type' => $r->round_type,
                 'started' => $r->started_at?->toIso8601String(), 'offset' => $r->offset_s, 'duration' => $r->duration_s,
-                'reason' => $r->reason, 'winner' => $r->winner_name, 'winnerId' => $r->winner_id,
+                'reason' => $r->reason, 'winner' => $r->winner_name, 'winnerId' => $r->winner_id, 'winnerUid' => $r->winner_uid,
                 'guesses' => $r->guesses, 'players' => $r->players, 'streak' => $r->streak, 'setter' => $r->setter_name,
                 'recording' => $r->recording, 'recordingAt' => $r->recording_s,
                 'clip' => $r->clip_url, 'clipTitle' => $r->clip_title, 'moments' => $r->moments ?? [],

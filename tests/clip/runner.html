@@ -1,0 +1,51 @@
+<!doctype html>
+<!-- The hard-round clip modules outside the site (tests/clip/e2e.mjs): a local HLS cut stands in for LIVE Center, and this page
+     plays the browser extension (livecenter.js talks to it with postMessage: replay / text / range). -->
+<html><head><meta charset="utf-8"><title>clip runner</title>
+<script type="importmap">{ "imports": { "mediabunny": "/mediabunny.mjs" } }</script>
+</head><body style="margin:0;background:#000">
+<script>
+window.addEventListener('message', async (e) => {
+    const m = e.data;
+    if (e.source !== window || m?.__maodao !== 'req') return;
+    const reply = (ok, result, error) => window.postMessage({ __maodao: 'res', id: m.id, ok, result, error }, location.origin);
+    try {
+        if (m.op === 'text') reply(true, await (await fetch(m.args.url)).text());
+        else if (m.op === 'range') {
+            const r = await fetch(m.args.url, { headers: { Range: `bytes=${m.args.from}-${m.args.to}` } });
+            reply(true, await r.arrayBuffer());
+        } else reply(false, null, 'op ' + m.op);
+    } catch (err) { reply(false, null, String(err)); }
+});
+</script>
+<script type="module">
+import { playlist } from '/g/Digest/livecenter.js';
+import { unsupportedHls } from '/g/Digest/build.js';
+import { buildClip, detectStall } from '/g/Clip/build.js';
+import { buildCover } from '/g/Clip/cover.js';
+import { candidates, defaultPicks, plan } from '/g/Clip/plan.js';
+
+const b64 = async (blob) => { const b = new Uint8Array(await blob.arrayBuffer()); let s = ''; for (let i = 0; i < b.length; i += 32768) s += String.fromCharCode(...b.subarray(i, i + 32768)); return btoa(s); };
+
+// d: {m3u8, liveStart, t0, t1, words, word, winner}
+window.run = async (d) => {
+    const log = [];
+    const hls = await playlist({ m3u8: d.m3u8, start: d.liveStart });
+    log.push('segments ' + hls.segments.length + ' ' + new Date(hls.start * 1000).toISOString());
+    log.push('unsupported: ' + (await unsupportedHls(hls)));
+    const det = await detectStall(hls, d.liveStart, d.t0, d.t1);
+    log.push('stall ' + det.stall + ' samples ' + det.samples);
+    const stall = det.stall ?? d.t0 + (d.t1 - d.t0) * 0.55;
+    const cands = candidates(d.words, d.t0, d.t1), picks = defaultPicks(cands, d.t0, d.t1);
+    log.push('candidates ' + cands.length + ' picks ' + picks.join(','));
+    const pl = plan({ t0: d.t0, t1: d.t1, stall, picks: cands.filter((c) => picks.includes(c.id)) });
+    log.push('plan ' + pl.segs.map((s) => `${s.kind}:${s.dur.toFixed(1)}`).join(' ') + ' total ' + pl.total.toFixed(1));
+    const labels = { rewind: 'ПЕРЕМОТКА', cta1: 'ИГРАЙ СО МНОЙ В LIVE', cta2: 'угадай слово первым', guessedBy: 'УГАДАЛ(А)' };
+    const { blob } = await buildClip({ hls, liveStart: d.liveStart, plan: pl, words: d.words, hook: d.hook, labels, round: { word: d.word, winner: d.winner, avatar: null } });
+    const cv = await buildCover({ hls, liveStart: d.liveStart, t1: d.t1, date: '11.11.2026', username: 'mao.montreal',
+        labels: { game: 'УГАДАЙ СЛОВО', title1: 'ЧАТ НЕ СПРАВИЛСЯ', title2: 'А ТЫ УГАДАЛ?', caption: '15 МИНУТ · ТОП-10 ЗА СЕКУНДЫ ДО РАЗГАДКИ' } });
+    return { log, video: await b64(blob), cover: await b64(await cv.convertToBlob({ type: 'image/png' })) };
+};
+window.ready = true;
+</script>
+</body></html>

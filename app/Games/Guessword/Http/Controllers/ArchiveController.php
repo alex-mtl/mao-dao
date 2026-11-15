@@ -7,7 +7,9 @@ namespace App\Games\Guessword\Http\Controllers;
 use App\Games\Guessword\Models\GuesswordRoom;
 use App\Games\Guessword\Services\EngineClient;
 use App\Games\Guessword\Services\LiveArchive;
+use App\Games\Guessword\Models\GuesswordRound;
 use App\Games\Guessword\Services\RoundsArchive;
+use App\Games\Guessword\Services\SpeechArchive;
 use App\Http\Controllers\Controller;
 use App\Services\Capabilities;
 use Illuminate\Http\JsonResponse;
@@ -29,6 +31,7 @@ class ArchiveController extends Controller
         private EngineClient $engine,
         private Capabilities $capabilities,
         private RoundsArchive $rounds,
+        private SpeechArchive $speech,
     ) {}
 
     public function index(Request $request, ?GuesswordRoom $room = null): Response
@@ -60,6 +63,8 @@ class ArchiveController extends Controller
             'recorded' => $this->rounds->recordedOnly($room, array_column($lives ?? [], 'file')),
             // per LIVE: [[seconds, reason, 1 = clip / 2 = moments], ...] for the strip of rounds
             'strips' => (object) $this->rounds->strips($room),
+            // LIVEs whose speech is loaded: their rounds get the "make a clip" button
+            'speech' => $this->speech->keys($room),
             'engineOnline' => $lives !== null,
         ]);
     }
@@ -82,6 +87,34 @@ class ArchiveController extends Controller
         abort_unless(preg_match('/^[\w.:-]{1,120}$/', $live) === 1, 404);
 
         return response()->json($this->rounds->rounds($room, $live));
+    }
+
+    /**
+     * What the clip form of one round needs: the round (its place in the LIVE, length, winner) and the host's words
+     * from shortly before it to ~2.5 minutes after its end (the remarks to choose from).
+     */
+    public function speech(Request $request, string $live, int $round, ?GuesswordRoom $room = null): JsonResponse
+    {
+        $room = $this->roomFor($request, $room);
+        abort_unless(preg_match('/^[\w.:-]{1,120}$/', $live) === 1, 404);
+        $row =GuesswordRound::where('room_id', $room->id)->where('live_key', $live)->where('round', $round)->first();
+        abort_if($row === null || $row->offset_s === null || $row->duration_s === null, 404);
+        $words = $this->speech->slice($room, $live, $row->offset_s - 10, $row->offset_s + $row->duration_s + 150);
+        abort_if($words === null, 404);
+
+        return response()->json([
+            'round' => [
+                'round' => $row->round, 'word' => $row->word, 'offset' => $row->offset_s, 'duration' => $row->duration_s,
+                'winner' => $row->winner_name, 'winnerId' => $row->winner_id, 'winnerUid' => $row->winner_uid, 'reason' => $row->reason,
+            ],
+            'words' => $words,
+        ]);
+    }
+
+    /** super admins: the same for any room */
+    public function roomSpeech(Request $request, GuesswordRoom $room, string $live, int $round): JsonResponse
+    {
+        return $this->speech($request, $live, $round, $room);
     }
 
     /** super admins: rounds of any room */
