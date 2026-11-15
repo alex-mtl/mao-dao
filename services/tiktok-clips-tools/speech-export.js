@@ -38,5 +38,5 @@ for (const [a, b] of windows) {
 }
 const words = all.filter((w) => !dropped.has(w)).map((w) => [+(w.s - shift).toFixed(2), +(w.e - shift).toFixed(2), w.w]);
 console.log(`${words.length} host words kept, ${dropped.size} announcer words dropped`);
-fs.writeFileSync(outPath, JSON.stringify([{ live_key: liveKey, recording: id, words }]));
+fs.writeFileSync(outPath, JSON.stringify([{ live_key: liveKey, recording: id, shift: +shift.toFixed(2), words }]));
 console.log('written', outPath, (fs.statSync(outPath).size / 1048576).toFixed(2), 'MB');

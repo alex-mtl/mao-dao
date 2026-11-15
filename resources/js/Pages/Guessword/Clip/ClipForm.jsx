@@ -69,6 +69,11 @@ export default function ClipForm({ room, live, round, onClose }) {
             const replay = await lc.findReplay(live.tiktokRoom, live.epoch);
             if (!replay?.m3u8) { setState({ stage: 'error', message: t('guessword.digest_lc_notfound') }); return; }
             const hls = await lc.playlist(replay);
+            // The words are timed against the RECORDING (the game's voice in it), so the picture is placed by the playlist's own clock plus
+            // the recording's shift against the log (speech.shift_s); the log's epoch only when no shift is known. Unix clocks of TikTok and of
+            // the engine differ by seconds (21 s on 30.10), which at 1x puts the host's words on a different picture.
+            const liveStart = data.shift != null ? hls.start + data.shift : live.epoch;
+            const drift = Math.round((live.epoch - hls.start - (data.shift ?? live.epoch - hls.start)) * 10) / 10;
             const bad = await (await import('../Digest/build.js')).unsupportedHls(hls);
             if (bad) { setState({ stage: 'error', message: why(bad) }); return; }
             const { buildClip, detectStall } = await import('./build.js');
@@ -76,7 +81,7 @@ export default function ClipForm({ room, live, round, onClose }) {
             setState({ stage: 'stall', n: 0, total: 1 });
             let stall = t0 + (t1 - t0) * 0.55;
             try {
-                const d = await detectStall(hls, live.epoch, t0, t1, (n, total) => setState({ stage: 'stall', n, total }), ac.signal);
+                const d = await detectStall(hls, liveStart, t0, t1, (n, total) => setState({ stage: 'stall', n, total }), ac.signal);
                 if (d.stall !== null) stall = d.stall;
             } catch (e) { if (e.name === 'AbortError') throw e; /* the middle of the round stays */ }
 
@@ -91,7 +96,7 @@ export default function ClipForm({ room, live, round, onClose }) {
                 rewind: t('guessword.clip_rewind'), cta1: t('guessword.clip_cta1'), cta2: t('guessword.clip_cta2'), guessedBy: t('guessword.clip_guessed_by'),
             };
             const { blob } = await buildClip({
-                hls, liveStart: live.epoch, plan: pl, words: data.words, hook, labels, signal: ac.signal, canvas: canvasRef.current,
+                hls, liveStart, plan: pl, words: data.words, hook, labels, signal: ac.signal, canvas: canvasRef.current,
                 round: { word: data.round.word || '', winner: data.round.winner, avatar },
                 onProgress: (p) => setState({ stage: p.stage === 'mux' ? 'mux' : 'building', frame: p.frame, frames: p.frames }),
             });
@@ -102,12 +107,12 @@ export default function ClipForm({ room, live, round, onClose }) {
                 const { buildCover } = await import('./cover.js');
                 const date = (live.date || live.file.slice(0, 10)).split('-').reverse().join('.');
                 const cv = await buildCover({
-                    hls, liveStart: live.epoch, t1, date, username: room.tiktok,
+                    hls, liveStart, t1, date, username: room.tiktok,
                     labels: { game: t('guessword.clip_cover_game'), title1: t('guessword.clip_cover_title1'), title2: t('guessword.clip_cover_title2'), caption: t('guessword.clip_cover_caption', { n: minutes }) },
                 });
                 coverUrl = URL.createObjectURL(await cv.convertToBlob({ type: 'image/png' }));
             }
-            setState({ stage: 'done', url, coverUrl, seconds: Math.round((performance.now() - t00) / 1000), length: Math.round(pl.total) });
+            setState({ stage: 'done', url, coverUrl, seconds: Math.round((performance.now() - t00) / 1000), length: Math.round(pl.total), drift });
             // saved at once, like the digest: the video lives only in this tab's memory until then
             for (const [href, download] of [[url, `${base}.mp4`], [coverUrl, `${base}-cover.png`]]) {
                 if (!href) continue;
@@ -189,6 +194,7 @@ export default function ClipForm({ room, live, round, onClose }) {
                             <div className="space-y-2">
                                 <p className="text-sm font-semibold text-success-700">{t('guessword.clip_done', { s: state.length, took: state.seconds })}</p>
                                 <p className="text-xs text-ink-500">{t('guessword.digest_saved')}</p>
+                                {Math.abs(state.drift) >= 1 && <p className="text-xs text-ink-500">{t('guessword.clip_sync_note', { s: state.drift })}</p>}
                                 <video src={state.url} controls className="w-40 rounded-lg bg-ink-900" />
                                 <div className="flex flex-wrap gap-2">
                                     <a href={state.url} download={`${base}.mp4`} className="inline-flex rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-700">{t('guessword.digest_download')}</a>

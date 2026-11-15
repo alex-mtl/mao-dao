@@ -99,15 +99,16 @@ class ArchiveController extends Controller
         abort_unless(preg_match('/^[\w.:-]{1,120}$/', $live) === 1, 404);
         $row =GuesswordRound::where('room_id', $room->id)->where('live_key', $live)->where('round', $round)->first();
         abort_if($row === null || $row->offset_s === null || $row->duration_s === null, 404);
-        $words = $this->speech->slice($room, $live, $row->offset_s - 10, $row->offset_s + $row->duration_s + 150);
-        abort_if($words === null, 404);
+        $slice = $this->speech->slice($room, $live, $row->offset_s - 10, $row->offset_s + $row->duration_s + 150);
+        abort_if($slice === null, 404);
 
         return response()->json([
             'round' => [
                 'round' => $row->round, 'word' => $row->word, 'offset' => $row->offset_s, 'duration' => $row->duration_s,
                 'winner' => $row->winner_name, 'winnerId' => $row->winner_id, 'winnerUid' => $row->winner_uid, 'reason' => $row->reason,
             ],
-            'words' => $words,
+            'words' => $slice['words'],
+            'shift' => $slice['shift'],
         ]);
     }
 

@@ -46,6 +46,40 @@ window.run = async (d) => {
         labels: { game: 'УГАДАЙ СЛОВО', title1: 'ЧАТ НЕ СПРАВИЛСЯ', title2: 'А ТЫ УГАДАЛ?', caption: '15 МИНУТ · ТОП-10 ЗА СЕКУНДЫ ДО РАЗГАДКИ' } });
     return { log, video: await b64(blob), cover: await b64(await cv.convertToBlob({ type: 'image/png' })) };
 };
+// audio of one 1x stretch: how many AAC frames the segments give, and how loud the decoded sound is
+import { hlsDense } from '/g/Digest/build.js';
+import { audioFrames } from '/g/Digest/ts.js';
+import { stretchSound } from '/g/DevDigest/build.js';
+window.audioProbe = async (d) => {
+    const hls = await playlist({ m3u8: d.m3u8, start: d.liveStart });
+    const ts = Array.from({ length: Math.round(d.len * 30) }, (_, k) => d.from + k / 30), chunks = [], info = { segs: 0, aframes: 0 };
+    let config = null;
+    const walls = ts.map((t) => d.liveStart + t), reader = hlsDense(hls, walls, 0, (b, clock, pts0) => {
+        info.segs++;
+        const a = audioFrames(b);
+        (info.per ||= []).push(a ? { clock, pts0, aFirst: a.frames[0].pts, aLast: a.frames[a.frames.length - 1].pts, n: a.frames.length } : null);
+        info.audio = a ? { rate: a.sampleRate, ch: a.channels, n: a.frames.length, first: a.frames[0]?.pts, pts0, clock } : null;
+        if (!a) return;
+        config ||= a;
+        for (const x of a.frames) chunks.push({ wall: clock + (x.pts - pts0), data: x.data });
+    });
+    for (let k = 0; k < ts.length; k++) await reader.next();
+    await reader.return?.();
+    info.chunks = chunks.length;
+    info.wall0 = walls[0]; info.chunkRange = [chunks[0]?.wall, chunks[chunks.length - 1]?.wall];
+    const sel = chunks.filter((c) => c.wall >= walls[0] - 0.1 && c.wall <= walls[walls.length - 1] + 0.2);
+    info.selected = sel.length;
+    {
+        const outs = [], dec = new AudioDecoder({ output: (a) => { outs.push([a.timestamp, a.numberOfFrames, a.sampleRate, a.numberOfChannels]); a.close(); }, error: (e) => { info.decErr = String(e); } });
+        dec.configure({ codec: 'mp4a.40.2', sampleRate: config.sampleRate, numberOfChannels: config.channels, description: config.description });
+        for (const c of sel) dec.decode(new EncodedAudioChunk({ type: 'key', timestamp: Math.round((c.wall - walls[0]) * 1e6), data: c.data }));
+        await dec.flush();
+        info.dec = { inFirst: Math.round((sel[0].wall - walls[0]) * 1e6), inLast: Math.round((sel[sel.length - 1].wall - walls[0]) * 1e6), outN: outs.length, outFirst: outs.slice(0, 3), outLast: outs[outs.length - 1], cfg: [config.sampleRate, config.channels] };
+    }
+    const pcm = await stretchSound(sel, config, walls[0], d.len);
+    if (pcm) { let s = 0; for (const v of pcm[0]) s += v * v; info.rmsDb = 20 * Math.log10(Math.sqrt(s / pcm[0].length) + 1e-9); info.len = pcm[0].length; info.env = []; for (let i = 0; i < pcm[0].length; i += 12000) { let q = 0; const e = Math.min(pcm[0].length, i + 12000); for (let j = i; j < e; j++) q += pcm[0][j] ** 2; info.env.push(Math.round(20 * Math.log10(Math.sqrt(q / (e - i)) + 1e-9))); } } else info.pcm = null;
+    return info;
+};
 window.ready = true;
 </script>
 </body></html>

@@ -10,7 +10,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import puppeteer from 'puppeteer-core';
 
-const [hlsDir, speechFile, outDir, t0, t1, liveStart, word = 'ФУНКЦИОНИРОВАНИЕ', winner = 'Нина 🇲🇩🇦🇿'] = process.argv.slice(2);
+const [hlsDir, speechFile, outDir, t0, t1, liveStart, word = 'ФУНКЦИОНИРОВАНИЕ', winner = 'Нина 🇲🇩🇦🇿'] = process.argv.slice(2).filter((a) => a !== '--probe');
 const here = path.dirname(fileURLToPath(import.meta.url)), repo = path.resolve(here, '../..');
 const pages = path.join(repo, 'resources/js/Pages/Guessword');
 const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript', '.m3u8': 'application/vnd.apple.mpegurl', '.ts': 'video/mp2t' };
@@ -49,6 +49,10 @@ try {
     page.on('pageerror', (e) => console.log('[pageerror]', e.message));
     await page.goto(`${base}/runner.html`);
     await page.waitForFunction('window.ready === true', { timeout: 30000 });
+    if (process.argv.includes('--probe')) {
+        console.log(JSON.stringify(await page.evaluate((d) => window.audioProbe(d), { m3u8: `${base}/hls/index.m3u8`, liveStart: Number(liveStart), from: Number(t0), len: Number(process.env.PROBE_LEN || 4) }), null, 1));
+        process.exit(0);
+    }
     const t = Date.now();
     const r = await page.evaluate((d) => window.run(d), {
         m3u8: `${base}/hls/index.m3u8`, liveStart: Number(liveStart), t0: Number(t0), t1: Number(t1), words, word, winner, hook: '15 МИНУТ НА ОДНО СЛОВО',

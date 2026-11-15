@@ -685,4 +685,5 @@ return [
     'clip_cover_title1' => 'CHAT FAILED',
     'clip_cover_title2' => 'CAN YOU GUESS?',
     'clip_cover_caption' => ':n MIN · TOP 10 SECONDS BEFORE THE ANSWER',
+    'clip_sync_note' => 'The LIVE Center clock and the engine\'s log differ by :s s here; the clip is aligned by the sound of the recording.',
 ];

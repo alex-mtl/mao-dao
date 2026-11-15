@@ -685,4 +685,5 @@ return [
     'clip_cover_title1' => 'EL CHAT FALLÓ',
     'clip_cover_title2' => '¿Y TÚ LA ADIVINASTE?',
     'clip_cover_caption' => ':n MIN · TOP 10 SEGUNDOS ANTES DE LA RESPUESTA',
+    'clip_sync_note' => 'El reloj de LIVE Center y el registro del motor difieren aquí en :s s; el clip se alinea por el sonido de la grabación.',
 ];

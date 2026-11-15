@@ -427,6 +427,7 @@ the LIVE Center extension installed). The form lists the host's remarks as check
   chosen remarks at 1x with 1.2 s jumps between them, the last 4 s before the win with a zoom on the host, a 1.2 s freeze on the word
   (plate: the word, the winner's avatar and nickname as written), 3.5 s after the win, the host's reactions to the win, CTA in the last 2.4 s,
   subtitles word by word (the word being said is green), hook plate for 3 s, synthesized sounds (rewind ticks, whoosh, "ta-da").
+- **Alignment**: the words are timed against the *recording* (Whisper), the rounds against the LIVE log. `guessword_speech.shift_s` = recording second - log second (median over the rounds of the game's own "Раунд N, поехали" in the recording, 4.4 s on 11.11); the browser places the picture by the playlist's clock + the shift (`hls.start + shift`), **not** by the log's epoch: the clocks of TikTok and of the engine differ by seconds (21 s on 30.10), harmless for the digests (450x) but it puts the host's words on another picture at 1x. The form notes the difference when it is >= 1 s.
 - **Where the table stops moving** (`Clip/build.js detectStall`): one key frame every 6 s, the top five rows of the table (fractions
   `TABLE` of the frame, the game's overlay on a 9:16 recording) as a 64x32 thumbnail, the longest run of samples that differ by < 2 (of 255)
   that starts after the first fifth of the round and ends 40 s before its end. None found: the middle of the round.

@@ -33,7 +33,7 @@ class SpeechArchive
             usort($words, fn ($a, $b) => $a[0] <=> $b[0]);
             GuesswordSpeech::updateOrCreate(
                 ['room_id' => $room->id, 'live_key' => (string) $r['live_key']],
-                ['recording' => $r['recording'] ?? null, 'word_count' => count($words), 'words' => $words],
+                ['recording' => $r['recording'] ?? null, 'shift_s' => isset($r['shift']) && is_numeric($r['shift']) ? round((float) $r['shift'], 2) : null, 'word_count' => count($words), 'words' => $words],
             );
             $stored++;
         }
@@ -47,7 +47,7 @@ class SpeechArchive
         return GuesswordSpeech::where('room_id', $room->id)->pluck('live_key')->all();
     }
 
-    /** the words that start in [from, to] (LIVE seconds), or null when the LIVE has no speech */
+    /** the words that start in [from, to] (LIVE seconds) and the recording's shift against the log, or null when the LIVE has no speech */
     public function slice(GuesswordRoom $room, string $liveKey, float $from, float $to): ?array
     {
         $row = GuesswordSpeech::where('room_id', $room->id)->where('live_key', $liveKey)->first();
@@ -55,6 +55,9 @@ class SpeechArchive
             return null;
         }
 
-        return array_values(array_filter($row->words, fn ($w) => $w[0] >= $from && $w[0] <= $to));
+        return [
+            'words' => array_values(array_filter($row->words, fn ($w) => $w[0] >= $from && $w[0] <= $to)),
+            'shift' => $row->shift_s === null ? null : (float) $row->shift_s,
+        ];
     }
 }

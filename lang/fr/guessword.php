@@ -685,4 +685,5 @@ return [
     'clip_cover_title1' => 'LE CHAT A ÉCHOUÉ',
     'clip_cover_title2' => 'ET TOI, TU AS TROUVÉ ?',
     'clip_cover_caption' => ':n MIN · TOP 10 JUSTE AVANT LA RÉPONSE',
+    'clip_sync_note' => 'L\'horloge de LIVE Center et le journal du moteur diffèrent ici de :s s ; le clip est aligné sur le son de l\'enregistrement.',
 ];
