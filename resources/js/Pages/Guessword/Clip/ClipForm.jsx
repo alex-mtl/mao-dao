@@ -56,6 +56,8 @@ export default function ClipForm({ room, live, round, onClose }) {
 
     const why = (w) => t({ webcodecs: 'guessword.digest_no_webcodecs', decode: 'guessword.digest_no_decode', encode: 'guessword.digest_no_encode', format: 'guessword.digest_bad_format' }[w]);
 
+    const base = `clip-${(live.date || live.file.slice(0, 10))}-round${round.round}`;
+
     const generate = async () => {
         const ac = new AbortController();
         abortRef.current = ac;
@@ -106,12 +108,19 @@ export default function ClipForm({ room, live, round, onClose }) {
                 coverUrl = URL.createObjectURL(await cv.convertToBlob({ type: 'image/png' }));
             }
             setState({ stage: 'done', url, coverUrl, seconds: Math.round((performance.now() - t00) / 1000), length: Math.round(pl.total) });
+            // saved at once, like the digest: the video lives only in this tab's memory until then
+            for (const [href, download] of [[url, `${base}.mp4`], [coverUrl, `${base}-cover.png`]]) {
+                if (!href) continue;
+                const link = Object.assign(document.createElement('a'), { href, download });
+                document.body.appendChild(link);
+                link.click();
+                link.remove();
+            }
         } catch (e) {
             setState(e.name === 'AbortError' ? { stage: 'form' } : { stage: 'error', message: t('guessword.digest_failed', { error: e.message }) });
         }
     };
 
-    const base = `clip-${(live.date || live.file.slice(0, 10))}-round${round.round}`;
     return (
         <div className="mt-2 rounded-xl border border-primary-200 bg-surface p-4">
             <div className="flex items-start justify-between gap-3">
@@ -179,6 +188,7 @@ export default function ClipForm({ room, live, round, onClose }) {
                         {state.stage === 'done' && (
                             <div className="space-y-2">
                                 <p className="text-sm font-semibold text-success-700">{t('guessword.clip_done', { s: state.length, took: state.seconds })}</p>
+                                <p className="text-xs text-ink-500">{t('guessword.digest_saved')}</p>
                                 <video src={state.url} controls className="w-40 rounded-lg bg-ink-900" />
                                 <div className="flex flex-wrap gap-2">
                                     <a href={state.url} download={`${base}.mp4`} className="inline-flex rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-700">{t('guessword.digest_download')}</a>
