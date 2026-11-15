@@ -15,30 +15,36 @@ export const MIN_PHRASE = 2.5, MAX_PHRASE = 11, MIN_WORDS = 6;
 
 const END = /[.!?]$/, COMMA = /,$/;
 
-/** phrases the host said: cut at pauses and at the ends of sentences (or commas when it runs long) */
+/**
+ * phrases the host said: cut at pauses and at the ends of sentences (or commas when it runs long); a fragment cut off by a
+ * pause that is not the end of a sentence ("тяжко где" ... "-то при том что агрегат...") is joined to the next one when they
+ * are less than JOIN s apart and together not longer than MAX_PHRASE
+ */
+export const JOIN = 3.5;
 export function utterances(words, from, to) {
-    const ws = words.filter((w) => w[0] >= from && w[1] <= to), out = [];
+    const ws = words.filter((w) => w[0] >= from && w[1] <= to), frags = [];
     let cur = [];
-    const flush = () => {
-        if (cur.length >= MIN_WORDS) {
-            const a = cur[0][0], b = cur[cur.length - 1][1];
-            if (b - a >= MIN_PHRASE) {
-                out.push({
-                    from: Math.round((a - 0.1) * 10) / 10, to: Math.round((b + 0.2) * 10) / 10,
-                    text: cur.map((w) => w[2]).join(' ').replace(/ ([,.!?])/g, '$1'),
-                    words: cur.length, score: Math.round((cur.length / (b - a)) * 100) / 100,
-                });
-            }
-        }
-        cur = [];
-    };
+    const flush = () => { if (cur.length) frags.push(cur); cur = []; };
     for (const w of ws) {
         const prev = cur[cur.length - 1], gap = prev ? w[0] - prev[1] : 0, len = prev ? prev[1] - cur[0][0] : 0;
         if (prev && (gap >= 0.7 || (END.test(prev[2]) && len >= MIN_PHRASE) || (len >= 7 && (COMMA.test(prev[2]) || gap >= 0.25)) || len >= MAX_PHRASE)) flush();
         cur.push(w);
     }
     flush();
-    return out;
+    const merged = [];
+    for (const fr of frags) {
+        const last = merged[merged.length - 1];
+        if (last && !END.test(last[last.length - 1][2]) && fr[0][0] - last[last.length - 1][1] < JOIN && fr[fr.length - 1][1] - last[0][0] <= MAX_PHRASE) last.push(...fr);
+        else merged.push([...fr]);
+    }
+    return merged.filter((c) => c.length >= MIN_WORDS && c[c.length - 1][1] - c[0][0] >= MIN_PHRASE).map((c) => {
+        const a = c[0][0], b = c[c.length - 1][1];
+        return {
+            from: Math.round((a - 0.1) * 10) / 10, to: Math.round((b + 0.2) * 10) / 10,
+            text: c.map((w) => w[2]).join(' ').replace(/ ([,.!?])/g, '$1'),
+            words: c.length, score: Math.round((c.length / (b - a)) * 100) / 100,
+        };
+    });
 }
 
 /** the zone of a phrase, for the list: before the finale, the finale (last seconds before the win), after the round */

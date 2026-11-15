@@ -11,6 +11,16 @@ assert.equal(u.length, 2);
 assert.match(u[0].text, /^это очень длинная фраза про игру и слова\.$/);
 assert.ok(u[0].score > 2 && u[0].to > u[0].from + 2.5);
 
+// a fragment cut by a pause (not a sentence end) joins the next one if they are close: the round 51 case
+const frag = [[100, 100.4, 'тяжко'], [100.5, 100.9, 'где'], [104, 104.3, '-то'], ...say(104.4, 'при том что агрегат отгадали давным-давно и', 0.3)];
+const fj = utterances(frag, 0, 1000);
+assert.equal(fj.length, 1);
+assert.match(fj[0].text, /^тяжко где -то при том/);
+assert.ok(fj[0].to - fj[0].from <= 11.4);
+// ...but not across a sentence end, and not when they are far apart
+assert.equal(utterances([...say(100, 'это одна законченная фраза про игру.', 0.45), ...say(103.5, 'а это другая фраза совсем про другое', 0.45)], 0, 1000).length, 2);
+assert.equal(utterances([...say(100, 'раз два три четыре пять шесть семь', 0.45), ...say(112, 'ещё одна фраза тут идёт дальше теперь', 0.45)], 0, 1000).length, 2);
+
 // candidates carry zones; the default picks keep 25 s between them
 const t0 = 0, t1 = 900, all = [];
 for (let s = 520; s < 860; s += 30) all.push(...say(s, 'раз два три четыре пять шесть семь восемь.'));

@@ -430,7 +430,7 @@ the LIVE Center extension installed). The form lists the host's remarks as check
 - **Where the table stops moving** (`Clip/build.js detectStall`): one key frame every 6 s, the top five rows of the table (fractions
   `TABLE` of the frame, the game's overlay on a 9:16 recording) as a 64x32 thumbnail, the longest run of samples that differ by < 2 (of 255)
   that starts after the first fifth of the round and ends 40 s before its end. None found: the middle of the round.
-- **Remarks**: phrases cut from the host's words at pauses and sentence ends (2.5-11 s, 6+ words); the form offers the 30 densest (words
+- **Remarks**: phrases cut from the host's words at pauses and sentence ends (2.5-11 s, 6+ words; a fragment cut by a pause that is not a sentence end is joined to the next one when they are < 3.5 s apart); the form offers the 30 densest (words
   per second) inside the round and the 30 densest of the 150 s after its end; three dense ones from the second half of the round and one
   reaction are ticked by default. Many rounds are quiet while they are stuck: the list may be short, the clip then shorter (the form warns under 30 s).
 - **Speech data**: table `guessword_speech` (one row per LIVE: `[[start, end, word], ...]` in the LIVE log's seconds, the game's announcer
@@ -438,7 +438,7 @@ the LIVE Center extension installed). The form lists the host's remarks as check
   `tiktok-clips/tools/speech-export.js` from Whisper's transcript (Kaggle) and the engine's LIVE log: the shift recording -> log is the median
   over the rounds, the announcer is the words inside the logged moments of "new viewer / round start / winner" that also sound like it.
   `GET /guessword/archive/rounds/{live}/{round}/speech` gives the round (place, length, winner) and the words from 10 s before to 150 s after it
-  (super admins: `/guessword/rooms/{room}/archive/rounds/{live}/{round}/speech`). Transcribing other streamers' LIVEs is not solved yet.
+  (super admins: `/guessword/rooms/{room}/archive/rounds/{live}/{round}/speech`). Transcribing other streamers' LIVEs is not solved yet. The transcript is made **without the VAD** (since 15.11.2026, `tiktok-clips/kaggle/transcribe_novad.py`): with the VAD the first word of 40% of the host's phrases after a pause was cut off; Whisper's inventions on silence ("Продолжение следует…") are filtered out.
 - **Code**: `resources/js/Pages/Guessword/Clip/` (`plan.js` pure, `draw.js` the overlay, `build.js` the video and sound on the digests'
   `hlsDense` / `keyPictures`, `cover.js`, `ClipForm.jsx`). `DevDigest/build.js` exports its `keyDecoder` / `stretchSound`.
 - **Tests**: `node tests/clip/plan.test.mjs` (pure parts); `tests/clip/e2e.mjs` (developer machine with Chrome: the modules build a clip
