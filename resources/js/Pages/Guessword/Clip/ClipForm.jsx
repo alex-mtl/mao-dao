@@ -20,6 +20,9 @@ export default function ClipForm({ room, live, round, onClose }) {
     const [picked, setPicked] = useState([]);
     const [hook, setHook] = useState('');
     const [withCover, setWithCover] = useState(true);
+    // the picture of LIVE Center runs ~2.3 s behind the recording the words were timed on (measured 15.11.2026 on round 51); kept per browser
+    const [sync, setSync] = useState(() => { try { const v = Number(localStorage.getItem('clipSync')); return localStorage.getItem('clipSync') !== null && Number.isFinite(v) ? v : 2.3; } catch { return 2.3; } });
+    const changeSync = (v) => { setSync(v); try { localStorage.setItem('clipSync', String(v)); } catch { /* storage is optional */ } };
     const [state, setState] = useState({ stage: 'form' });
     const abortRef = useRef(null), canvasRef = useRef(null);
     const ext = extension();
@@ -72,7 +75,7 @@ export default function ClipForm({ room, live, round, onClose }) {
             // The words are timed against the RECORDING (the game's voice in it), so the picture is placed by the playlist's own clock plus
             // the recording's shift against the log (speech.shift_s); the log's epoch only when no shift is known. Unix clocks of TikTok and of
             // the engine differ by seconds (21 s on 30.10), which at 1x puts the host's words on a different picture.
-            const liveStart = data.shift != null ? hls.start + data.shift : live.epoch;
+            const liveStart = (data.shift != null ? hls.start + data.shift : live.epoch) - (Number(sync) || 0);
             const drift = Math.round((live.epoch - hls.start - (data.shift ?? live.epoch - hls.start)) * 10) / 10;
             const bad = await (await import('../Digest/build.js')).unsupportedHls(hls);
             if (bad) { setState({ stage: 'error', message: why(bad) }); return; }
@@ -164,6 +167,12 @@ export default function ClipForm({ room, live, round, onClose }) {
                                 ))}
                             </ul>
                         </div>
+                        <label className="block text-sm font-semibold text-ink-800">
+                            {t('guessword.clip_sync')}
+                            <input type="number" step="0.1" min="-15" max="15" value={sync} onChange={(e) => changeSync(e.target.value)} disabled={busy}
+                                   className="mt-1 block w-28 rounded-lg border border-warm-300 px-3 py-2 text-sm font-normal" />
+                            <span className="block text-xs font-normal text-ink-500">{t('guessword.clip_sync_hint')}</span>
+                        </label>
                         <label className="flex items-center gap-2 text-sm text-ink-700">
                             <input type="checkbox" checked={withCover} onChange={(e) => setWithCover(e.target.checked)} disabled={busy} className="rounded border-warm-300" />
                             {t('guessword.clip_cover')}

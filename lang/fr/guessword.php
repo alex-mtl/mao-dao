@@ -686,4 +686,6 @@ return [
     'clip_cover_title2' => 'ET TOI, TU AS TROUVÉ ?',
     'clip_cover_caption' => ':n MIN · TOP 10 JUSTE AVANT LA RÉPONSE',
     'clip_sync_note' => 'L\'horloge de LIVE Center et le journal du moteur diffèrent ici de :s s ; le clip est aligné sur le son de l\'enregistrement.',
+    'clip_sync' => 'Synchro image, s',
+    'clip_sync_hint' => 'De combien de secondes l\'image est en retard sur la voix du présentateur. Si la phrase démarre trop tard, augmentez ; trop tôt, diminuez.',
 ];

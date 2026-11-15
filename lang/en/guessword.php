@@ -686,4 +686,6 @@ return [
     'clip_cover_title2' => 'CAN YOU GUESS?',
     'clip_cover_caption' => ':n MIN · TOP 10 SECONDS BEFORE THE ANSWER',
     'clip_sync_note' => 'The LIVE Center clock and the engine\'s log differ by :s s here; the clip is aligned by the sound of the recording.',
+    'clip_sync' => 'Picture sync, s',
+    'clip_sync_hint' => 'How many seconds the picture runs behind the host\'s voice. If a phrase starts too late, raise it; too early, lower it.',
 ];
