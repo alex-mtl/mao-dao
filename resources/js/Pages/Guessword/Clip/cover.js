@@ -8,9 +8,9 @@ export const CW = 1080, CH = 1440;
 const FONT = (px) => `900 ${px}px "Arial Black", "Segoe UI Emoji", "Noto Color Emoji", Arial, sans-serif`;
 
 /** the frame `before` seconds before the win (LIVE s t1) -> the cover canvas */
-export async function buildCover({ hls, liveStart, t1, before = 30, labels, date, username }) {
+export async function buildCover({ src, t1, before = 30, labels, date, username }) {
     let frame = null;
-    for await (const pic of keyPictures(hls, [liveStart + t1 - before])) frame = pic;
+    for await (const pic of keyPictures(src, [t1 - before])) frame = pic;
     const cv = new OffscreenCanvas(CW, CH), ctx = cv.getContext('2d');
     ctx.fillStyle = '#0a0019';
     ctx.fillRect(0, 0, CW, CH);

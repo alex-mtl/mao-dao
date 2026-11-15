@@ -1,6 +1,7 @@
 // End to end on a developer machine: the hard-round clip built by the site's own modules (resources/js/Pages/Guessword/Clip)
 // in headless Chrome, from a local HLS cut that stands in for LIVE Center (tests/clip/runner.html plays the extension).
 //   node tests/clip/e2e.mjs <hls dir with index.m3u8 and segments> <speech.json> <out dir> <t0> <t1> <liveStart> [word] [winner]
+//   FILE=<recording.mp4> node tests/clip/e2e.mjs - <speech.json> <out dir> <t0> <t1> 0   (a local MP4 instead of the HLS cut: its second t = LIVE second t)
 // The m3u8 must carry #EXT-X-PROGRAM-DATE-TIME (see tiktok-clips/tools/hls-cut.js). t0/t1 = the round's start / end in the
 // LIVE log's seconds, liveStart = unix time of the log's second 0. Not in CI (needs Chrome, a recording, fonts).
 import { createReadStream, existsSync, mkdirSync, mkdtempSync, readFileSync, statSync, writeFileSync } from 'node:fs';
@@ -53,8 +54,10 @@ try {
         console.log(JSON.stringify(await page.evaluate((d) => window.audioProbe(d), { m3u8: `${base}/hls/index.m3u8`, liveStart: Number(liveStart), from: Number(t0), len: Number(process.env.PROBE_LEN || 4) }), null, 1));
         process.exit(0);
     }
+    if (process.env.FILE) await (await page.$('#f')).uploadFile(process.env.FILE);
     const t = Date.now();
     const r = await page.evaluate((d) => window.run(d), {
+        file: !!process.env.FILE,
         m3u8: `${base}/hls/index.m3u8`, liveStart: Number(liveStart), t0: Number(t0), t1: Number(t1), words, word, winner, hook: '15 МИНУТ НА ОДНО СЛОВО',
     });
     mkdirSync(outDir, { recursive: true });

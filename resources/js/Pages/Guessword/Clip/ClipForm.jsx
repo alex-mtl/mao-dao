@@ -24,6 +24,7 @@ export default function ClipForm({ room, live, round, onClose }) {
     const [sync, setSync] = useState(() => { try { const v = Number(localStorage.getItem('clipSync')); return localStorage.getItem('clipSync') !== null && Number.isFinite(v) ? v : 2.3; } catch { return 2.3; } });
     const changeSync = (v) => { setSync(v); try { localStorage.setItem('clipSync', String(v)); } catch { /* storage is optional */ } };
     const [state, setState] = useState({ stage: 'form' });
+    const [file, setFile] = useState(null);                 // a local MP4 of the recording, chosen by the user (when LIVE Center cannot give it)
     const abortRef = useRef(null), canvasRef = useRef(null);
     const ext = extension();
 
@@ -59,6 +60,20 @@ export default function ClipForm({ room, live, round, onClose }) {
 
     const why = (w) => t({ webcodecs: 'guessword.digest_no_webcodecs', decode: 'guessword.digest_no_decode', encode: 'guessword.digest_no_encode', format: 'guessword.digest_bad_format' }[w]);
 
+    // the recording from a file: checked for the browser's codecs and for its length against the LIVE's
+    const pickFile = async (e) => {
+        const f = e.target.files[0];
+        if (!f) { setFile(null); return; }
+        const build = await import('../Digest/build.js');
+        const w = await build.unsupported(f);
+        if (w) { setFile(null); e.target.value = ''; setState({ stage: 'error', message: why(w) }); return; }
+        const info = await build.probe(f);
+        if (live.duration && Math.abs(info.duration - live.duration) > Math.max(300, live.duration * 0.05)
+            && !window.confirm(t('guessword.clip_file_mismatch', { file: ms(info.duration), live: ms(live.duration) }))) { setFile(null); e.target.value = ''; return; }
+        setFile(f);
+        setState({ stage: 'form' });
+    };
+
     const base = `clip-${(live.date || live.file.slice(0, 10))}-round${round.round}`;
 
     const generate = async () => {
@@ -67,24 +82,33 @@ export default function ClipForm({ room, live, round, onClose }) {
         const t00 = performance.now();
         if (state.url) { URL.revokeObjectURL(state.url); if (state.coverUrl) URL.revokeObjectURL(state.coverUrl); }
         try {
-            setState({ stage: 'finding' });
-            const lc = await import('../Digest/livecenter.js');
-            const replay = await lc.findReplay(live.tiktokRoom, live.epoch);
-            if (!replay?.m3u8) { setState({ stage: 'error', message: t('guessword.digest_lc_notfound') }); return; }
-            const hls = await lc.playlist(replay);
+            // the chosen file wins; else LIVE Center (extension + the LIVE's TikTok id); when it cannot give the recording, ask for the file
+            let src = null, hls = null, liveStart = 0, drift = 0;
+            if (file) {
+                src = { file };
+            } else if (!ext || !live.tiktokRoom) {
+                setState({ stage: 'needfile', message: t('guessword.clip_need_file') }); return;
+            } else {
+                setState({ stage: 'finding' });
+                const lc = await import('../Digest/livecenter.js');
+                const replay = await lc.findReplay(live.tiktokRoom, live.epoch);
+                if (!replay?.m3u8) { setState({ stage: 'needfile', message: t('guessword.digest_lc_notfound') + ' ' + t('guessword.clip_need_file') }); return; }
+                hls = await lc.playlist(replay);
             // The words are timed against the RECORDING (the game's voice in it), so the picture is placed by the playlist's own clock plus
             // the recording's shift against the log (speech.shift_s); the log's epoch only when no shift is known. Unix clocks of TikTok and of
             // the engine differ by seconds (21 s on 30.10), which at 1x puts the host's words on a different picture.
-            const liveStart = (data.shift != null ? hls.start + data.shift : live.epoch) - (Number(sync) || 0);
-            const drift = Math.round((live.epoch - hls.start - (data.shift ?? live.epoch - hls.start)) * 10) / 10;
-            const bad = await (await import('../Digest/build.js')).unsupportedHls(hls);
-            if (bad) { setState({ stage: 'error', message: why(bad) }); return; }
+                liveStart = (data.shift != null ? hls.start + data.shift : live.epoch) - (Number(sync) || 0);
+                drift = Math.round((live.epoch - hls.start - (data.shift ?? live.epoch - hls.start)) * 10) / 10;
+                const bad = await (await import('../Digest/build.js')).unsupportedHls(hls);
+                if (bad) { setState({ stage: 'error', message: why(bad) }); return; }
+                src = { hls, liveStart };
+            }
             const { buildClip, detectStall } = await import('./build.js');
 
             setState({ stage: 'stall', n: 0, total: 1 });
             let stall = t0 + (t1 - t0) * 0.55;
             try {
-                const d = await detectStall(hls, liveStart, t0, t1, (n, total) => setState({ stage: 'stall', n, total }), ac.signal);
+                const d = await detectStall(src, t0, t1, (n, total) => setState({ stage: 'stall', n, total }), ac.signal);
                 if (d.stall !== null) stall = d.stall;
             } catch (e) { if (e.name === 'AbortError') throw e; /* the middle of the round stays */ }
 
@@ -99,7 +123,7 @@ export default function ClipForm({ room, live, round, onClose }) {
                 rewind: t('guessword.clip_rewind'), cta1: t('guessword.clip_cta1'), cta2: t('guessword.clip_cta2'), guessedBy: t('guessword.clip_guessed_by'),
             };
             const { blob } = await buildClip({
-                hls, liveStart, plan: pl, words: data.words, hook, labels, signal: ac.signal, canvas: canvasRef.current,
+                src, plan: pl, words: data.words, hook, labels, signal: ac.signal, canvas: canvasRef.current,
                 round: { word: data.round.word || '', winner: data.round.winner, avatar },
                 onProgress: (p) => setState({ stage: p.stage === 'mux' ? 'mux' : 'building', frame: p.frame, frames: p.frames }),
             });
@@ -110,7 +134,7 @@ export default function ClipForm({ room, live, round, onClose }) {
                 const { buildCover } = await import('./cover.js');
                 const date = (live.date || live.file.slice(0, 10)).split('-').reverse().join('.');
                 const cv = await buildCover({
-                    hls, liveStart, t1, date, username: room.tiktok,
+                    src, t1, date, username: room.tiktok,
                     labels: { game: t('guessword.clip_cover_game'), title1: t('guessword.clip_cover_title1'), title2: t('guessword.clip_cover_title2'), caption: t('guessword.clip_cover_caption', { n: minutes }) },
                 });
                 coverUrl = URL.createObjectURL(await cv.convertToBlob({ type: 'image/png' }));
@@ -141,7 +165,12 @@ export default function ClipForm({ room, live, round, onClose }) {
                 <div className="mt-3 flex flex-wrap items-start gap-4">
                     <div className="min-w-0 flex-1 space-y-3">
                         <p className="text-sm text-ink-600">{t('guessword.clip_intro')}</p>
-                        {!ext && <p className="rounded-lg bg-warning-50 px-3 py-2 text-xs text-warning-800">{t('guessword.digest_install')}</p>}
+                        {!ext && !file && live.tiktokRoom && <p className="rounded-lg bg-warning-50 px-3 py-2 text-xs text-warning-800">{t('guessword.digest_install')}</p>}
+                        <label className="block text-sm font-semibold text-ink-800">
+                            {t(live.tiktokRoom ? 'guessword.clip_source_optional' : 'guessword.clip_source_file')}
+                            <input type="file" accept="video/mp4,.mp4" onChange={pickFile} disabled={busy}
+                                   className="mt-1 block w-full text-sm font-normal text-ink-700 file:mr-3 file:rounded-lg file:border-0 file:bg-primary-600 file:px-3 file:py-2 file:font-semibold file:text-white" />
+                        </label>
                         <label className="block text-sm font-semibold text-ink-800">
                             {t('guessword.clip_hook')}
                             <input type="text" value={hook} maxLength={60} onChange={(e) => setHook(e.target.value)} disabled={busy}
@@ -167,12 +196,12 @@ export default function ClipForm({ room, live, round, onClose }) {
                                 ))}
                             </ul>
                         </div>
-                        <label className="block text-sm font-semibold text-ink-800">
+                        {!file && <label className="block text-sm font-semibold text-ink-800">
                             {t('guessword.clip_sync')}
                             <input type="number" step="0.1" min="-15" max="15" value={sync} onChange={(e) => changeSync(e.target.value)} disabled={busy}
                                    className="mt-1 block w-28 rounded-lg border border-warm-300 px-3 py-2 text-sm font-normal" />
                             <span className="block text-xs font-normal text-ink-500">{t('guessword.clip_sync_hint')}</span>
-                        </label>
+                        </label>}
                         <label className="flex items-center gap-2 text-sm text-ink-700">
                             <input type="checkbox" checked={withCover} onChange={(e) => setWithCover(e.target.checked)} disabled={busy} className="rounded border-warm-300" />
                             {t('guessword.clip_cover')}
@@ -181,7 +210,7 @@ export default function ClipForm({ room, live, round, onClose }) {
                             {t('guessword.clip_length', { s: Math.round(estimate) })}{(estimate < 30 || estimate > 60) && ` · ${t('guessword.clip_length_warn')}`}
                         </p>
                         {!busy && state.stage !== 'done' && (
-                            <PrimaryButton type="button" onClick={generate} disabled={!ext || !live.tiktokRoom}>{t('guessword.clip_generate')}</PrimaryButton>
+                            <PrimaryButton type="button" onClick={generate}>{t('guessword.clip_generate')}</PrimaryButton>
                         )}
                         {busy && (
                             <div>
@@ -203,7 +232,7 @@ export default function ClipForm({ room, live, round, onClose }) {
                             <div className="space-y-2">
                                 <p className="text-sm font-semibold text-success-700">{t('guessword.clip_done', { s: state.length, took: state.seconds })}</p>
                                 <p className="text-xs text-ink-500">{t('guessword.digest_saved')}</p>
-                                {Math.abs(state.drift) >= 1 && <p className="text-xs text-ink-500">{t('guessword.clip_sync_note', { s: state.drift })}</p>}
+                                {!file && Math.abs(state.drift) >= 1 && <p className="text-xs text-ink-500">{t('guessword.clip_sync_note', { s: state.drift })}</p>}
                                 <video src={state.url} controls className="w-40 rounded-lg bg-ink-900" />
                                 <div className="flex flex-wrap gap-2">
                                     <a href={state.url} download={`${base}.mp4`} className="inline-flex rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-700">{t('guessword.digest_download')}</a>
@@ -212,6 +241,7 @@ export default function ClipForm({ room, live, round, onClose }) {
                                 </div>
                             </div>
                         )}
+                        {state.stage === 'needfile' && <p className="rounded-lg bg-warning-50 px-3 py-2 text-sm text-warning-800">{state.message}</p>}
                         {state.stage === 'error' && <p className="rounded-lg bg-danger-50 px-3 py-2 text-sm text-danger-700">{state.message}</p>}
                     </div>
                     <canvas ref={canvasRef} width={1080} height={1920}

@@ -351,7 +351,7 @@ function RoundsTable({ room, liveKey, live = null, canClip = false }) {
                                     {r.clip
                                         ? <a href={r.clip} target="_blank" rel="noreferrer" className="font-semibold text-primary-700 hover:underline">{r.clipTitle || t('guessword.rounds_clip_open')}</a>
                                         : <span className="text-ink-300">—</span>}
-                                    {canClip && live?.tiktokRoom && r.offset !== null && (r.duration || 0) >= CLIP_MIN && (
+                                    {canClip && (live?.tiktokRoom || live?.recording) && r.offset !== null && (r.duration || 0) >= CLIP_MIN && (
                                         <button type="button" onClick={() => setClipRound(clipRound === r.round ? null : r.round)}
                                                 className="ml-2 rounded-md border border-primary-300 px-2 py-0.5 text-xs font-semibold text-primary-700 hover:bg-primary-50">
                                             {t('guessword.clip_make')}
@@ -460,7 +460,7 @@ export default function Archive({ room, lives, recorded = [], strips = {}, speec
                                             className="mt-1 text-sm font-semibold text-primary-700 hover:underline">
                                         {roundsOpen === l.file ? t('guessword.rounds_hide') : t('guessword.rounds_show')}
                                     </button>
-                                    {roundsOpen === l.file && <RoundsTable room={room} liveKey={l.file} />}
+                                    {roundsOpen === l.file && <RoundsTable room={room} liveKey={l.file} live={l} canClip={speech.includes(l.file)} />}
                                 </li>
                             ))}
                         </ul>
