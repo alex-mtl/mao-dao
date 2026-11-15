@@ -96,7 +96,7 @@ function plate(ctx, { word, winner, avatar, guessedBy }) {
 
 /**
  * overlay(ctx, s): s = { t (clip s), total, hook (text), ff: {rate, skipped (stream s)} | null, chunk, t (stream s of the
- * 1x picture), plate: {...} | null, labels: {rewind, cta1, cta2} }. Called after the picture is drawn.
+ * 1x picture), plate: {...} | null, labels: {cta1, cta2, guessedBy} }. Called after the picture is drawn.
  */
 export function overlay(ctx, s) {
     ctx.save();
@@ -105,9 +105,9 @@ export function overlay(ctx, s) {
     if (s.ff) {
         ctx.fillStyle = 'rgba(0,0,0,.25)';
         ctx.fillRect(0, 0, W, H);
-        outlined(ctx, `${s.labels.rewind} x${s.ff.rate}`, W / 2, 820, 64, BRAND.cyan, BRAND.dark, 6);
+        // only the running seconds, in the lower part of the table (the top rows stay readable); no "rewind" caption
         const k = Math.round(s.ff.skipped);
-        outlined(ctx, `+${Math.floor(k / 60)}:${String(k % 60).padStart(2, '0')}`, W / 2, 940, 150, '#fff', BRAND.dark, 8);
+        outlined(ctx, `+${Math.floor(k / 60)}:${String(k % 60).padStart(2, '0')}`, W / 2, 1560, 140, '#fff', BRAND.dark, 8);
     }
     if (s.chunk) subtitle(ctx, s.chunk, s.stream);
     if (s.plate) plate(ctx, s.plate);

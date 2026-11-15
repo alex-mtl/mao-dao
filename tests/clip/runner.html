@@ -47,7 +47,7 @@ window.run = async (d) => {
     log.push('candidates ' + cands.length + ' picks ' + picks.join(','));
     const pl = plan({ t0: d.t0, t1: d.t1, stall, picks: cands.filter((c) => picks.includes(c.id)) });
     log.push('plan ' + pl.segs.map((s) => `${s.kind}:${s.dur.toFixed(1)}`).join(' ') + ' total ' + pl.total.toFixed(1));
-    const labels = { rewind: 'ПЕРЕМОТКА', cta1: 'ИГРАЙ СО МНОЙ В LIVE', cta2: 'угадай слово первым', guessedBy: 'УГАДАЛ(А)' };
+    const labels = { cta1: 'ИГРАЙ СО МНОЙ В LIVE', cta2: 'угадай слово первым', guessedBy: 'УГАДАЛ(А)' };
     const { blob } = await buildClip({ src, plan: pl, words: d.words, hook: d.hook, labels, round: { word: d.word, winner: d.winner, avatar: null } });
     const cv = await buildCover({ src, t1: d.t1, date: '11.11.2026', username: 'mao.montreal',
         labels: { game: 'УГАДАЙ СЛОВО', title1: 'ЧАТ НЕ СПРАВИЛСЯ', title2: 'А ТЫ УГАДАЛ?', caption: '15 МИНУТ · ТОП-10 ЗА СЕКУНДЫ ДО РАЗГАДКИ' } });

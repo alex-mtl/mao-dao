@@ -120,7 +120,7 @@ export default function ClipForm({ room, live, round, onClose }) {
             }
             const pl = makePlan({ t0, t1, stall, picks: chosen });
             const labels = {
-                rewind: t('guessword.clip_rewind'), cta1: t('guessword.clip_cta1'), cta2: t('guessword.clip_cta2'), guessedBy: t('guessword.clip_guessed_by'),
+                cta1: t('guessword.clip_cta1'), cta2: t('guessword.clip_cta2'), guessedBy: t('guessword.clip_guessed_by'),
             };
             const { blob } = await buildClip({
                 src, plan: pl, words: data.words, hook, labels, signal: ac.signal, canvas: canvasRef.current,
