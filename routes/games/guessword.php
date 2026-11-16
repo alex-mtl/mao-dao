@@ -28,6 +28,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/guessword/archive/lives/{file}', [ArchiveController::class, 'events'])->name('guessword.archive.events');
     Route::get('/guessword/archive/rounds/{live}', [ArchiveController::class, 'rounds'])->name('guessword.archive.rounds');
     Route::get('/guessword/archive/rounds/{live}/{round}/speech', [ArchiveController::class, 'speech'])->whereNumber('round')->name('guessword.archive.speech');
+    Route::post('/guessword/archive/speech-job/{live}', [ArchiveController::class, 'speechJob'])->name('guessword.archive.speech-job');
+    Route::get('/guessword/archive/speech-jobs', [ArchiveController::class, 'speechJobs'])->name('guessword.archive.speech-jobs');
     Route::get('/guessword/avatars/{key}', [ArchiveController::class, 'avatar'])->name('guessword.avatar');
 
     // super admins: every streamer's room (the same page and actions, for a room picked from the list)
@@ -43,6 +45,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/guessword/rooms/{room}/archive/lives/{file}', [ArchiveController::class, 'roomEvents'])->name('guessword.rooms.archive.events');
     Route::get('/guessword/rooms/{room}/archive/rounds/{live}', [ArchiveController::class, 'roomRounds'])->name('guessword.rooms.archive.rounds');
     Route::get('/guessword/rooms/{room}/archive/rounds/{live}/{round}/speech', [ArchiveController::class, 'roomSpeech'])->whereNumber('round')->name('guessword.rooms.archive.speech');
+    Route::post('/guessword/rooms/{room}/archive/speech-job/{live}', [ArchiveController::class, 'roomSpeechJob'])->name('guessword.rooms.archive.speech-job');
+    Route::get('/guessword/rooms/{room}/archive/speech-jobs', [ArchiveController::class, 'roomSpeechJobs'])->name('guessword.rooms.archive.speech-jobs');
 
     // super admins: accounts for the streamer app and their access keys
     Route::get('/guessword/clients', [ClientAccountsController::class, 'index'])->name('guessword.clients');

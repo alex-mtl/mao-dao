@@ -692,4 +692,12 @@ return [
     'clip_sync_note' => 'El reloj de LIVE Center y el registro del motor difieren aquí en :s s; el clip se alinea por el sonido de la grabación.',
     'clip_sync' => 'Sincronía de imagen, s',
     'clip_sync_hint' => 'Cuántos segundos va la imagen por detrás de la voz del presentador. Si la frase empieza tarde, súbelo; si pronto, bájalo.',
+    'markup_get' => 'Obtener marcado',
+    'markup_finding' => 'Buscando la grabación…',
+    'markup_retry' => 'Obtener marcado otra vez',
+    'markup_queued' => 'Marcado: en cola',
+    'markup_audio' => 'Marcado: sonido :note',
+    'markup_kaggle' => 'Marcado: transcripción :note',
+    'markup_import' => 'Marcado: cargando las palabras',
+    'markup_failed' => 'Falló el marcado: :error',
 ];

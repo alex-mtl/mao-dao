@@ -1,7 +1,7 @@
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
 import PlatformLayout from '@/Layouts/PlatformLayout';
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import { useLaravelReactI18n } from 'laravel-react-i18n';
 import { Fragment, useEffect, useId, useRef, useState } from 'react';
 import ClipForm from './Clip/ClipForm.jsx';
@@ -371,8 +371,74 @@ function RoundsTable({ room, liveKey, live = null, canClip = false }) {
     );
 }
 
+const csrf = () => decodeURIComponent((document.cookie.match(/(?:^|; )XSRF-TOKEN=([^;]*)/) || [])[1] || '');
+const ACTIVE = ['queued', 'audio', 'kaggle', 'import'];
+
+/**
+ * "Get the markup" of a LIVE: the extension finds the LIVE Center recording, the server pulls the sound, has Kaggle transcribe it and
+ * loads the host's words (guessword_speech); then the rounds of the LIVE get the "make a clip" button. Super admins only.
+ */
+function MarkupButton({ room, live, job }) {
+    const { t } = useLaravelReactI18n();
+    const [state, setState] = useState(job || null);
+    const [busy, setBusy] = useState(false);
+    const [error, setError] = useState(null);
+    const active = !!state && ACTIVE.includes(state.status);
+    const listUrl = room.foreign ? route('guessword.rooms.archive.speech-jobs', room.id) : route('guessword.archive.speech-jobs');
+    const startUrl = room.foreign ? route('guessword.rooms.archive.speech-job', [room.id, live.file]) : route('guessword.archive.speech-job', live.file);
+
+    useEffect(() => {
+        if (!active) return undefined;
+        const id = setInterval(async () => {
+            try {
+                const all = await (await fetch(listUrl, { headers: { Accept: 'application/json' } })).json();
+                const next = all[live.file];
+                if (!next) return;
+                setState(next);
+                if (next.status === 'done') router.reload({ only: ['speech', 'speechJobs'] });
+            } catch { /* the next tick tries again */ }
+        }, 10000);
+        return () => clearInterval(id);
+    }, [active, listUrl, live.file]);
+
+    const start = async () => {
+        setBusy(true);
+        setError(null);
+        try {
+            const lc = await import('./Digest/livecenter.js');
+            const replay = await lc.findReplay(live.tiktokRoom, live.epoch);
+            if (!replay?.m3u8) throw new Error(t('guessword.digest_lc_notfound'));
+            const res = await fetch(startUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-XSRF-TOKEN': csrf() },
+                body: JSON.stringify({ m3u8: replay.m3u8, start: replay.start, duration: replay.duration, recording: replay.id }),
+            });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            setState(await res.json());
+        } catch (e) {
+            setError(e.message);
+        } finally {
+            setBusy(false);
+        }
+    };
+
+    return (
+        <span className="inline-flex flex-wrap items-center gap-2">
+            {!active && (
+                <button type="button" onClick={start} disabled={busy}
+                        className="text-sm font-semibold text-primary-700 hover:underline disabled:opacity-50">
+                    {busy ? t('guessword.markup_finding') : t(state?.status === 'failed' ? 'guessword.markup_retry' : 'guessword.markup_get')}
+                </button>
+            )}
+            {active && <span className="text-sm text-ink-500">{t('guessword.markup_' + state.status, { note: state.note || '' })}</span>}
+            {state?.status === 'failed' && <span className="text-xs text-danger-700">{t('guessword.markup_failed', { error: state.error || '' })}</span>}
+            {error && <span className="text-xs text-danger-700">{error}</span>}
+        </span>
+    );
+}
+
 /** The streamer's archive: every TikTok LIVE the game was connected to, newest first, with the digest builder. */
-export default function Archive({ room, lives, recorded = [], strips = {}, speech = [], engineOnline }) {
+export default function Archive({ room, lives, recorded = [], strips = {}, speech = [], speechJobs = {}, canMarkup = false, engineOnline }) {
     const { t } = useLaravelReactI18n();
     const [open, setOpen] = useState(null);
     const [roundsOpen, setRoundsOpen] = useState(null);
@@ -424,10 +490,13 @@ export default function Archive({ room, lives, recorded = [], strips = {}, speec
                                     </SecondaryButton>
                                 </div>
                                 <RoundStrip rounds={strips[l.file]} label={t('guessword.rounds_strip')} />
-                                <button type="button" onClick={() => toggleRounds(l.file)}
-                                        className="mt-1 text-sm font-semibold text-primary-700 hover:underline">
-                                    {roundsOpen === l.file ? t('guessword.rounds_hide') : t('guessword.rounds_show')}
-                                </button>
+                                <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1">
+                                    <button type="button" onClick={() => toggleRounds(l.file)}
+                                            className="text-sm font-semibold text-primary-700 hover:underline">
+                                        {roundsOpen === l.file ? t('guessword.rounds_hide') : t('guessword.rounds_show')}
+                                    </button>
+                                    {canMarkup && !speech.includes(l.file) && extension() && l.tiktokRoom && <MarkupButton room={room} live={l} job={speechJobs[l.file]} />}
+                                </div>
                                 {roundsOpen === l.file && <RoundsTable room={room} liveKey={l.file} live={l} canClip={speech.includes(l.file)} />}
                                 <Tags live={l} />
                                 {open === l.file && <DigestBuilder room={room} live={l} />}

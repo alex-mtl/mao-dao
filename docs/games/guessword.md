@@ -440,6 +440,23 @@ the LIVE Center extension installed). The form lists the host's remarks as check
   over the rounds, the announcer is the words inside the logged moments of "new viewer / round start / winner" that also sound like it.
   `GET /guessword/archive/rounds/{live}/{round}/speech` gives the round (place, length, winner) and the words from 10 s before to 150 s after it
   (super admins: `/guessword/rooms/{room}/archive/rounds/{live}/{round}/speech`). Transcribing other streamers' LIVEs is not solved yet. The transcript is made **without the VAD** (since 15.11.2026, `tiktok-clips/kaggle/transcribe_novad.py`): with the VAD the first word of 40% of the host's phrases after a pause was cut off; Whisper's inventions on silence ("Продолжение следует…") are filtered out.
+- **Speech jobs ("Get markup", since 2026-11-16)**: next to "Rounds" a LIVE without speech has a "Get markup" button (super admins with
+  the extension only: the Kaggle GPU quota is the owner's). The page asks the extension for the LIVE Center recording
+  (`findReplay`) and posts its playlist address to `POST /guessword/archive/speech-job/{live}` (`rooms/{room}/...` for super admins);
+  the address must be a TikTok CDN `.m3u8` and is never sent back to the browser. Table `guessword_speech_jobs`
+  (status queued → audio → kaggle → import → done | failed, a progress line, the error). The PM2 process **`quiz-speech-worker`**
+  (`php artisan guessword:speech-worker`) runs one job at a time:
+  1. `SpeechAudio`: HLS segments carry video and sound together, so the whole stream is read (~5.6 Mbit/s, ~15 GB for 6 h) but only the
+     sound is kept (Opus mono 16 kHz, ~11 MB/h): parts of 1 h by `GUESSWORD_SPEECH_PARALLEL` (default 2) parallel `nice -n 10 ffmpeg`
+     processes; finished parts survive a restart. The signed address works without cookies and from the server (checked 16.11.2026).
+  2. `KaggleClient`: a private dataset `maodao-speech-<job id>` in the flat format of `services/speech-kernel/transcribe_novad.py`
+     (copy of `tiktok-clips/kaggle/`; no VAD), then the GPU kernel `whisper-transcribe` is pushed and checked once a minute
+     (`<sid>/transcript.json` in its output). Needs `KAGGLE_TOKEN` (+ `KAGGLE_USER`) in `.env`. Limits: 2 GPU sessions, a fresh dataset
+     is refused for a minute (the push is retried), a run older than 180 min fails.
+  3. `SpeechAlign` (port of `tiktok-clips/tools/speech-export.js`): the shift recording → log = log epoch − recording start, refined by
+     the median of the announcer's own "Раунд N. Поехали" (≥ 5 heard); the announcer is cut by the log's moments and by its phrases;
+     `SpeechArchive::import` stores the words. Only LIVEs with an engine log (not `rec:` ones).
+  Then the rounds of the LIVE get "Make a clip". Tests: `GuesswordSpeechJobTest`.
 - **Code**: `resources/js/Pages/Guessword/Clip/` (`plan.js` pure, `draw.js` the overlay, `build.js` the video and sound on the digests'
   `hlsDense` / `keyPictures`, `cover.js`, `ClipForm.jsx`). `DevDigest/build.js` exports its `keyDecoder` / `stretchSound`.
 - **Tests**: `node tests/clip/plan.test.mjs` (pure parts); `tests/clip/e2e.mjs` (developer machine with Chrome: the modules build a clip

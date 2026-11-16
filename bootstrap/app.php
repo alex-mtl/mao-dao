@@ -18,6 +18,7 @@ return Application::configure(basePath: dirname(__DIR__))
         \App\Games\Guessword\Console\AddHintsCommand::class,
         \App\Games\Guessword\Console\RoundsImportCommand::class,
         \App\Games\Guessword\Console\SpeechImportCommand::class,
+        \App\Games\Guessword\Console\SpeechWorkerCommand::class,
     ])
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->web(append: [

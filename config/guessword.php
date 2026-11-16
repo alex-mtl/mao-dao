@@ -26,4 +26,17 @@ return [
     // gift actions they launch themselves - "подсказка" or a club emote the streamer bound to the kind.
     // A new kind = the engine's stream-engine/app/bonuses.py KINDS too.
     'bonus_kinds' => ['hint', 'cake', 'boost', 'multi', 'balloon', 'plane', 'bomber', 'snowball'],
+
+    // "Get the markup" of a LIVE (docs/games/guessword.md, "Speech jobs"): sound from the LIVE Center recording on this server,
+    // Whisper on the owner's Kaggle account (the GPU quota is theirs: only super admins start it)
+    'speech' => [
+        'kaggle_token' => env('KAGGLE_TOKEN'),
+        'kaggle_user' => env('KAGGLE_USER', 'kimalexandermontreal'),
+        'kernel' => env('KAGGLE_SPEECH_KERNEL', 'whisper-transcribe'),
+        'part_s' => 3600,                 // one sound part = one hour of the recording (parts are pulled in parallel)
+        'parallel' => (int) env('GUESSWORD_SPEECH_PARALLEL', 2),
+        'ffmpeg' => env('GUESSWORD_SPEECH_FFMPEG', 'ffmpeg'),
+        'dir' => storage_path('app/guessword/speech'),
+        'kaggle_max_min' => 180,
+    ],
 ];

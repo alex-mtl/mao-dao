@@ -10,6 +10,7 @@ use App\Games\Guessword\Services\LiveArchive;
 use App\Games\Guessword\Models\GuesswordRound;
 use App\Games\Guessword\Services\RoundsArchive;
 use App\Games\Guessword\Services\SpeechArchive;
+use App\Games\Guessword\Services\SpeechJobs;
 use App\Http\Controllers\Controller;
 use App\Services\Capabilities;
 use Illuminate\Http\JsonResponse;
@@ -32,6 +33,7 @@ class ArchiveController extends Controller
         private Capabilities $capabilities,
         private RoundsArchive $rounds,
         private SpeechArchive $speech,
+        private SpeechJobs $jobs,
     ) {}
 
     public function index(Request $request, ?GuesswordRoom $room = null): Response
@@ -65,6 +67,9 @@ class ArchiveController extends Controller
             'strips' => (object) $this->rounds->strips($room),
             // LIVEs whose speech is loaded: their rounds get the "make a clip" button
             'speech' => $this->speech->keys($room),
+            // the "get the markup" jobs by LIVE (status, progress line)
+            'speechJobs' => (object) $this->jobs->statuses($room),
+            'canMarkup' => $request->user()->isSuperAdmin(),
             'engineOnline' => $lives !== null,
         ]);
     }
@@ -110,6 +115,44 @@ class ArchiveController extends Controller
             'words' => $slice['words'],
             'shift' => $slice['shift'],
         ]);
+    }
+
+    /**
+     * "Get the markup": the archive page (with the browser extension) hands over the address of the LIVE Center recording of a LIVE;
+     * the worker pulls the sound, has Kaggle transcribe it and loads the host's words. Super admins only: the Kaggle quota is the owner's.
+     */
+    public function speechJob(Request $request, string $live, ?GuesswordRoom $room = null): JsonResponse
+    {
+        abort_unless($request->user()->isSuperAdmin(), 403);
+        $room = $this->roomFor($request, $room);
+        abort_unless(preg_match('/^[\w.:-]{1,120}$/', $live) === 1, 404);
+        $data = $request->validate([
+            'm3u8' => ['required', 'string', 'max:4000'],
+            'start' => ['required', 'numeric', 'min:1'],
+            'duration' => ['required', 'numeric', 'min:60', 'max:86400'],
+            'recording' => ['nullable', 'string', 'max:40'],
+        ]);
+        abort_unless(SpeechJobs::validAddress($data['m3u8']), 422, 'not a TikTok CDN recording address');
+        abort_if($this->archive->events($room, $live) === null, 404);
+        $job = $this->jobs->start($room, $live, $data['m3u8'], (int) $data['start'], (int) ceil($data['duration']), $data['recording'] ?? null);
+
+        return response()->json(['id' => $job->id, 'status' => $job->status, 'note' => $job->note, 'error' => $job->error]);
+    }
+
+    /** the markup jobs of the room by LIVE: {live_key: {id, status, note, error}} (the archive polls it) */
+    public function speechJobs(Request $request, ?GuesswordRoom $room = null): JsonResponse
+    {
+        return response()->json((object) $this->jobs->statuses($this->roomFor($request, $room)));
+    }
+
+    public function roomSpeechJob(Request $request, GuesswordRoom $room, string $live): JsonResponse
+    {
+        return $this->speechJob($request, $live, $room);
+    }
+
+    public function roomSpeechJobs(Request $request, GuesswordRoom $room): JsonResponse
+    {
+        return $this->speechJobs($request, $room);
     }
 
     /** super admins: the same for any room */

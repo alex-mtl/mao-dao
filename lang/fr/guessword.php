@@ -692,4 +692,12 @@ return [
     'clip_sync_note' => 'L\'horloge de LIVE Center et le journal du moteur diffèrent ici de :s s ; le clip est aligné sur le son de l\'enregistrement.',
     'clip_sync' => 'Synchro image, s',
     'clip_sync_hint' => 'De combien de secondes l\'image est en retard sur la voix du présentateur. Si la phrase démarre trop tard, augmentez ; trop tôt, diminuez.',
+    'markup_get' => 'Obtenir le balisage',
+    'markup_finding' => 'Recherche de l’enregistrement…',
+    'markup_retry' => 'Obtenir de nouveau le balisage',
+    'markup_queued' => 'Balisage : en attente',
+    'markup_audio' => 'Balisage : son :note',
+    'markup_kaggle' => 'Balisage : transcription :note',
+    'markup_import' => 'Balisage : chargement des mots',
+    'markup_failed' => 'Échec du balisage : :error',
 ];
