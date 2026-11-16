@@ -691,7 +691,7 @@ return [
     'clip_cover_caption' => ':n MIN · TOP 10 JUSTE AVANT LA RÉPONSE',
     'clip_sync_note' => 'L\'horloge de LIVE Center et le journal du moteur diffèrent ici de :s s ; le clip est aligné sur le son de l\'enregistrement.',
     'clip_sync' => 'Synchro image, s',
-    'clip_sync_hint' => 'De combien de secondes l\'image est en retard sur la voix du présentateur. Si la phrase démarre trop tard, augmentez ; trop tôt, diminuez.',
+    'clip_sync_hint' => 'De combien de secondes l\'image est en retard sur la voix du présentateur. Si la phrase démarre trop tard, augmentez ; trop tôt, diminuez. Normalement 0 : les coupures de l’enregistrement TikTok sont gérées seules.',
     'markup_get' => 'Obtenir le balisage',
     'markup_finding' => 'Recherche de l’enregistrement…',
     'markup_retry' => 'Obtenir de nouveau le balisage',

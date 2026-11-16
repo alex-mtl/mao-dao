@@ -6,6 +6,21 @@ import { extension } from '../Digest/livecenter.js';
 import { candidates, defaultPicks, plan as makePlan } from './plan.js';
 
 const ms = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+/**
+ * The playlist's wall clock minus its media time at media second m. The words are timed in MEDIA time (what Whisper heard), the picture
+ * is placed by the wall clock (#EXT-X-PROGRAM-DATE-TIME), and TikTok's recording has gaps after which the clock runs ahead of the media
+ * (-1.9 s up to 4.5 h of the 15.11.2026 recording, +15.5 s after it): a fixed picture sync cannot fit both halves.
+ */
+function clockDrift(hls, m) {
+    let c = 0;
+    for (const s of hls.segments) {
+        if (m < c + s.dur) return (s.at - hls.start) - c;
+        c += s.dur;
+    }
+    const l = hls.segments[hls.segments.length - 1];
+    return (l.at - hls.start) - (c - l.dur);
+}
+
 const speechUrl = (room, live, round) => (room.foreign
     ? route('guessword.rooms.archive.speech', [room.id, live, round])
     : route('guessword.archive.speech', [live, round]));
@@ -21,8 +36,8 @@ export default function ClipForm({ room, live, round, onClose }) {
     const [hook, setHook] = useState('');
     const [withCover, setWithCover] = useState(true);
     // the picture of LIVE Center runs ~2.3 s behind the recording the words were timed on (measured 15.11.2026 on round 51); kept per browser
-    const [sync, setSync] = useState(() => { try { const v = Number(localStorage.getItem('clipSync')); return localStorage.getItem('clipSync') !== null && Number.isFinite(v) ? v : 2.3; } catch { return 2.3; } });
-    const changeSync = (v) => { setSync(v); try { localStorage.setItem('clipSync', String(v)); } catch { /* storage is optional */ } };
+    const [sync, setSync] = useState(() => { try { const v = Number(localStorage.getItem('clipSync2')); return localStorage.getItem('clipSync2') !== null && Number.isFinite(v) ? v : 0; } catch { return 0; } });
+    const changeSync = (v) => { setSync(v); try { localStorage.setItem('clipSync2', String(v)); } catch { /* storage is optional */ } };
     const [state, setState] = useState({ stage: 'form' });
     const [file, setFile] = useState(null);                 // a local MP4 of the recording, chosen by the user (when LIVE Center cannot give it)
     const abortRef = useRef(null), canvasRef = useRef(null);
@@ -97,7 +112,7 @@ export default function ClipForm({ room, live, round, onClose }) {
             // The words are timed against the RECORDING (the game's voice in it), so the picture is placed by the playlist's own clock plus
             // the recording's shift against the log (speech.shift_s); the log's epoch only when no shift is known. Unix clocks of TikTok and of
             // the engine differ by seconds (21 s on 30.10), which at 1x puts the host's words on a different picture.
-                liveStart = (data.shift != null ? hls.start + data.shift : live.epoch) - (Number(sync) || 0);
+                liveStart = (data.shift != null ? hls.start + data.shift + clockDrift(hls, data.shift + data.round.offset + data.round.duration / 2) : live.epoch) - (Number(sync) || 0);
                 drift = Math.round((live.epoch - hls.start - (data.shift ?? live.epoch - hls.start)) * 10) / 10;
                 const bad = await (await import('../Digest/build.js')).unsupportedHls(hls);
                 if (bad) { setState({ stage: 'error', message: why(bad) }); return; }
