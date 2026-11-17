@@ -378,6 +378,12 @@ const ACTIVE = ['queued', 'audio', 'kaggle', 'import'];
  * "Get the markup" of a LIVE: the extension finds the LIVE Center recording, the server pulls the sound, has Kaggle transcribe it and
  * loads the host's words (guessword_speech); then the rounds of the LIVE get the "make a clip" button. Super admins only.
  */
+/** start of a `rec:YYYY-MM-DD_HHMM_...` LIVE (unix s): the recording file's name carries the streamer's local time */
+const recordedStart = (key) => {
+    const m = /^rec:(d{4})-(dd)-(dd)_(dd)(dd)/.exec(key);
+    return m ? new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]).getTime() / 1000 : 0;
+};
+
 function MarkupButton({ room, live, job }) {
     const { t } = useLaravelReactI18n();
     const [state, setState] = useState(job || null);
@@ -406,7 +412,7 @@ function MarkupButton({ room, live, job }) {
         setError(null);
         try {
             const lc = await import('./Digest/livecenter.js');
-            const replay = await lc.findReplay(live.tiktokRoom || live.recording, live.epoch ?? (live.started ? Date.parse(live.started) / 1000 : 0));
+            const replay = live.tiktokRoom ? await lc.findReplay(live.tiktokRoom, live.epoch) : await lc.findReplay('', recordedStart(live.file));
             if (!replay?.m3u8) throw new Error(t('guessword.digest_lc_notfound'));
             const res = await fetch(startUrl, {
                 method: 'POST',
@@ -525,7 +531,7 @@ export default function Archive({ room, lives, recorded = [], strips = {}, speec
                                         </p>
                                     )}
                                     <RoundStrip rounds={strips[l.file]} label={t('guessword.rounds_strip')} />
-                                    {canMarkup && !speech.includes(l.file) && extension() && l.recording && (
+                                    {canMarkup && !speech.includes(l.file) && extension() && recordedStart(l.file) > 0 && (
                                         <div className="mt-1"><MarkupButton room={room} live={l} job={speechJobs[l.file]} /></div>
                                     )}
                                     <button type="button" onClick={() => toggleRounds(l.file)}
