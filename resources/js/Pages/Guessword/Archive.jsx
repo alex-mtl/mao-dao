@@ -380,7 +380,7 @@ const ACTIVE = ['queued', 'audio', 'kaggle', 'import'];
  */
 /** start of a `rec:YYYY-MM-DD_HHMM_...` LIVE (unix s): the recording file name carries UTC */
 const recordedStart = (key) => {
-    const m = /^rec:(d{4})-(dd)-(dd)_(dd)(dd)/.exec(key);
+    const m = /^rec:(\d{4})-(\d\d)-(\d\d)_(\d\d)(\d\d)/.exec(key);
     return m ? Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]) / 1000 : 0;
 };
 
