@@ -378,10 +378,10 @@ const ACTIVE = ['queued', 'audio', 'kaggle', 'import'];
  * "Get the markup" of a LIVE: the extension finds the LIVE Center recording, the server pulls the sound, has Kaggle transcribe it and
  * loads the host's words (guessword_speech); then the rounds of the LIVE get the "make a clip" button. Super admins only.
  */
-/** start of a `rec:YYYY-MM-DD_HHMM_...` LIVE (unix s): the recording file's name carries the streamer's local time */
+/** start of a `rec:YYYY-MM-DD_HHMM_...` LIVE (unix s): the recording file name carries UTC */
 const recordedStart = (key) => {
     const m = /^rec:(d{4})-(dd)-(dd)_(dd)(dd)/.exec(key);
-    return m ? new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]).getTime() / 1000 : 0;
+    return m ? Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]) / 1000 : 0;
 };
 
 function MarkupButton({ room, live, job }) {
