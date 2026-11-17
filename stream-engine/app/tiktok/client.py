@@ -294,9 +294,32 @@ class TikTokConnector:
         except Exception as e:
             print(f"[tiktok] room id via API failed ({type(e).__name__}), trying HTML")
         print(f"[tiktok] connecting to @{self.username} (room {rid or '?'}) ...")
+        # Watchdog: TikTok's socket can stall without closing (no error, no "disconnected"). Every frame counts as a
+        # sign of life (WebsocketResponseEvent: also viewer counts, pings); SILENCE_SEC without any = reconnect.
+        self.last_rx = time.time()
+
+        async def beat(event):
+            self.last_rx = time.time()
+
+        client.on(tl_events.WebsocketResponseEvent)(beat)
+        task = asyncio.ensure_future(client.connect(room_id=rid))
         try:
-            await client.connect(room_id=rid)
+            while not task.done():
+                await asyncio.wait({task}, timeout=10)
+                if not task.done() and config.SILENCE_SEC and time.time() - self.last_rx > config.SILENCE_SEC:
+                    print(f"[tiktok] silent for {time.time() - self.last_rx:.0f}s: reconnecting")
+                    try:
+                        await client.disconnect()
+                    except Exception:
+                        pass
+                    try:
+                        await asyncio.wait_for(asyncio.shield(task), 10)
+                    except BaseException:
+                        task.cancel()
+                    return                            # run_forever opens a new connection
+            task.result()                             # the connection's own error, if any
         except asyncio.CancelledError:                # the room was stopped: close the connection
+            task.cancel()
             try:
                 await client.disconnect()
             except Exception:

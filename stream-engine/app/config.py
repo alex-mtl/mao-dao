@@ -33,6 +33,7 @@ PLATFORM_URL = os.getenv("PLATFORM_URL", "").rstrip("/")
 DEV_ROOMS = _i("DEV_ROOMS", 0)                      # local testing: this many simulated rooms with fixed tokens
 ASSETS_DIR = os.getenv("ASSETS_DIR", "assets")
 RECONNECT_SEC = _f("RECONNECT_SEC", 15)
+SILENCE_SEC = _f("SILENCE_SEC", 90)            # no frame from TikTok this long: reconnect (0 = off)
 LIVE_WAIT_SEC = _f("LIVE_WAIT_SEC", 300)       # a room with no TikTok LIVE this long stops itself
 DEBUG_CONTROLS = _b("DEBUG_CONTROLS", "1")     # /debug page + /api/debug/*
 LOG_CHAT = _b("LOG_CHAT")                      # log every incoming comment (diagnostics)
