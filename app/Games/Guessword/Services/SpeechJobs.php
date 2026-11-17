@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Games\Guessword\Services;
 
 use App\Games\Guessword\Models\GuesswordRoom;
+use App\Games\Guessword\Models\GuesswordRound;
 use App\Games\Guessword\Models\GuesswordSpeechJob;
 use RuntimeException;
 use Throwable;
@@ -82,7 +83,7 @@ class SpeechJobs
     private function audioAndPush(GuesswordSpeechJob $job): void
     {
         $room = GuesswordRoom::findOrFail($job->room_id);
-        if ($this->archive->events($room, $job->live_key) === null) {
+        if (! $this->hasLive($room, $job->live_key)) {
             throw new RuntimeException('the LIVE log is not available (engine offline?)');
         }
         $job->update(['status' => 'audio', 'note' => 'audio 0']);
@@ -141,9 +142,8 @@ class SpeechJobs
     private function import(GuesswordSpeechJob $job): void
     {
         $room = GuesswordRoom::findOrFail($job->room_id);
-        $events = $this->archive->events($room, $job->live_key);
-        $start = collect($events ?? [])->firstWhere('type', 'live_start');
-        if (! $start || empty($start['epoch'])) {
+        [$events, $epoch] = $this->timeline($room, $job->live_key, (float) $job->recording_start);
+        if (! $epoch) {
             throw new RuntimeException('the LIVE log has no start time');
         }
         $tr = json_decode((string) file_get_contents($this->dir($job).'/transcript.json'), true);
@@ -156,13 +156,52 @@ class SpeechJobs
                 $words[] = $w;
             }
         }
-        $r = $this->align->align($words, $events, (float) $start['epoch'], (float) $job->recording_start);
+        $r = $this->align->align($words, $events, $epoch, (float) $job->recording_start);
         [$stored, $errors] = $this->speech->import($room, [['live_key' => $job->live_key, 'recording' => $job->recording, 'shift' => $r['shift'], 'words' => $r['words']]]);
         if ($errors) {
             throw new RuntimeException(implode('; ', $errors));
         }
         $this->cleanup($job);
         $job->update(['status' => 'done', 'note' => count($r['words']).' words, shift '.$r['shift'].' s (refined by '.$r['refined'].' rounds)']);
+    }
+
+    /** is there a LIVE to mark up: a logged one, or one known only from its recording (`rec:<id>`, rounds table) */
+    public function hasLive(GuesswordRoom $room, string $live): bool
+    {
+        return str_starts_with($live, 'rec:')
+            ? GuesswordRound::where('room_id', $room->id)->where('live_key', $live)->exists()
+            : $this->archive->events($room, $live) !== null;
+    }
+
+    /**
+     * The LIVE's events (round_start / winner with 's') and the unix time of its second 0. A `rec:` LIVE has no log: its events are
+     * rebuilt from the rounds table; the clock comes from `recording_s` (where the round is in the recording) when known, else from
+     * the LIVE's start time.
+     *
+     * @return array{0: array, 1: float|null}
+     */
+    public function timeline(GuesswordRoom $room, string $live, float $recStart): array
+    {
+        if (! str_starts_with($live, 'rec:')) {
+            $events = $this->archive->events($room, $live) ?? [];
+            $start = collect($events)->firstWhere('type', 'live_start');
+
+            return [$events, ! empty($start['epoch']) ? (float) $start['epoch'] : null];
+        }
+        $rounds = GuesswordRound::where('room_id', $room->id)->where('live_key', $live)->whereNotNull('offset_s')->orderBy('round')->get();
+        $events = [];
+        foreach ($rounds as $r) {
+            $events[] = ['type' => 'round_start', 's' => (float) $r->offset_s, 'round' => $r->round];
+            if ($r->duration_s !== null) {
+                $events[] = ['type' => $r->winner_name ? 'winner' : 'round_end', 's' => (float) $r->offset_s + $r->duration_s, 'round' => $r->round];
+            }
+        }
+        $diffs = $rounds->filter(fn ($r) => $r->recording_s !== null)->map(fn ($r) => (float) $r->recording_s - (float) $r->offset_s)->sort()->values();
+        $epoch = $diffs->isNotEmpty()
+            ? $recStart + $diffs[intdiv($diffs->count(), 2)]
+            : $rounds->first()?->live_started_at?->getTimestamp();
+
+        return [$events, $epoch ? (float) $epoch : null];
     }
 
     private function cleanup(GuesswordSpeechJob $job): void

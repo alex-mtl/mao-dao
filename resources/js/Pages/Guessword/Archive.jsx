@@ -406,7 +406,7 @@ function MarkupButton({ room, live, job }) {
         setError(null);
         try {
             const lc = await import('./Digest/livecenter.js');
-            const replay = await lc.findReplay(live.tiktokRoom, live.epoch);
+            const replay = await lc.findReplay(live.tiktokRoom || live.recording, live.epoch ?? (live.started ? Date.parse(live.started) / 1000 : 0));
             if (!replay?.m3u8) throw new Error(t('guessword.digest_lc_notfound'));
             const res = await fetch(startUrl, {
                 method: 'POST',
@@ -525,6 +525,9 @@ export default function Archive({ room, lives, recorded = [], strips = {}, speec
                                         </p>
                                     )}
                                     <RoundStrip rounds={strips[l.file]} label={t('guessword.rounds_strip')} />
+                                    {canMarkup && !speech.includes(l.file) && extension() && l.recording && (
+                                        <div className="mt-1"><MarkupButton room={room} live={l} job={speechJobs[l.file]} /></div>
+                                    )}
                                     <button type="button" onClick={() => toggleRounds(l.file)}
                                             className="mt-1 text-sm font-semibold text-primary-700 hover:underline">
                                         {roundsOpen === l.file ? t('guessword.rounds_hide') : t('guessword.rounds_show')}

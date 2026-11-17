@@ -133,7 +133,7 @@ class ArchiveController extends Controller
             'recording' => ['nullable', 'string', 'max:40'],
         ]);
         abort_unless(SpeechJobs::validAddress($data['m3u8']), 422, 'not a TikTok CDN recording address');
-        abort_if($this->archive->events($room, $live) === null, 404);
+        abort_unless($this->jobs->hasLive($room, $live), 404);
         $job = $this->jobs->start($room, $live, $data['m3u8'], (int) $data['start'], (int) ceil($data['duration']), $data['recording'] ?? null);
 
         return response()->json(['id' => $job->id, 'status' => $job->status, 'note' => $job->note, 'error' => $job->error]);

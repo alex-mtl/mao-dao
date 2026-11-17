@@ -104,3 +104,18 @@ it('fails a job whose Kaggle run died, without keeping the address in the messag
     $job->refresh();
     expect($job->status)->toBe('failed')->and($job->error)->toContain('Traceback')->and($job->error)->not->toContain('sig=9');
 });
+
+it('takes a markup job for a LIVE known only from its recording (rec:) and dates it by recording_s', function () {
+    foreach ([1 => 50, 2 => 150, 3 => 250] as $n => $off) {
+        \App\Games\Guessword\Models\GuesswordRound::create([
+            'room_id' => $this->room->id, 'live_key' => 'rec:77', 'round' => $n, 'live_date' => '2026-10-20', 'source' => 'local',
+            'offset_s' => $off, 'duration_s' => 60, 'recording_s' => $off + 30,
+        ]);
+    }
+    $body = ['m3u8' => MAO_CDN, 'start' => 5000, 'duration' => 7200, 'recording' => '77'];
+    $this->actingAs($this->admin)->postJson("/guessword/rooms/{$this->room->id}/archive/speech-job/rec:77", $body)->assertOk();
+    $this->actingAs($this->admin)->postJson("/guessword/rooms/{$this->room->id}/archive/speech-job/rec:99", $body)->assertNotFound();
+
+    [$events, $epoch] = app(SpeechJobs::class)->timeline($this->room, 'rec:77', 5000.0);
+    expect($epoch)->toBe(5030.0)->and(count($events))->toBe(6);   // the recording's second 0 = log second 0 + 30 s of shift
+});
