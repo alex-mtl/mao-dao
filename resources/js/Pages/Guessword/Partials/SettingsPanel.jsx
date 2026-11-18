@@ -25,6 +25,8 @@ const TAB_KEY = { game: 'guessword.tab_game', frame: 'guessword.tab_frame', scre
 // like thresholds the streamer picks from (every N likes of one viewer), the same for every show; 0 = off.
 // Any other whole number in LIKES_MIN..LIKES_MAX can be typed in (the engine's LIKE_STEPS / LIKES_RANGE).
 const LIKE_STEPS = [100, 200, 300, 500, 1000, 2000, 5000, 10000, 20000, 50000, 100000, 250000, 500000, 1000000];
+// the extra reward of a like show, given with its animation (the engine's settings.REWARDS)
+const REWARDS = ['none', 'hint', 'round', 'stream'];
 const LIKES_MIN = 10;
 const LIKES_MAX = 10000000;
 const kilo = (n) => (n >= 1000000 ? n / 1000000 + 'M' : n >= 1000 ? n / 1000 + 'K' : String(n));
@@ -72,7 +74,7 @@ function Field({ label, children }) {
 }
 
 /** One row "thing — on/off — every N likes": off = 0, on brings back the last threshold (or the first step). */
-function LikesRow({ title, sub, value, onChange }) {
+function LikesRow({ title, sub, value, onChange, reward, onReward }) {
     const { t } = useLaravelReactI18n();
     const [last, setLast] = useState(value || LIKE_STEPS[0]);
     // a value outside the list (typed in, or saved before the list changed) shows as the custom one
@@ -128,6 +130,16 @@ function LikesRow({ title, sub, value, onChange }) {
                         />
                     )}
                 </span>
+            </td>
+            <td className={'py-2.5 pl-3 ' + (on ? '' : 'pointer-events-none opacity-40')}>
+                <select
+                    className="h-9 rounded-lg border-warm-300 bg-surface py-0 text-sm text-ink-900"
+                    value={reward || 'none'}
+                    disabled={!on}
+                    onChange={(e) => onReward(e.target.value)}
+                >
+                    {REWARDS.map((r) => <option key={r} value={r}>{t('guessword.reward_' + r)}</option>)}
+                </select>
             </td>
         </tr>
     );
@@ -434,19 +446,25 @@ export default function SettingsPanel({ s, mode, setMode, footer, bonusesUrl }) 
                                     <th className="py-2">{t('guessword.col_anim')}</th>
                                     <th className="py-2">{t('guessword.col_on')}</th>
                                     <th className="py-2">{t('guessword.col_likes')}</th>
+                                    <th className="py-2 pl-3">{t('guessword.col_reward')}</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <LikesRow title={t('guessword.balloon')} sub={t('guessword.balloon_d')}
-                                          value={gl.balloon_likes} onChange={(v) => s.set('global', 'balloon_likes', v)} />
+                                          value={gl.balloon_likes} onChange={(v) => s.set('global', 'balloon_likes', v)}
+                                          reward={gl.balloon_reward} onReward={(v) => s.set('global', 'balloon_reward', v)} />
                                 <LikesRow title={t('guessword.plane')} sub={t('guessword.plane_d')}
-                                          value={gl.plane_auto} onChange={(v) => s.set('global', 'plane_auto', v)} />
+                                          value={gl.plane_auto} onChange={(v) => s.set('global', 'plane_auto', v)}
+                                          reward={gl.plane_reward} onReward={(v) => s.set('global', 'plane_reward', v)} />
                                 <LikesRow title={t('guessword.bomber')} sub={t('guessword.plane_d')}
-                                          value={gl.bomber} onChange={(v) => s.set('global', 'bomber', v)} />
+                                          value={gl.bomber} onChange={(v) => s.set('global', 'bomber', v)}
+                                          reward={gl.bomber_reward} onReward={(v) => s.set('global', 'bomber_reward', v)} />
                                 <LikesRow title={t('guessword.snowball')} sub={t('guessword.plane_d')}
-                                          value={gl.snowball} onChange={(v) => s.set('global', 'snowball', v)} />
+                                          value={gl.snowball} onChange={(v) => s.set('global', 'snowball', v)}
+                                          reward={gl.snowball_reward} onReward={(v) => s.set('global', 'snowball_reward', v)} />
                                 <LikesRow title={t('guessword.cake')} sub={t('guessword.plane_d')}
-                                          value={gl.cake} onChange={(v) => s.set('global', 'cake', v)} />
+                                          value={gl.cake} onChange={(v) => s.set('global', 'cake', v)}
+                                          reward={gl.cake_reward} onReward={(v) => s.set('global', 'cake_reward', v)} />
                             </tbody>
                         </table>
                     </>

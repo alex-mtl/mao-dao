@@ -504,8 +504,10 @@ class Hub:
         for b in self.balloons.on_like(v, count):  # 100 likes -> lift off, on whatever page is open
             self._feed(type="balloon", **b)
             self.live.write("balloon", user=who, likes=b["total"], n=b["n"], per=b["per"])
+            self._like_reward(v, "BALLOON_REWARD")
         plane = self.balloons.auto_plane(v, before)  # every PLANE_AUTO_LIKES likes -> the plane flies by itself
         if plane:
+            self._like_reward(v, "PLANE_REWARD" if not plane["bomber"] else "BOMBER_REWARD")
             print(f"[plane] {v.name}: {plane['total']} likes -> auto plane")
             self._feed(type="plane", **plane)
             step = self.global_settings.get("PLANE_BOMBER_LIKES" if plane["bomber"] else "PLANE_AUTO_LIKES")
@@ -516,12 +518,31 @@ class Hub:
             print(f"[snowball] {v.name}: {snow['total']} likes -> snowball")
             self._feed(type="snowball", **snow)
             self.live.write("snowball", user=who, likes=snow["total"])
+            self._like_reward(v, "SNOWBALL_REWARD")
         cake = self.balloons.auto_cake(v, before)      # every CAKE_LIKES likes -> the cake show for them
         if cake:
+            self._like_reward(v, "CAKE_REWARD")
             print(f"[cake] {v.name}: {cake['total']} likes -> cake")
             seed = self.cakes.add(cake)
             self.live.write("cake", user=who, likes=cake["total"], seed=seed)
         self.game.on_like(v, count)
+
+    LIKE_REWARD_ACTION = {"hint": "hint", "round": "multi", "stream": "boost"}
+
+    def _like_reward(self, v: Viewer, attr):
+        """The extra reward set for a like show (global settings *_REWARD), given together with its animation:
+        a hint on the viewer's account, 3 words for the round, or 3 words till the stream ends."""
+        action = self.LIKE_REWARD_ACTION.get(self.global_settings.get(attr))
+        g = self.games.get("guess")
+        if not action or not g:
+            return
+        if action == "hint":
+            g.add_credits(v.id, 1, "likes", v.name)
+        elif action == "multi" and self.game is not g:
+            return                                    # the round's 3 words only exist in a Guess the Word round
+        elif not g.manual_action(v, action):
+            return
+        print(f"[reward] {v.name}: {attr} -> {action}")
 
     # ---- state for overlays ----
     def message(self, name, since=None, feed_since=None):

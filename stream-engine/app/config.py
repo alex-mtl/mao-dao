@@ -51,7 +51,10 @@ LIKES_PER_BALLOON = _i("LIKES_PER_BALLOON", 100)        # likes from one viewer 
 PLANE_AUTO_LIKES = _i("PLANE_AUTO_LIKES", 1000)          # the plane flies by itself at 1000, 2000, ... likes (0 = off)
 SNOWBALL_LIKES = _i("SNOWBALL_LIKES", 500)              # a snowball at the streamer every 500, 1000, ... likes (0 = off)
 CAKE_LIKES = _i("CAKE_LIKES", 5000)                     # the firecracker cake show every 5000, 10000, ... likes (0 = off)
-PLANE_BOMBER_LIKES = 10000      # every 10 000, 20 000, ... likes the plane drops bombs -> butterflies (0 = off; menu setting)
+# extra reward of a like show, given together with its animation: none | hint (on the account) | round (3 words
+# for the round) | stream (3 words till the stream ends)
+BALLOON_REWARD = PLANE_REWARD = BOMBER_REWARD = SNOWBALL_REWARD = CAKE_REWARD = "none"
+PLANE_BOMBER_LIKES = 10000     # every 10 000, 20 000, ... likes the plane drops bombs -> butterflies (0 = off; menu setting)
 
 # ---- guess the word ----
 ROUND_DURATION = _i("ROUND_DURATION", 210)

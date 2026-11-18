@@ -9,6 +9,7 @@ from . import config
 # whole number in LIKES_RANGE, so these are only the suggestions
 LIKE_STEPS = [0, 100, 200, 300, 500, 1000, 2000, 5000, 10000, 20000, 50000, 100000, 250000, 500000, 1000000]
 LIKES_RANGE = (10, 10_000_000)
+REWARDS = ["none", "hint", "round", "stream"]
 
 
 class GlobalSettings:
@@ -20,6 +21,13 @@ class GlobalSettings:
         "bomber": ("PLANE_BOMBER_LIKES", LIKE_STEPS),
         "snowball": ("SNOWBALL_LIKES", LIKE_STEPS),
         "cake": ("CAKE_LIKES", LIKE_STEPS),
+        # what a like show gives its viewer on top of the animation (REWARDS): nothing / a hint on their account /
+        # 3 words for the round / 3 words till the stream ends
+        "balloon_reward": ("BALLOON_REWARD", REWARDS),
+        "plane_reward": ("PLANE_REWARD", REWARDS),
+        "bomber_reward": ("BOMBER_REWARD", REWARDS),
+        "snowball_reward": ("SNOWBALL_REWARD", REWARDS),
+        "cake_reward": ("CAKE_REWARD", REWARDS),
         "voice_rate": ("VOICE_RATE", [1, 1.25, 1.5, 1.75, 2]),
         "voice_volume": ("VOICE_VOLUME", list(range(0, 101, 10))),
         "fx_volume": ("FX_VOLUME", list(range(0, 101, 10))),
