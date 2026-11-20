@@ -414,12 +414,17 @@ function MarkupButton({ room, live, job }) {
             const lc = await import('./Digest/livecenter.js');
             const replay = live.tiktokRoom ? await lc.findReplay(live.tiktokRoom, live.epoch) : await lc.findReplay('', recordedStart(live.file));
             if (!replay?.m3u8) throw new Error(t('guessword.digest_lc_notfound'));
+            // LIVE Center's own length (hls meta) is sometimes empty: fall back to finish - start
+            const duration = replay.duration >= 60 ? replay.duration : (replay.finish - replay.start);
             const res = await fetch(startUrl, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-XSRF-TOKEN': csrf() },
-                body: JSON.stringify({ m3u8: replay.m3u8, start: replay.start, duration: replay.duration, recording: replay.id }),
+                body: JSON.stringify({ m3u8: replay.m3u8, start: replay.start, duration, recording: replay.id }),
             });
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            if (!res.ok) {
+                const body = await res.json().catch(() => null);
+                throw new Error(`HTTP ${res.status}${body?.message ? ': ' + body.message : ''}`);
+            }
             setState(await res.json());
         } catch (e) {
             setError(e.message);
