@@ -1,6 +1,6 @@
 // node tests/clip/plan.test.mjs : the pure parts of the hard-round clip (resources/js/Pages/Guessword/Clip/plan.js)
 import assert from 'node:assert/strict';
-import { candidates, defaultPicks, FPS, plan, stallFrom, subtitleChunks, utterances } from '../../resources/js/Pages/Guessword/Clip/plan.js';
+import { candidates, defaultPicks, FPS, plan, stallFrom, stripAnnouncer, subtitleChunks, utterances } from '../../resources/js/Pages/Guessword/Clip/plan.js';
 
 const say = (start, text, per = 0.4) => text.split(' ').map((w, i) => [start + i * per, start + i * per + per - 0.05, w]);
 
@@ -63,3 +63,8 @@ const two = subtitleChunks(say(10, 'длинное слово подряд ид�
 assert.ok(two.split > 0 && two.split <= two.words.length);
 
 console.log('clip plan: ok');
+
+// the announcer's lines are cut, the host's words stay
+const ann = [...say(100, 'Огромный скачок у Родион Увы, Родион Чтобы победить, нужно подписаться.', 0.3), ...say(110, 'Молодец апельсин дожала дожала!'), ...say(120, 'огромный скачок у скиллтер почти таша в одном шаге от победы', 0.3), ...say(130, 'Это вот про настойчивость')];
+assert.deepEqual(stripAnnouncer(ann).map((w) => w[2]).join(' '), 'Молодец апельсин дожала дожала! Это вот про настойчивость');
+console.log('announcer: ok');

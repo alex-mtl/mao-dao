@@ -48,6 +48,39 @@ export function utterances(words, from, to) {
     });
 }
 
+// ---- the game's announcer (a synthetic voice, texts g.v.* of stream-engine/app/web/common/i18n.js) ----
+// The import cuts only greetings, "Раунд N. Поехали" and the winner; the other lines ("Огромный скачок у <ник>!", "<ник> в одном шаге от
+// победы!", "Увы, <ник>! Чтобы победить, нужно подписаться!"...) stay in the stored words and are removed here, for old data too.
+// A template = [fixed words, how many words to take back, how many forward]: the nickname around the fixed words is not known, so the line is
+// widened over its neighbours until a pause (>= 0.6 s), a sentence end or the given count.
+const ANNOUNCER_LINES = [
+    [['огромный', 'скачок', 'у'], 0, 5], [['новый', 'лидер'], 0, 5], [['возвращение'], 0, 5], [['снова', 'лидер'], 5, 0],
+    [['в', 'одном', 'шаге', 'от', 'победы'], 5, 0], [['в', 'тройке', 'лучших'], 5, 0],
+    [['чтобы', 'победить', 'нужно', 'подписаться'], 4, 0], [['нужно', 'подписаться'], 5, 0],
+    [['подпишись', 'чтобы', 'остаться', 'в', 'лидерах'], 5, 0], [['подпишись', 'чтобы', 'победить'], 5, 0], [['ты', 'в', 'игре'], 5, 0],
+    [['крадет', 'победу'], 5, 5], [['никто', 'не', 'угадал'], 0, 4], [['время', 'вышло'], 0, 0], [['раунд', 'пропущен'], 0, 0],
+    [['быстрый', 'раунд', 'поехали'], 0, 0], [['следующий', 'раунд', 'через'], 0, 5], [['подписывайтесь', 'чтобы', 'играть', 'с', 'нами'], 0, 0],
+    [['готовьтесь', 'писать', 'слова'], 4, 0], [['звук', 'включен'], 0, 4], [['найдем', 'секретное', 'слово'], 0, 0],
+];
+const norm = (t) => t.toLowerCase().replace(/ё/g, 'е').replace(/[^а-яa-z0-9]/g, '');
+
+/** the host's words without the announcer's lines. words = [[start, end, word], ...] */
+export function stripAnnouncer(words) {
+    const n = words.length, nw = words.map((w) => norm(w[2])), drop = new Array(n).fill(false);
+    const linked = (a, b) => words[b][0] - words[a][1] < 0.6 && !END.test(words[a][2]);   // b continues the line of a
+    for (const [seq, back, fwd] of ANNOUNCER_LINES) {
+        for (let i = 0; i + seq.length <= n; i++) {
+            if (!seq.every((x, k) => nw[i + k] === x)) continue;
+            const last = i + seq.length - 1;
+            let a = i, b = last;
+            for (let k = 0; k < back && a > 0 && linked(a - 1, a); k++) a--;
+            for (let k = 0; k < fwd && b < n - 1 && linked(b, b + 1); k++) b++;
+            for (let k = a; k <= b; k++) drop[k] = true;
+        }
+    }
+    return words.filter((_, i) => !drop[i]);
+}
+
 /** the zone of a phrase, for the list: before the finale, the finale (last seconds before the win), after the round */
 export const zoneOf = (from, t1) => (from < t1 - APPROACH ? 'before' : from < t1 + TAIL ? 'finale' : 'after');
 

@@ -3,7 +3,7 @@ import SecondaryButton from '@/Components/SecondaryButton';
 import { useLaravelReactI18n } from 'laravel-react-i18n';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { extension } from '../Digest/livecenter.js';
-import { candidates, defaultPicks, plan as makePlan } from './plan.js';
+import { candidates, defaultPicks, plan as makePlan, stripAnnouncer } from './plan.js';
 
 const ms = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
 /**
@@ -54,7 +54,8 @@ export default function ClipForm({ room, live, round, onClose }) {
 
     const t0 = data?.round?.offset, t1 = data?.round ? data.round.offset + data.round.duration : 0;
     const minutes = Math.round((round.duration || 0) / 60);
-    const cands = useMemo(() => (data && data !== 'none' ? candidates(data.words, t0, t1) : []), [data]);
+    const words = useMemo(() => (data && data !== 'none' ? stripAnnouncer(data.words) : []), [data]);   // the host only: the announcer's lines are cut out
+    const cands = useMemo(() => (data && data !== 'none' ? candidates(words, t0, t1) : []), [data, words]);
     useEffect(() => {
         if (cands.length) setPicked(defaultPicks(cands, t0, t1));
         setHook(t('guessword.clip_hook_default', { n: minutes }));
@@ -145,7 +146,7 @@ export default function ClipForm({ room, live, round, onClose }) {
                 cta1: t('guessword.clip_cta1'), cta2: t('guessword.clip_cta2'), guessedBy: t('guessword.clip_guessed_by'),
             };
             const { blob } = await buildClip({
-                src, plan: pl, words: data.words, hook, labels, signal: ac.signal, canvas: canvasRef.current,
+                src, plan: pl, words, hook, labels, signal: ac.signal, canvas: canvasRef.current,
                 round: { word: data.round.word || '', winner: data.round.winner, avatar },
                 onProgress: (p) => setState({ stage: p.stage === 'mux' ? 'mux' : 'building', frame: p.frame, frames: p.frames }),
             });
