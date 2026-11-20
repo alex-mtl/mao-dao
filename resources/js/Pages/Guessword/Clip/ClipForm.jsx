@@ -91,7 +91,10 @@ export default function ClipForm({ room, live, round, onClose }) {
 
     const base = `clip-${(live.date || live.file.slice(0, 10))}-round${round.round}`;
 
-    const generate = async () => {
+    // the earliest ticked phrase: the trial piece is cut from it alone (no time-lapse, no stall search, no cover, no avatar)
+    const trialPick = chosen.length ? [...chosen].sort((a, b) => a.from - b.from)[0] : null;
+
+    const generate = async (trial = false) => {
         const ac = new AbortController();
         abortRef.current = ac;
         const t00 = performance.now();
@@ -120,20 +123,24 @@ export default function ClipForm({ room, live, round, onClose }) {
             }
             const { buildClip, detectStall } = await import('./build.js');
 
-            setState({ stage: 'stall', n: 0, total: 1 });
-            let stall = t0 + (t1 - t0) * 0.55;
-            try {
-                const d = await detectStall(src, t0, t1, (n, total) => setState({ stage: 'stall', n, total }), ac.signal);
-                if (d.stall !== null) stall = d.stall;
-            } catch (e) { if (e.name === 'AbortError') throw e; /* the middle of the round stays */ }
+            let stall = t0 + (t1 - t0) * 0.55, avatar = null;
+            if (!trial) {
+                setState({ stage: 'stall', n: 0, total: 1 });
+                try {
+                    const d = await detectStall(src, t0, t1, (n, total) => setState({ stage: 'stall', n, total }), ac.signal);
+                    if (d.stall !== null) stall = d.stall;
+                } catch (e) { if (e.name === 'AbortError') throw e; /* the middle of the round stays */ }
 
-            // the winner's avatar (the plate shows who guessed); initials are not drawn, no picture = no avatar
-            let avatar = null;
-            const key = data.round.winnerUid || data.round.winnerId;
-            if (key) {
-                try { const r = await fetch(route('guessword.avatar', key)); if (r.ok) avatar = await createImageBitmap(await r.blob()); } catch { /* none */ }
+                // the winner's avatar (the plate shows who guessed); initials are not drawn, no picture = no avatar
+                const key = data.round.winnerUid || data.round.winnerId;
+                if (key) {
+                    try { const r = await fetch(route('guessword.avatar', key)); if (r.ok) avatar = await createImageBitmap(await r.blob()); } catch { /* none */ }
+                }
             }
-            const pl = makePlan({ t0, t1, stall, picks: chosen });
+            // the trial piece: one dense segment of the ticked phrase, drawn exactly as in the full clip (same picture sync, same subtitles)
+            const pl = trial
+                ? { segs: [{ kind: 'dense', from: trialPick.from, to: trialPick.to, out0: 0, dur: trialPick.to - trialPick.from }], total: trialPick.to - trialPick.from }
+                : makePlan({ t0, t1, stall, picks: chosen });
             const labels = {
                 cta1: t('guessword.clip_cta1'), cta2: t('guessword.clip_cta2'), guessedBy: t('guessword.clip_guessed_by'),
             };
@@ -144,7 +151,7 @@ export default function ClipForm({ room, live, round, onClose }) {
             });
             const url = URL.createObjectURL(blob);
             let coverUrl = null;
-            if (withCover) {
+            if (withCover && !trial) {
                 setState({ stage: 'cover' });
                 const { buildCover } = await import('./cover.js');
                 const date = (live.date || live.file.slice(0, 10)).split('-').reverse().join('.');
@@ -154,9 +161,9 @@ export default function ClipForm({ room, live, round, onClose }) {
                 });
                 coverUrl = URL.createObjectURL(await cv.convertToBlob({ type: 'image/png' }));
             }
-            setState({ stage: 'done', url, coverUrl, seconds: Math.round((performance.now() - t00) / 1000), length: Math.round(pl.total), drift });
-            // saved at once, like the digest: the video lives only in this tab's memory until then
-            for (const [href, download] of [[url, `${base}.mp4`], [coverUrl, `${base}-cover.png`]]) {
+            setState({ stage: 'done', url, coverUrl, seconds: Math.round((performance.now() - t00) / 1000), length: Math.round(pl.total), drift, trial });
+            // saved at once, like the digest: the video lives only in this tab's memory until then (a trial piece is only watched)
+            if (!trial) for (const [href, download] of [[url, `${base}.mp4`], [coverUrl, `${base}-cover.png`]]) {
                 if (!href) continue;
                 const link = Object.assign(document.createElement('a'), { href, download });
                 document.body.appendChild(link);
@@ -225,8 +232,12 @@ export default function ClipForm({ room, live, round, onClose }) {
                             {t('guessword.clip_length', { s: Math.round(estimate) })}{(estimate < 30 || estimate > 60) && ` · ${t('guessword.clip_length_warn')}`}
                         </p>
                         {!busy && state.stage !== 'done' && (
-                            <PrimaryButton type="button" onClick={generate}>{t('guessword.clip_generate')}</PrimaryButton>
+                            <div className="flex flex-wrap items-center gap-2">
+                                <PrimaryButton type="button" onClick={() => generate(false)}>{t('guessword.clip_generate')}</PrimaryButton>
+                                <SecondaryButton disabled={!trialPick} onClick={() => generate(true)}>{t('guessword.clip_trial')}</SecondaryButton>
+                            </div>
                         )}
+                        {!busy && state.stage !== 'done' && <p className="text-xs text-ink-500">{t('guessword.clip_trial_hint')}</p>}
                         {busy && (
                             <div>
                                 <p className="text-sm text-ink-600">
@@ -245,12 +256,12 @@ export default function ClipForm({ room, live, round, onClose }) {
                         )}
                         {state.stage === 'done' && (
                             <div className="space-y-2">
-                                <p className="text-sm font-semibold text-success-700">{t('guessword.clip_done', { s: state.length, took: state.seconds })}</p>
-                                <p className="text-xs text-ink-500">{t('guessword.digest_saved')}</p>
+                                <p className="text-sm font-semibold text-success-700">{t(state.trial ? 'guessword.clip_trial_done' : 'guessword.clip_done', { s: state.length, took: state.seconds })}</p>
+                                {!state.trial && <p className="text-xs text-ink-500">{t('guessword.digest_saved')}</p>}
                                 {!file && Math.abs(state.drift) >= 1 && <p className="text-xs text-ink-500">{t('guessword.clip_sync_note', { s: state.drift })}</p>}
                                 <video src={state.url} controls className="w-40 rounded-lg bg-ink-900" />
                                 <div className="flex flex-wrap gap-2">
-                                    <a href={state.url} download={`${base}.mp4`} className="inline-flex rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-700">{t('guessword.digest_download')}</a>
+                                    {!state.trial && <a href={state.url} download={`${base}.mp4`} className="inline-flex rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-700">{t('guessword.digest_download')}</a>}
                                     {state.coverUrl && <a href={state.coverUrl} download={`${base}-cover.png`} className="inline-flex rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-700">{t('guessword.digest_cover_download')}</a>}
                                     <SecondaryButton onClick={() => setState({ stage: 'form' })}>{t('guessword.clip_again')}</SecondaryButton>
                                 </div>

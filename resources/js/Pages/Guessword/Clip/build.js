@@ -145,7 +145,7 @@ export async function buildClip({ src, plan, words, round, hook, labels, signal,
     output.addAudioTrack(audio);
     await output.start();
 
-    const t1 = plan.segs.find((s) => s.kind === 'freeze').at, plateData = round && { word: round.word, winner: round.winner, avatar: round.avatar, guessedBy: labels.guessedBy };
+    const t1 = plan.segs.find((s) => s.kind === 'freeze')?.at ?? -1e9, plateData = round && { word: round.word, winner: round.winner, avatar: round.avatar, guessedBy: labels.guessedBy };
     // zoom on the host's face from 3 s before the win to 2 s after, eased in and out
     const zoomAt = (stream) => { const a = Math.min(1, Math.max(0, (stream - (t1 - 3)) / 0.6)), b = Math.min(1, Math.max(0, (t1 + 2 - stream) / 0.6)); return 1 + 0.25 * Math.min(a, b); };
     let n = 0, last = null;
