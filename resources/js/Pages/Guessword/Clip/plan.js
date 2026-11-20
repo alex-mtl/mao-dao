@@ -51,9 +51,9 @@ export function utterances(words, from, to) {
 /** the zone of a phrase, for the list: before the finale, the finale (last seconds before the win), after the round */
 export const zoneOf = (from, t1) => (from < t1 - APPROACH ? 'before' : from < t1 + TAIL ? 'finale' : 'after');
 
-/** candidate phrases for the form: EVERY phrase of the host from the round's start to `afterS` s after it, by time */
+/** candidate phrases for the form: EVERY phrase of the host from 30 s into the round (its first seconds are not interesting) to `afterS` s after it, by time */
 export function candidates(words, t0, t1, afterS = 150) {
-    return utterances(words, t0, t1 + afterS).map((u, i) => ({ id: i + 1, zone: zoneOf(u.from, t1), ...u }));
+    return utterances(words, t0 + 30, t1 + afterS).map((u, i) => ({ id: i + 1, zone: zoneOf(u.from, t1), ...u }));
 }
 
 /** the remarks ticked by default: up to three dense ones in the second half of the round, one reaction after the win */
