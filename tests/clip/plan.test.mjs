@@ -4,10 +4,11 @@ import { candidates, defaultPicks, FPS, plan, stallFrom, subtitleChunks, utteran
 
 const say = (start, text, per = 0.4) => text.split(' ').map((w, i) => [start + i * per, start + i * per + per - 0.05, w]);
 
-// phrases: cut at a pause, sentences end phrases, too short ones are dropped
+// phrases: cut at a pause, sentences end phrases, short ones are kept (the list shows every phrase)
 const words = [...say(100, 'это очень длинная фраза про игру и слова.'), ...say(110, 'коротко'), ...say(120, 'а теперь вторая фраза без точки в конце совсем')];
 const u = utterances(words, 0, 1000);
-assert.equal(u.length, 2);
+assert.equal(u.length, 3);
+assert.equal(u[1].text, 'коротко');
 assert.match(u[0].text, /^это очень длинная фраза про игру и слова\.$/);
 assert.ok(u[0].score > 2 && u[0].to > u[0].from + 2.5);
 

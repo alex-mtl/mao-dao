@@ -11,7 +11,8 @@ export const FF_JUMP = 36;         // frames of a jump between remarks (1.2 s)
 export const FREEZE = 1.2;         // s
 export const APPROACH = 4;         // s of 1x before the win
 export const TAIL = 3.5;           // s of 1x after the win before the host's reaction
-export const MIN_PHRASE = 2.5, MAX_PHRASE = 11, MIN_WORDS = 6;
+export const MIN_PHRASE = 2.5, MAX_PHRASE = 11;
+export const DEFAULT_MIN_WORDS = 6;   // only the automatic picks skip shorter phrases; the list shows every phrase of the host
 
 const END = /[.!?]$/, COMMA = /,$/;
 
@@ -37,7 +38,7 @@ export function utterances(words, from, to) {
         if (last && !END.test(last[last.length - 1][2]) && fr[0][0] - last[last.length - 1][1] < JOIN && fr[fr.length - 1][1] - last[0][0] <= MAX_PHRASE) last.push(...fr);
         else merged.push([...fr]);
     }
-    return merged.filter((c) => c.length >= MIN_WORDS && c[c.length - 1][1] - c[0][0] >= MIN_PHRASE).map((c) => {
+    return merged.filter((c) => c.length).map((c) => {
         const a = c[0][0], b = c[c.length - 1][1];
         return {
             from: Math.round((a - 0.1) * 10) / 10, to: Math.round((b + 0.2) * 10) / 10,
@@ -50,23 +51,19 @@ export function utterances(words, from, to) {
 /** the zone of a phrase, for the list: before the finale, the finale (last seconds before the win), after the round */
 export const zoneOf = (from, t1) => (from < t1 - APPROACH ? 'before' : from < t1 + TAIL ? 'finale' : 'after');
 
-/** candidate phrases for the form: the densest 30 inside the round, the densest 30 of the 150 s after it, by time */
+/** candidate phrases for the form: EVERY phrase of the host from the round's start to `afterS` s after it, by time */
 export function candidates(words, t0, t1, afterS = 150) {
-    const all = utterances(words, t0 + 30, t1 + afterS);
-    const top = (list, n) => [...list].sort((a, b) => b.score - a.score).slice(0, n);
-    return [...top(all.filter((u) => u.from < t1), 30), ...top(all.filter((u) => u.from >= t1), 30)]
-        .sort((a, b) => a.from - b.from)
-        .map((u, i) => ({ id: i + 1, zone: zoneOf(u.from, t1), ...u }));
+    return utterances(words, t0, t1 + afterS).map((u, i) => ({ id: i + 1, zone: zoneOf(u.from, t1), ...u }));
 }
 
 /** the remarks ticked by default: up to three dense ones in the second half of the round, one reaction after the win */
 export function defaultPicks(cands, t0, t1) {
     const mid = t0 + (t1 - t0) * 0.55, got = [];
-    for (const c of [...cands].filter((x) => x.from >= mid + 8 && x.from <= t1 - 35).sort((a, b) => b.score - a.score)) {
+    for (const c of [...cands].filter((x) => x.words >= DEFAULT_MIN_WORDS && x.from >= mid + 8 && x.from <= t1 - 35).sort((a, b) => b.score - a.score)) {
         if (got.every((g) => Math.abs(g.from - c.from) > 25)) got.push(c);
         if (got.length === 3) break;
     }
-    const after = [...cands].filter((x) => x.from >= t1 + TAIL - 0.5 && x.from <= t1 + 60).sort((a, b) => b.score - a.score)[0];
+    const after = [...cands].filter((x) => x.words >= DEFAULT_MIN_WORDS && x.from >= t1 + TAIL - 0.5 && x.from <= t1 + 60).sort((a, b) => b.score - a.score)[0];
     return [...got, ...(after ? [after] : [])].map((c) => c.id);
 }
 
