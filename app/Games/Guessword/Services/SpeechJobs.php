@@ -105,7 +105,9 @@ class SpeechJobs
         $slug = 'maodao-speech-'.$job->id;
         $dataset = $this->kaggle->createDataset($slug, 'maodao speech '.$job->id, $files);
         $script = (string) file_get_contents(base_path('services/speech-kernel/transcribe_novad.py'));
-        // a fresh dataset is still processed for a minute: the push is answered "invalidDatasetSources" until then
+        // a fresh dataset is still processed for a minute: the push is answered "invalidDatasetSources" until then, and such a push
+        // still starts a run - without the sound. Waiting first spares those empty runs (they also take a GPU slot)
+        sleep((int) config('guessword.speech.dataset_wait_s'));
         for ($try = 0; ! $this->kaggle->runKernel($dataset, $script); $try++) {
             if ($try >= 20) {
                 throw new RuntimeException('Kaggle did not accept the dataset in 10 minutes');
@@ -132,6 +134,11 @@ class SpeechJobs
         // the log of the run before ours may still be shown for a while: its error counts only once our run has started
         if (str_contains($out['log'], 'Traceback') && (str_contains($out['log'], $sid) || $age > 10)) {
             throw new RuntimeException('Kaggle: '.mb_substr(trim(mb_substr($out['log'], -600)), 0, 500));
+        }
+        // the run ended ("ALL_DONE") but never named our stream: it ran without our sound (dataset not attached), no transcript
+        // will ever come. Not before 10 min - until then the log may still be the previous run's
+        if ($age > 10 && str_contains($out['log'], 'ALL_DONE') && ! str_contains($out['log'], $sid)) {
+            throw new RuntimeException('Kaggle run finished without our audio (dataset not attached?) - start the markup again');
         }
         if ($age > (int) config('guessword.speech.kaggle_max_min')) {
             throw new RuntimeException('Kaggle did not finish in '.config('guessword.speech.kaggle_max_min').' minutes');

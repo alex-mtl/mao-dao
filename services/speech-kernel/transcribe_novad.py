@@ -38,7 +38,11 @@ def junk(seg):
         return "no_speech"
     return None
 
-for seg_csv in sorted(glob.glob("/kaggle/input/**/*__segments.csv", recursive=True)):
+segment_files = sorted(glob.glob("/kaggle/input/**/*__segments.csv", recursive=True))
+if not segment_files:
+    # the run started without the dataset (Kaggle attaches it late): fail loudly instead of "ALL_DONE" with nothing done
+    raise RuntimeError("no input: the dataset with the sound is not attached")
+for seg_csv in segment_files:
     sid = os.path.basename(seg_csv)[: -len("__segments.csv")]
     base = os.path.dirname(seg_csv)
     out = f"/kaggle/working/{sid}"

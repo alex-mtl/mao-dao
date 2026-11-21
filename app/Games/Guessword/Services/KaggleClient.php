@@ -79,8 +79,12 @@ class KaggleClient
             'datasetDataSources' => [$dataset],
         ]);
         $j = $r->json() ?? [];
-        if (! empty($j['invalidDatasetSources'])) {
-            return false;
+        // any "invalid...dataset/source..." list in the answer means the run starts WITHOUT the sound (seen 2026-11-21: a run ended
+        // in 49 s with "No Attached Data Sources", output empty) - so every such key counts, not only the one spelling
+        foreach ($j as $key => $value) {
+            if (! empty($value) && preg_match('/invalid.*(dataset|source)/i', (string) $key)) {
+                return false;
+            }
         }
         if (! $r->successful() || ! empty($j['error'])) {
             throw new RuntimeException('Kaggle SaveKernel: HTTP '.$r->status().' '.mb_substr($r->body(), 0, 200));

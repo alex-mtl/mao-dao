@@ -105,6 +105,20 @@ it('fails a job whose Kaggle run died, without keeping the address in the messag
     expect($job->status)->toBe('failed')->and($job->error)->toContain('Traceback')->and($job->error)->not->toContain('sig=9');
 });
 
+it('fails at once a job whose Kaggle run finished without its audio, but not while the log may be the previous run\'s', function () {
+    config(['guessword.speech.kaggle_token' => 'tok']);
+    Http::fake(['api.kaggle.com/*' => Http::response(['files' => [], 'log' => "install...\nALL_DONE\n"])]);
+    $job = GuesswordSpeechJob::create(['room_id' => $this->room->id, 'live_key' => $this->live, 'status' => 'kaggle', 'm3u8' => MAO_CDN,
+        'recording_start' => 1000, 'duration_s' => 7200, 'kaggle_pushed_at' => now()->subMinutes(3)]);
+
+    $this->artisan('guessword:speech-worker', ['--once' => true])->assertSuccessful();
+    expect($job->fresh()->status)->toBe('kaggle');   // 3 min after the push: the log may still be the previous run's
+
+    $job->update(['kaggle_pushed_at' => now()->subMinutes(12)]);
+    $this->artisan('guessword:speech-worker', ['--once' => true])->assertSuccessful();
+    expect($job->fresh()->status)->toBe('failed')->and($job->fresh()->error)->toContain('without our audio');
+});
+
 it('takes a markup job for a LIVE known only from its recording (rec:) and dates it by recording_s', function () {
     foreach ([1 => 50, 2 => 150, 3 => 250] as $n => $off) {
         \App\Games\Guessword\Models\GuesswordRound::create([

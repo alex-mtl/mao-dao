@@ -38,5 +38,6 @@ return [
         'ffmpeg' => env('GUESSWORD_SPEECH_FFMPEG', 'ffmpeg'),
         'dir' => storage_path('app/guessword/speech'),
         'kaggle_max_min' => 180,
+        'dataset_wait_s' => 60,           // a fresh Kaggle dataset is not attachable for about a minute
     ],
 ];
