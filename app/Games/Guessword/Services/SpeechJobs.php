@@ -102,8 +102,9 @@ class SpeechJobs
         $files["{$sid}__segments.csv"] = "$dir/segments.csv";
 
         $job->update(['note' => 'upload']);
-        $slug = 'maodao-speech-'.$job->id;
-        $dataset = $this->kaggle->createDataset($slug, 'maodao speech '.$job->id, $files);
+        // a restarted job must not meet its own dataset of the first try ("title already in use"): the time makes the name new
+        $stamp = now()->format('mdHi');
+        $dataset = $this->kaggle->createDataset("maodao-speech-{$job->id}-$stamp", "maodao speech {$job->id} $stamp", $files);
         $script = (string) file_get_contents(base_path('services/speech-kernel/transcribe_novad.py'));
         // a fresh dataset is still processed for a minute: the push is answered "invalidDatasetSources" until then, and such a push
         // still starts a run - without the sound. Waiting first spares those empty runs (they also take a GPU slot)
