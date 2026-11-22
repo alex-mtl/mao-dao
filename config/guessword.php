@@ -37,7 +37,7 @@ return [
         'parallel' => (int) env('GUESSWORD_SPEECH_PARALLEL', 2),
         'ffmpeg' => env('GUESSWORD_SPEECH_FFMPEG', 'ffmpeg'),
         'dir' => storage_path('app/guessword/speech'),
-        'kaggle_max_min' => 180,
+        'kaggle_max_min' => 720,          // only a guard for the worker: Kaggle's queue alone can take hours
         'dataset_wait_s' => 60,           // a fresh Kaggle dataset is not attachable for about a minute
     ],
 ];

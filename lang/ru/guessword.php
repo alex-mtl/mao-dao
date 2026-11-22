@@ -707,5 +707,9 @@ return [
     'markup_audio' => 'Разметка: звук :note',
     'markup_kaggle' => 'Разметка: расшифровка :note',
     'markup_import' => 'Разметка: загружаю слова',
+    'markup_kaggle_queue' => 'в очереди на Kaggle, :time',
+    'markup_kaggle_run' => 'в процессе на Kaggle, :time',
+    'markup_time_m' => ':m мин',
+    'markup_time_hm' => ':h ч :m мин',
     'markup_failed' => 'Разметка не удалась: :error',
 ];

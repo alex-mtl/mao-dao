@@ -707,5 +707,9 @@ return [
     'markup_audio' => 'Marcado: sonido :note',
     'markup_kaggle' => 'Marcado: transcripción :note',
     'markup_import' => 'Marcado: cargando las palabras',
+    'markup_kaggle_queue' => 'en la cola de Kaggle, :time',
+    'markup_kaggle_run' => 'en proceso en Kaggle, :time',
+    'markup_time_m' => ':m min',
+    'markup_time_hm' => ':h h :m min',
     'markup_failed' => 'Falló el marcado: :error',
 ];

@@ -707,5 +707,9 @@ return [
     'markup_audio' => 'Markup: sound :note',
     'markup_kaggle' => 'Markup: transcribing :note',
     'markup_import' => 'Markup: loading the words',
+    'markup_kaggle_queue' => 'in Kaggle\'s queue, :time',
+    'markup_kaggle_run' => 'running on Kaggle, :time',
+    'markup_time_m' => ':m min',
+    'markup_time_hm' => ':h h :m min',
     'markup_failed' => 'Markup failed: :error',
 ];

@@ -707,5 +707,9 @@ return [
     'markup_audio' => 'Balisage : son :note',
     'markup_kaggle' => 'Balisage : transcription :note',
     'markup_import' => 'Balisage : chargement des mots',
+    'markup_kaggle_queue' => 'dans la file de Kaggle, :time',
+    'markup_kaggle_run' => 'en cours sur Kaggle, :time',
+    'markup_time_m' => ':m min',
+    'markup_time_hm' => ':h h :m min',
     'markup_failed' => 'Échec du balisage : :error',
 ];

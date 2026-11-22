@@ -53,7 +53,7 @@ class SpeechJobs
     {
         $out = [];
         foreach (GuesswordSpeechJob::where('room_id', $room->id)->orderBy('id')->get() as $j) {
-            $out[$j->live_key] = ['id' => $j->id, 'status' => $j->status, 'note' => $j->note, 'error' => $j->error];
+            $out[$j->live_key] = ['id' => $j->id, 'status' => $j->status, 'note' => self::noteText($j->note), 'error' => $j->error];
         }
 
         return $out;
@@ -141,10 +141,27 @@ class SpeechJobs
         if ($age > 10 && str_contains($out['log'], 'ALL_DONE') && ! str_contains($out['log'], $sid)) {
             throw new RuntimeException('Kaggle run finished without our audio (dataset not attached?) - start the markup again');
         }
+        // Kaggle's GPU queue can hold a run for hours (2026-11-21: ~3 h of waiting, then 10 min of work), so a slow run is not an
+        // error: the page shows where it is and for how long, the owner looks at it by hand. Only a very long cap guards the worker.
         if ($age > (int) config('guessword.speech.kaggle_max_min')) {
             throw new RuntimeException('Kaggle did not finish in '.config('guessword.speech.kaggle_max_min').' minutes');
         }
-        $job->update(['note' => "whisper {$age} min"]);
+        // no log yet = the run has not started (waits in Kaggle's queue); a log = it works. kq/kr + minutes since the push, see noteText()
+        $job->update(['note' => ($out['log'] === '' ? 'kq' : 'kr').":$age"]);
+    }
+
+    /** the job's note for the page, in the viewer's language ("kq:47" -> "в очереди на Kaggle, 47 мин"); other notes go as they are */
+    public static function noteText(?string $note): ?string
+    {
+        if ($note === null || ! preg_match('/^(kq|kr):(\d+)$/', $note, $m)) {
+            return $note;
+        }
+        $min = (int) $m[2];
+        $time = $min >= 60
+            ? __('guessword.markup_time_hm', ['h' => intdiv($min, 60), 'm' => sprintf('%02d', $min % 60)])
+            : __('guessword.markup_time_m', ['m' => $min]);
+
+        return __($m[1] === 'kq' ? 'guessword.markup_kaggle_queue' : 'guessword.markup_kaggle_run', ['time' => $time]);
     }
 
     private function import(GuesswordSpeechJob $job): void

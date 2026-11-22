@@ -119,6 +119,25 @@ it('fails at once a job whose Kaggle run finished without its audio, but not whi
     expect($job->fresh()->status)->toBe('failed')->and($job->fresh()->error)->toContain('without our audio');
 });
 
+it('shows a slow Kaggle run as waiting in the queue or working, with the time since the push, and never fails it by a short timeout', function () {
+    config(['guessword.speech.kaggle_token' => 'tok']);
+    $job = GuesswordSpeechJob::create(['room_id' => $this->room->id, 'live_key' => $this->live, 'status' => 'kaggle', 'm3u8' => MAO_CDN,
+        'recording_start' => 1000, 'duration_s' => 7200, 'kaggle_pushed_at' => now()->subMinutes(47)]);
+
+    Http::fake(['api.kaggle.com/*' => Http::sequence()->push(['files' => [], 'log' => ''])->push(['files' => [], 'log' => 'pip install...'])]);
+    $this->artisan('guessword:speech-worker', ['--once' => true])->assertSuccessful();
+    expect($job->fresh()->status)->toBe('kaggle')->and($job->fresh()->note)->toBe('kq:47');
+
+    $job->update(['kaggle_pushed_at' => now()->subMinutes(125)]);
+    $this->artisan('guessword:speech-worker', ['--once' => true])->assertSuccessful();
+    expect($job->fresh()->status)->toBe('kaggle')->and($job->fresh()->note)->toBe('kr:125');
+
+    app()->setLocale('ru');
+    expect(SpeechJobs::noteText('kq:47'))->toBe('в очереди на Kaggle, 47 мин')
+        ->and(SpeechJobs::noteText('kr:125'))->toBe('в процессе на Kaggle, 2 ч 05 мин')
+        ->and(SpeechJobs::noteText('audio 4/8'))->toBe('audio 4/8');
+});
+
 it('takes a markup job for a LIVE known only from its recording (rec:) and dates it by recording_s', function () {
     foreach ([1 => 50, 2 => 150, 3 => 250] as $n => $off) {
         \App\Games\Guessword\Models\GuesswordRound::create([

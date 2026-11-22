@@ -136,7 +136,7 @@ class ArchiveController extends Controller
         abort_unless($this->jobs->hasLive($room, $live), 404);
         $job = $this->jobs->start($room, $live, $data['m3u8'], (int) $data['start'], (int) ceil($data['duration']), $data['recording'] ?? null);
 
-        return response()->json(['id' => $job->id, 'status' => $job->status, 'note' => $job->note, 'error' => $job->error]);
+        return response()->json(['id' => $job->id, 'status' => $job->status, 'note' => SpeechJobs::noteText($job->note), 'error' => $job->error]);
     }
 
     /** the markup jobs of the room by LIVE: {live_key: {id, status, note, error}} (the archive polls it) */
