@@ -25,7 +25,7 @@ class SpeechAudio
         for ($i = 0, $at = 0; $at < $duration; $i++, $at += $len) {
             $parts[] = ['file' => sprintf('part_%02d.ogg', $i), 'offset' => $at, 'len' => min($len, $duration - $at)];
         }
-        $todo = array_values(array_filter($parts, fn ($p) => ! is_file("$dir/{$p['file']}") || filesize("$dir/{$p['file']}") < 1000));
+        $todo = array_values(array_filter($parts, fn ($p) => ! is_file("$dir/{$p['file']}.empty") && (! is_file("$dir/{$p['file']}") || filesize("$dir/{$p['file']}") < 1000)));
         $done = count($parts) - count($todo);
         $progress && $progress($done, count($parts));
         $running = [];
@@ -47,6 +47,15 @@ class SpeechAudio
                     continue;
                 }
                 unset($running[$k]);
+                if ($proc->getExitCode() === 0 && trim($proc->getErrorOutput()) === '' && (! is_file($tmp) || filesize($tmp) < 1000)) {
+                    // ffmpeg is happy but there is no sound there: the recording is shorter than its playlist claims (the tail was
+                    // not stored) - skip this part, mark ".empty" so a restart does not pull it again
+                    is_file($tmp) && unlink($tmp);
+                    touch("$dir/{$p['file']}.empty");
+                    $progress && $progress(++$done, count($parts));
+
+                    continue;
+                }
                 if ($proc->getExitCode() !== 0 || ! is_file($tmp) || filesize($tmp) < 1000) {
                     foreach ($running as [$other]) {
                         $other->stop(1);
@@ -57,6 +66,11 @@ class SpeechAudio
                 rename($tmp, "$dir/{$p['file']}");
                 $progress && $progress(++$done, count($parts));
             }
+        }
+
+        $parts = array_values(array_filter($parts, fn ($p) => is_file("$dir/{$p['file']}")));
+        if (! $parts) {
+            throw new RuntimeException('the recording has no sound');
         }
 
         return array_map(fn ($p) => ['file' => $p['file'], 'offset' => $p['offset']], $parts);
